@@ -47,7 +47,7 @@ const gitSha = (() => {
 const wasmSha256 = (() => {
   try {
     const bytes = readFileSync(
-      resolve(ROOT, "crates/bert-lenses-kernel/pkg/bert_lenses_kernel_bg.wasm"),
+      resolve(ROOT, "crates/facets-kernel/pkg/bert_lenses_kernel_bg.wasm"),
     );
     return createHash("sha256").update(bytes).digest("hex");
   } catch {
@@ -124,8 +124,8 @@ export default defineConfig({
   plugins: [react(), tailwindcss(), shipNotices(), benchRecorder()],
   define: {
     __APP_VERSION__: JSON.stringify(version),
-    __KERNEL_VERSION__: JSON.stringify(crateVersion("bert-lenses-kernel")),
-    __CORE_VERSION__: JSON.stringify(crateVersion("bert-core")),
+    __KERNEL_VERSION__: JSON.stringify(crateVersion("facets-kernel")),
+    __CORE_VERSION__: JSON.stringify(crateVersion("facets-core")),
     __GIT_SHA__: JSON.stringify(gitSha),
     __SSF_COMMIT__: JSON.stringify(ssfCommit),
     __WASM_SHA256__: JSON.stringify(wasmSha256),

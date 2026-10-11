@@ -509,7 +509,7 @@ then parked · partly overtaken by later work.*
 
 Doc citations drift. A spot-check of `docs/theory-fidelity.md` found the **claims
 hold but the `file:line` pointers lag the code** — `validate_mode` cited at
-123–146, since moved to ~254 in `crates/bert-core/src/validate.rs`. Separately,
+123–146, since moved to ~254 in `crates/facets-core/src/validate.rs`. Separately,
 README and quickstart still pointed at **#80**, which was closed: the same
 disease, second symptom.
 

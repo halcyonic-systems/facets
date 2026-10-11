@@ -1,4 +1,4 @@
-// Hand-written TS mirrors of the frozen kernel boundary (crates/bert-lenses-kernel/API.md).
+// Hand-written TS mirrors of the frozen kernel boundary (crates/facets-kernel/API.md).
 // The wasm functions return `any`; these types are the contract the face reads
 // against. THE INVARIANT: these describe shapes the Rust kernel computes — the
 // face never derives a verdict, it only renders these.
@@ -168,8 +168,8 @@ export interface FlowSeries {
   series: number[];
 }
 // ---- The bench session's tick log (facets#463) -----------------------------
-// Mirrors crates/bert-compose/src/circuit.rs `NodeFlux` and
-// crates/bert-tether/src/bench.rs `WireFlux` / `TickLog` / `KnobEdit`.
+// Mirrors crates/facets-compose/src/circuit.rs `NodeFlux` and
+// crates/facets-tether/src/bench.rs `WireFlux` / `TickLog` / `KnobEdit`.
 
 /** What one component did on one tick, in the model's own names. */
 export interface NodeFlux {
@@ -236,7 +236,7 @@ export interface RunResultRich {
 }
 
 // ---- Phase 2: the canvas editing model --------------------------------------
-// Mirrors crates/bert-lenses-kernel/src/canvas.rs — the JSON shape that crosses
+// Mirrors crates/facets-kernel/src/canvas.rs — the JSON shape that crosses
 // the wasm boundary via `project` / `to_canvas` / `validate_connection`.
 
 export type Lens = "Klir" | "Bunge" | "Mobus";
@@ -553,7 +553,7 @@ export interface SlError {
 export type SlOutcome = { ok: CanvasModel; lens_explicit: boolean } | { errors: SlError[] };
 
 // ---- Phase 3: the lens primitives --------------------------------------------
-// Mirrors crates/bert-lenses-kernel/src/lenses.rs. Every field is a kernel
+// Mirrors crates/facets-kernel/src/lenses.rs. Every field is a kernel
 // verdict translated to canvas ids — the three lens renderings READ these,
 // they never re-derive them.
 
@@ -751,7 +751,7 @@ export interface CanvasAnalysis {
 // Klir's incidence matrix and Bunge's coupling matrix M are WRITE surfaces —
 // their empty cells author relations — so which cell a relation occupies, and
 // which cell may be authored into, is a reading of the tradition and is decided
-// in `crates/bert-canvas/src/notation.rs`. These mirrors carry that reading; the
+// in `crates/facets-canvas/src/notation.rs`. These mirrors carry that reading; the
 // face maps marks onto glyphs and colors and decides nothing.
 
 /** What an author may do with one cell. `forbidden` names the precondition, so
@@ -817,8 +817,8 @@ export interface BungeCoupling {
 }
 
 // ---- The sandbox seam (the boundary's one stateful export) ------------------
-// Mirrors crates/bert-compose/src/session.rs DTOs, marshaled by
-// crates/bert-lenses-kernel/src/sandbox.rs. See API.md "SandboxSession".
+// Mirrors crates/facets-compose/src/session.rs DTOs, marshaled by
+// crates/facets-kernel/src/sandbox.rs. See API.md "SandboxSession".
 
 /** One frame's read of a live sandbox circuit. */
 export interface SandboxSnapshot {

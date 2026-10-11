@@ -132,7 +132,7 @@ export function BungeRegister({
   // reading, where the cut falls, and each cell's occupants, mark, and
   // authorability. The en-bloc device, the bond-vs-mere directionality, and
   // M₀₀ = 0 are Bunge's, and this register writes through those cells — so they
-  // are decided in Rust (crates/bert-canvas/src/notation.rs) and rendered here.
+  // are decided in Rust (crates/facets-canvas/src/notation.rs) and rendered here.
   const coupling = useMemo(() => bungeCouplingCells(model, enBloc), [model, enBloc]);
   const cells = useMemo(() => couplingIndex(coupling), [coupling]);
   const cellsFor = (a: number, b: number): number[] => {

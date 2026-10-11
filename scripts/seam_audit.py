@@ -2,7 +2,7 @@
 """Seam-readiness audit over the models that ship with the Model face.
 
 Continuous zoom (#139) opens only where a model asserts a process inside a
-process. The kernel's boundary contract (`crates/bert-core/src/decomposition.rs`,
+process. The kernel's boundary contract (`crates/facets-core/src/decomposition.rs`,
 transcribing `Systems/Core/Decomposition.lean`) says why: a child's boundary
 must REFINE each crossing of the parent component — same substance kind, same
 environmental counterparty by name, landing on a named child interface. A
@@ -12,7 +12,7 @@ therefore cannot be decomposed no matter what the surface offers.
 This script asks, of every model on the gallery's "Ships with the app" shelf,
 which components could carry a seam today. It is READ-ONLY: it compiles each
 `.sl` with the real kernel (`bert compile`, the headless door in
-`crates/bert-cli`) and reads the CanvasModel that comes back. It decides
+`crates/facets-cli`) and reads the CanvasModel that comes back. It decides
 nothing the kernel does not already carry — role, primitive, interface flag,
 bond kind, substance, `decomposes` reference are all fields of the compiled
 model.
@@ -42,7 +42,7 @@ Per model:
 Usage:
     python3 scripts/seam_audit.py [--bert PATH] [--out PATH] [--json]
 
-Requires the `bert` binary. Build it with `cargo build -p bert-cli --bin bert`
+Requires the `bert` binary. Build it with `cargo build -p facets-cli --bin bert`
 (or pass `--bert target/debug/bert`); the script finds it in `target/debug`,
 `target/release`, or `$PATH`.
 """
@@ -204,7 +204,7 @@ def find_bert(explicit: str | None) -> Path:
         return Path(found)
     sys.exit(
         "seam_audit: no bert binary found. Build it:\n"
-        "  cargo build -p bert-cli --bin bert\n"
+        "  cargo build -p facets-cli --bin bert\n"
         "or pass --bert PATH."
     )
 

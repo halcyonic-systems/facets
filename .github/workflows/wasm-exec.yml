@@ -10,7 +10,7 @@
 # CI, and zero `wasm_bindgen_test`s in the repo.
 #
 # WHAT THIS RUNS. `scripts/wasm_exec.mjs` loads
-# `crates/bert-lenses-kernel/pkg` under node exactly as the browser loads it —
+# `crates/facets-kernel/pkg` under node exactly as the browser loads it —
 # same glue JS, same `.wasm` bytes, nothing stubbed — and drives real exports:
 # `analyze_canvas` / `lens_facts` / `describe` recomputed from the committed
 # canvas fixture and compared against the committed results; every shipped `.sl`
@@ -68,14 +68,16 @@ jobs:
           version: 'v0.13.1'
 
       # The package the app ships.
+      # The pkg keeps its old file names until phase 3 of #541 renames the wasm
+      # boundary and web/'s imports together (phase 2 renamed the crate).
       - name: Build wasm pkg
-        run: wasm-pack build --target web --out-dir pkg
-        working-directory: crates/bert-lenses-kernel
+        run: wasm-pack build --target web --out-dir pkg --out-name bert_lenses_kernel
+        working-directory: crates/facets-kernel
 
       # The probe package — same kernel plus one deliberate panic export.
       - name: Build wasm pkg (panic probe)
-        run: wasm-pack build --target web --out-dir pkg-probe -- --features panic-probe
-        working-directory: crates/bert-lenses-kernel
+        run: wasm-pack build --target web --out-dir pkg-probe --out-name bert_lenses_kernel -- --features panic-probe
+        working-directory: crates/facets-kernel
 
       - name: Setup Node
         uses: actions/setup-node@v4
@@ -86,4 +88,4 @@ jobs:
       # the web app's node_modules would make a face-side change able to break
       # a boundary gate.
       - name: Execute the boundary
-        run: node scripts/wasm_exec.mjs --probe crates/bert-lenses-kernel/pkg-probe
+        run: node scripts/wasm_exec.mjs --probe crates/facets-kernel/pkg-probe

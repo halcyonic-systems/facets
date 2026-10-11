@@ -30,7 +30,7 @@ Drafts are cached under runs/author-audit/<label>/<model>/<id>-<n>/ (the
 first SL, the final SL, and every intermediate); delete a folder to redraft.
 `--report` reads cached result.json files only. The local reasoner limits
 `/author-sl` to 10 calls a minute, so `--pace` (seconds between calls)
-defaults to 7. Requires the `bert` binary (`cargo build -p bert-cli`).
+defaults to 7. Requires the `bert` binary (`cargo build -p facets-cli`).
 
 The milieu rows (facets#443): `milieu lines` counts `milieu` declarations in
 the compiled model, and `env things reading as conditions` counts the kernel's
@@ -85,7 +85,7 @@ def find_bert(explicit: str | None) -> Path:
     found = shutil.which("bert")
     if found:
         return Path(found)
-    sys.exit("bert binary not found; build with `cargo build -p bert-cli --bin bert` or pass --bert")
+    sys.exit("bert binary not found; build with `cargo build -p facets-cli --bin bert` or pass --bert")
 
 
 # --- the reasoner -----------------------------------------------------------

@@ -1,6 +1,6 @@
 // The SL vocabulary, read from the keyword contract fixture — never typed
 // here. fixtures/contract/sl_keywords.json is written by the kernel's own
-// consts (crates/bert-canvas/tests/sl_keywords.rs); `just check` runs cargo
+// consts (crates/facets-canvas/tests/sl_keywords.rs); `just check` runs cargo
 // before vitest, so the fixture is always fresh when the tests read it.
 import fixture from "../../../fixtures/contract/sl_keywords.json";
 

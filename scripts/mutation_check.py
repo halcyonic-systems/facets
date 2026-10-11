@@ -31,7 +31,7 @@ MUTATIONS = [
     # gate was born red, because mutation coverage presupposes a green gate).
     (
         "flux-per-tick",
-        [("crates/bert-compose/src/circuit.rs",
+        [("crates/facets-compose/src/circuit.rs",
           "NodeKind::Source => dt * self.source_emission(i) * bp_factor_of(i, &act),",
           "NodeKind::Source => self.source_emission(i) * bp_factor_of(i, &act),")],
         ["-p", "bert-canvas", "--test", "dt_invariance"],
@@ -39,7 +39,7 @@ MUTATIONS = [
     ),
     (
         "series-per-tick",
-        [("crates/bert-compose/src/circuit.rs",
+        [("crates/facets-compose/src/circuit.rs",
           "let idx = ((self.time / stride) as usize).min(series.len() - 1);",
           "let idx = ((self.tick as f32 / stride) as usize).min(series.len() - 1);")],
         ["-p", "bert-compose", "--lib", "forced_series_is_anchored_to_model_time"],
@@ -47,7 +47,7 @@ MUTATIONS = [
     ),
     (
         "loop-silently-delayed",
-        [("crates/bert-compose/src/circuit.rs",
+        [("crates/facets-compose/src/circuit.rs",
           "        let Ok(order) = self.eval_order() else {\n            return;\n        };",
           "        let order: Vec<usize> = (0..self.nodes.len()).collect();")],
         ["-p", "bert-compose", "--lib", "relay_is_instantaneous_within_a_step"],
@@ -55,7 +55,7 @@ MUTATIONS = [
     ),
     (
         "amount-hardcode",
-        [("crates/bert-canvas/src/canvas.rs",
+        [("crates/facets-canvas/src/canvas.rs",
           "amount: r.amount.unwrap_or(bert_core::rust_decimal::Decimal::ONE),",
           "amount: bert_core::rust_decimal::Decimal::ONE,")],
         ["-p", "bert-canvas", "--test", "canvas_round_trip"],
@@ -63,14 +63,14 @@ MUTATIONS = [
     ),
     (
         "bags-dropped",
-        [("crates/bert-canvas/src/canvas.rs",
+        [("crates/facets-canvas/src/canvas.rs",
           "agent.cognitive_params = t.cognitive_params.clone();", "")],
         ["-p", "bert-canvas", "--test", "canvas_round_trip"],
         "the canvas discarding engine params on projection (#216 — reservoir loses release_rate)",
     ),
     (
         "agency-dropped",
-        [("crates/bert-canvas/src/canvas.rs",
+        [("crates/facets-canvas/src/canvas.rs",
           "agency_capacity: s.agent.as_ref().map(|a| a.agency_capacity),",
           "agency_capacity: None,")],
         ["-p", "bert-canvas", "--test", "canvas_round_trip"],
@@ -78,7 +78,7 @@ MUTATIONS = [
     ),
     (
         "env-ring-pinned",
-        [("crates/bert-canvas/src/sl.rs",
+        [("crates/facets-canvas/src/sl.rs",
           "ENV_RADIUS.max(center_offset + membrane_max + NODE_R + CLEARANCE)",
           "ENV_RADIUS")],
         ["-p", "bert-canvas", "--test", "layout_truthful"],
@@ -86,7 +86,7 @@ MUTATIONS = [
     ),
     (
         "two-comp-vertical",
-        [("crates/bert-canvas/src/sl.rs",
+        [("crates/facets-canvas/src/sl.rs",
           "2 => ring(slot, 2, COMPONENT_RADIUS, PI),",
           "2 => ring(slot, 2, COMPONENT_RADIUS, -FRAC_PI_2),")],
         ["-p", "bert-canvas", "--test", "layout_truthful"],
@@ -101,7 +101,7 @@ MUTATIONS = [
     ),
     (
         "membrane-hole-ignored",
-        [("crates/bert-core/src/validate.rs",
+        [("crates/facets-core/src/validate.rs",
           "if !enters && !leaves {",
           "if true {")],
         ["-p", "bert-core", "--lib", "crossing_flow_without_interface"],
@@ -109,7 +109,7 @@ MUTATIONS = [
     ),
     (
         "env-word-rederived",
-        [("crates/bert-canvas/src/sl.rs",
+        [("crates/facets-canvas/src/sl.rs",
           '(Role::Environment, EnvKind::Sink) => "sink",',
           '(Role::Environment, EnvKind::Sink) => "source",')],
         ["-p", "bert-canvas", "--test", "environment_kind"],
@@ -117,7 +117,7 @@ MUTATIONS = [
     ),
     (
         "process-weights-dropped",
-        [("crates/bert-compose/src/export.rs",
+        [("crates/facets-compose/src/export.rs",
           "            // stay the uniform split, byte-for-byte.\n            wire.rate = Some(f.amount as f32);",
           "            // stay the uniform split, byte-for-byte.\n            let _ = f.amount;")],
         ["-p", "bert-canvas", "--test", "llm_market", "serving_shares_track_declared_weights"],
@@ -125,7 +125,7 @@ MUTATIONS = [
     ),
     (
         "signal-rate-ignored",
-        [("crates/bert-compose/src/circuit.rs",
+        [("crates/facets-compose/src/circuit.rs",
           "            if matches!(sender.kind, NodeKind::Source) {\n                if let Some(r) = self.wire_declared_rate(k) {\n                    return self.crossing_factor(w.from) * r;\n                }\n            }\n            return sender_activity;",
           "            return sender_activity;")],
         ["-p", "bert-canvas", "--test", "source_signal_rate"],

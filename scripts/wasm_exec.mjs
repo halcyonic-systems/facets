@@ -7,7 +7,7 @@
 // disk*, never what JS *receives*. Between those two gates sits serde-wasm-
 // bindgen, the one component with no coverage at all — and the face reads its
 // output for every verdict on screen. This harness closes that: it loads
-// `crates/bert-lenses-kernel/pkg` the way the app loads it and drives real
+// `crates/facets-kernel/pkg` the way the app loads it and drives real
 // exports over the shipped corpus.
 //
 // Run:  node scripts/wasm_exec.mjs [--pkg <dir>] [--probe <dir>]
@@ -43,7 +43,7 @@ function flag(name, fallback) {
   const i = argv.indexOf(name);
   return i === -1 ? fallback : argv[i + 1];
 }
-const PKG = flag("--pkg", "crates/bert-lenses-kernel/pkg");
+const PKG = flag("--pkg", "crates/facets-kernel/pkg");
 const PROBE = flag("--probe", null);
 
 // ---- assertions -------------------------------------------------------------
@@ -134,7 +134,7 @@ async function load(dir) {
     } catch {
       console.error(
         `wasm-exec: missing ${relative(ROOT, p)} — build it first:\n` +
-          `  cd crates/bert-lenses-kernel && wasm-pack build --target web --out-dir ${dir.split("/").pop()}`,
+          `  cd crates/facets-kernel && wasm-pack build --target web --out-dir ${dir.split("/").pop()} --out-name bert_lenses_kernel`,
       );
       process.exit(2);
     }

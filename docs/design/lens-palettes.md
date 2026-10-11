@@ -2,8 +2,8 @@
 
 > **Status: LIVE** (implemented 2026-07-15, Phase 3 [#44](https://github.com/halcyonic-systems/facets/issues/44)). The two kernel
 > primitives are `bert-core::{boundary_components, edge_locus}` surfaced
-> canvas-keyed via `crates/bert-canvas/src/lenses.rs` (`lens_facts`,
-> `describe`; the wasm boundary `bert-lenses-kernel/src/api.rs` only marshals); the renderings live in `web/src/canvas/Canvas.tsx` and the
+> canvas-keyed via `crates/facets-canvas/src/lenses.rs` (`lens_facts`,
+> `describe`; the wasm boundary `facets-kernel/src/api.rs` only marshals); the renderings live in `web/src/canvas/Canvas.tsx` and the
 > formal face in `web/src/FormalPanel.tsx`. **The per-lens authoring palette is
 > DESIGNED AND SHIPPED (§ The authoring palette, 2026-07-15: #50 design → #51
 > implementation, both closed)** — including boundary-property authoring
@@ -392,7 +392,7 @@ Decisions of record (`design-system-draft.md` §Decisions): dock = **left rail**
 rail chrome tints via the `--lens-accent` seam (slate/indigo/teal) bound to kernel
 `Mode`; the KIND channel stays reserved. This section settles the rest of #50.
 Ground rule throughout: **the rail offers, the kernel decides** — legality is the
-before/after issue-delta of `validate_connection` (`pub fn validate_connection`, `bert-canvas/src/canvas.rs`)
+before/after issue-delta of `validate_connection` (`pub fn validate_connection`, `facets-canvas/src/canvas.rs`)
 at the active Mode, never a UI list (design-system rule 8).
 
 ### What the palette filters on, and what it must not
@@ -589,7 +589,7 @@ after this repo's pin — see the correction above). Design consequences:
    authored flowless interfaces" describe a transient authoring state, not a
    legal tuple. #219 already refuses it at Operational.
 4. This is **kernel-first work**: today `PortFact` is derived solely from exo
-   bonds (`bert-canvas/src/lenses.rs`); authored designation needs the 8-step
+   bonds (`facets-canvas/src/lenses.rs`); authored designation needs the 8-step
    checklist from step 1 (bert-core carries authored I; `PortFact` gains
    provenance authored|derived).
 
@@ -651,7 +651,7 @@ without conflating them with what it stamps today:
   Reactive / Anticipatory / Intentional, autonomy graded.
 - **Agency ≠ work process.** Work processes are Economy-side; agents MANAGE
   them (Agency archetype). bert-compose already corrected one category error
-  here ("agency on a primitive" — `bert-compose/src/circuit.rs`); the rail's
+  here ("agency on a primitive" — `facets-compose/src/circuit.rs`); the rail's
   stamp section therefore says **work process**, never agent. The standing
   tension that `bert-core::AgentModel.primitives` carries Economy content
   under an Agency name is documented (run-surface-grounding.md, 2026-07-11)

@@ -48,7 +48,7 @@ Mediates the messy↔neutral boundary, **both directions, with provenance preser
 - **Generate:** theoretical model / prompt → plausible synthetic dynamics, stamped **Generated** — never presented as Observed.
 
 ## The tether is legacy — subsume, don't extend
-The existing CSV tether (`crates/bert-tether/`) was built for the egui-era conservation engine: a *closed* column-role vocabulary (time / flow-magnitude / stock / parameter / ignore) whose only job is forcing the conservation run. The neutral interchange **subsumes** it — the old tether becomes one *consumer* of the `trajectory` sheet. Refactor warranted; **staged**, not part of #67.
+The existing CSV tether (`crates/facets-tether/`) was built for the egui-era conservation engine: a *closed* column-role vocabulary (time / flow-magnitude / stock / parameter / ignore) whose only job is forcing the conservation run. The neutral interchange **subsumes** it — the old tether becomes one *consumer* of the `trajectory` sheet. Refactor warranted; **staged**, not part of #67.
 
 ## Relationship to existing issues (this consolidates, it doesn't sprawl)
 - **Subsumes as consumers:** #67-thread-1 (model CSV round-trip) and #121 (ensemble dataset export) are special cases of this general interchange.

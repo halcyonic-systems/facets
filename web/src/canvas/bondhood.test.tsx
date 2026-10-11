@@ -26,7 +26,7 @@ import Canvas from "./Canvas";
 // The 2026-08-12 draft reduced to the shape that produced the misreading: one
 // component whose only two relations are mere (the interface the kernel refused
 // as carrying no boundary-crossing flow), alongside real bonds. Mirrors the
-// RIBOSOME fixture in crates/bert-canvas/tests/issue_codes.rs.
+// RIBOSOME fixture in crates/facets-canvas/tests/issue_codes.rs.
 const model: CanvasModel = {
   lens: "Mobus",
   things: [

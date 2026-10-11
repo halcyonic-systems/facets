@@ -33,11 +33,11 @@ Grepped across all 26 files in the repo touching `history`, `ledger_history`,
 `wire_history`, or `.spark`:
 `bert-canvas/{src/canvas.rs,src/lenses.rs,tests/{canvas_round_trip,dt_invariance,llm_market,projection_ledger,sl_demos,sl_roundtrip}.rs}`,
 `bert-cli/{src/main.rs,tests/surface.rs}`,
-`bert-compose/src/{circuit.rs,export.rs,markov.rs,run.rs,lens.rs,examples.rs}`,
+`facets-compose/src/{circuit.rs,export.rs,markov.rs,run.rs,lens.rs,examples.rs}`,
 `bert-core/{src/{decomposition.rs,lib.rs,operational.rs,transition.rs,validate.rs},tests/*}`,
-`bert-lenses-kernel/src/api.rs`, `bert-tether/src/{forcing.rs,tether.rs}`.
+`facets-kernel/src/api.rs`, `facets-tether/src/{forcing.rs,tether.rs}`.
 
-**One important false positive, ruled out:** `bert-core/src/transition.rs:248-255`
+**One important false positive, ruled out:** `facets-core/src/transition.rs:248-255`
 and `validate.rs:434` touch `sys.history` — that's `System.history: String`,
 the authored 8-tuple η slot on `WorldModel`, a completely different field
 already correctly kept out of `bert-compose` per `run.rs:1-19`'s module doc
@@ -53,7 +53,7 @@ only writer of `Node::spark`, at `circuit.rs:1405-1410`. `Circuit::reset`
 
 ### The one direct reader: `RecordedRun::record`
 
-`RecordedRun::record` (`bert-compose/src/run.rs:71-84`) is the **only**
+`RecordedRun::record` (`facets-compose/src/run.rs:71-84`) is the **only**
 production call site that reads `circuit.history` / `.ledger_history` /
 `.wire_history` directly off a live `Circuit`. It does so exactly once, after
 its `for _ in 0..ticks { circuit.step_dt(dt) }` loop finishes, cloning all
@@ -64,19 +64,19 @@ leave them.
 **Nobody else reads a live `Circuit`'s trace fields mid-run.** Every other
 production consumer reads a **finished** `RecordedRun`/`RunReport`:
 
-- `bert-lenses-kernel/src/api.rs::run` (wasm export, `:76-84`) — stateless
+- `facets-kernel/src/api.rs::run` (wasm export, `:76-84`) — stateless
   per-call: builds a fresh `Circuit`, calls `RecordedRun::record`, returns
   `.report()`. Holds no `Circuit` across calls.
-- `bert-tether/src/forcing.rs::summarize` (`:326-448`) — takes `circuit: &Circuit`
+- `facets-tether/src/forcing.rs::summarize` (`:326-448`) — takes `circuit: &Circuit`
   (for live-state reads: `nodes`, `wires`, `source_readout`, `level`) and
   `run: &RecordedRun` (for trace reads: `run.history`, `run.wire_history`,
   `run.ledger_history`) as **two separate parameters already** — the
   read-side split this proposal wants is already the calling convention here.
-- `bert-cli/src/main.rs:360` calls `RecordedRun::record_over`, then (per
-  `crates/bert-lenses-kernel/src/api.rs:112` doc reference) hands the report
+- `facets-cli/src/main.rs:360` calls `RecordedRun::record_over`, then (per
+  `crates/facets-kernel/src/api.rs:112` doc reference) hands the report
   on; no direct `Circuit` buffer reads.
-- `bert-canvas/tests/{canvas_round_trip,dt_invariance,llm_market,sl_demos}.rs`,
-  `bert-cli/tests/surface.rs`, `bert-lenses-kernel/src/api.rs`'s own tests
+- `facets-canvas/tests/{canvas_round_trip,dt_invariance,llm_market,sl_demos}.rs`,
+  `facets-cli/tests/surface.rs`, `facets-kernel/src/api.rs`'s own tests
   (`:950,989,1007,1035`) — all read `run.history` / `run.ledger_history` /
   `run.wire_history` off a `RecordedRun`, never off a live `Circuit`.
 
@@ -290,8 +290,8 @@ Exactly the rewrite in §2.3. `RecordedRun::record_over` (`run.rs:96-119`)
 is untouched — it only calls `record` after its own precondition checks.
 **Mechanical touch:** one function body (`run.rs:71-84`). **Gate:** run
 `dt_invariance.rs`, `sl_demos.rs` (`sl_demos_run_conserve_and_are_dt_invariant`),
-`canvas_round_trip.rs`, `bert-cli/tests/surface.rs`,
-`bert-tether/src/forcing.rs`'s tests, and `api.rs`'s
+`canvas_round_trip.rs`, `facets-cli/tests/surface.rs`,
+`facets-tether/src/forcing.rs`'s tests, and `api.rs`'s
 `runnable_sample_projects_runs_and_conserves` — every one of these asserts
 either exact floats off `run.history`/`run.ledger_history`/`run.wire_history`
 or a tolerance band derived from them, so this stage is the one where a
@@ -353,7 +353,7 @@ that isn't already going through `RecordedRun`:**
     field). Confirmed by reading `markov.rs:1-40`: `Chain`/`MarkovRun` are
     a wholly separate stepper with no `Circuit` involvement. **Out of
     scope** — flagged so nobody mistakes the grep hit for a `Circuit` site.
-  - `bert-lenses-kernel/src/api.rs:989` (`MarkovRunResult { …, history:
+  - `facets-kernel/src/api.rs:989` (`MarkovRunResult { …, history:
     run.history }`) — same: `run` here is a `MarkovRun`, not a `Circuit`.
     Out of scope, same reason.
 

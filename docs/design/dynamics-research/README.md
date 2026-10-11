@@ -16,7 +16,7 @@ step 7 below, which is kept as the pre-critique record.
 > *what the traditions say* are unaffected. Claims about `circuit.rs` mechanics or
 > line numbers must be re-verified before reuse; the current authorities are the
 > `circuit.rs` module header, `docs/language/spec.md` §8.2's Δt bullet, and
-> `crates/bert-canvas/tests/dt_invariance.rs`. (Notably, this folder's own warning at
+> `crates/facets-canvas/tests/dt_invariance.rs`. (Notably, this folder's own warning at
 > `read-category-theory.md:13` — domain literature over vocabulary literature — is
 > what decided #259; the trail held up.)
 

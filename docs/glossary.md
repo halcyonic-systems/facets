@@ -16,7 +16,7 @@ Bunge's distinction between two kinds of relation. A **bond** couples distinct c
 
 ### Conservation invariant (declared)
 
-A conserved quantity or bound the *model* declares on its state space — not a premise the engine assumes. Conservation is one optional declaration among several possible invariants, per the adopted [dynamics position](design/dynamics-principled-position.md). The engine's run interprets one such declaration (an additive invariant over ℝⁿ stocks); the Markov run mode (`run_markov`, `crates/bert-compose/src/markov.rs`) conserves probability instead and declares no substance invariant.
+A conserved quantity or bound the *model* declares on its state space — not a premise the engine assumes. Conservation is one optional declaration among several possible invariants, per the adopted [dynamics position](design/dynamics-principled-position.md). The engine's run interprets one such declaration (an additive invariant over ℝⁿ stocks); the Markov run mode (`run_markov`, `crates/facets-compose/src/markov.rs`) conserves probability instead and declares no substance invariant.
 
 ### WorldModel
 
@@ -48,11 +48,11 @@ The single abstract model that canvas gestures, SL text, and JSON are all concre
 
 ### Golden
 
-A committed fixture whose exact output is pinned by a test. Four of the [`fixtures/sl/`](../fixtures/sl/) files (`process-m`, `bathtub`, `hal-projection`, `decomposition`) are round-trip goldens: each parses, emits, and re-parses identically (`crates/bert-canvas/tests/sl_roundtrip.rs`). See [`language/README.md`](language/README.md), "Corpus precedence".
+A committed fixture whose exact output is pinned by a test. Four of the [`fixtures/sl/`](../fixtures/sl/) files (`process-m`, `bathtub`, `hal-projection`, `decomposition`) are round-trip goldens: each parses, emits, and re-parses identically (`crates/facets-canvas/tests/sl_roundtrip.rs`). See [`language/README.md`](language/README.md), "Corpus precedence".
 
 ### Dynamics-kind
 
-The shape of a dynamics record's transition functor — deterministic map, input-driven table, distribution, and so on. A model *declares* its kind; engines interpret declarations and are separately verified against the semigroup contract. The engine's run is one kind (Id-functor over ℝⁿ stocks, the agent layer's rules inside the same step, ADR 0008 D6); the discrete-time Markov chain (`run_markov`, `crates/bert-compose/src/markov.rs`) is the second run mode. See [`design/dynamics-principled-position.md`](design/dynamics-principled-position.md).
+The shape of a dynamics record's transition functor — deterministic map, input-driven table, distribution, and so on. A model *declares* its kind; engines interpret declarations and are separately verified against the semigroup contract. The engine's run is one kind (Id-functor over ℝⁿ stocks, the agent layer's rules inside the same step, ADR 0008 D6); the discrete-time Markov chain (`run_markov`, `crates/facets-compose/src/markov.rs`) is the second run mode. See [`design/dynamics-principled-position.md`](design/dynamics-principled-position.md).
 
 ### Precondition
 

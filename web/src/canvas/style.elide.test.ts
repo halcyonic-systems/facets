@@ -5,7 +5,7 @@ import { EDGE_LABEL_MAX, elideEdgeLabel } from "./style";
 
 describe("the label budget", () => {
   it("is 28, the same number the shipped-model gate enforces", () => {
-    // #335 point 2 lives in Rust (crates/bert-canvas/tests/examples.rs), where
+    // #335 point 2 lives in Rust (crates/facets-canvas/tests/examples.rs), where
     // the real parser can read a label out of an .sl file. Its LABEL_BUDGET and
     // this constant are two copies of one number, so each side pins it: change
     // one alone and this fails rather than the gate quietly going slack.

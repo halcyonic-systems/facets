@@ -44,7 +44,7 @@ By contributing you agree your contribution is licensed under the repository's
   `scripts/gen-frost-shared.mjs`; edit the source.
 - **Goldens** (`fixtures/cli/canonical.json`, the minted demo JSON under
   `assets/demos/`) except through their bless variables (`BLESS_CLI_GOLDEN=1
-  cargo test -p bert-cli`, `BLESS_SL_DEMOS=1`), and only after reading the diff:
+  cargo test -p facets-cli`, `BLESS_SL_DEMOS=1`), and only after reading the diff:
   an unexplained change is the finding, not the fix.
 - The **generated tables in `docs/lean-provenance.md`**; `just provenance`
   rewrites them from `docs/lean-manifest.json`.
@@ -173,9 +173,9 @@ Before a change lands, it must clear the gate and keep the docs honest:
   | **no Lean citation has gone stale** — every `claim_id` resolves at the pin *with its declared kind* | `doc_lint.py` → Gate A (skipped when no SSF checkout is present) |
   | provenance and hedge vocabulary hold in LIVE docs | `doc_lint.py` |
   | the design tokens have not drifted; TS type-checks; the bundle builds | `check:tokens` · `tsc --noEmit` · `vite build` |
-  | **the canonical six still read the same way through the CLI** — every word of the verdict under each of the three lenses, the formal object, the layout, the trajectory | `cargo test -p bert-cli`, against `fixtures/cli/canonical.json` |
-  | **every other bundled model still parses and the door still answers** — exit code and shape only, no content snapshot, so a rename costs no re-bless | `crates/bert-cli/tests/library_survey.rs` |
-  | **the wasm gate has not widened** — `bert-cli` is the only package excluded from the workspace `wasm32` build, in both `justfile` and `ci.yml` | `crates/bert-cli/tests/wasm_gate.rs` |
+  | **the canonical six still read the same way through the CLI** — every word of the verdict under each of the three lenses, the formal object, the layout, the trajectory | `cargo test -p facets-cli`, against `fixtures/cli/canonical.json` |
+  | **every other bundled model still parses and the door still answers** — exit code and shape only, no content snapshot, so a rename costs no re-bless | `crates/facets-cli/tests/library_survey.rs` |
+  | **the wasm gate has not widened** — `bert-cli` is the only package excluded from the workspace `wasm32` build, in both `justfile` and `ci.yml` | `crates/facets-cli/tests/wasm_gate.rs` |
 
   **Two gates run in CI only**, because they cannot run everywhere: `desktop.yml`
   bundles the macOS `.app` (needs macOS), and `deny.yml` checks licences and
@@ -189,7 +189,7 @@ Before a change lands, it must clear the gate and keep the docs honest:
   desktop build) lands as `.github/workflows/<gate>.yml` rather than a step
   there. Independent gates land independently, and `ci.yml` stays readable.
 - **Boundary changes update the contract.** A change to the JS↔wasm surface
-  updates [`crates/bert-lenses-kernel/API.md`](crates/bert-lenses-kernel/API.md)
+  updates [`crates/facets-kernel/API.md`](crates/facets-kernel/API.md)
   (frozen, append-only) **and** its serde↔TS contract fixture in
   `fixtures/contract/`. The face and the kernel agree by fixture, not by trust.
 - **New docs get a status entry.** Add the doc to the `docs/README.md` index with
@@ -205,4 +205,4 @@ would perturb a golden's round-trip belongs in a dedicated teaching fixture, not
 these files. The full rule is in
 [`docs/language/README.md`](docs/language/README.md) ("Corpus precedence"), and
 the round-trip contract is tested in
-`crates/bert-canvas/tests/sl_roundtrip.rs`.
+`crates/facets-canvas/tests/sl_roundtrip.rs`.

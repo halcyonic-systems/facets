@@ -227,9 +227,9 @@ Output: a Δ sectioned by C/N/E/G/B, kernel-computed, keyed to canvas ids, rende
 
 | Where | What |
 |---|---|
-| `crates/bert-core/src/transition.rs` | `StructuralDelta` as a sibling to `LossWitness`, computed between two **`CanvasModel`s** (never `WorldModel`s — see below). Reuse `LossEntry`'s `{section, owner, slot, value}` shape and its enumerate-don't-summarize discipline. Its reversibility guarantee is *already ΔS's exact shape*; only the reason differs. |
-| `crates/bert-core/src/validate.rs` | coherence-preservation joins the `check_*` family beside `check_bond` and `check_self_loops`, mirroring the five Lean constraints. **This is the missing theorem and the real contribution.** |
-| `crates/bert-canvas/src/lenses.rs` | `describe()` already typesets each tradition's named object; the delta must render the same way or the tri-lens symmetry breaks. |
+| `crates/facets-core/src/transition.rs` | `StructuralDelta` as a sibling to `LossWitness`, computed between two **`CanvasModel`s** (never `WorldModel`s — see below). Reuse `LossEntry`'s `{section, owner, slot, value}` shape and its enumerate-don't-summarize discipline. Its reversibility guarantee is *already ΔS's exact shape*; only the reason differs. |
+| `crates/facets-core/src/validate.rs` | coherence-preservation joins the `check_*` family beside `check_bond` and `check_self_loops`, mirroring the five Lean constraints. **This is the missing theorem and the real contribution.** |
+| `crates/facets-canvas/src/lenses.rs` | `describe()` already typesets each tradition's named object; the delta must render the same way or the tri-lens symmetry breaks. |
 
 **Validate it for free against the corpus.** The corpus already teaches by diff — Klir's four paradigms over two elements and Bunge's three structures over one composition are *exactly* ΔN with ΔC = ∅, the degenerate case of a life-cycle diff, in two traditions, with known-correct answers. A test harness that already exists.
 

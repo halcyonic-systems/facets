@@ -291,7 +291,7 @@ export function SlChain({ text, model, desc, verdict, onShowFormal }: SlChainPro
       {/* The claim, stated at the strength it is actually held at. Step 2 is a
           deterministic Rust compiler with no LLM in it (spec §1, C1). Step 4's
           MODE ENTRY gate — not every issue it can raise — is the part with a
-          Lean binding: `crates/bert-core/tests/gates_truth_table.rs` asserts
+          Lean binding: `crates/facets-core/tests/gates_truth_table.rs` asserts
           `validate_mode`'s entry gates agree with a Lean-emitted truth table on
           every (T,R) kernel over ≤ 2 things, both directions (19 rows). The
           verdicts themselves are Rust; nothing here is proved in Lean, and the

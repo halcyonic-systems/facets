@@ -3,7 +3,7 @@
 **Status: LIVE** — current as of 2026-08-18 (post #345 bench, milieu E=⟨O,M⟩, and the
 fresh-eyes polish pass — descriptions and units now authored on every element).
 Every number below is reproducible:
-`cargo run -p bert-cli -- run assets/examples/translation-apparatus.sl --t 15`.
+`cargo run -p facets-cli -- run assets/examples/translation-apparatus.sl --t 15`.
 
 ## 0. One model, self-contained
 

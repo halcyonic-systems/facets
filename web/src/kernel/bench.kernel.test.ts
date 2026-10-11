@@ -8,7 +8,7 @@ import path from "node:path";
 import { initSync, BenchHandle } from "bert-lenses-kernel";
 
 initSync({
-  module: fs.readFileSync(path.resolve(__dirname, "../../../crates/bert-lenses-kernel/pkg/bert_lenses_kernel_bg.wasm")),
+  module: fs.readFileSync(path.resolve(__dirname, "../../../crates/facets-kernel/pkg/bert_lenses_kernel_bg.wasm")),
 });
 
 const RESERVOIR = fs.readFileSync(path.resolve(__dirname, "../../../assets/archive/demos/reservoir-model.json"), "utf8");

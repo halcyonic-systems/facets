@@ -27,7 +27,7 @@ same thing as the processors behind it.
 
 `llm-market.sl` ships as the one data-fed observatory model, rewritten
 2026-10-10 as a level-0 identification (Mobus ch. 6) and gated by
-`crates/bert-canvas/tests/llm_market.rs`. Its admission is the boundary it
+`crates/facets-canvas/tests/llm_market.rs`. Its admission is the boundary it
 carries: served tokens leave through two interfaces that differ in what a
 sensor can see, a routed one with third-party counts and a self-hosted one
 with none, and every number in the file carries a `grounding` line saying
@@ -50,7 +50,7 @@ walkthrough levels rather than here because the gallery globs this
 directory and a child is not a library card; the app resolves them by the
 pinned id the parent's `decomposes` line carries
 (`web/src/walkthroughs.ts`), and
-`crates/bert-lenses-kernel/tests/llm_market_walkthrough.rs` holds both seams
+`crates/facets-kernel/tests/llm_market_walkthrough.rs` holds both seams
 clean.
 
 A third shelf with its own test since 2026-10-10 (the field models having folded onto their domain shelves the day before): `../bench/` — models that exist to test the instrument, each after a named model in the literature, admitted for what they exercise rather than what they are.
