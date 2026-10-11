@@ -37,9 +37,9 @@ entry for the reasoning.
 | Entry | What it is | Trigger |
 |---|---|---|
 | [#88 — SpacetimeDB as shared authority](#i88) | Decision (vendor rejected) | **Live** — named second editor, or a dated demo |
-| [#105 — Constellation authoring](#i105) | Future epic + a shipped near-term slice | **Already fired** — needs restating, not parking |
+| [#105 — Constellation authoring](#i105) | Future epic; the near-term slice shipped | **Fired** — restated 2026-10-11: no unpark trigger lives here; the epic is the roadmap board's (Reality Interface), and this entry is its record |
 | [#121 — RA bridge: ensemble dataset export](#i121) | Plan, subsumed as a consumer of #172 | Conditional on #172, which has no trigger |
-| [#125 — Two-reader fork in the README](#i125) | Approved task — **done in this change** | None (retired) |
+| [#125 — Two-reader fork in the README](#i125) | Approved task — **done** 2026-07-26 (`e839da7`, #246) | None (retired) |
 | [#126 — Illustrated quickstart](#i126) | Approved task, unbuilt | None |
 | [#127 — Symbol-anchored citations + issue-link liveness](#i127) | Approved task, partly overtaken | None as filed; a candidate is proposed below |
 | [#144 — Formalizing the system life cycle](#i144) | Research position + findings against a published paper | None (the paper is the live work, elsewhere) |
@@ -413,7 +413,7 @@ merits rather than waiting for the general substrate.
 ## #125 — Put the two-reader fork in the README's first screenful
 
 *Opened 2026-07-21 · **approved by @rsthornton**, then parked · **done** in the
-change that created this file.*
+change that created this file (`e839da7`, 2026-07-26, #246).*
 
 ### The approved-then-parked problem, stated honestly
 

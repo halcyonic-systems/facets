@@ -72,7 +72,7 @@ Bold marks the term SL adopted (or, in row 1, the formal object each lens typese
 ## 5. Bond vs mere relation — Bunge's alone
 
 - **Bunge — VERIFIED, verbatim.** "the total set of relations among the components … may be decomposed into its bondage B_A and the set B̄_A of nonbonding relations"; "Unlike a mere relation, a connection makes some difference to its relata"; systemhood requires B_A ≠ ∅ (`Bunge-Concrete-System-Definition-CES-(1979).md:23, 33, 62-69`).
-- **Klir — absent, VERIFIED.** All of systemhood collapses into one undifferentiated R (`Klir-Relations-(2001).md:63`); the Klir lens drops bond-vs-mere (`docs/theory-fidelity.md:20`).
+- **Klir — absent, VERIFIED.** All of systemhood collapses into one undifferentiated R (`Klir-Relations-(2001).md:63`); the Klir lens drops bond-vs-mere (`docs/theory-fidelity.md`, "Per-tradition: take / drop / where / why").
 - **Mobus — absent, VERIFIED by scoped sweep** (§14.5). Chapters 3–4 swept for bond/bonding, coupling, connection/relation type, mere aggregate, glue, "makes a difference": every bond hit is physical/chemical/social bonding in the ontogenesis narrative, never a structural typology partitioning relations. His nearest device — boundaries implied where interrelations are "much stronger" among internal components (`VAULT/mobus/3-system-ontology.md:1182`) — is an interaction-strength/endo-exo criterion, not Bunge's difference-making partition.
 
 SL's `mere` is therefore a **single-tradition contribution**, and the aggregate/system verdict it feeds (Bunge Def 1.1 in the UI) is the most lens-specific rule in the tool.
@@ -80,8 +80,8 @@ SL's `mere` is therefore a **single-tradition contribution**, and the aggregate/
 ## 6. The kind of a connection — SL's kind words are Bunge's, verbatim
 
 - **Bunge — VERIFIED, verbatim.** "Dynamic connections are often called flows — of **energy, matter, or fields**. If a physical flow happens to carry information, the connection is called **informational** … the physical/informational distinction is one of emphasis, not a dichotomy, for every information flow rides on some energy flow" (`Bunge-Concrete-System-Definition-CES-(1979).md:92`). SL's `energy | matter | field | informational` is this sentence as an enum (`crates/bert-canvas/src/canvas.rs:52-62`).
-- **Mobus — material / energy / message. VERIFIED.** "All processes transform low-quality material, energy, or messages into high-quality versions of the same" (`dynamics-research/read-mobus.md:120-124`); messages copy rather than conserve (`read-mobus.md:305-324`). The 1:1 mapping Kind→Substance is code (`canvas.rs:64-70`): Matter→Material, Informational→Message, Energy/Field→Energy.
-- **Klir — absent, VERIFIED.** Kind is a thinghood property, excluded from R (`docs/theory-fidelity.md:20`).
+- **Mobus — material / energy / message. VERIFIED.** "All processes transform low-quality material, energy, or messages into high-quality versions of the same" (`dynamics-research/read-mobus.md:120-124`); messages copy rather than conserve (`read-mobus.md:305-324`). The 1:1 mapping Kind→Substance is code (`fn kind_to_substance`, `canvas.rs`): Matter→Material, Informational→Message, Energy/Field→Energy.
+- **Klir — absent, VERIFIED.** Kind is a thinghood property, excluded from R (`docs/theory-fidelity.md`, "Per-tradition: take / drop / where / why").
 
 **Convergence reading:** a genuine two-tradition near-isomorphism (4 Bunge kinds ↔ 3 Mobus substances, collapse documented in code), with Klir's principled abstention explaining why the Klir lens shows untyped edges.
 
@@ -127,6 +127,8 @@ SL's `mere` is therefore a **single-tradition contribution**, and the aggregate/
 
 ---
 
+*Note (2026-10-11): the `agent` line and its rule words (`watches`, `rule`, `proportional`/`threshold`/`table`/`trace`, `manages`; SL spec §4.7, [ADR 0008](../decisions/0008-agent-layer.md)) have no row in this grid. They are Mobus's alone — the agent types of ch. 11 §11.2.1.1 and the error correction of §12.3.2, with no Klir or Bunge counterpart — and the spec's §3 lexicon carries their citations; a row is owed here when the grid is next revised.*
+
 ## 13. Existing partial mappings (what this doc federates, not duplicates)
 
 - `SSF/docs/reference/system-type-typologies.md` §4 — the row-11 Bunge≅Klir convergence table (two traditions, one row). Deferred to above.
@@ -163,7 +165,7 @@ The web app's user-facing lens strings, audited against the settled terms above,
 | Surface (`web/src/…`) | Klir | Bunge | Mobus |
 |---|---|---|---|
 | palette place / connect (`canvas/lenses/registry.ts`) | thing · relation | component · environment thing · bond ⁄ mere relation | component · environment object · typed flow · interface · primitives |
-| node inspector (`canvas/NodePopover.tsx:56`) | thing | component · environment thing | component · environment object |
+| node inspector (`web/src/InspectorDock.tsx`) | thing | component · environment thing | component · environment object |
 | edge-editor title (`canvas/EdgePopover.tsx`) | relation rₙ ⊆ T×T · neutral / directed | bond ⁄ mere relation · connection kind | flow · substance |
 | formal face (`FormalPanel.tsx`) | \|T\| things (thinghood) · \|R\| relations (systemhood) | 𝒞 · ℰ · bonds (endo/exo) + mere · boundary (1992) | C · N · E=⟨O,M⟩ · G · B=⟨P,I⟩ · porosity / fuzziness |
 
