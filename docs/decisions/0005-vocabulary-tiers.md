@@ -70,7 +70,9 @@ needed," 1978). Instead the sweep climbs *his own stated dependency ladder* and
 asks per rung whether the signature behavior emerges from a primitive circuit,
 judged by *his own* criteria (sustainability, influence-richness). Four outcomes,
 and the boundary is the finding: constructible, is-a-primitive, out-of-scope
-(structural rather than flow-dynamical), needs-agent-layer.
+(structural rather than flow-dynamical), needs-agent-layer. *(2026-10-11: the
+agent layer exists since 2026-10-10, ADR 0008, so the last outcome now names a
+reachable construction; the sweep has not been re-run against it.)*
 
 That converts Linkage Propositions from asserted dyads into passing tests where
 the assertion *is* the demonstration.
@@ -79,7 +81,8 @@ the assertion *is* the demonstration.
 `troncale-sweep/` artifact bundle live only in the deprecated `bert` repo and
 last ran 2026-06-17 against an engine with no `step_dt`. Within bert-lenses the
 ladder's builders are present but its proofs are not, and `palette_macros()` and
-`by_name()` currently have no callers. So "a stamped block is a demonstrated
+`by_name()` currently have no callers. *(2026-10-11: both are called from
+`crates/bert-compose/src/session.rs`, the sandbox session's stamp path.)* So "a stamped block is a demonstrated
 block" is the intent, not yet the state of this tree.
 
 ## Consequences

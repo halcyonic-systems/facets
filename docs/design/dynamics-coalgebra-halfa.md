@@ -83,9 +83,9 @@ Half A alone is a typing discipline plus two lens readouts — real, but modest.
 Half A is **per-kind, homogeneous, no composition**. The moment two elements of *different* kinds must be wired into one composite dynamics, you are in Half B — the open problem (Poly / Myers double-category / VSL operad / Willems-sheaf; frontier-council pass 2026-07-23). Half A's descriptor-plus-ports is designed to be the thing Half B composes *over*: the ports are the wiring interface, the `kind` is what a heterogeneous wiring diagram would have to reconcile. Ship Half A; let Half B's frame decide how the ports get wired.
 
 ## Build order (when scheduled)
-1. `kindCodomain` + `Transition` (the typed transition over the descriptor) — SSF, or bert-core.
-2. `check_transition` — the kind/transition type-match gate, joining the `check_*` family.
-3. Klir mask readout + Bunge trajectory readout in the canvas registers (#100 phase 5) — presentations of `T` and its unfolding.
+1. `kindCodomain` + `Transition` (the typed transition over the descriptor) — SSF, or bert-core. **Done in SSF** (`Systems/Dynamics/Transition.lean`, `kindCodomain`; cited from `docs/lean-manifest.json` at the pin, 2026-10-10).
+2. `check_transition` — the kind/transition type-match gate, joining the `check_*` family. *Not built as of 2026-10-11; no such symbol in the tree.*
+3. Klir mask readout + Bunge trajectory readout in the canvas registers (#100 phase 5) — presentations of `T` and its unfolding. **Done** (`web/src/canvas/KlirRegister.tsx`, 2026-07-21; `web/src/canvas/BungeStateSpace.tsx`, 2026-07-23).
 4. `H` as the final-coalgebra unfolding — the run record, typed.
 
 Nothing here touches Half B, the runtime, or the tether-only *engine* path; it is the typed classification the descriptor was built to carry.

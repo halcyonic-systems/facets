@@ -109,6 +109,10 @@ is therefore sealed by construction:
   reach for by mistake — `toCanvas` is gone from `web/src/kernel/index.ts`
   (the wasm export remains, the API being append-only). Bundled demos, which
   are `WorldModel`s by design, read through the same door as everything else.
+  *(2026-10-11: `web/src/kernel/index.ts` exports `toCanvas` again, as the
+  explicit WorldModel→canvas conversion the demo picker uses for a model known
+  to be a projection; `open_model` stays the one reader for anything out of
+  storage.)*
 
 `project` keeps its legitimate in-memory uses (the analyst context, export, the
 run path) and needs no guard, because it can no longer reach storage.

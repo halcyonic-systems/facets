@@ -2,6 +2,8 @@
 
 *2026-10-10 · status: **ADOPTED*** (design pass on the main loop, six decisions ratified by Shingai on 2026-10-10, each under one standing condition: documented with Mobus's own sentences and stress-tested early and often; #269)
 
+*Vocabulary note (2026-10-11): where this record says "rung" it means a stage of the build, and "Mobus's ladder" (D4) means the agent-type sequence of §11.2.1.1; the mode-entry sense of the word is retired (#90). The decision text is not rewritten.*
+
 ## Context
 
 The engine is process-based: every component is one of Mobus's ten atomic work

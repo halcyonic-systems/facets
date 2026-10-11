@@ -28,7 +28,8 @@ assumes.
 - The compose engine is the **first interpreter of one kind** (Id-functor over
   ℝⁿ stocks with an additive conservation invariant), not the meaning of Run.
   Further kinds are declarable — the first non-conservation kind (a DTMC over
-  bare `X^Σ`) is scoped in #67.
+  bare `X^Σ`) is scoped in #67. *(Built 2026-07-24:
+  `crates/bert-compose/src/markov.rs`, the `run_markov` export.)*
 - In code: `Circuit.invariant` (axis D) defaults to `ConservedAdditive` — the
   ledger stays on for every existing model — and may be declined, which removes
   the accounting without touching the transition math. The semigroup contract
@@ -52,6 +53,6 @@ invariants per declaration.
   Run's identity (2026-07-18); the doc-lint (#92) guards adjacent provenance
   drift.
 - The opt-in ledger unblocks single-trajectory non-conservation targets (RBN;
-  #86 Q3 decision) and the second dynamics-kind (#67, DTMC).
+  #86 Q3 decision) and the second dynamics-kind (#67, DTMC; built 2026-07-24, `markov.rs`).
 - Any future engine claiming a conservation guarantee must earn it as a
   declared invariant it checks, not inherit it as vocabulary.

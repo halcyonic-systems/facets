@@ -421,23 +421,25 @@ Phase gates 4.0–4.2 (shipped) are unaffected — they built the seam. The chan
 >
 > This issue is the closure checklist for W30:
 >
-> - [ ] **Adopt the position doc** — review `dynamics-principled-position.md`, fix or
->   file objections; merging this checklist = adoption.
-> - [ ] **Answer Q1 for #67**: clock-driven `Dist(X)` vs rate-driven CTMC — read the
+> *(Ticked 2026-10-11 against the tree; the checklist is the W30 record, the marks are what happened.)*
+>
+> - [x] **Adopt the position doc** — review `dynamics-principled-position.md`, fix or
+>   file objections; merging this checklist = adoption. *Adopted 2026-07-18 (#86 closed; ADR 0003).*
+> - [x] **Answer Q1 for #67**: clock-driven `Dist(X)` vs rate-driven CTMC — read the
 >   #67 spec, record the answer there. Also decide Q4 (bare `X^Σ` vs trivial-flow
->   hybrid automaton per `dynamics-research/read-external.md §6`).
-> - [ ] **Answer Q2 for #54** with the stated test: does porosity ever invalidate the
+>   hybrid automaton per `dynamics-research/read-external.md §6`). *Built clock-driven over bare `X^Σ`: `crates/bert-compose/src/markov.rs`, `run_markov`, 2026-07-24; #67 closed.*
+> - [x] **Answer Q2 for #54** with the stated test: does porosity ever invalidate the
 >   current flow φ (metasystem swap, Klir) or only rescale a coefficient within one φ
->   (generative parameter)? Record answer + reasoning on #54; close it.
+>   (generative parameter)? Record answer + reasoning on #54; close it. *Decided on #54, 2026-07-18: a coefficient within the active φ, never a metasystem swap; perceptive fuzziness render-only. #54 closed 2026-07-19.*
 > - [ ] **RBN gap (Q3)**: check whether the random-Boolean-network model needs one
 >   trajectory (unlocked by making the conservation ledger opt-in — axis D optional in
 >   `circuit.rs`'s stepping loop) or ensemble/Ω statistics (out of current scope; spawn
->   a source-pass issue if so).
-> - [ ] **Write the semigroup contract down** as a property test obligation for every
+>   a source-pass issue if so). *Open as of 2026-10-11: the ledger is opt-in (ADR 0003) but no RBN model has been built.*
+> - [x] **Write the semigroup contract down** as a property test obligation for every
 >   current and future stepper (deterministic: double-step law; stochastic:
->   Chapman–Kolmogorov), plus the rule "H is a record, never an input to T."
-> - [ ] **Amend ROADMAP Arc 4** with the replacement framing in position-doc §8
->   (declaration + interpreters, not engine-as-definition).
+>   Chapman–Kolmogorov), plus the rule "H is a record, never an input to T." *The H rule is SL spec §8.3; Δt-invariance over a fixed horizon is `dt_invariance.rs` (2026-07-27). The Chapman–Kolmogorov obligation for a stochastic stepper is not yet a property test.*
+> - ~~**Amend ROADMAP Arc 4** with the replacement framing in position-doc §8
+>   (declaration + interpreters, not engine-as-definition).~~ *Dropped 2026-07-26: `ROADMAP.md` was retired to `../archive/roadmap-pre-web-rebuild.md`; the replacement framing is recorded in `../README.md`'s entry for this doc.*
 >
 > Out of scope here (tracked in position doc §2/§9): agent heterogeneous composition,
 > multi-timescale metasystem, dimensionality-change, ensemble dynamics, Lean τ
