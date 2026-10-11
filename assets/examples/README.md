@@ -38,8 +38,11 @@ subsystems, and it is the shelf's one example whose subsystems `decomposes`
 into children with real dynamics: the per-model roster lives in
 `../walkthroughs/llm-market/` (`frontier-serving.sl`,
 `open-weight-serving.sl`), each child a model that runs on its own and
-reproduces the per-model numbers of the single-level version now in
-`../archive/llm-market-flat.sl`. The children ship beside the other
+reproduces the per-model split of the single-level version now in
+`../archive/llm-market-flat.sl` at the parent's realized level. Its declared
+amounts are minted from the routed sensor's pinned vintage, latest full
+month, and a vintage refresh re-mints them in the same PR
+(`../data/README.md`, rule 6; #534). The children ship beside the other
 walkthrough levels rather than here because the gallery globs this
 directory and a child is not a library card; the app resolves them by the
 pinned id the parent's `decomposes` line carries

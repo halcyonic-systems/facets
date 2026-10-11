@@ -17,9 +17,10 @@
 # tokens.
 #
 # A run is per level. The Router stand-in's amount is the parent's
-# realized flow, 6000 Gtok/day routed × 35/89, declared to two decimals
-# with a grounding that says so; a knob turned at the parent does not
-# move this model until single-run substitution exists.
+# realized flow, 19,197 Gtok/day routed × 254/1000 (the parent's amounts
+# are minted from vintage 2026-10-10, month 2026-09; #534), declared to
+# two decimals with a grounding that says so; a knob turned at the
+# parent does not move this model until single-run substitution exists.
 system "Frontier serving" : Concrete/Social
 domain "Routed frontier workload divided across Opus, Fable, GPT and Gemini by routed share, tokens served out, compute shed as heat"
 time unit day
@@ -29,7 +30,7 @@ level Structure
 # ── E′: the parent's neighbours ──────────────────────────────────────
 source Router
     description "The parent's routed interface, standing in for the routed frontier workload it sends this subsystem."
-    grounding asserted "the parent's realized flow: 6000 Gtok/day routed × 35/89 (Router → Frontier serving in ../../examples/llm-market.sl); recompute when the parent changes"
+    grounding asserted "the parent's realized flow: 19,197 Gtok/day routed × 254/1000 (Router → Frontier serving in ../../examples/llm-market.sl); recompute when the parent changes"
 source "Frontier labs"
     description "Anthropic, OpenAI and Google as research arms, the parent's source of closed weights and API access; the crossing counterparty once the parent's Frontier release pass-way fuses onto this subsystem."
 sink "Serving endpoint"
@@ -54,9 +55,9 @@ component Gemini primitive Amplifying
     description "A served model: released weights and allocated compute in, tokens out."
 
 # ── Workload in: the parent's realized routed frontier flow ──────────
-flow Router -> "Frontier pool" : energy "routed frontier workload" substance compute amount 2359.55 unit "Gtok/day"
+flow Router -> "Frontier pool" : energy "routed frontier workload" substance compute amount 4876.04 unit "Gtok/day"
     description "The routed frontier workload the parent's router sends this subsystem."
-    grounding asserted "6000 × 35/89 = 2359.55 Gtok/day, the parent's realized flow; the 6000 and the 35/89 are third-party (Dirac digest of OpenRouter rankings, June–July 2026)"
+    grounding asserted "19197 × 254/1000 = 4876.04 Gtok/day, the parent's realized flow; the 19197 and the 254/1000 are third-party (OpenRouter rankings-daily, vintage 2026-10-10, month 2026-09; as of 2026-10-11T00:27Z)"
 
 # ── Weights in: ample, through the release interface ─────────────────
 flow "Frontier labs" -> "Frontier release" : informational "closed weights & API" substance weights ample
@@ -98,7 +99,7 @@ flow "Frontier endpoint" -> "Serving endpoint" : informational "tokens served" s
     description "The frontier models' tokens leaving for the parent's serving endpoint."
 
 # ── Declared parameters and metrics ──────────────────────────────────
-param "Routed frontier workload" : flow Router -> "Frontier pool" "routed frontier workload" range 0..12000
+param "Routed frontier workload" : flow Router -> "Frontier pool" "routed frontier workload" range 0..40000
 param shares "Frontier models, routed" : from "Frontier pool"
 
 metric "Opus share of routed frontier" : share of flow "Frontier pool" -> Opus "routed serving share"

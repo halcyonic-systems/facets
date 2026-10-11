@@ -33,6 +33,17 @@
 # Every finding quotes the grounding: third-party on the routed
 # interface, unknown on the self-hosted one, until a sensor exists.
 #
+# The declared amounts are minted from the routed sensor's pinned
+# vintage (../data/openrouter-routed-share-monthly-vintage-2026-10-10.csv),
+# latest full month 2026-09: the routed level is that month's tokens
+# per observed day, and the Router's split is its classified frontier
+# and open tokens as relative weights. A vintage refresh re-mints them
+# in the same PR (../data/README.md), so the model never contradicts
+# the series it opens on (#534). The self-hosted placeholder is not
+# minted from anything: it stays at 3000 Gtok/day, now small against
+# the routed level rather than half of it, and is still a placeholder
+# until a sensor exists.
+#
 # Around the boundary (§6.5.2), the inputs:
 #   compute — the conserved backbone. A token served is compute spent,
 #             so throughput is a work unit (Gtok/day, like kWh) and the
@@ -72,7 +83,7 @@ level Structure
 # ── Sources: the customers, by interface ─────────────────────────────
 source "Routed demand"
     description "Customers who reach models through a router: the inference compute their requests mobilize."
-    grounding third-party "OpenRouter rankings via the Dirac labs-market-share digest, June–July 2026: ≈6 Ttok/day routed"
+    grounding third-party "OpenRouter rankings-daily, vintage 2026-10-10 (../data/openrouter-routed-share-monthly-vintage-2026-10-10.csv), 2026-09: 19,197 Gtok/day routed; as of 2026-10-11T00:27Z"
 source "Self-hosted demand"
     description "Customers who run open weights on their own hardware: the inference compute they spend themselves."
     grounding unknown "no public sensor counts self-hosted serving; the amount below is a placeholder to be replaced by a measured series"
@@ -90,7 +101,7 @@ sink Customers
 # ── Interfaces on the boundary ───────────────────────────────────────
 component Router primitive Splitting interface
     description "The routed interface: splits the routed workload between frontier and open-weight serving by the shares a router reports."
-    grounding third-party "open-weight ≈60% of routed volume (Dirac digest of OpenRouter rankings, June–July 2026)"
+    grounding third-party "open-weight 0.746 of classified routed tokens, 2026-09 (OpenRouter rankings-daily, vintage 2026-10-10; as of 2026-10-11T00:27Z)"
 interface Self-hosting
     description "The self-hosted interface: passes self-hosted workload to open-weight serving only. Closed weights cannot be self-hosted."
     grounding unknown "no sensor on this interface; its workload is the placeholder declared on the flow into it"
@@ -108,12 +119,12 @@ component "Open-weight serving" primitive Amplifying decomposes "Open-weight ser
     description "Open-weight serving as one process: open weights, routed open-weight workload and self-hosted workload in, tokens out. Its interior, the open roster behind a pool, is the child model."
 
 # ── Workload in, by interface ────────────────────────────────────────
-flow "Routed demand" -> Router : energy "routed workload" substance compute amount 6000 unit "Gtok/day"
+flow "Routed demand" -> Router : energy "routed workload" substance compute amount 19197 unit "Gtok/day"
     description "The routed workload entering the router as inference compute."
-    grounding third-party "≈6 Ttok/day (OpenRouter via Dirac, June–July 2026)"
+    grounding third-party "575,897 Gtok over 30 observed days of 2026-09, all four token classes (OpenRouter rankings-daily, vintage 2026-10-10, ../data/openrouter-routed-share-monthly-vintage-2026-10-10.csv; as of 2026-10-11T00:27Z)"
 flow "Self-hosted demand" -> Self-hosting : energy "self-hosted workload" substance compute amount 3000 unit "Gtok/day"
     description "The self-hosted workload entering the self-hosted interface as inference compute."
-    grounding unknown "placeholder, a round half of the routed figure; no sensor; replace before any finding quotes it"
+    grounding unknown "placeholder, kept at the round figure of 2026-10-10 and now small against the routed level; no sensor; replace before any finding quotes it"
 
 # ── Weights in: ample, from the research arms ────────────────────────
 flow "Frontier labs" -> "Frontier release" : informational "closed weights & API" substance weights ample
@@ -126,14 +137,17 @@ flow "Open-weight release" -> "Open-weight serving" : informational "open weight
     description "Open weights into open-weight serving."
 
 # ── The router's split: frontier against open weight ─────────────────
-# Relative weights, the routed shares of June–July 2026 summed by pool
-# (frontier 9+6+9+11, open 2+3+13+16+20); they need not sum to 100.
-flow Router -> "Frontier serving" : energy "routed frontier workload" substance compute amount 35 unit "Gtok/day"
+# Relative weights, the vintage's classified tokens of 2026-09 (frontier
+# 125,750 Gtok, open 368,935 Gtok) as parts per thousand, which keeps
+# their ratio to three decimals; they need not sum to 1000. Unknown and
+# other tokens are on neither wire, so this is the high end of the
+# open-share range.
+flow Router -> "Frontier serving" : energy "routed frontier workload" substance compute amount 254 unit "Gtok/day"
     description "The routed workload the router sends to frontier serving."
-    grounding third-party "Dirac digest of OpenRouter rankings, June–July 2026, summed over the frontier roster"
-flow Router -> "Open-weight serving" : energy "routed open-weight workload" substance compute amount 54 unit "Gtok/day"
+    grounding third-party "frontier_tokens of 2026-09 (OpenRouter rankings-daily, vintage 2026-10-10, ../data/openrouter-routed-share-monthly-vintage-2026-10-10.csv; as of 2026-10-11T00:27Z)"
+flow Router -> "Open-weight serving" : energy "routed open-weight workload" substance compute amount 746 unit "Gtok/day"
     description "The routed workload the router sends to open-weight serving."
-    grounding third-party "Dirac digest of OpenRouter rankings, June–July 2026, summed over the open roster"
+    grounding third-party "open_tokens of 2026-09 (OpenRouter rankings-daily, vintage 2026-10-10, ../data/openrouter-routed-share-monthly-vintage-2026-10-10.csv; as of 2026-10-11T00:27Z)"
 
 # ── Self-hosting: open weights only ──────────────────────────────────
 flow Self-hosting -> "Open-weight serving" : energy "self-hosted workload" substance compute unit "Gtok/day"
@@ -155,7 +169,7 @@ flow "Serving endpoint" -> Customers : informational "tokens served" substance t
 # Price is absent on purpose: it needs the money counter-flow this
 # model does not draw. It enters through the observatory's data. The
 # per-model shares are the children's knobs, declared there.
-param "Routed workload" : flow "Routed demand" -> Router "routed workload" range 0..12000
+param "Routed workload" : flow "Routed demand" -> Router "routed workload" range 0..40000
 param "Self-hosted workload" : flow "Self-hosted demand" -> Self-hosting "self-hosted workload" range 0..12000
 param shares "Routed split, frontier against open weight" : from Router
 

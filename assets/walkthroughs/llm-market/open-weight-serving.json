@@ -14,7 +14,7 @@
       "description": "The parent's routed interface, standing in for the routed open-weight workload it sends this subsystem.",
       "grounding": {
         "grade": "asserted",
-        "reference": "the parent's realized flow: 6000 Gtok/day routed × 54/89 (Router → Open-weight serving in ../../examples/llm-market.sl); recompute when the parent changes"
+        "reference": "the parent's realized flow: 19,197 Gtok/day routed × 746/1000 (Router → Open-weight serving in ../../examples/llm-market.sl); recompute when the parent changes"
       }
     },
     {
@@ -166,10 +166,10 @@
       "description": "The routed open-weight workload the parent's router sends this subsystem.",
       "grounding": {
         "grade": "asserted",
-        "reference": "6000 × 54/89 = 3640.45 Gtok/day, the parent's realized flow; the 6000 and the 54/89 are third-party (Dirac digest of OpenRouter rankings, June–July 2026)"
+        "reference": "19197 × 746/1000 = 14320.96 Gtok/day, the parent's realized flow; the 19197 and the 746/1000 are third-party (OpenRouter rankings-daily, vintage 2026-10-10, month 2026-09; as of 2026-10-11T00:27Z)"
       },
       "klir_directed": false,
-      "amount": "3640.45",
+      "amount": "14320.96",
       "unit": "Gtok/day",
       "substance": "compute"
     },
@@ -183,7 +183,7 @@
       "description": "The self-hosted workload entering the self-hosted interface as inference compute.",
       "grounding": {
         "grade": "unknown",
-        "reference": "the parent's placeholder, a round half of the routed figure; no sensor; replace before any finding quotes it"
+        "reference": "the parent's placeholder, now small against the routed level; no sensor; replace before any finding quotes it"
       },
       "klir_directed": false,
       "amount": "3000",
@@ -526,7 +526,7 @@
       },
       "range": {
         "min": "0",
-        "max": "12000"
+        "max": "40000"
       }
     },
     {

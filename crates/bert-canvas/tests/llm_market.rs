@@ -32,9 +32,12 @@
 //!    else — the structural claim the header makes in words, checked on the
 //!    wiring;
 //!
-//! and at each child, one more: its per-model numbers are the flat model's,
-//! because its source amounts are the parent's realized flows. The seam
-//! contract itself is pinned by bert-lenses-kernel's llm_market_walkthrough.
+//! and at each child, one more: its per-model shares are the flat model's,
+//! and its roster total is the parent's realized flow. The flat model is the
+//! archived single-run witness of the roster split; it stays at the digest's
+//! level while the parent's amounts are minted from the routed sensor's
+//! vintage (#534), so the levels are compared as shares, not as Gtok/day. The
+//! seam contract itself is pinned by bert-lenses-kernel's llm_market_walkthrough.
 
 use bert_canvas::canvas::project;
 use bert_canvas::sl::parse_sl;
@@ -144,8 +147,9 @@ const OPEN: [&str; 5] = ["Gemma", "Llama", "Qwen", "DeepSeek", "Other open"];
 /// allocation. This is the engine path (Splitting weights → metered
 /// Amplifying) agreeing with arithmetic done directly on the declared
 /// amounts — if a layer dropped or guessed at a weight, these diverge.
-/// Pinned by hand as the worked example: frontier 6000·35/89 ≈ 2359.55 routed,
-/// open 6000·54/89 + 3000 ≈ 6640.45.
+/// Pinned by hand as the worked example, from vintage 2026-10-10's month
+/// 2026-09 (#534): frontier 19197·254/1000 ≈ 4876.04 routed, open
+/// 19197·746/1000 + 3000 ≈ 17320.96.
 #[test]
 fn serving_shares_track_declared_weights() {
     let (circuit, run) = run_sl(&source_text(PARENT));
@@ -160,12 +164,12 @@ fn serving_shares_track_declared_weights() {
     let frontier = final_activity(&circuit, &run, "Frontier serving");
     let open = final_activity(&circuit, &run, "Open-weight serving");
     assert!(
-        (frontier - 2359.55).abs() < 0.1,
-        "frontier serving serves {frontier}, not the 2359.55 Gtok/day the declared amounts work out to"
+        (frontier - 4876.04).abs() < 0.1,
+        "frontier serving serves {frontier}, not the 4876.04 Gtok/day the declared amounts work out to"
     );
     assert!(
-        (open - 6640.45).abs() < 0.1,
-        "open-weight serving serves {open}, not the 6640.45 Gtok/day the declared amounts work out to"
+        (open - 17320.96).abs() < 0.1,
+        "open-weight serving serves {open}, not the 17320.96 Gtok/day the declared amounts work out to"
     );
 }
 
@@ -212,9 +216,9 @@ fn all_compute_dissipates_as_heat() {
 #[test]
 fn weights_are_load_bearing() {
     let text = source_text(PARENT);
-    let needle = "Router -> \"Open-weight serving\" : energy \"routed open-weight workload\" substance compute amount 54";
+    let needle = "Router -> \"Open-weight serving\" : energy \"routed open-weight workload\" substance compute amount 746";
     assert!(text.contains(needle), "calibration moved — update this mutation");
-    let mutated = text.replace(needle, &needle.replace("amount 54", "amount 108"));
+    let mutated = text.replace(needle, &needle.replace("amount 746", "amount 1492"));
 
     let (c0, r0) = run_sl(&text);
     let (c1, r1) = run_sl(&mutated);
@@ -274,7 +278,7 @@ fn self_hosting_reaches_the_open_subsystem_only() {
 }
 
 /// The flat single-level model's per-model numbers, from its own run: the
-/// witness the children are held to.
+/// witness the children's roster split is held to.
 fn flat_numbers() -> Vec<(&'static str, f32)> {
     let (circuit, run) = run_sl(&source_text(FLAT));
     FRONTIER
@@ -284,28 +288,40 @@ fn flat_numbers() -> Vec<(&'static str, f32)> {
         .collect()
 }
 
-/// A child, run on its own, serves each of its models exactly what the flat
-/// model served it. The tolerance is 0.1%: the child's source amount is the
-/// parent's realized flow declared to two decimals (2359.55 for
-/// 6000·35/89), so the two runs agree to the fourth significant digit but
-/// not bit for bit.
+/// A child, run on its own, gives each of its models the same share of its
+/// roster total that the flat model gave it, and the roster total is the
+/// parent's realized flow. Shares rather than Gtok/day because the flat
+/// model is an archived record at the digest's level (6000 routed) while
+/// the parent is minted from the vintage (#534); the per-model split is what
+/// the two still have in common. The tolerance is 0.1%: the child's source
+/// amount is the parent's realized flow declared to two decimals (4876.04
+/// for 19197·254/1000), so the runs agree to the fourth significant digit
+/// but not bit for bit.
 fn child_reproduces_flat(child: &str, roster: &[&str], total: f32) {
     let flat = flat_numbers();
+    let flat_total: f32 = roster
+        .iter()
+        .map(|model| {
+            flat.iter()
+                .find(|(m, _)| m == model)
+                .unwrap_or_else(|| panic!("{model} is not in the flat model"))
+                .1
+        })
+        .sum();
     let (circuit, run) = run_sl(&source_text(child));
     assert_eq!(
         amplifying_count(&circuit),
         roster.len(),
         "{child}: roster drifted from this gate's list"
     );
+    let child_total: f32 = roster.iter().map(|m| final_activity(&circuit, &run, m)).sum();
     for model in roster {
         let served = final_activity(&circuit, &run, model);
-        let (_, expected) = flat
-            .iter()
-            .find(|(m, _)| m == model)
-            .unwrap_or_else(|| panic!("{model} is not in the flat model"));
+        let (_, flat_served) = flat.iter().find(|(m, _)| m == model).unwrap();
+        let (share, expected) = (served / child_total, flat_served / flat_total);
         assert!(
-            (served - expected).abs() / expected < 1e-3,
-            "{child}: {model} serves {served}, the flat model served {expected}"
+            (share - expected).abs() / expected < 1e-3,
+            "{child}: {model} takes {share} of the roster, the flat model gave it {expected}"
         );
         let declared = declared_inflow(&circuit, node_index(&circuit, model));
         assert!(
@@ -313,10 +329,9 @@ fn child_reproduces_flat(child: &str, roster: &[&str], total: f32) {
             "{child}: {model} serves {served} but the .sl declares an allocation of {declared}"
         );
     }
-    let served: f32 = roster.iter().map(|m| final_activity(&circuit, &run, m)).sum();
     assert!(
-        (served - total).abs() / total < 1e-3,
-        "{child}: the roster serves {served} in all, the parent's subsystem {total}"
+        (child_total - total).abs() / total < 1e-3,
+        "{child}: the roster serves {child_total} in all, the parent's subsystem {total}"
     );
     let [emitted, sunk, stored, dissipated] = *run.ledger_history.last().unwrap();
     assert!(
@@ -334,7 +349,7 @@ fn child_reproduces_flat(child: &str, roster: &[&str], total: f32) {
 
 /// The frontier child: Opus, Fable, GPT, Gemini behind the frontier pool,
 /// fed the parent's realized routed frontier flow. Opus, pinned by hand:
-/// 2359.55·9/35 ≈ 606.74.
+/// 4876.04·9/35 ≈ 1253.84.
 #[test]
 fn frontier_child_reproduces_the_flat_roster() {
     let (circuit, run) = run_sl(&source_text(PARENT));
@@ -344,8 +359,8 @@ fn frontier_child_reproduces_the_flat_roster() {
     let (c, r) = run_sl(&source_text(FRONTIER_CHILD));
     let opus = final_activity(&c, &r, "Opus");
     assert!(
-        (opus - 606.74).abs() < 0.1,
-        "Opus serves {opus}, not the 606.74 Gtok/day the declared amounts work out to"
+        (opus - 1253.84).abs() < 0.1,
+        "Opus serves {opus}, not the 1253.84 Gtok/day the declared amounts work out to"
     );
     // Nothing self-hosted enters this child at all: the only compute source
     // is the Router stand-in.
@@ -364,7 +379,7 @@ fn frontier_child_reproduces_the_flat_roster() {
 /// The open-weight child: Gemma, Llama, Qwen, DeepSeek, Other open behind
 /// the open-weight pool and the self-hosted interface, fed the parent's
 /// realized routed open flow and the self-hosted placeholder. Qwen, pinned by
-/// hand as the worked example: 3640.45·13/54 + 3000·13/54 ≈ 1598.6.
+/// hand as the worked example: 14320.96·13/54 + 3000·13/54 ≈ 4169.86.
 #[test]
 fn open_child_reproduces_the_flat_roster() {
     let (circuit, run) = run_sl(&source_text(PARENT));
@@ -374,8 +389,8 @@ fn open_child_reproduces_the_flat_roster() {
     let (c, r) = run_sl(&source_text(OPEN_CHILD));
     let qwen = final_activity(&c, &r, "Qwen");
     assert!(
-        (qwen - 1598.6).abs() < 0.1,
-        "Qwen serves {qwen}, not the 1598.6 Gtok/day the declared amounts work out to"
+        (qwen - 4169.86).abs() < 0.1,
+        "Qwen serves {qwen}, not the 4169.86 Gtok/day the declared amounts work out to"
     );
     // Every open model is downstream of both interfaces.
     let self_hosted = reachable(&c, node_index(&c, "Self-hosted demand"));
