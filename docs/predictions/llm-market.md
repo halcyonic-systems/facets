@@ -97,6 +97,11 @@ External evidence worth tracking for model dynamics. Not predictions — no
 hash key, no horizon. When a watch item hardens into a claim the model can
 state, it graduates to the ledger.
 
+The routed interface now has a sensor (facets#529): OpenRouter rankings-daily
+as a pinned vintage, aggregated to a daily open-weight share range and a
+monthly forcing bundle for the Router's outwires. Files, rules and what the
+sensor is not: `assets/data/README.md`, "OpenRouter routed-share vintages".
+
 ### W-0001 — Reward-channel mix as a market dynamic (Kun Chen thread)
 
 - **Date:** 2026-08-04 (thread posted 2026-08-02, ~265K views)

@@ -68,6 +68,46 @@ def fetch_rankings(api_key: str, start_date: str, end_date: str):
         return json.load(resp)
 
 
+# The dataset starts 2025-01-01 (the API 400s on earlier start dates) and a
+# single request may span at most 366 days, so page in non-overlapping
+# ≤365-day windows. Shared with the routed-share sensor (facets#529,
+# scripts/openrouter_rankings_vintage.py), which writes the same rows as a
+# pinned vintage under assets/data/ instead of aggregating them here.
+DATASET_START = date(2025, 1, 1)
+WINDOW_DAYS = 365
+# 30 requests a minute per key; a pause between pages keeps a full-history
+# pull well inside it without a rate-limit retry path.
+PAUSE_SECONDS = 3
+
+
+def page_windows(start: date, end: date, span_days: int = WINDOW_DAYS):
+    """The (first, last) date pairs a pull of start..end makes, inclusive."""
+    out = []
+    cursor = start
+    while cursor <= end:
+        chunk_end = min(end, cursor + timedelta(days=span_days - 1))
+        out.append((cursor, chunk_end))
+        cursor = chunk_end + timedelta(days=1)
+    return out
+
+
+def fetch_daily_rows(api_key: str, start: date, end: date, pause_seconds: float = PAUSE_SECONDS):
+    """Every (date, model_permaslug, total_tokens) row for start..end, as the
+    API returns them, plus the `meta` of each page (its `as_of` is the
+    attribution stamp CC BY 4.0 asks for)."""
+    import time
+
+    rows, metas = [], []
+    windows = page_windows(start, end)
+    for i, (a, b) in enumerate(windows):
+        payload = fetch_rankings(api_key, a.isoformat(), b.isoformat())
+        rows.extend(payload.get("data", []))
+        metas.append(payload.get("meta", {}))
+        if i + 1 < len(windows):
+            time.sleep(pause_seconds)
+    return rows, metas
+
+
 def month_key(date_str: str) -> str:
     return date_str[:7]  # YYYY-MM
 
@@ -90,22 +130,12 @@ def main():
         )
         return 1
 
-    # The dataset starts 2025-01-01 (the API 400s on earlier start dates) and
-    # a single request may span at most 366 days, so page in non-overlapping
-    # ≤365-day windows.
-    start = date(2025, 1, 1)
-    today = date.today()
-
+    rows, _ = fetch_daily_rows(api_key, DATASET_START, date.today())
     monthly_totals = defaultdict(lambda: defaultdict(int))  # month -> author -> tokens
-    cursor = start
-    while cursor <= today:
-        chunk_end = min(today, cursor + timedelta(days=364))
-        payload = fetch_rankings(api_key, cursor.isoformat(), chunk_end.isoformat())
-        for row in payload.get("data", []):
-            m = month_key(row["date"])
-            a = author_of(row["model_permaslug"])
-            monthly_totals[m][a] += int(row["total_tokens"])
-        cursor = chunk_end + timedelta(days=1)
+    for row in rows:
+        m = month_key(row["date"])
+        a = author_of(row["model_permaslug"])
+        monthly_totals[m][a] += int(row["total_tokens"])
 
     rows_out = []
     for month, authors in sorted(monthly_totals.items()):

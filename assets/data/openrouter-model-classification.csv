@@ -1,0 +1,150 @@
+model_permaslug_prefix_or_slug,match,lab,weights,source,checked
+anthropic,prefix,Anthropic,closed,https://platform.claude.com/docs/en/about-claude/models/overview,2026-10-10
+x-ai,prefix,xAI,closed,https://docs.x.ai/docs/models,2026-10-10
+openrouter,prefix,OpenRouter stealth,unknown,https://openrouter.ai/api/v1/models,2026-10-10
+stealth,prefix,stealth (unlabelled),unknown,https://openrouter.ai/docs/cookbook/administration/data-api,2026-10-10
+xiaomi/mimo-v2.5-20260422,slug,Xiaomi,open,https://huggingface.co/XiaomiMiMo/MiMo-V2.5,2026-10-10
+xiaomi/mimo-v2.5-pro-20260422,slug,Xiaomi,open,https://huggingface.co/XiaomiMiMo/MiMo-V2.5-Pro,2026-10-10
+xiaomi/mimo-v2.6-flash-20260921,slug,Xiaomi,open,https://huggingface.co/XiaomiMiMo/MiMo-V2.6-Flash-RL,2026-10-10
+xiaomi/mimo-v2.6-pro-20260921,slug,Xiaomi,open,https://huggingface.co/XiaomiMiMo/MiMo-V2.6-Pro-RL,2026-10-10
+xiaomi/mimo-v2-flash-20251210,slug,Xiaomi,open,https://huggingface.co/XiaomiMiMo/MiMo-V2-Flash,2026-10-10
+xiaomi/mimo-v2-pro-20260318,slug,Xiaomi,unknown,https://huggingface.co/api/models?search=MiMo-V2-Pro,2026-10-10
+xiaomi/mimo-v2-omni-20260318,slug,Xiaomi,unknown,https://huggingface.co/api/models?search=MiMo-V2-Omni,2026-10-10
+deepseek/deepseek-v4-flash-20260423,slug,DeepSeek,open,https://huggingface.co/deepseek-ai/DeepSeek-V4-Flash,2026-10-10
+deepseek/deepseek-v4-flash-20260731,slug,DeepSeek,open,https://huggingface.co/deepseek-ai/DeepSeek-V4-Flash-0731,2026-10-10
+deepseek/deepseek-v4.1-flash-20260910,slug,DeepSeek,open,https://huggingface.co/deepseek-ai/DeepSeek-V4.1-Flash,2026-10-10
+deepseek/deepseek-v4-flash-vision-exp-20260821,slug,DeepSeek,open,https://huggingface.co/deepseek-ai/DeepSeek-V4-Flash-Vision-Exp,2026-10-10
+deepseek/deepseek-v4-pro-20260423,slug,DeepSeek,open,https://huggingface.co/deepseek-ai/DeepSeek-V4-Pro,2026-10-10
+deepseek/deepseek-v4-pro-20260813,slug,DeepSeek,open,https://huggingface.co/deepseek-ai/DeepSeek-V4-Pro-0813,2026-10-10
+deepseek/deepseek-v3.2-20251201,slug,DeepSeek,open,https://huggingface.co/deepseek-ai/DeepSeek-V3.2,2026-10-10
+deepseek/deepseek-chat-v3.1,slug,DeepSeek,open,https://huggingface.co/deepseek-ai/DeepSeek-V3.1,2026-10-10
+deepseek/deepseek-chat-v3-0324,slug,DeepSeek,open,https://huggingface.co/deepseek-ai/DeepSeek-V3-0324,2026-10-10
+deepseek/deepseek-r1,slug,DeepSeek,open,https://huggingface.co/deepseek-ai/DeepSeek-R1,2026-10-10
+deepseek/deepseek-r1-0528,slug,DeepSeek,open,https://huggingface.co/deepseek-ai/DeepSeek-R1-0528,2026-10-10
+z-ai/glm-5.3-flash-20260826,slug,Z.ai,open,https://huggingface.co/zai-org/GLM-5.3-Flash,2026-10-10
+z-ai/glm-5.3-20260816,slug,Z.ai,open,https://huggingface.co/zai-org/GLM-5.3,2026-10-10
+z-ai/glm-5.2-20260616,slug,Z.ai,open,https://huggingface.co/zai-org/GLM-5.2,2026-10-10
+z-ai/glm-5.1-20260406,slug,Z.ai,open,https://huggingface.co/zai-org/GLM-5.1,2026-10-10
+z-ai/glm-5-20260211,slug,Z.ai,open,https://huggingface.co/zai-org/GLM-5,2026-10-10
+z-ai/glm-4.7-20251222,slug,Z.ai,open,https://huggingface.co/zai-org/GLM-4.7,2026-10-10
+z-ai/glm-4.6,slug,Z.ai,open,https://huggingface.co/zai-org/GLM-4.6,2026-10-10
+z-ai/glm-4.5-air,slug,Z.ai,open,https://huggingface.co/zai-org/GLM-4.5-Air,2026-10-10
+z-ai/glm-5-turbo-20260315,slug,Z.ai,unknown,https://docs.z.ai/guides/overview/pricing,2026-10-10
+tencent/hy4-preview-20260827,slug,Tencent,open,https://huggingface.co/tencent/Hy4-preview,2026-10-10
+tencent/hy3-20260706,slug,Tencent,open,https://huggingface.co/tencent/Hy3,2026-10-10
+tencent/hy3-preview-20260421,slug,Tencent,open,https://huggingface.co/tencent/Hy3-preview,2026-10-10
+nvidia/nemotron-3-ultra-550b-a55b-20260604,slug,NVIDIA,open,https://huggingface.co/nvidia/NVIDIA-Nemotron-3-Ultra-550B-A55B-BF16,2026-10-10
+nvidia/nemotron-3-super-120b-a12b-20230311,slug,NVIDIA,open,https://huggingface.co/nvidia/NVIDIA-Nemotron-3-Super-120B-A12B-FP8,2026-10-10
+nvidia/nemotron-3.5-lightning-20260807,slug,NVIDIA,open,https://huggingface.co/nvidia/NVIDIA-Nemotron-3.5-Lightning-30B-A3B-BF16,2026-10-10
+minimax/minimax-m3-20260531,slug,MiniMax,open,https://huggingface.co/MiniMaxAI/MiniMax-M3,2026-10-10
+minimax/minimax-m2.7-20260318,slug,MiniMax,open,https://huggingface.co/MiniMaxAI/MiniMax-M2.7,2026-10-10
+minimax/minimax-m2.5-20260211,slug,MiniMax,open,https://huggingface.co/MiniMaxAI/MiniMax-M2.5,2026-10-10
+minimax/minimax-m2.1,slug,MiniMax,open,https://huggingface.co/MiniMaxAI/MiniMax-M2.1,2026-10-10
+minimax/minimax-m2,slug,MiniMax,open,https://huggingface.co/MiniMaxAI/MiniMax-M2,2026-10-10
+moonshotai/kimi-k3-20260715,slug,Moonshot AI,open,https://huggingface.co/moonshotai/Kimi-K3,2026-10-10
+moonshotai/kimi-k2.6-20260420,slug,Moonshot AI,open,https://huggingface.co/moonshotai/Kimi-K2.6,2026-10-10
+moonshotai/kimi-k2.5-0127,slug,Moonshot AI,open,https://huggingface.co/moonshotai/Kimi-K2.5,2026-10-10
+stepfun/step-3.7-flash-20260528,slug,StepFun,open,https://huggingface.co/stepfun-ai/Step-3.7-Flash,2026-10-10
+stepfun/step-3.5-flash,slug,StepFun,open,https://huggingface.co/stepfun-ai/Step-3.5-Flash,2026-10-10
+stepfun/step-5-preview-20261008,slug,StepFun,unknown,https://huggingface.co/api/models?search=Step-5,2026-10-10
+poolside/laguna-s-2.1-20260720,slug,poolside,open,https://huggingface.co/poolside/Laguna-S-2.1,2026-10-10
+poolside/laguna-m.1-20260312,slug,poolside,open,https://huggingface.co/poolside/Laguna-M.1,2026-10-10
+google/gemma-4-31b-it-20260402,slug,Google,open,https://huggingface.co/google/gemma-4-31B-it,2026-10-10
+google/gemma-4-26b-a4b-it-20260403,slug,Google,open,https://huggingface.co/google/gemma-4-26B-A4B-it,2026-10-10
+google/gemini-3-flash-preview-20251217,slug,Google,closed,https://ai.google.dev/gemini-api/docs/models,2026-10-10
+google/gemini-2.5-flash,slug,Google,closed,https://ai.google.dev/gemini-api/docs/models,2026-10-10
+google/gemini-2.5-flash-lite,slug,Google,closed,https://ai.google.dev/gemini-api/docs/models,2026-10-10
+google/gemini-2.5-pro,slug,Google,closed,https://ai.google.dev/gemini-api/docs/models,2026-10-10
+google/gemini-3.8-flash-20260902,slug,Google,closed,https://ai.google.dev/gemini-api/docs/models,2026-10-10
+google/gemini-3.6-flash-20260721,slug,Google,closed,https://ai.google.dev/gemini-api/docs/models,2026-10-10
+google/gemini-3.1-flash-lite-20260507,slug,Google,closed,https://ai.google.dev/gemini-api/docs/models,2026-10-10
+google/gemini-3.1-pro-preview-20260219,slug,Google,closed,https://ai.google.dev/gemini-api/docs/models,2026-10-10
+google/gemini-3.7-flash-20260813,slug,Google,closed,https://ai.google.dev/gemini-api/docs/deprecations,2026-10-10
+google/gemini-3.5-flash-20260519,slug,Google,closed,https://ai.google.dev/gemini-api/docs/deprecations,2026-10-10
+google/gemini-3.1-flash-lite-preview-20260303,slug,Google,closed,https://ai.google.dev/gemini-api/docs/deprecations,2026-10-10
+google/gemini-3-pro-preview-20251117,slug,Google,closed,https://ai.google.dev/gemini-api/docs/deprecations,2026-10-10
+google/gemini-2.0-flash-001,slug,Google,closed,https://ai.google.dev/gemini-api/docs/deprecations,2026-10-10
+google/gemini-2.0-flash-lite-001,slug,Google,closed,https://ai.google.dev/gemini-api/docs/deprecations,2026-10-10
+google/gemini-2.5-flash-preview-05-20,slug,Google,closed,https://ai.google.dev/gemini-api/docs/deprecations,2026-10-10
+google/gemini-2.5-pro-preview-03-25,slug,Google,closed,https://ai.google.dev/gemini-api/docs/deprecations,2026-10-10
+google/gemini-2.5-flash-lite-preview-09-2025,slug,Google,closed,https://ai.google.dev/gemini-api/docs/deprecations,2026-10-10
+google/gemini-2.5-flash-preview-04-17,slug,Google,closed,https://ai.google.dev/gemini-api/docs/changelog,2026-10-10
+openai/gpt-oss-120b,slug,OpenAI,open,https://huggingface.co/openai/gpt-oss-120b,2026-10-10
+openai/gpt-oss-20b,slug,OpenAI,open,https://huggingface.co/openai/gpt-oss-20b,2026-10-10
+openai/gpt-5.6-luna-20260709,slug,OpenAI,closed,https://developers.openai.com/api/docs/models/gpt-5.6-luna,2026-10-10
+openai/gpt-5.6-sol-20260709,slug,OpenAI,closed,https://developers.openai.com/api/docs/models/gpt-5.6-sol,2026-10-10
+openai/gpt-5.6-terra-20260709,slug,OpenAI,closed,https://developers.openai.com/api/docs/models/gpt-5.6-terra,2026-10-10
+openai/gpt-5.6-luna-pro-20260709,slug,OpenAI,unknown,https://developers.openai.com/api/docs/models/gpt-5.6-luna-pro,2026-10-10
+openai/gpt-6-luna-20260922,slug,OpenAI,closed,https://developers.openai.com/api/docs/models/gpt-6-luna,2026-10-10
+openai/gpt-6-sol-20260922,slug,OpenAI,closed,https://developers.openai.com/api/docs/models/gpt-6-sol,2026-10-10
+openai/gpt-6-astra-20260903,slug,OpenAI,closed,https://developers.openai.com/api/docs/models/gpt-6-astra,2026-10-10
+openai/gpt-6.1-sol-20260929,slug,OpenAI,closed,https://developers.openai.com/api/docs/models/gpt-6.1-sol,2026-10-10
+openai/gpt-5.5-20260423,slug,OpenAI,closed,https://developers.openai.com/api/docs/models/gpt-5.5,2026-10-10
+openai/gpt-5.4-20260305,slug,OpenAI,closed,https://developers.openai.com/api/docs/models/gpt-5.4,2026-10-10
+openai/gpt-5.4-mini-20260317,slug,OpenAI,closed,https://developers.openai.com/api/docs/models/gpt-5.4-mini,2026-10-10
+openai/gpt-5.4-nano-20260317,slug,OpenAI,closed,https://developers.openai.com/api/docs/models/gpt-5.4-nano,2026-10-10
+openai/gpt-5.3-codex-20260224,slug,OpenAI,closed,https://developers.openai.com/api/docs/models/gpt-5.3-codex,2026-10-10
+openai/gpt-5.2-20251211,slug,OpenAI,closed,https://developers.openai.com/api/docs/models/gpt-5.2,2026-10-10
+openai/gpt-5-2025-08-07,slug,OpenAI,closed,https://developers.openai.com/api/docs/models/gpt-5,2026-10-10
+openai/gpt-5-mini-2025-08-07,slug,OpenAI,closed,https://developers.openai.com/api/docs/models/gpt-5-mini,2026-10-10
+openai/gpt-5-nano-2025-08-07,slug,OpenAI,closed,https://developers.openai.com/api/docs/models/gpt-5-nano,2026-10-10
+openai/gpt-4.1-2025-04-14,slug,OpenAI,closed,https://developers.openai.com/api/docs/models/gpt-4.1,2026-10-10
+openai/gpt-4.1-mini-2025-04-14,slug,OpenAI,closed,https://developers.openai.com/api/docs/models/gpt-4.1-mini,2026-10-10
+openai/gpt-4o-mini,slug,OpenAI,closed,https://developers.openai.com/api/docs/models/gpt-4o-mini,2026-10-10
+meta/muse-spark-1.3-20260902,slug,Meta,closed,https://dev.meta.ai/docs/models,2026-10-10
+meta/muse-spark-1.3-contributor-20260902,slug,Meta,closed,https://dev.meta.ai/docs/models,2026-10-10
+meta-llama/llama-3.3-70b-instruct,slug,Meta,open,https://huggingface.co/meta-llama/Llama-3.3-70B-Instruct,2026-10-10
+meta-llama/llama-3.1-8b-instruct,slug,Meta,open,https://huggingface.co/meta-llama/Llama-3.1-8B-Instruct,2026-10-10
+mistralai/mistral-small-2603,slug,Mistral AI,open,https://huggingface.co/mistralai/Mistral-Small-4-119B-2603,2026-10-10
+mistralai/mistral-nemo,slug,Mistral AI,open,https://huggingface.co/mistralai/Mistral-Nemo-Instruct-2407,2026-10-10
+qwen/qwen3.8-27b-20260814,slug,Alibaba Qwen,open,https://huggingface.co/Qwen/Qwen3.8-27B,2026-10-10
+qwen/qwen3.8-flash-20260826,slug,Alibaba Qwen,open,https://huggingface.co/Qwen/Qwen3.8-Flash-Next,2026-10-10
+qwen/qwen3-235b-a22b-07-25,slug,Alibaba Qwen,open,https://huggingface.co/Qwen/Qwen3-235B-A22B-Instruct-2507,2026-10-10
+qwen/qwen3-coder-480b-a35b-07-25,slug,Alibaba Qwen,open,https://huggingface.co/Qwen/Qwen3-Coder-480B-A35B-Instruct,2026-10-10
+qwen/qwen3-embedding-8b,slug,Alibaba Qwen,open,https://huggingface.co/Qwen/Qwen3-Embedding-8B,2026-10-10
+qwen/qwen3.6-plus-04-02,slug,Alibaba Qwen,unknown,https://www.alibabacloud.com/help/en/model-studio/models,2026-10-10
+qwen/qwen3.6-plus-preview,slug,Alibaba Qwen,unknown,https://www.alibabacloud.com/help/en/model-studio/models,2026-10-10
+qwen/qwen3.7-flash-20260727,slug,Alibaba Qwen,unknown,https://www.alibabacloud.com/help/en/model-studio/models,2026-10-10
+qwen/qwen3.7-max-20260520,slug,Alibaba Qwen,unknown,https://www.alibabacloud.com/help/en/model-studio/models,2026-10-10
+qwen/qwen3.8-max-20260803,slug,Alibaba Qwen,unknown,https://www.alibabacloud.com/help/en/model-studio/models,2026-10-10
+qwen/qwen3.5-flash-20260224,slug,Alibaba Qwen,unknown,https://www.alibabacloud.com/help/en/model-studio/models,2026-10-10
+inclusionai/ling-3.0-flash-fin-20260827,slug,inclusionAI,open,https://huggingface.co/inclusionAI/Ling-3.0-flash-Fin,2026-10-10
+inclusionai/ling-3.0-flash-20260723,slug,inclusionAI,open,https://huggingface.co/inclusionAI/Ling-3.0-flash,2026-10-10
+inclusionai/ling-3.0-flash-sante-20260904,slug,inclusionAI,unknown,https://huggingface.co/api/models?search=Ling-3.0-flash-sante,2026-10-10
+arcee-ai/trinity-large-preview,slug,Arcee AI,open,https://huggingface.co/arcee-ai/Trinity-Large-Preview,2026-10-10
+dots-studio/dots-3-note-preview-20260813,slug,dots studio,open,https://huggingface.co/dots-studio/dots3-note-prev,2026-10-10
+tngtech/deepseek-r1t2-chimera,slug,TNG,open,https://huggingface.co/tngtech/DeepSeek-TNG-R1T2-Chimera,2026-10-10
+cohere/north-mini-code-20260617,slug,Cohere,open,https://huggingface.co/CohereLabs/North-Mini-Code-1.0,2026-10-10
+upstage/solar-pro4-20260810,slug,Upstage,unknown,https://console.upstage.ai/docs/models/solar-pro-4,2026-10-10
+upstage/solar-mini4-20260922,slug,Upstage,unknown,https://console.upstage.ai/docs/models/solar-mini-4,2026-10-10
+typesafe/jev-1.13-20260917,slug,TypeSafe,unknown,https://openrouter.ai/docs/guides/routing/routers/jev-router,2026-10-10
+moonshotai/kimi-k2.7-code-20260612,slug,Moonshot AI,open,https://huggingface.co/moonshotai/Kimi-K2.7-Code,2026-10-10
+thinkingmachines/inkling-20260715,slug,Thinking Machines,open,https://huggingface.co/thinkingmachines/Inkling,2026-10-10
+nex-agi/nex-n2.5-pro-20260907,slug,Nex AGI,open,https://huggingface.co/nex-agi/Nex-N2.5-Pro,2026-10-10
+nex-agi/nex-n2-pro,slug,Nex AGI,open,https://huggingface.co/nex-agi/Nex-N2-Pro,2026-10-10
+inclusionai/ling-3.0-flash-vl-20260910,slug,inclusionAI,open,https://huggingface.co/inclusionAI/Ling-3.0-flash-VL,2026-10-10
+inclusionai/ling-2.6-1t-20260423,slug,inclusionAI,open,https://huggingface.co/inclusionAI/Ling-2.6-1T,2026-10-10
+inclusionai/ling-2.6-flash-20260421,slug,inclusionAI,open,https://huggingface.co/inclusionAI/Ling-2.6-flash,2026-10-10
+inclusionai/ring-2.6-1t-20260508,slug,inclusionAI,open,https://huggingface.co/inclusionAI/Ring-2.6-1T,2026-10-10
+qwen/qwen3.5-397b-a17b-20260216,slug,Alibaba Qwen,open,https://huggingface.co/Qwen/Qwen3.5-397B-A17B,2026-10-10
+qwen/qwen3-30b-a3b-04-28,slug,Alibaba Qwen,open,https://huggingface.co/Qwen/Qwen3-30B-A3B,2026-10-10
+mistralai/devstral-2512,slug,Mistral AI,open,https://huggingface.co/mistralai/Devstral-2-123B-Instruct-2512,2026-10-10
+meta-llama/llama-4-maverick-17b-128e-instruct,slug,Meta,open,https://huggingface.co/meta-llama/Llama-4-Maverick-17B-128E-Instruct,2026-10-10
+meta-llama/llama-3.2-1b-instruct,slug,Meta,open,https://huggingface.co/meta-llama/Llama-3.2-1B-Instruct,2026-10-10
+meta-llama/llama-3.1-70b-instruct,slug,Meta,open,https://huggingface.co/meta-llama/Llama-3.1-70B-Instruct,2026-10-10
+google/gemma-3-27b-it,slug,Google,open,https://huggingface.co/google/gemma-3-27b-it,2026-10-10
+google/gemma-3-12b-it,slug,Google,open,https://huggingface.co/google/gemma-3-12b-it,2026-10-10
+google/gemini-3.5-flash-lite-20260721,slug,Google,closed,https://ai.google.dev/gemini-api/docs/models,2026-10-10
+google/gemini-2.5-flash-preview-09-2025,slug,Google,closed,https://ai.google.dev/gemini-api/docs/deprecations,2026-10-10
+google/gemini-flash-1.5,slug,Google,closed,https://ai.google.dev/gemini-api/docs/changelog,2026-10-10
+google/gemini-flash-1.5-8b,slug,Google,closed,https://ai.google.dev/gemini-api/docs/changelog,2026-10-10
+google/gemini-2.0-pro-exp-02-05,slug,Google,closed,https://ai.google.dev/gemini-api/docs/changelog,2026-10-10
+google/gemini-2.5-pro-exp-03-25,slug,Google,closed,https://ai.google.dev/gemini-api/docs/changelog,2026-10-10
+google/gemini-2.5-flash-lite-preview-06-17,slug,Google,closed,https://ai.google.dev/gemini-api/docs/changelog,2026-10-10
+deepseek/deepseek-v3.2-exp,slug,DeepSeek,open,https://huggingface.co/deepseek-ai/DeepSeek-V3.2-Exp,2026-10-10
+deepseek/deepseek-chat-v3,slug,DeepSeek,open,https://huggingface.co/deepseek-ai/DeepSeek-V3,2026-10-10
+poolside/laguna-xs-2.1-20260625,slug,poolside,open,https://huggingface.co/poolside/Laguna-XS-2.1,2026-10-10
+gryphe/mythomax-l2-13b,slug,Gryphe,open,https://huggingface.co/Gryphe/MythoMax-L2-13b,2026-10-10
+openai/gpt-5.1-20251113,slug,OpenAI,closed,https://developers.openai.com/api/docs/models/gpt-5.1,2026-10-10
+openai/gpt-6-luna-pro-20260922,slug,OpenAI,unknown,https://developers.openai.com/api/docs/models/gpt-6-luna-pro,2026-10-10
+openai/text-embedding-3-small,slug,OpenAI,closed,https://developers.openai.com/api/docs/models/text-embedding-3-small,2026-10-10
