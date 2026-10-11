@@ -1,0 +1,13 @@
+model_permaslug_prefix_or_slug,match,lab,weights,source,checked
+anthropic,prefix,Anthropic,closed,https://platform.claude.com/docs/en/about-claude/models/overview,2026-10-10
+x-ai,prefix,xAI,closed,https://docs.x.ai/docs/models,2026-10-10
+openrouter,prefix,OpenRouter stealth,unknown,https://openrouter.ai/api/v1/models,2026-10-10
+deepseek/deepseek-v4.1-flash-20260910,slug,DeepSeek,open,https://huggingface.co/deepseek-ai/DeepSeek-V4.1-Flash,2026-10-10
+deepseek/deepseek-v3.2-20251201,slug,DeepSeek,open,https://huggingface.co/deepseek-ai/DeepSeek-V3.2,2026-10-10
+qwen/qwen3.8-27b-20260814,slug,Alibaba Qwen,open,https://huggingface.co/Qwen/Qwen3.8-27B,2026-10-10
+meta-llama/llama-3.3-70b-instruct,slug,Meta,open,https://huggingface.co/meta-llama/Llama-3.3-70B-Instruct,2026-10-10
+moonshotai/kimi-k3-20260715,slug,Moonshot AI,open,https://huggingface.co/moonshotai/Kimi-K3,2026-10-10
+z-ai/glm-5.3-20260816,slug,Z.ai,open,https://huggingface.co/zai-org/GLM-5.3,2026-10-10
+minimax/minimax-m3-20260531,slug,MiniMax,open,https://huggingface.co/MiniMaxAI/Minimax-M3,2026-10-10
+nvidia/nemotron-3.5-lightning-20260807,slug,NVIDIA,open,https://huggingface.co/nvidia/NVIDIA-Nemotron-3.5-Lightning-30B-A3B-BF16,2026-10-10
+mistralai/mistral-small-2603,slug,Mistral AI,open,https://huggingface.co/mistralai/Mistral-Small-4-119B-2603,2026-10-10
