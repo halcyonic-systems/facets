@@ -14,7 +14,7 @@
       "description": "The parent's routed interface, standing in for the routed frontier workload it sends this subsystem.",
       "grounding": {
         "grade": "asserted",
-        "reference": "the parent's realized flow: 6000 Gtok/day routed × 35/89 (Router → Frontier serving in ../../examples/llm-market.sl); recompute when the parent changes"
+        "reference": "the parent's realized flow: 19,197 Gtok/day routed × 254/1000 (Router → Frontier serving in ../../examples/llm-market.sl); recompute when the parent changes"
       }
     },
     {
@@ -126,10 +126,10 @@
       "description": "The routed frontier workload the parent's router sends this subsystem.",
       "grounding": {
         "grade": "asserted",
-        "reference": "6000 × 35/89 = 2359.55 Gtok/day, the parent's realized flow; the 6000 and the 35/89 are third-party (Dirac digest of OpenRouter rankings, June–July 2026)"
+        "reference": "19197 × 254/1000 = 4876.04 Gtok/day, the parent's realized flow; the 19197 and the 254/1000 are third-party (OpenRouter rankings-daily, vintage 2026-10-10, month 2026-09; as of 2026-10-11T00:27Z)"
       },
       "klir_directed": false,
-      "amount": "2359.55",
+      "amount": "4876.04",
       "unit": "Gtok/day",
       "substance": "compute"
     },
@@ -343,7 +343,7 @@
       },
       "range": {
         "min": "0",
-        "max": "12000"
+        "max": "40000"
       }
     },
     {

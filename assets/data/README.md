@@ -144,10 +144,22 @@ source.
    level: all four token classes that month, `other` included, per observed
    day, in Gtok/day; it replaces the model's declared 6000 and the invented
    30-day ramp the demo used to carry. Vintage 2026-10-10 reads 71.9 Gtok/day
-   in 2025-01 and 19,197 in 2026-09, which is above the `0..12000` range the
-   `.sl` declares for the knob and three times the digest figure its
-   grounding line quotes; the series is the observation, the declaration is
-   the thing to revisit.
+   in 2025-01 and 19,197 in 2026-09; the series is the observation, the
+   declaration follows it (next rule).
+6. **A vintage refresh re-mints the declared amounts in the same PR.** The
+   `.sl` declares the routed level and the Router's split from the vintage's
+   latest full month (2026-09 for vintage 2026-10-10: 19,197 Gtok/day, the
+   month's four token classes per observed day; frontier 254 against open
+   746, the month's classified tokens as parts per thousand, the ratio kept
+   to three decimals), each grounding `third-party` naming the vintage file
+   and the attribution's as-of. A new vintage moves those lines, the two
+   children's source amounts (the parent's realized flows, held by
+   `child_sources_are_the_parents_realized_flows`), and the three goldens
+   (`BLESS_CLI_GOLDEN=1`, `BLESS_SL_DEMOS=1`,
+   `BLESS_LLM_MARKET_WALKTHROUGH=1`) together, so the model and the data it
+   opens on never disagree silently (facets#534, found when #531 shipped a
+   vintage three times the declared 6000). The self-hosted placeholder is
+   not minted from anything and stays `unknown`.
 5. **Resellers.** OpenRouter's own newsletter excludes reseller activity from
    its weekly totals; whether the Data API does the same is not stated on the
    pages read. The series is used as published and this uncertainty travels

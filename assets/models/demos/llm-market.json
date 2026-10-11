@@ -17,7 +17,7 @@
           "description": "Customers who reach models through a router: the inference compute their requests mobilize.",
           "grounding": {
             "grade": "third-party",
-            "reference": "OpenRouter rankings via the Dirac labs-market-share digest, June–July 2026: ≈6 Ttok/day routed"
+            "reference": "OpenRouter rankings-daily, vintage 2026-10-10 (../data/openrouter-routed-share-monthly-vintage-2026-10-10.csv), 2026-09: 19,197 Gtok/day routed; as of 2026-10-11T00:27Z"
           }
         },
         "type": "Source",
@@ -237,7 +237,7 @@
         "description": "The routed interface: splits the routed workload between frontier and open-weight serving by the shares a router reports.",
         "grounding": {
           "grade": "third-party",
-          "reference": "open-weight ≈60% of routed volume (Dirac digest of OpenRouter rankings, June–July 2026)"
+          "reference": "open-weight 0.746 of classified routed tokens, 2026-09 (OpenRouter rankings-daily, vintage 2026-10-10; as of 2026-10-11T00:27Z)"
         }
       },
       "sources": [],
@@ -417,7 +417,7 @@
         "description": "The routed workload entering the router as inference compute.",
         "grounding": {
           "grade": "third-party",
-          "reference": "≈6 Ttok/day (OpenRouter via Dirac, June–July 2026)"
+          "reference": "575,897 Gtok over 30 observed days of 2026-09, all four token classes (OpenRouter rankings-daily, vintage 2026-10-10, ../data/openrouter-routed-share-monthly-vintage-2026-10-10.csv; as of 2026-10-11T00:27Z)"
         }
       },
       "substance": {
@@ -430,7 +430,7 @@
       "source_interface": null,
       "sink": "C0.0",
       "sink_interface": "I0.0",
-      "amount": "6000",
+      "amount": "19197",
       "unit": "Gtok/day",
       "parameters": []
     },
@@ -442,7 +442,7 @@
         "description": "The self-hosted workload entering the self-hosted interface as inference compute.",
         "grounding": {
           "grade": "unknown",
-          "reference": "placeholder, a round half of the routed figure; no sensor; replace before any finding quotes it"
+          "reference": "placeholder, kept at the round figure of 2026-10-10 and now small against the routed level; no sensor; replace before any finding quotes it"
         }
       },
       "substance": {
@@ -511,7 +511,7 @@
         "description": "The routed workload the router sends to frontier serving.",
         "grounding": {
           "grade": "third-party",
-          "reference": "Dirac digest of OpenRouter rankings, June–July 2026, summed over the frontier roster"
+          "reference": "frontier_tokens of 2026-09 (OpenRouter rankings-daily, vintage 2026-10-10, ../data/openrouter-routed-share-monthly-vintage-2026-10-10.csv; as of 2026-10-11T00:27Z)"
         }
       },
       "substance": {
@@ -524,7 +524,7 @@
       "source_interface": null,
       "sink": "C0.2",
       "sink_interface": null,
-      "amount": "35",
+      "amount": "254",
       "unit": "Gtok/day",
       "parameters": []
     },
@@ -536,7 +536,7 @@
         "description": "The routed workload the router sends to open-weight serving.",
         "grounding": {
           "grade": "third-party",
-          "reference": "Dirac digest of OpenRouter rankings, June–July 2026, summed over the open roster"
+          "reference": "open_tokens of 2026-09 (OpenRouter rankings-daily, vintage 2026-10-10, ../data/openrouter-routed-share-monthly-vintage-2026-10-10.csv; as of 2026-10-11T00:27Z)"
         }
       },
       "substance": {
@@ -549,7 +549,7 @@
       "source_interface": null,
       "sink": "C0.3",
       "sink_interface": null,
-      "amount": "54",
+      "amount": "746",
       "unit": "Gtok/day",
       "parameters": []
     },

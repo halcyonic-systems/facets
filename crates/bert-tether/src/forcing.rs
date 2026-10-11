@@ -1138,7 +1138,8 @@ mod tests {
         );
 
         // Forcing the split redistributes the Router's throughput, never
-        // changes it, and the unforced run keeps the declared 54/89 split.
+        // changes it, and the unforced run keeps the declared 746/1000 split
+        // (vintage 2026-10-10, month 2026-09; #534).
         let unforced = run_unforced(model, 1.0, ticks as f64).expect("the shipped model runs");
         assert_eq!(
             router(&unforced),
@@ -1147,7 +1148,7 @@ mod tests {
         );
         let base_o = wire(&unforced, "Open-weight serving");
         let base_f = wire(&unforced, "Frontier serving");
-        let declared = 54.0 / (35.0 + 54.0);
+        let declared = 746.0 / (254.0 + 746.0);
         for t in 1..ticks {
             let s = base_o[t] / (base_o[t] + base_f[t]);
             assert!(

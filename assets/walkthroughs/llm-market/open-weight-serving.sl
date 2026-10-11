@@ -20,10 +20,12 @@
 # endpoint takes the tokens.
 #
 # A run is per level. The Router stand-in's amount is the parent's
-# realized flow, 6000 Gtok/day routed × 54/89, declared to two decimals
-# with a grounding that says so, and the self-hosted stand-in carries
-# the parent's placeholder through; a knob turned at the parent does not
-# move this model until single-run substitution exists.
+# realized flow, 19,197 Gtok/day routed × 746/1000 (the parent's amounts
+# are minted from vintage 2026-10-10, month 2026-09; #534), declared to
+# two decimals with a grounding that says so, and the self-hosted
+# stand-in carries the parent's placeholder through; a knob turned at
+# the parent does not move this model until single-run substitution
+# exists.
 system "Open-weight serving" : Concrete/Social
 domain "Routed and self-hosted open-weight workload divided across Gemma, Llama, Qwen, DeepSeek and the open field by share, tokens served out, compute shed as heat"
 time unit day
@@ -33,7 +35,7 @@ level Structure
 # ── E′: the parent's neighbours ──────────────────────────────────────
 source Router
     description "The parent's routed interface, standing in for the routed open-weight workload it sends this subsystem."
-    grounding asserted "the parent's realized flow: 6000 Gtok/day routed × 54/89 (Router → Open-weight serving in ../../examples/llm-market.sl); recompute when the parent changes"
+    grounding asserted "the parent's realized flow: 19,197 Gtok/day routed × 746/1000 (Router → Open-weight serving in ../../examples/llm-market.sl); recompute when the parent changes"
 source "Self-hosted demand"
     description "Customers who run open weights on their own hardware; the crossing counterparty once the parent's Self-hosting pass-way fuses onto this subsystem."
     grounding unknown "no public sensor counts self-hosted serving; the amount below is the parent's placeholder, carried through"
@@ -66,12 +68,12 @@ component "Other open" primitive Amplifying
     description "The open-weight field beyond the named models, served as one aggregate."
 
 # ── Workload in: the parent's realized flows ─────────────────────────
-flow Router -> "Open-weight pool" : energy "routed open-weight workload" substance compute amount 3640.45 unit "Gtok/day"
+flow Router -> "Open-weight pool" : energy "routed open-weight workload" substance compute amount 14320.96 unit "Gtok/day"
     description "The routed open-weight workload the parent's router sends this subsystem."
-    grounding asserted "6000 × 54/89 = 3640.45 Gtok/day, the parent's realized flow; the 6000 and the 54/89 are third-party (Dirac digest of OpenRouter rankings, June–July 2026)"
+    grounding asserted "19197 × 746/1000 = 14320.96 Gtok/day, the parent's realized flow; the 19197 and the 746/1000 are third-party (OpenRouter rankings-daily, vintage 2026-10-10, month 2026-09; as of 2026-10-11T00:27Z)"
 flow "Self-hosted demand" -> Self-hosting : energy "self-hosted workload" substance compute amount 3000 unit "Gtok/day"
     description "The self-hosted workload entering the self-hosted interface as inference compute."
-    grounding unknown "the parent's placeholder, a round half of the routed figure; no sensor; replace before any finding quotes it"
+    grounding unknown "the parent's placeholder, now small against the routed level; no sensor; replace before any finding quotes it"
 
 # ── Weights in: ample ────────────────────────────────────────────────
 flow "Open-weight labs" -> "Open-weight release" : informational "open weights" substance weights ample
@@ -136,7 +138,7 @@ flow "Open endpoint" -> "Serving endpoint" : informational "tokens served" subst
     description "The open models' tokens leaving for the parent's serving endpoint."
 
 # ── Declared parameters and metrics ──────────────────────────────────
-param "Routed open-weight workload" : flow Router -> "Open-weight pool" "routed open-weight workload" range 0..12000
+param "Routed open-weight workload" : flow Router -> "Open-weight pool" "routed open-weight workload" range 0..40000
 param "Self-hosted workload" : flow "Self-hosted demand" -> Self-hosting "self-hosted workload" range 0..12000
 param shares "Open-weight models, routed" : from "Open-weight pool"
 param shares "Open-weight models, self-hosted" : from Self-hosting

@@ -2,10 +2,11 @@
 
 **Status: PROPOSED**
 
-Scaffold only — zero predictions recorded. This file defines the format so
-that when the model starts making on-the-record claims, they land somewhere
-auditable. No rush: the bar for the first entry is a calibrated model plus a
-claim someone would actually check later.
+One entry drafted (P-0001, 2026-10-11), not yet owned: the owner words and
+sets its confidence before it counts, and the file stays PROPOSED until then.
+This file defines the format so that when the model makes on-the-record
+claims, they land somewhere auditable. The bar for an entry is a calibrated
+model plus a claim someone would actually check later.
 
 ## Why a ledger
 
@@ -44,23 +45,27 @@ The model is two levels, and a run is per level:
 
 - **The shipped parent** (`assets/examples/llm-market.sl`) is drawn at pool
   grain: the Router splits routed workload between frontier serving and
-  open-weight serving (35 : 54, the routed shares of the digest summed by
-  pool), Self-hosting carries the placeholder to open-weight serving only,
-  and each serving subsystem is one process. Its trace reads frontier
-  serving at 2359.55 Gtok/day (6000 × 35/89) and open-weight serving at
-  6640.45 (6000 × 54/89 + 3000), with every Gtok of compute dissipated and
-  the ledger balanced.
+  open-weight serving (254 : 746, the classified frontier and open tokens of
+  vintage 2026-10-10's latest full month, 2026-09, as parts per thousand),
+  Self-hosting carries the placeholder to open-weight serving only, and
+  each serving subsystem is one process. The routed level is the same
+  month's tokens per observed day, 19,197 Gtok/day; a vintage refresh
+  re-mints both in the same PR (`assets/data/README.md`, rule 6; #534). Its
+  trace reads frontier serving at 4876.04 Gtok/day (19197 × 254/1000) and
+  open-weight serving at 17320.96 (19197 × 746/1000 + 3000), with every
+  Gtok of compute dissipated and the ledger balanced.
 - **The two children** (`assets/walkthroughs/llm-market/frontier-serving.sl`
   and `open-weight-serving.sl`), referenced from the parent's `decomposes`
   lines, carry the per-model roster behind a pool each, with the per-model
   shares and groundings of the digest. Each child's workload source declares
-  the parent's realized flow (2359.55 and 3640.45, two decimals, with a
-  grounding that says so), so each child run on its own reproduces the
-  per-model numbers of the single-level model (Qwen 1598.6, Opus 606.7,
-  DeepSeek 1967.5 Gtok/day). `crates/bert-canvas/tests/llm_market.rs` holds
-  the agreement within 0.1% against `assets/archive/llm-market-flat.sl`, the
-  single-run witness; the residue is the two-decimal rounding of the
-  realized flows.
+  the parent's realized flow (4876.04 and 14320.96, two decimals, with a
+  grounding that says so), so each child run on its own gives every model
+  its share of the single-level model's roster split at the parent's level
+  (Qwen 4169.9, Opus 1253.8, DeepSeek 5132.1 Gtok/day).
+  `crates/bert-canvas/tests/llm_market.rs` holds the shares within 0.1%
+  against `assets/archive/llm-market-flat.sl`, the single-run witness, which
+  stays at the digest's level as a record; the residue is the two-decimal
+  rounding of the realized flows.
 - **How the levels agree, and how they can drift.** The engine runs one
   model's own flows and never descends into a child, so a knob turned at the
   parent (the Router's split, a workload) moves the parent's trace and
@@ -71,10 +76,13 @@ The model is two levels, and a run is per level:
   child model's hash; one keyed to the frontier-against-open share names the
   parent's.
 
-- **Routed interface — third-party.** The routed workload (≈6 Ttok/day) and
-  every routed share come from the Dirac labs-market-share digest of
-  OpenRouter rankings, June–July 2026; sources disagree on Anthropic's share
-  (12–24%) and the midpoint is taken. The demo bundle's forcing CSV
+- **Routed interface — third-party.** The routed workload (19,197 Gtok/day)
+  and the Router's frontier-against-open split come from OpenRouter
+  rankings-daily, vintage 2026-10-10, month 2026-09 (as of
+  2026-10-11T00:27Z); the per-model shares inside each child still come
+  from the Dirac labs-market-share digest of OpenRouter rankings, June–July
+  2026, where sources disagree on Anthropic's share (12–24%) and the
+  midpoint is taken. The demo bundle's forcing CSV
   (`assets/demos/llm-market.json`) drives this interface and no other; since
   vintage 2026-10-10 that bundle is the observed OpenRouter series itself
   (routed level and the Router's split, monthly), regenerated from the
@@ -175,4 +183,23 @@ sensor is not: `assets/data/README.md`, "OpenRouter routed-share vintages".
 
 ## Ledger
 
-*(empty)*
+### P-0001 — Open-weight share of routed tokens stays at or above 0.60 through 2027-03
+
+Draft (#534): the owner words the claim and sets the confidence before this
+entry counts; until then it is on the record as a draft, not a prediction.
+
+- **Date:** 2026-10-11
+- **Model:** llm-market @ 2992006368205948209 (`OperationalSpec::content_hash()`
+  of `assets/models/demos/llm-market.json`, the minted projection of
+  `assets/examples/llm-market.sl` as re-minted from vintage 2026-10-10)
+- **Data window:** OpenRouter rankings-daily vintage 2026-10-10,
+  2025-01-01 → 2026-10-09, classified 85% of routed tokens
+  (`assets/data/openrouter-routed-share-monthly-vintage-2026-10-10.csv`;
+  Rankings data by OpenRouter, as of 2026-10-11T00:27Z)
+- **Claim:** The open-weight share of routed tokens on OpenRouter (high end
+  of the classified range, monthly) stays at or above 0.60 for every full
+  month from 2026-10 through 2027-03
+- **Horizon:** 2027-04-15
+- **Confidence:** `<owner to set>` — the owner words and sets it before the
+  entry counts
+- **Resolution (added at horizon, never edited before):**
