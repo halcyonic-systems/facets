@@ -1,9 +1,9 @@
 # LLM-market prediction ledger
 
-**Status: PROPOSED**
+**Status: LIVE**
 
-One entry drafted (P-0001, 2026-10-11), not yet owned: the owner words and
-sets its confidence before it counts, and the file stays PROPOSED until then.
+One entry on the record (P-0001, owned 2026-10-11 at 80%). Entries are
+append-only; a resolution is added at the horizon and never before.
 This file defines the format so that when the model makes on-the-record
 claims, they land somewhere auditable. The bar for an entry is a calibrated
 model plus a claim someone would actually check later.
@@ -203,9 +203,6 @@ sensor is not: `assets/data/README.md`, "OpenRouter routed-share vintages".
 
 ### P-0001 — Open-weight share of routed tokens stays at or above 0.60 through 2027-03
 
-Draft (#534): the owner words the claim and sets the confidence before this
-entry counts; until then it is on the record as a draft, not a prediction.
-
 - **Date:** 2026-10-11
 - **Model:** llm-market @ 2992006368205948209 (`OperationalSpec::content_hash()`
   of `assets/models/demos/llm-market.json`, the minted projection of
@@ -218,6 +215,5 @@ entry counts; until then it is on the record as a draft, not a prediction.
   of the classified range, monthly) stays at or above 0.60 for every full
   month from 2026-10 through 2027-03
 - **Horizon:** 2027-04-15
-- **Confidence:** `<owner to set>` — the owner words and sets it before the
-  entry counts
+- **Confidence:** 80% (set by the owner, 2026-10-11)
 - **Resolution (added at horizon, never edited before):**
