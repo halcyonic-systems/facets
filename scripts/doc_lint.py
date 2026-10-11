@@ -119,13 +119,21 @@ def check_file(path: Path) -> list[str]:
 # proves parallel lenses over a meet-semilattice. That sense is retired — mode
 # entry now speaks "lens" vocabulary. This check keeps it retired.
 #
-# Scope: LIVE docs (same set as above) + string literals in web/src/**/*.{ts,tsx}.
+# Scope: LIVE docs (same set as above) + the entry points a reader meets first
+# (AGENTS.md and editors/vscode/README.md; README.md and docs/README.md are
+# already LIVE) + string literals in web/src/**/*.{ts,tsx}.
 # It flags whole-word ladder/rung/climb, then exempts lines that carry a
 # SURVIVING-sense marker. The surviving senses (left untouched by #90):
-#   - project/build-plan phase: "analysis rung", "staged rung", "rung plan",
-#     "first rung", explicit "Rung N/Rung A" SL build-plan labels;
+#   - explicit "Rung N/Rung A" build-plan labels, as records cite them
+#     (docs/parked.md's #150 entry, the spec's §11 pointer into the design doc);
+#     the lowercase project-phase phrases ("analysis rung", "rung plan",
+#     "staged rung", "first rung") were retired from LIVE prose 2026-10-11 and
+#     are no longer exempt — say "seam" or "stage";
 #   - the compose "dependency ladder" (bert-compose) and per-edge "edge ladder"
 #     classification (bert-canvas) — real orderings, correctly named;
+#   - code identifiers: a backticked token carrying the word (`ladder.rs`,
+#     `ladder_stamps`, `KlirLadder`, the `ladder` module) and the module path
+#     "examples/ladder/lens" AGENTS.md prints bare;
 #   - Klir's GSPS hierarchy of system types;
 #   - meta-discussion of the retired term itself: any reference to the archived
 #     `on-the-word-ladder` concordance, or the quoted `ladder/rung` term-set.
@@ -136,18 +144,29 @@ MODE_ENTRY_WORD = re.compile(r"\b(?:ladder|rung|climb)\b", re.IGNORECASE)
 # "rung of", etc. All prose survivors use lowercase phrases; only the capitalized
 # SL build-plan labels ("Rung 2") and the "GSPS" acronym carry uppercase.
 SURVIVING_SENSE = re.compile(
-    r"analysis rung"
-    r"|rung plan"
-    r"|staged rung"
-    r"|first[\s-]rung"
-    r"|\bRungs?\s+[0-9A-Z]"          # "Rung 2", "Rungs 1", "Rung A" — SL build-plan labels
+    r"\bRungs?\s+[0-9A-Z]"           # "Rung 2", "Rungs 1", "Rung A" — build-plan labels in records
     r"|dependency ladder"
     r"|edge ladder"
     r"|compose ladder"
+    r"|`[^`]*(?:ladder|rung|climb)[^`]*`"  # a code identifier in backticks
+    r"|examples/ladder/lens"          # the bert-compose module path, printed bare
     r"|\bGSPS\b"
     r"|on-the-word-ladder"            # references to the archived concordance file
     r"|ladder/rung"                   # meta-quotation of the retired term-set
 )
+# The entry points: not LIVE docs (AGENTS.md carries no status; the extension
+# README is a package file), but the first prose a reader meets, so the
+# vocabulary gate covers them too (2026-10-11).
+ENTRY_POINTS = ("AGENTS.md", "editors/vscode/README.md")
+
+
+def vocab_scope() -> list[Path]:
+    docs = live_docs()
+    for rel in ENTRY_POINTS:
+        p = REPO / rel
+        if p.is_file() and p not in docs:
+            docs.append(p)
+    return docs
 # Quoted string literal on a line: "...", '...', or `...` (naive, line-local —
 # enough to separate a user-facing string from a // or /** */ comment).
 STRING_LITERAL = re.compile(r'"[^"]*"' r"|'[^']*'" r"|`[^`]*`")
@@ -156,14 +175,14 @@ STRING_LITERAL = re.compile(r'"[^"]*"' r"|'[^']*'" r"|`[^`]*`")
 def mode_entry_vocab() -> list[str]:
     violations: list[str] = []
 
-    # LIVE docs: whole-line scan, surviving-sense marker exempts the line.
-    for path in live_docs():
+    # LIVE docs + entry points: whole-line scan, surviving-sense marker exempts the line.
+    for path in vocab_scope():
         rel = path.relative_to(REPO)
         for line_no, line in enumerate(path.read_text(encoding="utf-8").splitlines(), start=1):
             if MODE_ENTRY_WORD.search(line) and not SURVIVING_SENSE.search(line):
                 violations.append(
-                    f"{rel}:{line_no}: mode-entry 'ladder/rung/climb' in a LIVE doc "
-                    f"(use lens vocabulary; retired per #90): {line.strip()[:80]}"
+                    f"{rel}:{line_no}: 'ladder/rung/climb' in a LIVE doc or entry point "
+                    f"(use lens vocabulary, or seam/stage; retired per #90): {line.strip()[:80]}"
                 )
 
     # web/src string literals only (comments are out of scope).
@@ -604,7 +623,7 @@ def main() -> int:
     exempt_note = f"; status-exempt (transient): {', '.join(exempt)}" if exempt else ""
     print(
         f"doc-lint: OK — {len(live_docs())} LIVE docs clean; mode-entry and hedge "
-        f"vocabulary clean; provenance tables match the manifest; {gate_a}; "
+        f"vocabulary clean ({len(vocab_scope())} files incl. entry points); provenance tables match the manifest; {gate_a}; "
         f"{len(indexed_docs())} indexed docs all reachable, linked, and link-resolving; "
         f"{len(status_scope())} docs/ files each carry exactly one "
         f"status word{exempt_note}"
