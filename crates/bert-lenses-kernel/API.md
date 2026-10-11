@@ -826,3 +826,82 @@ declares and decides nothing. Fixtures `sandbox_palette` / `ladder_stamps`.
   results are `any` at the wasm edge and typed by the hand-written mirrors in
   `web/src/kernel/types.ts`. Kept this way so `bert-core` carries no wasm/tsify
   dependency and stays a pure kernel.
+
+## Exports present in `api.rs` / `bench.rs` and undocumented above (appended 2026-10-11)
+
+The surface is append-only, so this section appends rather than rewrites: every
+export below has been in the wasm pkg since the commit named, and nothing above
+changed. Signatures are read from `crates/bert-lenses-kernel/src/api.rs` and
+`src/bench.rs`; shapes are the hand-written mirrors in `web/src/kernel/types.ts`.
+
+### `run_rich(model_json: string, dt: number, t: number) → RunResultRich`
+Run the model from its DECLARED amounts alone — no CSV, no forcing — with the
+same rich, domain-named readout as `run_forced` (interactive params, 2026-08-16).
+`comparisons` comes back empty by construction: nothing was observed. The re-run
+the face calls when no data is attached.
+
+### `run_markov(canvas_json: string, ticks: number) → MarkovRunResult`
+Run a CANVAS model as a discrete-time Markov chain (#67, 2026-07-24): things are
+states, directed relations are transitions with uniform edge weights, and a
+distribution evolves for `ticks` steps from a point mass on the first state.
+Takes canvas JSON, never calls `validate_operational` (a self-loop is a legal
+transition here). Returns `{ kind: "markov", states: string[], history:
+number[][] }` — deliberately not a `RunResult`, since probability, not
+substance, is what is conserved.
+
+### `check_resolution_canvas(stage1_json: string, stage2_json: string) → DecompositionReport`
+Does stage 2 resolve the `unresolved` pass-way of stage 1 (#308 part A)? Two
+canvas models of the same system; the report is shaped like
+`check_decompositions_canvas`'s so the audit panel can show it.
+
+### `mint_model_id() → string`
+A fresh model identity, canonical base58 (facets#412). Minting is the kernel's,
+as at the decompose door; used by the walk importer to stamp a child paragraph
+whose text names no id of its own.
+
+### `BenchHandle` — the bench seam (facets#463, move 2b)
+The second stateful export beside `SandboxSession`, and for the same reason: a
+knob turned mid-run without resetting the stocks needs a circuit held across
+calls. State lives engine-side in `bert_tether::bench::BenchSession`; this class
+marshals. Trap story as for the sandbox: the face discards the handle and
+reopens it from the document.
+
+- `BenchHandle.open_unforced(model_json: string, dt: number) → BenchHandle` — open a model from its declared amounts alone, at tick 0.
+- `BenchHandle.open_forced(model_json: string, csv_text: string, manifest_json: string, dt: number, today: string) → BenchHandle` — open with a CSV bound through its manifest, at tick 0.
+- `step(n: number)` · `step_over(t: number)` (to the horizon `t` by the batch run's own tick count) · `reset()` · `tick() → number`.
+- `set_flow_amount(label: string, from: string, to: string, v: number)` · `set_component_param(thing: string, field: string, v: number)` — the knobs, by the same names the app shows and `bert bench --set` takes.
+- `readout() → RunResultRich` — the run as it stands, the same shape the batch run returns.
+- `tick_log_since(from_tick: number) → TickLog[]` — every node's and wire's flux for the ticks at or after `from_tick`, and (since v1.13) the `decisions` an agent took.
+- `edits() → KnobEdit[]` — the knobs turned on this session, with the tick each applied at; since v1.13 a `KnobEdit` carries `by: KnobAuthor` (`{ kind: "human" }` or `{ kind: "agent", name }`).
+
+### `__install_panic_hook()`
+Not an API call: `#[wasm_bindgen(start)]` runs it from the module's own
+initializer (wasm only) so a contract-violating panic reaches `console.error`
+with its message and backtrace instead of an anonymous `unreachable` trap. It
+changes no behavior on any input that does not already violate the error
+contract and adds no callable export.
+
+## SL surface, v1.10 – v1.13 (appended 2026-10-11)
+
+The notes under "SL surface" above stop at v1.5. `compile_sl` / `emit_sl` have
+since grown, with no signature change, the agent layer (ADR 0008; spec §4.7 and
+§11 carry the normative text, this is the boundary's view):
+
+- **v1.10 (#269)** — the `agent` line: `agent <name> watches <stock> rule <rule> manages <process>`, rules `proportional target <n> gain <n>` and `threshold above <n> emit <n> else <n>`. A `Thing` gained `rule?: AgentRule` and the operational seam an `agents` list → `NodeKind::Agent`. The tap and the command wire are drawn by the compiler and never emitted as flows.
+- **v1.11 (#517)** — the threshold band: `threshold above <a> below <b> emit <n> else <n>`, one bit of memory the engine already held as the node's activity.
+- **v1.12** — the `table` rule (`under <b> emit <o> … else <o>`, bins numbered `under1`/`emit1`/… for `set_component_param` and the inspector) and the `trace` rule (`trace window <n> target <t> gain <g>`), whose window is run state the engine owns (`Circuit::agent_readings`), never a field of the model.
+- **v1.13 (ADR 0008 D1)** — the command form, `manages param "<name>"`: a `Thing` gained `manages_param?: string`; the named `param` becomes required, the agent writes its knob at the end of every tick through the bench knob's own path (`Circuit::write_amount`), and the tick log carries a decisions column.
+
+## The `Thing` and `CanvasModel` listings above are abbreviated (appended 2026-10-11)
+
+The `type Thing = { … }` and `type CanvasModel = { … }` blocks under "Phase 2
+surface" show the fields of 2026-07; the full shapes are `pub struct Thing` and
+`pub struct CanvasModel` in `crates/bert-canvas/src/canvas.rs`, mirrored in
+`web/src/kernel/types.ts`. Fields a `Thing` carries that the listing omits, all
+optional and serde-skipped when absent: `env_kind`, `rule`, `manages_param`,
+`interface`, `passway`, `protocol`, `child_model`, `grounding`, `scale`,
+`states`, `variable_kind`, `cognitive_params`, `initial_state`,
+`agency_capacity`. `CanvasModel` additionally carries `model_id`, `crossings`,
+`milieu`, `boundary`, `system_type`, `name`, `description`, `params`, `metrics`
+and `klir_level`. Each arrived additively under its own issue; none changed a
+signature.
