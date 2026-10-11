@@ -53,8 +53,11 @@ python3 scripts/openrouter_rankings_vintage.py aggregate --vintage <pulldate>
 python3 scripts/openrouter_rankings_vintage.py bundle --vintage <pulldate>
 ```
 
-`pull` prints `meta.as_of` and the permaslugs the classification table does not
-name; record the first in this section as the attribution line, extend the table
+`pull` fetches through leg 4 of the llm-market data pipeline
+(`tools/pipeline/fetch_usage_openrouter.py`, which pages the same endpoint and
+aggregates monthly by author into a data dir outside the repo; the fetch is
+shared, not duplicated). It prints `meta.as_of` and the permaslugs the
+classification table does not name; record the first in this section as the attribution line, extend the table
 with the second before `aggregate`. `--dry-run` on any command validates and
 writes nothing. `self-test` (second line of `just check`) pins the arithmetic on
 `scripts/fixtures/` without the network.
@@ -83,9 +86,14 @@ source.
    reached through an API only. `match` says how the row applies: `slug` is one
    permaslug (a dated canonical slug also answers for its undated form),
    `prefix` is every model under that author and is used only where the author
-   releases one way. Nothing is classified from memory; the seed of twelve rows
-   covers what was opened on 2026-10-10 and the first pull's unmatched list is
-   where it grows.
+   releases one way. Nothing is classified from memory; the seed of fourteen
+   rows covers what was opened on 2026-10-10 (including the slugs read off the
+   API's 2026-10-01 day, which the lead pulled to test the key) and the first
+   pull's unmatched list is where it grows. This table supersedes the by-author
+   `AUTHOR_BUCKET` in `tools/pipeline/target4_dev_wide.py` (leg 7 of the July
+   2026 pipeline) for any open-weight share: that map decides per author from
+   memory, this one per model from a page; leg 7 is left as it is for the
+   pipeline's own wide panel.
 2. **The `other` row is a column of its own**, and the open-weight share is a
    range: `open_share_low` = open over everything (frontier + open + unknown +
    other), `open_share_high` = open over frontier + open. A finding quotes both.

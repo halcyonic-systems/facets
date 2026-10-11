@@ -3,7 +3,8 @@
 
 Four commands, three of which never touch the network:
 
-  pull       GET /api/v1/datasets/rankings-daily, paged by year, raw rows
+  pull       GET /api/v1/datasets/rankings-daily through leg 4 of the data
+             pipeline (tools/pipeline/fetch_usage_openrouter.py), raw rows
              written untouched to assets/data/openrouter-rankings-daily-vintage-<pulldate>.csv.
              Needs OPENROUTER_API_KEY in the environment; refuses without it.
   aggregate  raw vintage + assets/data/openrouter-model-classification.csv ->
@@ -28,10 +29,7 @@ import io
 import json
 import os
 import sys
-import time
 import urllib.error
-import urllib.parse
-import urllib.request
 from collections import OrderedDict, defaultdict
 from datetime import date, datetime, timedelta
 from pathlib import Path
@@ -41,12 +39,14 @@ DATA = ROOT / "assets" / "data"
 FIXTURES = ROOT / "scripts" / "fixtures"
 CLASSIFICATION = DATA / "openrouter-model-classification.csv"
 
-ENDPOINT = "https://openrouter.ai/api/v1/datasets/rankings-daily"
+# The fetch and its paging live in leg 4 of the llm-market data pipeline
+# (tools/pipeline/fetch_usage_openrouter.py), which aggregates the same rows
+# monthly by author into a data dir outside the repo. This sensor imports
+# that fetch rather than carrying a second one; it differs in what it keeps
+# (the raw rows, committed as a vintage) and in where the key comes from
+# (the environment only).
+PIPELINE = ROOT / "tools" / "pipeline"
 DATASET_START = date(2025, 1, 1)
-# The API caps a window at 366 days and the key at 30 requests a minute; a
-# year a page and a pause between pages keeps a full history well inside both.
-MAX_WINDOW_DAYS = 366
-PAUSE_SECONDS = 3
 
 RAW_COLUMNS = ["date", "model_permaslug", "total_tokens"]
 SHARE_COLUMNS = [
@@ -205,23 +205,13 @@ def classify(slug, by_slug, by_prefix):
 # ------------------------------------------------------------------------- pull
 
 
-def fetch_page(key, start, end):
-    q = urllib.parse.urlencode({"start_date": start.isoformat(), "end_date": end.isoformat()})
-    req = urllib.request.Request(
-        f"{ENDPOINT}?{q}",
-        headers={"Authorization": f"Bearer {key}", "Accept": "application/json"},
-    )
-    try:
-        with urllib.request.urlopen(req, timeout=120) as resp:
-            body = json.load(resp)
-    except urllib.error.HTTPError as e:
-        # The body may echo request details; the key is never in it, and it
-        # is not printed here either, only the status.
-        raise SensorError(f"HTTP {e.code} from {ENDPOINT} for {start}..{end}") from e
-    rows = body.get("data")
-    if not isinstance(rows, list):
-        raise SensorError("response has no `data` list")
-    return rows, body.get("meta", {})
+def pipeline_fetcher():
+    """Leg 4's module, imported from its own directory (it uses sibling imports)."""
+    if str(PIPELINE) not in sys.path:
+        sys.path.insert(0, str(PIPELINE))
+    import fetch_usage_openrouter
+
+    return fetch_usage_openrouter
 
 
 def validate_raw_rows(rows):
@@ -254,22 +244,17 @@ def cmd_pull(args):
     if out.exists() and not args.dry_run:
         raise SensorError(f"{out} exists; a vintage is never refreshed in place (pick another --pulldate)")
 
-    rows, metas = [], []
-    page_start = start
-    while page_start <= end:
-        page_end = min(page_start + timedelta(days=MAX_WINDOW_DAYS - 1), end)
-        print(f"GET rankings-daily {page_start}..{page_end}", file=sys.stderr)
-        if args.dry_run:
-            print("dry-run: not calling the API")
-            break
-        page, meta = fetch_page(key, page_start, page_end)
-        rows.extend(page)
-        metas.append(meta)
-        page_start = page_end + timedelta(days=1)
-        if page_start <= end:
-            time.sleep(PAUSE_SECONDS)
+    leg4 = pipeline_fetcher()
+    for a, b in leg4.page_windows(start, end):
+        print(f"GET rankings-daily {a}..{b}", file=sys.stderr)
     if args.dry_run:
+        print("dry-run: not calling the API")
         return
+    try:
+        rows, metas = leg4.fetch_daily_rows(key, start, end)
+    except urllib.error.HTTPError as e:
+        # Only the status is reported: an error body can echo the request.
+        raise SensorError(f"HTTP {e.code} from rankings-daily") from e
     validate_raw_rows(rows)
     # Raw means raw: the three fields as the API returned them, only ordered.
     # `other` sorts last within its date, as the API itself returns it.
@@ -471,6 +456,13 @@ def cmd_self_test(args):
 
     # The shipped table parses under the same rules as the fixture one.
     load_classification(CLASSIFICATION)
+
+    # The fetch is leg 4's: it imports, and its paging never exceeds the
+    # API's 366-day window or leaves a gap.
+    leg4 = pipeline_fetcher()
+    windows = leg4.page_windows(date(2025, 1, 1), date(2026, 10, 10))
+    check(len(windows) == 2 and windows[0][1] == date(2025, 12, 31) and windows[1][0] == date(2026, 1, 1), f"paging {windows}")
+    check(all((b - a).days + 1 <= 366 for a, b in windows), "a page exceeds the API window")
 
     # `pull` must refuse without the key; the refusal is the test, so no
     # request is ever attempted.

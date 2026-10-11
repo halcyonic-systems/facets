@@ -2,6 +2,8 @@ model_permaslug_prefix_or_slug,match,lab,weights,source,checked
 anthropic,prefix,Anthropic,closed,https://platform.claude.com/docs/en/about-claude/models/overview,2026-10-10
 x-ai,prefix,xAI,closed,https://docs.x.ai/docs/models,2026-10-10
 openrouter,prefix,OpenRouter stealth,unknown,https://openrouter.ai/api/v1/models,2026-10-10
+stealth,prefix,stealth (unlabelled),unknown,https://openrouter.ai/docs/cookbook/administration/data-api,2026-10-10
+z-ai/glm-5.3-flash-20260826,slug,Z.ai,open,https://huggingface.co/zai-org/GLM-5.3-Flash,2026-10-10
 deepseek/deepseek-v4.1-flash-20260910,slug,DeepSeek,open,https://huggingface.co/deepseek-ai/DeepSeek-V4.1-Flash,2026-10-10
 deepseek/deepseek-v3.2-20251201,slug,DeepSeek,open,https://huggingface.co/deepseek-ai/DeepSeek-V3.2,2026-10-10
 qwen/qwen3.8-27b-20260814,slug,Alibaba Qwen,open,https://huggingface.co/Qwen/Qwen3.8-27B,2026-10-10
