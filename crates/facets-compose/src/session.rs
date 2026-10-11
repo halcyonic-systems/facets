@@ -18,7 +18,7 @@
 
 use crate::circuit::{Circuit, DeclaredSubstance, Epoch, FlowMode, Node, NodeKind, Wire, PALETTE};
 use crate::{export, ladder};
-use bert_core::{SubstanceType, WorldModel};
+use facets_core::{SubstanceType, WorldModel};
 use serde::Serialize;
 
 /// Recorded rows kept while a session ticks unattended. History is a trace,
@@ -416,7 +416,7 @@ fn q(v: f32) -> String {
 /// the rule that arm actually computes, with the knobs substituted. Engine-
 /// side on purpose — the face renders semantics, it never authors them.
 fn equation(n: &crate::circuit::Node) -> String {
-    use bert_core::ProcessPrimitive::*;
+    use facets_core::ProcessPrimitive::*;
     match n.kind {
         NodeKind::Source => format!("out = {} / tick (per-wire rates override)", q(n.param)),
         NodeKind::Sink => "total += inflow".to_string(),

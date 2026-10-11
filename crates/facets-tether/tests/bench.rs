@@ -7,9 +7,9 @@
 //! on); and the tick log closes the ledger — the nodes' shed mass per tick is
 //! the ledger's dissipation per tick, so what the log says each component did
 //! is what the conservation chart adds up.
-use bert_core::WorldModel;
-use bert_tether::bench::BenchSession;
-use bert_tether::forcing::run_unforced;
+use facets_core::WorldModel;
+use facets_tether::bench::BenchSession;
+use facets_tether::forcing::run_unforced;
 
 const RESERVOIR: &str = include_str!("../../../assets/archive/demos/reservoir-model.json");
 
@@ -19,7 +19,7 @@ fn reservoir() -> WorldModel {
 
 /// The first flow out of a source, by the names the author sees.
 fn a_source_flow(model: &WorldModel) -> (String, String, String, f64) {
-    let spec = bert_core::operational::validate_operational(model).unwrap();
+    let spec = facets_core::operational::validate_operational(model).unwrap();
     let f = spec
         .flows
         .iter()
@@ -158,8 +158,8 @@ fn the_tick_log_closes_the_ledger_per_tick() {
 
 #[test]
 fn a_forced_session_reads_as_the_forced_batch_run_and_refuses_edits_on_the_bound_flow() {
-    use bert_tether::forcing::{flow_targets, force_and_run};
-    use bert_tether::manifest::{ColumnMapping, Role, RunManifest};
+    use facets_tether::forcing::{flow_targets, force_and_run};
+    use facets_tether::manifest::{ColumnMapping, Role, RunManifest};
     let csv = "month,inflow\n1,20\n2,35\n3,60\n4,10\n5,0\n6,15\n";
     let flow_name = flow_targets(&reservoir())
         .first()

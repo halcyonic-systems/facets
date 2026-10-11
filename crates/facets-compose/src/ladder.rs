@@ -17,7 +17,7 @@
 //! (Feedback → Oscillation → Networks) are increasingly composite.
 
 use crate::circuit::{Circuit, Node, NodeKind, Wire};
-use bert_core::ProcessPrimitive::*;
+use facets_core::ProcessPrimitive::*;
 
 fn n(kind: NodeKind, num: usize, x: f32, y: f32) -> Node {
     Node::new(kind, num, glam::vec2(x, y))

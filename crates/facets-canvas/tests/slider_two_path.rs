@@ -2,24 +2,24 @@
 //! must deliver the SAME output through the plain path (run_unforced) and the
 //! demo-bundle CSV path (force_and_run, unforced mapped columns) — the fix
 //! that made this true is apply_params' declared-amount-wins rule.
-use bert_tether::forcing::{force_and_run, run_unforced};
-use bert_tether::manifest::RunManifest;
+use facets_tether::forcing::{force_and_run, run_unforced};
+use facets_tether::manifest::RunManifest;
 
 #[test]
 fn a_slider_edit_runs_identically_through_both_paths() {
     let sl = include_str!("../../../assets/examples/translation-apparatus.sl");
-    let mut model = bert_canvas::sl::parse_sl(sl).expect("parses");
+    let mut model = facets_canvas::sl::parse_sl(sl).expect("parses");
     for r in &mut model.relations {
         if r.name == "mRNA transcript" && r.amount.is_some() {
-            r.amount = Some(bert_core::rust_decimal::Decimal::from(10));
+            r.amount = Some(facets_core::rust_decimal::Decimal::from(10));
         }
     }
-    let world = bert_canvas::canvas::project(&model);
+    let world = facets_canvas::canvas::project(&model);
     println!("subsystems: {}", world.systems.len() - 1);
     println!("interfaces: {}", world.systems[0].boundary.interfaces.len());
 
     let plain = run_unforced(world.clone(), 1.0, 15.0).expect("plain runs");
-    let sum = |r: &bert_tether::forcing::RunReadout| {
+    let sum = |r: &facets_tether::forcing::RunReadout| {
         r.flows
             .iter()
             .find(|f| f.name.contains("nascent"))

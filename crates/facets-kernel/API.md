@@ -13,13 +13,13 @@ mirrors live in `web/src/kernel/types.ts`.
 ## Phase 0 surface (implemented + proven)
 
 ### `validate(model_json: string) → ValidationResult`
-The 4-layer systemhood report. Delegates to `bert_core::validate::validate`.
+The 4-layer systemhood report. Delegates to `facets_core::validate::validate`.
 ```ts
 type ValidationResult = { issues: ValidationIssue[] }
 type ValidationIssue = {
   severity: "Error" | "Warning",
   // #319, additive: the DEFECT KIND this issue is one instance of, named
-  // kernel-side (`bert_core::validate`, a required argument at every issue
+  // kernel-side (`facets_core::validate`, a required argument at every issue
   // construction site). Two issues share a code iff the kernel says they are
   // the same defect, which is what lets a surface group repeats without
   // matching message text. Optional on the wire; absent = unnamed kind, which
@@ -30,7 +30,7 @@ type ValidationIssue = {
   suggestion: string | null,
   // #129, additive: stable doc anchor for the precondition the issue cites —
   // a repo-relative docs path + heading anchor chosen kernel-side
-  // (bert_core::validate::doc; anchors pinned by the doc_anchors_resolve
+  // (facets_core::validate::doc; anchors pinned by the doc_anchors_resolve
   // test). Optional on the wire; absent/null = no doc link.
   doc?: string | null,
 }
@@ -40,7 +40,7 @@ Throws only if `model_json` is not parseable as a `WorldModel`.
 ### `validate_operational(model_json: string) → OperationalOutcome`
 The executable-projection gate. Either the spec a simulator needs, or the
 complete list of reasons the model cannot run. Delegates to
-`bert_core::operational::validate_operational`.
+`facets_core::operational::validate_operational`.
 ```ts
 type OperationalOutcome =
   | { ok: OperationalSpec }        // executable — the projection
@@ -236,7 +236,7 @@ contract, not about which parent lines act.
 
 ### `lens_facts(canvas_json: string) → LensFacts`
 The two lens primitives, canvas-keyed — everything the three lens renderings
-read. Delegates to `bert_core` via `lenses::lens_facts`.
+read. Delegates to `facets_core` via `lenses::lens_facts`.
 ```ts
 type EdgeLocus = "Endo" | "Exo"          // Bunge endo/exostructure = Mobus N/G, computed
 type PortDirection = "Receives" | "Exports" | "Hybrid"
@@ -319,7 +319,7 @@ deserialization, one projection. The composite replacement for the
 model change (each of which re-serialized and re-projected the same model). The
 lens is the canvas model's own `lens` field; the gate runs at that lens's mode
 (Klir→Core, Bunge→Structural, Mobus→Operational). The composition lives in
-`bert_canvas::lenses::analyze` (facts computed once, shared with `describe`);
+`facets_canvas::lenses::analyze` (facts computed once, shared with `describe`);
 this boundary only marshals. The three original calls REMAIN — this adds a
 memoizable fast path, it does not replace them.
 ```ts
@@ -353,7 +353,7 @@ zero-filled rows.
 
 ### `compile_sl(text: string) → { ok: CanvasModel, lens_explicit: boolean } | { errors: SlError[] }`
 Compile SL text (the line-oriented authoring notation) into a canvas editing
-model. The parser (`bert_canvas::sl::parse_sl_full`) is deterministic — a
+model. The parser (`facets_canvas::sl::parse_sl_full`) is deterministic — a
 compiler, never an LLM — and judges NOTHING about systemhood: it resolves
 names, applies the `@` annotation layer (`@pos`, `@lens`, `@directed`;
 unknown annotations skipped), and auto-lays-out unpositioned things on a
@@ -417,7 +417,7 @@ signature changed.
 
 This is a restoration, not an addition: the original BERT carried a description
 on every entity — 161 non-empty ones survive in `assets/models/examples/*.json`
-— and `bert_core::Info::description` has existed from the start, receiving
+— and `facets_core::Info::description` has existed from the start, receiving
 `String::new()` at every construction site. `project()` now writes the authored
 prose into it and `to_canvas` reads it back, so a description round-trips like a
 name does. It is prose and never semantics: no verdict reads it, and two models
@@ -456,7 +456,7 @@ Check every decomposition seam in the model against its store-resolved
 referents. `resolved_json` is a JSON object mapping canonical base58 id → the
 referent model's JSON text — the store layer resolves ids to text across its
 backends and judges nothing. Runs the full boundary contract per seam
-(`bert_core::decomposition`), including the cross-model `derived_env` identity
+(`facets_core::decomposition`), including the cross-model `derived_env` identity
 (child environment stand-ins ↔ parent interior neighbors, matched by name). A
 reference missing from the map and a referent whose text does not parse are
 each a defined `ValidationIssue` in the result — never a throw, never a silent
@@ -472,7 +472,7 @@ the SAME id its parent references; a model without one stays without one
 
 ### `decompose_component(canvas_json: string, thing_id: number) → { ok: DecomposedChild } | { issues: ValidationIssue[] }`
 The decomposition door: derive the newborn child of the canvas component
-`thing_id`. The kernel (`bert_core::decomposition::derive_child`) derives G′
+`thing_id`. The kernel (`facets_core::decomposition::derive_child`) derives G′
 from flows(c) — each interior neighbor becomes a child environment stand-in
 (Source/Sink per direction) carrying the neighbor's name exactly, each incident
 flow becomes a child boundary flow with its substance/name/amount/unit carried
@@ -571,7 +571,7 @@ section adds no new enveloped variant; it forbids the abort path.
 that aborts. `run_forced` derives its tick count as `round(t / Δt)`, so a
 degenerate `Δt` (0, negative, or non-finite) or a non-finite `t` — both of which
 the wizard can produce from an empty field — would spin `usize::MAX` iterations
-and freeze the tab. `bert_tether::forcing::force_and_run` now refuses those up
+and freeze the tab. `facets_tether::forcing::force_and_run` now refuses those up
 front with a `JsError` (a legible "Δt must be a positive, finite number"),
 folding the runaway case into the same throw-don't-hang contract. (`run`'s
 Phase-0 `ticks: usize` is a direct, caller-chosen count and is left as-is.)
@@ -662,13 +662,13 @@ the enforcement.
 Those are readings of the traditions, and both registers are WRITE surfaces —
 their empty cells author new relations — so a cell that silently could not be
 authored was a refusal with no name, no reason, and no kernel behind it. The
-rules moved to `bert_canvas::notation`; the face renders the returned structure
+rules moved to `facets_canvas::notation`; the face renders the returned structure
 and posts back a cell identity.
 
 ### `klir_incidence_cells(canvas_json: string) → KlirIncidence`
 Klir's |T|×|T| incidence matrix over the CANVAS model: row/column order, and
 every cell's occupants, mark, and authorability. Delegates to
-`bert_canvas::notation::klir_incidence_cells`.
+`facets_canvas::notation::klir_incidence_cells`.
 ```ts
 type CellStatus =
   | { status: "occupied" }    // relations stand here — the cell edits
@@ -692,7 +692,7 @@ Bunge's coupling matrix M. `en_bloc` selects his own (m+1)×(m+1) reading, index
 standing for the environment en bloc, so row 0 is the input block M₀ᵣ and column
 0 the output block Mₛ₀; `false` selects the itemized alternative (one row per
 named environment thing — ours, not his). Delegates to
-`bert_canvas::notation::bunge_coupling_cells`.
+`facets_canvas::notation::bunge_coupling_cells`.
 ```ts
 type CouplingSlot = { kind: "env" } | { kind: "thing", id: number, env: boolean }
 type BungeMark =
@@ -734,7 +734,7 @@ MID-RUN without resetting stocks — cannot be expressed by a batch re-run, so a
 live `Circuit` is held across calls. Boundaries of the carve-out:
 
 - ONE exported class, `SandboxSession`. The state and all its meaning live
-  engine-side (`bert_compose::session::Session`, natively tested); the wasm
+  engine-side (`facets_compose::session::Session`, natively tested); the wasm
   class delegates and converts, marshaling-only like every other export.
 - A session is an instrument's live state, never the document of record. The
   document is a `WorldModel` (`to_model_json()` / `SandboxSession.from_model`,
@@ -862,7 +862,7 @@ whose text names no id of its own.
 ### `BenchHandle` — the bench seam (facets#463, move 2b)
 The second stateful export beside `SandboxSession`, and for the same reason: a
 knob turned mid-run without resetting the stocks needs a circuit held across
-calls. State lives engine-side in `bert_tether::bench::BenchSession`; this class
+calls. State lives engine-side in `facets_tether::bench::BenchSession`; this class
 marshals. Trap story as for the sandbox: the face discards the handle and
 reopens it from the document.
 

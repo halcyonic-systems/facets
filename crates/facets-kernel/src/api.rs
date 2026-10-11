@@ -1,7 +1,7 @@
 //! The JS-facing wasm boundary — thin, marshaling-only.
 //!
 //! Every function here follows one shape: deserialize JS input → hand it to the
-//! truth ([`bert_core`] / [`bert_compose`] / [`bert_canvas`] / [`bert_tether`])
+//! truth ([`facets_core`] / [`facets_compose`] / [`facets_canvas`] / [`facets_tether`])
 //! → serialize the result back. There is NO systems logic in this module. It
 //! parses JSON, calls the domain, and hands the answer to the face. If a verdict
 //! were ever computed here instead of delegated, that would violate the
@@ -14,8 +14,8 @@
 use serde::Serialize;
 use wasm_bindgen::prelude::*;
 
-use bert_core::operational::{validate_operational as core_validate_operational, OperationalError};
-use bert_core::WorldModel;
+use facets_core::operational::{validate_operational as core_validate_operational, OperationalError};
+use facets_core::WorldModel;
 
 /// Serialize any kernel result to a JS value (the one marshaling primitive).
 /// `pub(crate)` so the sandbox seam shares it rather than growing a twin.
@@ -38,11 +38,11 @@ fn parse_model(model_json: &str) -> Result<WorldModel, JsError> {
 }
 
 /// The 4-layer systemhood report for a model. Delegates verbatim to
-/// `bert_core::validate::validate` — the semantic authority.
+/// `facets_core::validate::validate` — the semantic authority.
 #[wasm_bindgen]
 pub fn validate(model_json: &str) -> Result<JsValue, JsError> {
     let model = parse_model(model_json)?;
-    to_js(&bert_core::validate::validate(&model))
+    to_js(&facets_core::validate::validate(&model))
 }
 
 /// The executable-projection gate: either the `OperationalSpec` a simulator
@@ -67,7 +67,7 @@ pub fn validate_operational(model_json: &str) -> Result<JsValue, JsError> {
 /// record an empty trace. Refuse before stepping, with the loop named in the
 /// author's own node names. (The forced path gets the same refusal from
 /// `RecordedRun::record_over`.)
-fn refuse_algebraic_cycle(circuit: &bert_compose::Circuit) -> Result<(), JsError> {
+fn refuse_algebraic_cycle(circuit: &facets_compose::Circuit) -> Result<(), JsError> {
     let Some(cycle) = circuit.algebraic_cycle() else {
         return Ok(());
     };
@@ -92,9 +92,9 @@ pub fn run(model_json: &str, dt: f64, ticks: usize) -> Result<JsValue, JsError> 
             errors.len()
         ))
     })?;
-    let mut circuit = bert_compose::from_spec(&spec);
+    let mut circuit = facets_compose::from_spec(&spec);
     refuse_algebraic_cycle(&circuit)?;
-    let recorded = bert_compose::RecordedRun::record(&mut circuit, &spec, dt, ticks);
+    let recorded = facets_compose::RecordedRun::record(&mut circuit, &spec, dt, ticks);
     to_js(&recorded.report())
 }
 
@@ -111,10 +111,10 @@ pub fn run(model_json: &str, dt: f64, ticks: usize) -> Result<JsValue, JsError> 
 /// conserves probability, not substance, so it exposes no `residual`/`conserved`.
 #[wasm_bindgen]
 pub fn run_markov(canvas_json: &str, ticks: usize) -> Result<JsValue, JsError> {
-    let model: bert_canvas::canvas::CanvasModel = serde_json::from_str(canvas_json)
+    let model: facets_canvas::canvas::CanvasModel = serde_json::from_str(canvas_json)
         .map_err(|e| JsError::new(&format!("invalid canvas model: {e}")))?;
-    let (states, edges) = bert_canvas::canvas::markov_edges(&model);
-    let chain = bert_compose::markov::Chain::from_edges(states, &edges);
+    let (states, edges) = facets_canvas::canvas::markov_edges(&model);
+    let chain = facets_compose::markov::Chain::from_edges(states, &edges);
     let v0 = chain.point_mass(0);
     let run = chain.run(&v0, ticks);
     to_js(&MarkovRunResult {
@@ -130,7 +130,7 @@ pub fn run_markov(canvas_json: &str, ticks: usize) -> Result<JsValue, JsError> {
 #[wasm_bindgen]
 pub fn parse_csv(text: &str) -> Result<JsValue, JsError> {
     let (headers, rows) =
-        bert_tether::tether::parse_csv(text).map_err(|e| JsError::new(&format!("{e:?}")))?;
+        facets_tether::tether::parse_csv(text).map_err(|e| JsError::new(&format!("{e:?}")))?;
     to_js(&CsvParse { headers, rows })
 }
 
@@ -141,11 +141,11 @@ pub fn parse_csv(text: &str) -> Result<JsValue, JsError> {
 #[wasm_bindgen]
 pub fn model_targets(model_json: &str) -> Result<JsValue, JsError> {
     let model = parse_model(model_json)?;
-    let flows: Vec<FlowTarget> = bert_tether::forcing::flow_targets(&model)
+    let flows: Vec<FlowTarget> = facets_tether::forcing::flow_targets(&model)
         .into_iter()
         .map(|(id, name, unit)| FlowTarget { id, name, unit })
         .collect();
-    let components: Vec<ComponentTarget> = bert_tether::forcing::component_targets(&model)
+    let components: Vec<ComponentTarget> = facets_tether::forcing::component_targets(&model)
         .into_iter()
         .map(|(id, name)| ComponentTarget { id, name })
         .collect();
@@ -163,9 +163,9 @@ pub fn mapping_status(
     manifest_json: &str,
 ) -> Result<JsValue, JsError> {
     let model = parse_model(model_json)?;
-    let manifest: bert_tether::manifest::RunManifest = serde_json::from_str(manifest_json)
+    let manifest: facets_tether::manifest::RunManifest = serde_json::from_str(manifest_json)
         .map_err(|e| JsError::new(&format!("invalid manifest: {e}")))?;
-    let status = bert_tether::forcing::mapping_status(&model, csv_text, &manifest)
+    let status = facets_tether::forcing::mapping_status(&model, csv_text, &manifest)
         .map_err(|e| JsError::new(&e))?;
     to_js(&status)
 }
@@ -184,9 +184,9 @@ pub fn run_forced(
     today: &str,
 ) -> Result<JsValue, JsError> {
     let model = parse_model(model_json)?;
-    let manifest: bert_tether::manifest::RunManifest = serde_json::from_str(manifest_json)
+    let manifest: facets_tether::manifest::RunManifest = serde_json::from_str(manifest_json)
         .map_err(|e| JsError::new(&format!("invalid manifest: {e}")))?;
-    let readout = bert_tether::forcing::force_and_run(model, csv_text, &manifest, dt, t, today)
+    let readout = facets_tether::forcing::force_and_run(model, csv_text, &manifest, dt, t, today)
         .map_err(|e| JsError::new(&e))?;
     to_js(&RunResultRich::from(readout))
 }
@@ -199,7 +199,7 @@ pub fn run_forced(
 #[wasm_bindgen]
 pub fn run_rich(model_json: &str, dt: f64, t: f64) -> Result<JsValue, JsError> {
     let model = parse_model(model_json)?;
-    let readout = bert_tether::forcing::run_unforced(model, dt, t).map_err(|e| JsError::new(&e))?;
+    let readout = facets_tether::forcing::run_unforced(model, dt, t).map_err(|e| JsError::new(&e))?;
     to_js(&RunResultRich::from(readout))
 }
 
@@ -224,7 +224,7 @@ pub fn model_identity(model_json: &str) -> Result<Option<String>, JsError> {
 /// whose text, by design, names no id of its own.
 #[wasm_bindgen]
 pub fn mint_model_id() -> String {
-    bert_core::ModelId::mint().to_base58()
+    facets_core::ModelId::mint().to_base58()
 }
 
 /// Open a stored model onto the canvas, whichever generation wrote it (#140,
@@ -247,7 +247,7 @@ pub fn open_model(text: &str) -> Result<JsValue, JsError> {
 /// consumes), and is no longer what the library writes.
 #[wasm_bindgen]
 pub fn write_archive(canvas_json: &str) -> Result<String, JsError> {
-    let model: bert_canvas::canvas::CanvasModel = serde_json::from_str(canvas_json)
+    let model: facets_canvas::canvas::CanvasModel = serde_json::from_str(canvas_json)
         .map_err(|e| JsError::new(&format!("invalid canvas model: {e}")))?;
     crate::archive::write(&model).map_err(|e| JsError::new(&e))
 }
@@ -256,7 +256,7 @@ pub fn write_archive(canvas_json: &str) -> Result<String, JsError> {
 /// referents. `resolved_json` maps canonical base58 id → the referent model's
 /// JSON text; the store layer resolves ids to text and judges nothing. Every
 /// verdict — including the missing-referent and unparseable-referent refusals —
-/// is a defined `ValidationIssue` from `bert_core::decomposition`, never a
+/// is a defined `ValidationIssue` from `facets_core::decomposition`, never a
 /// throw, so an unresolvable reference can never crash the face.
 #[wasm_bindgen]
 pub fn check_decompositions(model_json: &str, resolved_json: &str) -> Result<JsValue, JsError> {
@@ -265,9 +265,9 @@ pub fn check_decompositions(model_json: &str, resolved_json: &str) -> Result<JsV
         .map_err(|e| JsError::new(&format!("invalid resolved-referents map: {e}")))?;
     // Referents may be archive-format (#140); the projection layer normalizes
     // them to the WorldModel text the core contract parses.
-    let resolved = bert_canvas::lenses::normalize_referents(&resolved);
-    to_js(&bert_core::validate::ValidationResult {
-        issues: bert_core::decomposition::check_decompositions(&model, &resolved),
+    let resolved = facets_canvas::lenses::normalize_referents(&resolved);
+    to_js(&facets_core::validate::ValidationResult {
+        issues: facets_core::decomposition::check_decompositions(&model, &resolved),
     })
 }
 
@@ -275,14 +275,14 @@ pub fn check_decompositions(model_json: &str, resolved_json: &str) -> Result<JsV
 /// the canvas component `thing_id` — G′ from flows(c), environment stand-ins
 /// named after the parent's interior neighbors, a freshly minted identity — or
 /// the kernel's refusal (`{ ok } | { issues }`). Delegates to
-/// `bert_canvas::canvas::decompose_thing` → `bert_core::decomposition::
+/// `facets_canvas::canvas::decompose_thing` → `facets_core::decomposition::
 /// derive_child`. The caller (the store layer) saves `child_json` and stamps
 /// the parent's reference; the kernel derives and judges, and writes nothing.
 #[wasm_bindgen]
 pub fn decompose_component(canvas_json: &str, thing_id: u32) -> Result<JsValue, JsError> {
-    let model: bert_canvas::canvas::CanvasModel = serde_json::from_str(canvas_json)
+    let model: facets_canvas::canvas::CanvasModel = serde_json::from_str(canvas_json)
         .map_err(|e| JsError::new(&format!("invalid canvas model: {e}")))?;
-    match bert_canvas::canvas::decompose_thing(&model, u64::from(thing_id)) {
+    match facets_canvas::canvas::decompose_thing(&model, u64::from(thing_id)) {
         Ok(child) => to_js(&DecomposeOutcome::Ok {
             ok: DecomposedChild {
                 child_json: serde_json::to_string_pretty(&child)
@@ -308,17 +308,17 @@ pub fn decompose_component(canvas_json: &str, thing_id: u32) -> Result<JsValue, 
 /// canvas-keyed sibling of `check_decompositions`, shaped like
 /// `analyze_canvas`'s `validation` + `issue_targets` pair so seam violations
 /// navigate on the audit panel like any other issue. Projection, judgment, and
-/// target resolution all happen in `bert_canvas::lenses`.
+/// target resolution all happen in `facets_canvas::lenses`.
 #[wasm_bindgen]
 pub fn check_decompositions_canvas(
     canvas_json: &str,
     resolved_json: &str,
 ) -> Result<JsValue, JsError> {
-    let model: bert_canvas::canvas::CanvasModel = serde_json::from_str(canvas_json)
+    let model: facets_canvas::canvas::CanvasModel = serde_json::from_str(canvas_json)
         .map_err(|e| JsError::new(&format!("invalid canvas model: {e}")))?;
     let resolved: std::collections::HashMap<String, String> = serde_json::from_str(resolved_json)
         .map_err(|e| JsError::new(&format!("invalid resolved-referents map: {e}")))?;
-    to_js(&bert_canvas::lenses::check_decompositions_canvas(
+    to_js(&facets_canvas::lenses::check_decompositions_canvas(
         &model, &resolved,
     ))
 }
@@ -328,29 +328,29 @@ pub fn check_decompositions_canvas(
 /// `check_decompositions_canvas`'s so the audit panel can show it.
 #[wasm_bindgen]
 pub fn check_resolution_canvas(stage1_json: &str, stage2_json: &str) -> Result<JsValue, JsError> {
-    let stage1: bert_canvas::canvas::CanvasModel = serde_json::from_str(stage1_json)
+    let stage1: facets_canvas::canvas::CanvasModel = serde_json::from_str(stage1_json)
         .map_err(|e| JsError::new(&format!("invalid stage-1 canvas model: {e}")))?;
-    let stage2: bert_canvas::canvas::CanvasModel = serde_json::from_str(stage2_json)
+    let stage2: facets_canvas::canvas::CanvasModel = serde_json::from_str(stage2_json)
         .map_err(|e| JsError::new(&format!("invalid stage-2 canvas model: {e}")))?;
-    to_js(&bert_canvas::lenses::check_resolution_canvas(&stage1, &stage2))
+    to_js(&facets_canvas::lenses::check_resolution_canvas(&stage1, &stage2))
 }
 
 // ---- Phase 2: the canvas seam ----------------------------------------------
 
 /// Validate a model at a given lens rung: "Core" | "Structural" | "Operational"
 /// | "Full". The kernel-side hook for the canvas lens toggle. Delegates to
-/// `bert_core::validate::validate_mode`.
+/// `facets_core::validate::validate_mode`.
 #[wasm_bindgen]
 pub fn validate_mode(model_json: &str, mode: &str) -> Result<JsValue, JsError> {
     let model = parse_model(model_json)?;
     let m = match mode {
-        "Core" => bert_core::Mode::Core,
-        "Structural" => bert_core::Mode::Structural,
-        "Operational" => bert_core::Mode::Operational,
-        "Full" => bert_core::Mode::Full,
+        "Core" => facets_core::Mode::Core,
+        "Structural" => facets_core::Mode::Structural,
+        "Operational" => facets_core::Mode::Operational,
+        "Full" => facets_core::Mode::Full,
         other => return Err(JsError::new(&format!("unknown mode: {other}"))),
     };
-    to_js(&bert_core::validate::validate_mode(&model, m))
+    to_js(&facets_core::validate::validate_mode(&model, m))
 }
 
 /// Project the canvas editing model (lens/things/relations) into a bert-core
@@ -358,9 +358,9 @@ pub fn validate_mode(model_json: &str, mode: &str) -> Result<JsValue, JsError> {
 /// editing model and the kernel constructs the projection.
 #[wasm_bindgen]
 pub fn project(canvas_json: &str) -> Result<JsValue, JsError> {
-    let model: bert_canvas::canvas::CanvasModel = serde_json::from_str(canvas_json)
+    let model: facets_canvas::canvas::CanvasModel = serde_json::from_str(canvas_json)
         .map_err(|e| JsError::new(&format!("invalid canvas model: {e}")))?;
-    to_js(&bert_canvas::canvas::project(&model))
+    to_js(&facets_canvas::canvas::project(&model))
 }
 
 /// Load an existing `WorldModel` onto the canvas as an editing model — the
@@ -374,7 +374,7 @@ pub fn to_canvas(model_json: &str) -> Result<JsValue, JsError> {
     // as a `ChildRef`, and SL's `decomposes` clause expresses it, so the seam is
     // no longer lossy. The predicate survives in bert-core for callers that want
     // to test flatness.
-    to_js(&bert_canvas::canvas::to_canvas(&model))
+    to_js(&facets_canvas::canvas::to_canvas(&model))
 }
 
 /// Compile SL text (the textual authoring surface) into a canvas editing
@@ -384,7 +384,7 @@ pub fn to_canvas(model_json: &str) -> Result<JsValue, JsError> {
 /// edit, so the kernel still issues every verdict.
 #[wasm_bindgen]
 pub fn compile_sl(text: &str) -> Result<JsValue, JsError> {
-    match bert_canvas::sl::parse_sl_full(text) {
+    match facets_canvas::sl::parse_sl_full(text) {
         Ok(parse) => to_js(&SlOutcome::Ok {
             ok: Box::new(parse.model),
             lens_explicit: parse.lens_explicit,
@@ -398,9 +398,9 @@ pub fn compile_sl(text: &str) -> Result<JsValue, JsError> {
 /// emit∘parse is the identity on SL-born models and canonicalizing otherwise.
 #[wasm_bindgen]
 pub fn emit_sl(canvas_json: &str) -> Result<String, JsError> {
-    let model: bert_canvas::canvas::CanvasModel = serde_json::from_str(canvas_json)
+    let model: facets_canvas::canvas::CanvasModel = serde_json::from_str(canvas_json)
         .map_err(|e| JsError::new(&format!("invalid canvas model: {e}")))?;
-    bert_canvas::sl::emit_sl(&model).map_err(|e| JsError::new(&e))
+    facets_canvas::sl::emit_sl(&model).map_err(|e| JsError::new(&e))
 }
 
 /// Rewrite only the `@pos` lines of an SL source, leaving every other byte
@@ -413,9 +413,9 @@ pub fn emit_sl(canvas_json: &str) -> Result<String, JsError> {
 /// replaced in place.
 #[wasm_bindgen]
 pub fn splice_positions(source: &str, canvas_json: &str) -> Result<String, JsError> {
-    let model: bert_canvas::canvas::CanvasModel = serde_json::from_str(canvas_json)
+    let model: facets_canvas::canvas::CanvasModel = serde_json::from_str(canvas_json)
         .map_err(|e| JsError::new(&format!("invalid canvas model: {e}")))?;
-    bert_canvas::sl::splice_positions(source, &model).map_err(|e| JsError::new(&e))
+    facets_canvas::sl::splice_positions(source, &model).map_err(|e| JsError::new(&e))
 }
 
 /// Validate a proposed connection at the model's current lens. Returns the issues
@@ -423,12 +423,12 @@ pub fn splice_positions(source: &str, canvas_json: &str) -> Result<String, JsErr
 /// call — the canvas rejects an edge iff the kernel says so.
 #[wasm_bindgen]
 pub fn validate_connection(canvas_json: &str, candidate_json: &str) -> Result<JsValue, JsError> {
-    let model: bert_canvas::canvas::CanvasModel = serde_json::from_str(canvas_json)
+    let model: facets_canvas::canvas::CanvasModel = serde_json::from_str(canvas_json)
         .map_err(|e| JsError::new(&format!("invalid canvas model: {e}")))?;
-    let candidate: bert_canvas::canvas::Relation = serde_json::from_str(candidate_json)
+    let candidate: facets_canvas::canvas::Relation = serde_json::from_str(candidate_json)
         .map_err(|e| JsError::new(&format!("invalid candidate relation: {e}")))?;
     to_js(&ConnectionVerdict {
-        issues: bert_canvas::canvas::validate_connection(&model, &candidate),
+        issues: facets_canvas::canvas::validate_connection(&model, &candidate),
     })
 }
 
@@ -441,9 +441,9 @@ pub fn validate_connection(canvas_json: &str, candidate_json: &str) -> Result<Js
 /// internally projects, so every fact is still a kernel verdict.
 #[wasm_bindgen]
 pub fn lens_facts(canvas_json: &str) -> Result<JsValue, JsError> {
-    let model: bert_canvas::canvas::CanvasModel = serde_json::from_str(canvas_json)
+    let model: facets_canvas::canvas::CanvasModel = serde_json::from_str(canvas_json)
         .map_err(|e| JsError::new(&format!("invalid canvas model: {e}")))?;
-    to_js(&bert_canvas::lenses::lens_facts(&model))
+    to_js(&facets_canvas::lenses::lens_facts(&model))
 }
 
 /// The formal face: the model typeset as the active lens's own formal object
@@ -452,29 +452,29 @@ pub fn lens_facts(canvas_json: &str) -> Result<JsValue, JsError> {
 /// it; the math is never assembled in JS. `lens` = "Klir" | "Bunge" | "Mobus".
 #[wasm_bindgen]
 pub fn describe(canvas_json: &str, lens: &str) -> Result<JsValue, JsError> {
-    let model: bert_canvas::canvas::CanvasModel = serde_json::from_str(canvas_json)
+    let model: facets_canvas::canvas::CanvasModel = serde_json::from_str(canvas_json)
         .map_err(|e| JsError::new(&format!("invalid canvas model: {e}")))?;
     let l = match lens {
-        "Klir" => bert_canvas::canvas::Lens::Klir,
-        "Bunge" => bert_canvas::canvas::Lens::Bunge,
-        "Mobus" => bert_canvas::canvas::Lens::Mobus,
+        "Klir" => facets_canvas::canvas::Lens::Klir,
+        "Bunge" => facets_canvas::canvas::Lens::Bunge,
+        "Mobus" => facets_canvas::canvas::Lens::Mobus,
         other => return Err(JsError::new(&format!("unknown lens: {other}"))),
     };
-    to_js(&bert_canvas::lenses::describe(&model, l))
+    to_js(&facets_canvas::lenses::describe(&model, l))
 }
 
 /// The atomic author-view verdict: the lens gate, the lens facts, and the
 /// formal object, from ONE deserialization of the canvas. The lens is the
 /// canvas model's own `lens` field (Klir→Core, Bunge→Structural,
 /// Mobus→Operational for the gate). Composes `validate_mode` + `lens_facts` +
-/// `describe` in `bert_canvas`; this boundary only marshals. Replaces the face's
+/// `describe` in `facets_canvas`; this boundary only marshals. Replaces the face's
 /// three-call waterfall (each of which re-serialized and re-projected the model).
 #[wasm_bindgen]
 pub fn analyze_canvas(canvas_json: &str) -> Result<JsValue, JsError> {
-    let model: bert_canvas::canvas::CanvasModel = serde_json::from_str(canvas_json)
+    let model: facets_canvas::canvas::CanvasModel = serde_json::from_str(canvas_json)
         .map_err(|e| JsError::new(&format!("invalid canvas model: {e}")))?;
     let lens = model.lens;
-    to_js(&bert_canvas::lenses::analyze(&model, lens))
+    to_js(&facets_canvas::lenses::analyze(&model, lens))
 }
 
 // ---- The register matrices: cell semantics, kernel-side (#233) ---------------
@@ -486,9 +486,9 @@ pub fn analyze_canvas(canvas_json: &str) -> Result<JsValue, JsError> {
 /// belongs here rather than in the face. The face maps marks onto glyphs.
 #[wasm_bindgen]
 pub fn klir_incidence_cells(canvas_json: &str) -> Result<JsValue, JsError> {
-    let model: bert_canvas::canvas::CanvasModel = serde_json::from_str(canvas_json)
+    let model: facets_canvas::canvas::CanvasModel = serde_json::from_str(canvas_json)
         .map_err(|e| JsError::new(&format!("invalid canvas model: {e}")))?;
-    to_js(&bert_canvas::notation::klir_incidence_cells(&model))
+    to_js(&facets_canvas::notation::klir_incidence_cells(&model))
 }
 
 /// Bunge's coupling matrix M, read by the kernel: the slot order under either
@@ -499,16 +499,16 @@ pub fn klir_incidence_cells(canvas_json: &str) -> Result<JsValue, JsError> {
 /// cell can say why instead of merely not responding.
 #[wasm_bindgen]
 pub fn bunge_coupling_cells(canvas_json: &str, en_bloc: bool) -> Result<JsValue, JsError> {
-    let model: bert_canvas::canvas::CanvasModel = serde_json::from_str(canvas_json)
+    let model: facets_canvas::canvas::CanvasModel = serde_json::from_str(canvas_json)
         .map_err(|e| JsError::new(&format!("invalid canvas model: {e}")))?;
-    to_js(&bert_canvas::notation::bunge_coupling_cells(&model, en_bloc))
+    to_js(&facets_canvas::notation::bunge_coupling_cells(&model, en_bloc))
 }
 
 // ---- Boundary DTOs (data-transfer shapes only, no logic) --------------------
 
 #[derive(Serialize)]
 struct ConnectionVerdict {
-    issues: Vec<bert_core::validate::ValidationIssue>,
+    issues: Vec<facets_core::validate::ValidationIssue>,
 }
 
 /// The tagged result of [`decompose_component`]: the newborn child, or the
@@ -517,7 +517,7 @@ struct ConnectionVerdict {
 #[serde(untagged)]
 enum DecomposeOutcome {
     Ok { ok: DecomposedChild },
-    Issues { issues: Vec<bert_core::validate::ValidationIssue> },
+    Issues { issues: Vec<facets_core::validate::ValidationIssue> },
 }
 
 /// The newborn child as the store layer needs it: the model text to save, the
@@ -596,8 +596,8 @@ struct TrajDto {
     series: Vec<f32>,
 }
 
-impl From<bert_tether::forcing::RunReadout> for RunResultRich {
-    fn from(r: bert_tether::forcing::RunReadout) -> Self {
+impl From<facets_tether::forcing::RunReadout> for RunResultRich {
+    fn from(r: facets_tether::forcing::RunReadout) -> Self {
         RunResultRich {
             ticks: r.ticks,
             dt: r.dt,
@@ -658,7 +658,7 @@ impl From<bert_tether::forcing::RunReadout> for RunResultRich {
 #[derive(Serialize)]
 #[serde(untagged)]
 enum OperationalOutcome {
-    Ok { ok: bert_core::operational::OperationalSpec },
+    Ok { ok: facets_core::operational::OperationalSpec },
     Errors { errors: Vec<OperationalError> },
 }
 
@@ -670,15 +670,15 @@ enum SlOutcome {
         // Boxed only to keep the variants a similar size (clippy's
         // large_enum_variant): a `CanvasModel` dwarfs a fault list. `Box<T>`
         // serializes exactly as `T`, so the shape crossing to JS is unchanged.
-        ok: Box<bert_canvas::canvas::CanvasModel>,
+        ok: Box<facets_canvas::canvas::CanvasModel>,
         lens_explicit: bool,
     },
     Errors {
-        errors: Vec<bert_canvas::sl::SlError>,
+        errors: Vec<facets_canvas::sl::SlError>,
     },
 }
 
-/// The conservation run's shape is [`bert_compose::RunReport`] — owned by the
+/// The conservation run's shape is [`facets_compose::RunReport`] — owned by the
 /// engine that records it, not re-declared here. `API.md` documents it as
 /// `RunResult`; the field names are unchanged, only the owner is.
 ///
@@ -717,7 +717,7 @@ mod tests {
     #[test]
     #[ignore]
     fn mint_demos() {
-        use bert_compose::circuit::Circuit;
+        use facets_compose::circuit::Circuit;
 
         fn substance(c: &mut Circuit, name: &str, unit: &str) {
             for node in &mut c.nodes {
@@ -731,7 +731,7 @@ mod tests {
             }
         }
         fn mint(c: &Circuit, title: &str, file: &str) {
-            let model = bert_compose::to_world_model(c, title);
+            let model = facets_compose::to_world_model(c, title);
             core_validate_operational(&model)
                 .unwrap_or_else(|e| panic!("{file}: not executable ({} reasons)", e.len()));
             let path = format!(
@@ -744,7 +744,7 @@ mod tests {
         }
 
         // Reservoir: watershed inflow → reservoir level → release. Force inflow.
-        let mut reservoir = bert_compose::ladder::flows();
+        let mut reservoir = facets_compose::ladder::flows();
         reservoir.nodes[1].initial_storage = 100.0;
         reservoir.nodes[1].storage = 100.0;
         rename(&mut reservoir, &["Watershed", "Reservoir", "Release"]);
@@ -753,7 +753,7 @@ mod tests {
 
         // Allocation: total demand → allocator → three model providers. Force the
         // total + per-provider weights (the rung-2 allocation demo).
-        let mut alloc = bert_compose::ladder::networks();
+        let mut alloc = facets_compose::ladder::networks();
         rename(
             &mut alloc,
             &["Total demand", "Allocator", "Anthropic", "OpenAI", "Google"],
@@ -763,7 +763,7 @@ mod tests {
 
         // Homeostat: furnace → valve → room temperature → heat loss, regulated by
         // a thermostat + controller. Force the furnace supply.
-        let mut homeo = bert_compose::ladder::feedback_regulation();
+        let mut homeo = facets_compose::ladder::feedback_regulation();
         rename(
             &mut homeo,
             &["Furnace", "Valve", "Room", "Heat loss", "Thermostat", "Controller"],
@@ -786,7 +786,7 @@ mod tests {
         ] {
             let model: WorldModel =
                 serde_json::from_str(json).unwrap_or_else(|e| panic!("{label}: parse: {e}"));
-            let _report = bert_core::validate::validate(&model);
+            let _report = facets_core::validate::validate(&model);
         }
     }
 
@@ -826,8 +826,8 @@ mod tests {
 
     /// The reservoir demo, reconstructed in Rust (model + CSV + manifest) so the
     /// forced-run DTOs are fixtured from a real `force_and_run`, not hand-typed.
-    fn reservoir_manifest() -> bert_tether::manifest::RunManifest {
-        use bert_tether::manifest::{ColumnMapping, Role, RunManifest};
+    fn reservoir_manifest() -> facets_tether::manifest::RunManifest {
+        use facets_tether::manifest::{ColumnMapping, Role, RunManifest};
         RunManifest {
             model: String::new(),
             data: String::new(),
@@ -862,7 +862,7 @@ mod tests {
     /// `SandboxHistoryDelta`, `SandboxPaletteEntry[]`, `LadderStamp[]`.
     #[test]
     fn sandbox_snapshot_fixture() {
-        let mut s = bert_compose::session::Session::from_stamp("Flows").expect("Flows stamps");
+        let mut s = facets_compose::session::Session::from_stamp("Flows").expect("Flows stamps");
         s.set_invariant(true);
         s.step(5, 1.0);
         check_fixture("sandbox_snapshot", &s.snapshot());
@@ -870,24 +870,24 @@ mod tests {
 
     #[test]
     fn sandbox_history_delta_fixture() {
-        let mut s = bert_compose::session::Session::from_stamp("Flows").expect("Flows stamps");
+        let mut s = facets_compose::session::Session::from_stamp("Flows").expect("Flows stamps");
         s.step(5, 1.0);
         check_fixture("sandbox_history_delta", &s.history_since(4));
     }
 
     #[test]
     fn sandbox_palette_fixture() {
-        check_fixture("sandbox_palette", &bert_compose::session::palette());
+        check_fixture("sandbox_palette", &facets_compose::session::palette());
     }
 
     #[test]
     fn ladder_stamps_fixture() {
-        check_fixture("ladder_stamps", &bert_compose::session::stamps());
+        check_fixture("ladder_stamps", &facets_compose::session::stamps());
     }
 
     #[test]
     fn csv_parse_fixture() {
-        let (headers, rows) = bert_tether::tether::parse_csv(RESERVOIR_CSV).expect("csv parses");
+        let (headers, rows) = facets_tether::tether::parse_csv(RESERVOIR_CSV).expect("csv parses");
         check_fixture("csv_parse", &CsvParse { headers, rows });
     }
 
@@ -895,11 +895,11 @@ mod tests {
     fn targets_fixture() {
         let json = include_str!("../../../assets/archive/demos/reservoir-model.json");
         let model: WorldModel = serde_json::from_str(json).expect("reservoir parses");
-        let flows: Vec<FlowTarget> = bert_tether::forcing::flow_targets(&model)
+        let flows: Vec<FlowTarget> = facets_tether::forcing::flow_targets(&model)
             .into_iter()
             .map(|(id, name, unit)| FlowTarget { id, name, unit })
             .collect();
-        let components: Vec<ComponentTarget> = bert_tether::forcing::component_targets(&model)
+        let components: Vec<ComponentTarget> = facets_tether::forcing::component_targets(&model)
             .into_iter()
             .map(|(id, name)| ComponentTarget { id, name })
             .collect();
@@ -912,7 +912,7 @@ mod tests {
         let json = include_str!("../../../assets/archive/demos/reservoir-model.json");
         let model: WorldModel = serde_json::from_str(json).expect("reservoir parses");
         let status =
-            bert_tether::forcing::mapping_status(&model, RESERVOIR_CSV, &reservoir_manifest())
+            facets_tether::forcing::mapping_status(&model, RESERVOIR_CSV, &reservoir_manifest())
                 .expect("mapping status");
         check_fixture("mapping_status", &status);
     }
@@ -922,8 +922,8 @@ mod tests {
         let json = include_str!("../../../assets/models/runnable-sample.json");
         let model: WorldModel = serde_json::from_str(json).expect("sample parses");
         let spec = core_validate_operational(&model).expect("sample is executable");
-        let mut circuit = bert_compose::from_spec(&spec);
-        let recorded = bert_compose::RecordedRun::record(&mut circuit, &spec, 1.0, 4);
+        let mut circuit = facets_compose::from_spec(&spec);
+        let recorded = facets_compose::RecordedRun::record(&mut circuit, &spec, 1.0, 4);
         check_fixture("run_result", &recorded.report());
     }
 
@@ -934,7 +934,7 @@ mod tests {
     fn tick_log_fixture() {
         let json = include_str!("../../../assets/archive/demos/reservoir-model.json");
         let model: WorldModel = serde_json::from_str(json).expect("reservoir parses");
-        let mut bench = bert_tether::bench::BenchSession::open_unforced(model, 1.0).expect("opens");
+        let mut bench = facets_tether::bench::BenchSession::open_unforced(model, 1.0).expect("opens");
         bench.step(3);
         check_fixture("tick_log", &bench.tick_log_since(1));
     }
@@ -943,7 +943,7 @@ mod tests {
     fn run_result_rich_fixture() {
         let json = include_str!("../../../assets/archive/demos/reservoir-model.json");
         let model: WorldModel = serde_json::from_str(json).expect("reservoir parses");
-        let readout = bert_tether::forcing::force_and_run(
+        let readout = facets_tether::forcing::force_and_run(
             model,
             RESERVOIR_CSV,
             &reservoir_manifest(),
@@ -959,8 +959,8 @@ mod tests {
     /// cross-edge out of each. The #67 flagship fixture — self-loops make it, and
     /// they are refused entering Operational mode, so the Markov path must read
     /// Klir directly.
-    fn parity_canvas() -> bert_canvas::canvas::CanvasModel {
-        use bert_canvas::canvas::{CanvasModel, Kind, Lens, Relation, Role, Thing};
+    fn parity_canvas() -> facets_canvas::canvas::CanvasModel {
+        use facets_canvas::canvas::{CanvasModel, Kind, Lens, Relation, Role, Thing};
         fn thing(id: u64, name: &str) -> Thing {
             Thing {
                 id,
@@ -1032,9 +1032,9 @@ mod tests {
     #[test]
     fn markov_parity_runs_and_converges() {
         let model = parity_canvas();
-        let (states, edges) = bert_canvas::canvas::markov_edges(&model);
+        let (states, edges) = facets_canvas::canvas::markov_edges(&model);
         assert_eq!(states.len(), 2, "two states");
-        let chain = bert_compose::markov::Chain::from_edges(states, &edges);
+        let chain = facets_compose::markov::Chain::from_edges(states, &edges);
         // Uniform weights on the parity automaton give P = [[½,½],[½,½]]: from a
         // point mass on Even, one step already lands on the uniform distribution.
         let run = chain.run(&chain.point_mass(0), 20);
@@ -1060,8 +1060,8 @@ mod tests {
                 _ => None,
             };
         }
-        let (states, edges) = bert_canvas::canvas::markov_edges(&model);
-        let chain = bert_compose::markov::Chain::from_edges(states, &edges);
+        let (states, edges) = facets_canvas::canvas::markov_edges(&model);
+        let chain = facets_compose::markov::Chain::from_edges(states, &edges);
         let row = &chain.p()[0];
         assert!(
             (row[0] - 0.25).abs() < 1e-9 && (row[1] - 0.75).abs() < 1e-9,
@@ -1072,8 +1072,8 @@ mod tests {
     #[test]
     fn markov_run_result_fixture() {
         let model = parity_canvas();
-        let (states, edges) = bert_canvas::canvas::markov_edges(&model);
-        let chain = bert_compose::markov::Chain::from_edges(states, &edges);
+        let (states, edges) = facets_canvas::canvas::markov_edges(&model);
+        let chain = facets_compose::markov::Chain::from_edges(states, &edges);
         let run = chain.run(&chain.point_mass(0), 4);
         check_fixture(
             "markov_run_result",
@@ -1093,8 +1093,8 @@ mod tests {
         let json = include_str!("../../../assets/models/runnable-sample.json");
         let model: WorldModel = serde_json::from_str(json).expect("sample parses");
         let spec = core_validate_operational(&model).expect("sample is executable");
-        let mut circuit = bert_compose::from_spec(&spec);
-        let run = bert_compose::RecordedRun::record(&mut circuit, &spec, 1.0, 12);
+        let mut circuit = facets_compose::from_spec(&spec);
+        let run = facets_compose::RecordedRun::record(&mut circuit, &spec, 1.0, 12);
         assert!(!run.history.is_empty(), "empty trace");
         assert!(
             run.final_balance.abs() < 1e-3,
@@ -1110,12 +1110,12 @@ mod tests {
     #[test]
     #[ignore]
     fn mint_runnable_sample() {
-        let circuit = bert_compose::ladder::flows();
-        let model = bert_compose::to_world_model(&circuit, "flows-runnable-sample");
+        let circuit = facets_compose::ladder::flows();
+        let model = facets_compose::to_world_model(&circuit, "flows-runnable-sample");
         // prove it projects + runs before we bundle it
         let spec = core_validate_operational(&model).expect("ladder::flows must be executable");
-        let mut c = bert_compose::from_spec(&spec);
-        let r = bert_compose::RecordedRun::record(&mut c, &spec, 1.0, 12);
+        let mut c = facets_compose::from_spec(&spec);
+        let r = facets_compose::RecordedRun::record(&mut c, &spec, 1.0, 12);
         assert!(r.final_balance.abs() < 1e-3, "sample must conserve");
         let json = serde_json::to_string_pretty(&model).unwrap();
         std::fs::write(

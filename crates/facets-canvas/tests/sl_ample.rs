@@ -17,8 +17,8 @@
 //! ENGINE does with it (the min's signal limb never binds) is held by the
 //! equivalence test in bert-compose.
 
-use bert_canvas::canvas::project;
-use bert_canvas::sl::{emit_sl, parse_sl};
+use facets_canvas::canvas::project;
+use facets_canvas::sl::{emit_sl, parse_sl};
 
 const AMPLE: &str = "\
 system \"Amp Rig\" : Concrete/Technical

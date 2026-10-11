@@ -8,8 +8,8 @@
 //! re-seating the components in declaration order on the ring the layout
 //! chose, rather than by asking the layout what it would have done.
 
-use bert_canvas::canvas::{CanvasModel, Role, Thing};
-use bert_canvas::sl::parse_sl;
+use facets_canvas::canvas::{CanvasModel, Role, Thing};
+use facets_canvas::sl::parse_sl;
 
 const CENTER: (f32, f32) = (480.0, 320.0);
 /// Mirrors `web/src/canvas/style.ts` `nodeR`.

@@ -1,7 +1,7 @@
 //! bert-tether — the boundary-interface subsystem, pure Rust (no wasm-bindgen).
 //!
 //! The import ritual that couples empirical data to the executable model. It is
-//! neither engine physics (that is [`bert_compose`]) nor marshaling (that is the
+//! neither engine physics (that is [`facets_compose`]) nor marshaling (that is the
 //! wasm boundary): it is the interface where a CSV becomes forcing on a system.
 //!
 //! - [`tether`]: the CSV import ritual — column-meaning assignment with gates

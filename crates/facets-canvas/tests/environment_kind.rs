@@ -39,9 +39,9 @@
 use std::fs;
 use std::path::PathBuf;
 
-use bert_canvas::canvas::project;
-use bert_canvas::sl::{emit_sl, parse_sl_full};
-use bert_core::operational::validate_operational;
+use facets_canvas::canvas::project;
+use facets_canvas::sl::{emit_sl, parse_sl_full};
+use facets_core::operational::validate_operational;
 
 fn read(rel: &str) -> String {
     let path = PathBuf::from(env!("CARGO_MANIFEST_DIR"))
@@ -154,7 +154,7 @@ fn the_examples_blocked_by_derived_direction_now_validate() {
 
 #[test]
 fn source_then_sink_of_one_name_is_one_neutral_neighbour() {
-    let m = bert_canvas::sl::parse_sl(
+    let m = facets_canvas::sl::parse_sl(
         "component Stat interface\n\
          source Room\n\
          sink Room\n\
@@ -164,17 +164,17 @@ fn source_then_sink_of_one_name_is_one_neutral_neighbour() {
     .unwrap();
     let rooms: Vec<_> = m.things.iter().filter(|t| t.name == "Room").collect();
     assert_eq!(rooms.len(), 1, "one neighbour, not two");
-    assert_eq!(rooms[0].role, bert_canvas::canvas::Role::Environment);
-    assert_eq!(rooms[0].env_kind, bert_canvas::canvas::EnvKind::Neutral);
+    assert_eq!(rooms[0].role, facets_canvas::canvas::Role::Environment);
+    assert_eq!(rooms[0].env_kind, facets_canvas::canvas::EnvKind::Neutral);
     // and it writes back as the word that means both
-    let text = bert_canvas::sl::emit_sl(&m).unwrap();
+    let text = facets_canvas::sl::emit_sl(&m).unwrap();
     assert!(text.contains("environment Room"), "{text}");
     assert!(!text.contains("source Room") && !text.contains("sink Room"), "{text}");
 }
 
 #[test]
 fn sink_then_source_folds_the_same_way_and_keeps_a_late_description() {
-    let m = bert_canvas::sl::parse_sl(
+    let m = facets_canvas::sl::parse_sl(
         "component A interface\n\
          sink Grid\n\
          source Grid description \"the utility, both ways\"\n\
@@ -182,7 +182,7 @@ fn sink_then_source_folds_the_same_way_and_keeps_a_late_description() {
     )
     .unwrap();
     let grid = m.things.iter().find(|t| t.name == "Grid").unwrap();
-    assert_eq!(grid.env_kind, bert_canvas::canvas::EnvKind::Neutral);
+    assert_eq!(grid.env_kind, facets_canvas::canvas::EnvKind::Neutral);
     assert_eq!(grid.description, "the utility, both ways");
 }
 
@@ -196,7 +196,7 @@ fn the_fold_is_only_for_the_opposite_pair() {
         "sink Room\nsink Room\n",
         "source Room\nsink Room primitive Buffering\n",
     ] {
-        let err = bert_canvas::sl::parse_sl(text).unwrap_err();
+        let err = facets_canvas::sl::parse_sl(text).unwrap_err();
         assert!(err[0].message.contains("already declared"), "{text}: {}", err[0].message);
     }
 }

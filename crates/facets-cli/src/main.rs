@@ -27,9 +27,9 @@ use std::process::ExitCode;
 use clap::{Parser, Subcommand, ValueEnum};
 use serde::Serialize;
 
-use bert_canvas::canvas::{project, CanvasModel, EnvKind, Lens, Role};
-use bert_canvas::lenses::{analyze, describe};
-use bert_core::validate::Severity;
+use facets_canvas::canvas::{project, CanvasModel, EnvKind, Lens, Role};
+use facets_canvas::lenses::{analyze, describe};
+use facets_core::validate::Severity;
 
 mod input;
 
@@ -202,12 +202,12 @@ struct LayoutReport {
 /// `OperationalOutcome::Errors`), so a reader that knows one knows the other.
 #[derive(Serialize)]
 struct Faults<'a> {
-    errors: &'a [bert_canvas::sl::SlError],
+    errors: &'a [facets_canvas::sl::SlError],
 }
 
 #[derive(Serialize)]
 struct NotExecutable<'a> {
-    errors: &'a [bert_core::operational::OperationalError],
+    errors: &'a [facets_core::operational::OperationalError],
 }
 
 /// A run that the engine refused before stepping — the wiring has a loop with
@@ -372,7 +372,7 @@ fn run_cmd(file: PathBuf, t: f64, dt: f64) -> u8 {
         Err(code) => return code,
     };
     let world = project(&model);
-    let spec = match bert_core::operational::validate_operational(&world) {
+    let spec = match facets_core::operational::validate_operational(&world) {
         Ok(spec) => spec,
         Err(errors) => {
             eprintln!(
@@ -385,8 +385,8 @@ fn run_cmd(file: PathBuf, t: f64, dt: f64) -> u8 {
             return if code == exit::OK { exit::REFUSED } else { code };
         }
     };
-    let mut circuit = bert_compose::from_spec(&spec);
-    match bert_compose::RecordedRun::record_over(&mut circuit, &spec, dt, t) {
+    let mut circuit = facets_compose::from_spec(&spec);
+    match facets_compose::RecordedRun::record_over(&mut circuit, &spec, dt, t) {
         Ok(recorded) => emit(&recorded.report()),
         Err(reason) => {
             eprintln!("bert: {}: {reason}", file.display());
@@ -448,9 +448,9 @@ struct BenchAnswer<'a> {
     levels: Vec<BenchLevel>,
     trajectories: Vec<BenchSeries>,
     flows: Vec<BenchFlow>,
-    edits: &'a [bert_tether::bench::KnobEdit],
+    edits: &'a [facets_tether::bench::KnobEdit],
     #[serde(skip_serializing_if = "Option::is_none")]
-    log: Option<Vec<bert_tether::bench::TickLog>>,
+    log: Option<Vec<facets_tether::bench::TickLog>>,
 }
 
 #[derive(Serialize)]
@@ -492,7 +492,7 @@ fn bench_cmd(file: PathBuf, t: f64, dt: f64, sets: Vec<String>, no_log: bool) ->
     }
     knobs.sort_by_key(|k| k.tick);
     let world = project(&model);
-    let mut bench = match bert_tether::bench::BenchSession::open_unforced(world, dt) {
+    let mut bench = match facets_tether::bench::BenchSession::open_unforced(world, dt) {
         Ok(b) => b,
         Err(reason) => {
             eprintln!("bert: {}: {reason}", file.display());
@@ -500,7 +500,7 @@ fn bench_cmd(file: PathBuf, t: f64, dt: f64, sets: Vec<String>, no_log: bool) ->
             return if code == exit::OK { exit::REFUSED } else { code };
         }
     };
-    let total = match bert_compose::ticks_over(dt, t) {
+    let total = match facets_compose::ticks_over(dt, t) {
         Ok(n) => n as u64,
         Err(reason) => {
             eprintln!("bert: {reason}");

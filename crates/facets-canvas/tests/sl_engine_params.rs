@@ -11,8 +11,8 @@
 //! first-order drain prefers `time_constant` whenever both are set, so a
 //! co-declared `release` would never be honored.
 
-use bert_canvas::canvas::project;
-use bert_canvas::sl::{emit_sl, parse_sl};
+use facets_canvas::canvas::project;
+use facets_canvas::sl::{emit_sl, parse_sl};
 
 const BUFFERING: &str = "\
 system \"Waterworks\" : Concrete

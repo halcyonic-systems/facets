@@ -5,8 +5,8 @@
 //! "replenishment order" into a Combining factory, which validated green,
 //! ran green, and did nothing (2026-07-27).
 
-use bert_core::validate::{validate_mode, Severity};
-use bert_core::{Mode, WorldModel};
+use facets_core::validate::{validate_mode, Severity};
+use facets_core::{Mode, WorldModel};
 use serde_json::json;
 
 /// Root + two components with chosen primitives, one flow between them with a

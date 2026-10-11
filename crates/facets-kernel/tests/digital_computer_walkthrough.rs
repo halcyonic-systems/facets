@@ -18,12 +18,12 @@
 use std::collections::HashMap;
 use std::fs;
 
-use bert_canvas::canvas::CanvasModel;
-use bert_canvas::lenses::{analyze, check_decompositions_canvas};
-use bert_canvas::sl::parse_sl;
-use bert_core::validate::Severity;
-use bert_core::ModelId;
-use bert_lenses_kernel::archive;
+use facets_canvas::canvas::CanvasModel;
+use facets_canvas::lenses::{analyze, check_decompositions_canvas};
+use facets_canvas::sl::parse_sl;
+use facets_core::validate::Severity;
+use facets_core::ModelId;
+use facets_kernel::archive;
 
 /// The child's pinned identity — the id level 0 stamps in its `decomposes`
 /// clause. Minted once; the base58 string is the reference key.
@@ -106,7 +106,7 @@ fn walkthrough_seam_is_clean() {
         .things
         .iter()
         .filter_map(|t| t.child_model.as_ref().map(|c| c.id.as_uuid()))
-        .map(|u| bert_core::model_id::encode_uuid(&u))
+        .map(|u| facets_core::model_id::encode_uuid(&u))
         .collect();
     assert_eq!(
         refs,

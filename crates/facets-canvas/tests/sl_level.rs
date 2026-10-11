@@ -15,9 +15,9 @@
 use std::fs;
 use std::path::PathBuf;
 
-use bert_canvas::canvas::{KlirLevel, Lens};
-use bert_canvas::lenses::{check_cross_level, describe, LensDescription, KLIR_MODELING_RELATION};
-use bert_canvas::sl::{emit_sl, parse_sl};
+use facets_canvas::canvas::{KlirLevel, Lens};
+use facets_canvas::lenses::{check_cross_level, describe, LensDescription, KLIR_MODELING_RELATION};
+use facets_canvas::sl::{emit_sl, parse_sl};
 
 #[test]
 fn level_parses_into_the_model() {

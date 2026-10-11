@@ -8,13 +8,13 @@
 //! below reaches the end (or an `Err`) without aborting the test binary — a
 //! panic anywhere would fail it.
 
-use bert_tether::forcing::{component_targets, flow_targets, force_and_run, mapping_status};
-use bert_tether::manifest::{ColumnMapping, Role, RunManifest};
-use bert_tether::tether::{parse_csv, MappingDraft};
+use facets_tether::forcing::{component_targets, flow_targets, force_and_run, mapping_status};
+use facets_tether::manifest::{ColumnMapping, Role, RunManifest};
+use facets_tether::tether::{parse_csv, MappingDraft};
 
 const RESERVOIR: &str = include_str!("../../../assets/archive/demos/reservoir-model.json");
 
-fn reservoir() -> bert_core::WorldModel {
+fn reservoir() -> facets_core::WorldModel {
     serde_json::from_str(RESERVOIR).expect("reservoir asset parses")
 }
 
@@ -47,7 +47,7 @@ fn parse_csv_and_inferred_dt_survive_weird_input() {
             continue;
         }
         let mut draft = MappingDraft::new("adversarial.csv".into(), headers, rows);
-        draft.assignments[0] = bert_tether::tether::Assignment::Time;
+        draft.assignments[0] = facets_tether::tether::Assignment::Time;
         let _ = draft.inferred_dt();
         let _ = draft.column_values(0);
     }
@@ -157,7 +157,7 @@ fn force_and_run_refuses_without_panicking() {
         ],
     };
     // The Δt precondition is doctrinal, and it lives in the engine
-    // (`bert_compose::ticks_over`), not in this import path: a slice of zero is
+    // (`facets_compose::ticks_over`), not in this import path: a slice of zero is
     // not a small step, it is not a step, so it defines no transition and there
     // is no run to record. This path only *asks* the engine, so no door into a
     // run is unguarded. Assert the refusal AND that it cites the precondition
@@ -203,12 +203,12 @@ fn target_enumeration_is_total() {
     let _flows = flow_targets(&model);
     let _components = component_targets(&model);
     // An empty model has no targets — and must not panic producing that answer.
-    let empty = bert_core::WorldModel {
+    let empty = facets_core::WorldModel {
         version: 1,
         model_id: None,
         mode: None,
-        environment: bert_core::Environment {
-            info: bert_core::Info { id: bert_core::Id { ty: bert_core::IdType::Environment, indices: vec![-1] }, level: -1, name: String::new(), description: String::new(), grounding: None },
+        environment: facets_core::Environment {
+            info: facets_core::Info { id: facets_core::Id { ty: facets_core::IdType::Environment, indices: vec![-1] }, level: -1, name: String::new(), description: String::new(), grounding: None },
             sources: vec![],
             sinks: vec![],
             milieu: vec![],

@@ -5,10 +5,10 @@
 //! `unreachable`. The separating instance from the issue: the same text with
 //! `environment` in place of `sink` loses every `unreachable` and keeps only
 //! the genuine `dead_end`s. Now the verdict names the cause.
-use bert_canvas::canvas::Lens;
-use bert_canvas::lenses::analyze;
-use bert_canvas::sl::parse_sl;
-use bert_core::validate::Severity;
+use facets_canvas::canvas::Lens;
+use facets_canvas::lenses::analyze;
+use facets_canvas::sl::parse_sl;
+use facets_core::validate::Severity;
 
 const SINK_THAT_SENDS: &str = "\
 system \"Submarine\" : Concrete/Technical

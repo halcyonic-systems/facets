@@ -9,11 +9,11 @@
 //!
 //! If this fails: fix the README, or fix the kernel. Do not delete the test.
 
-use bert_canvas::canvas::{project, Lens};
-use bert_canvas::lenses::describe;
-use bert_canvas::sl::parse_sl;
-use bert_core::validate::validate_mode;
-use bert_core::Mode;
+use facets_canvas::canvas::{project, Lens};
+use facets_canvas::lenses::describe;
+use facets_canvas::sl::parse_sl;
+use facets_core::validate::validate_mode;
+use facets_core::Mode;
 
 /// Verbatim from README.md — the four lines a reader meets first. The relation
 /// is declared `mere`: it holds, but it does not act. Klir counts it; Bunge does

@@ -21,7 +21,7 @@
 use serde::Serialize;
 
 use crate::circuit::Circuit;
-use bert_core::operational::OperationalSpec;
+use facets_core::operational::OperationalSpec;
 
 /// A recorded run, flattened to the part a *reader* gets: the Δt it ran under,
 /// the trace, the conservation ledger, and the closing residual. The spec key
@@ -207,8 +207,8 @@ mod tests {
     use super::*;
     use crate::circuit::{Circuit, Node, NodeKind, Wire};
     use crate::export::{from_spec, to_world_model};
-    use bert_core::operational::{validate_operational, InterfacePrimitive};
-    use bert_core::{Id, IdType, Info, Interface, InterfaceType, ProcessPrimitive, WorldModel};
+    use facets_core::operational::{validate_operational, InterfacePrimitive};
+    use facets_core::{Id, IdType, Info, Interface, InterfaceType, ProcessPrimitive, WorldModel};
     use glam::vec2 as pos2;
 
     /// A conserving source → buffer → sink circuit exported to a model.

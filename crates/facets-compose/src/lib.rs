@@ -12,7 +12,7 @@
 //! swap makes the engine carry no UI dependency at all.
 //!
 //! The runnable path a hosting face drives:
-//! `bert_core::operational::OperationalSpec` → [`from_spec`] → [`Circuit`] →
+//! `facets_core::operational::OperationalSpec` → [`from_spec`] → [`Circuit`] →
 //! [`run::RecordedRun::record`] → trace.
 
 pub mod circuit;

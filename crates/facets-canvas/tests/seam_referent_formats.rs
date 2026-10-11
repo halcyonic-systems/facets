@@ -9,10 +9,10 @@
 
 use std::collections::HashMap;
 
-use bert_canvas::canvas::{project, CanvasModel};
-use bert_canvas::lenses::check_decompositions_canvas;
-use bert_canvas::sl::parse_sl;
-use bert_core::ModelId;
+use facets_canvas::canvas::{project, CanvasModel};
+use facets_canvas::lenses::check_decompositions_canvas;
+use facets_canvas::sl::parse_sl;
+use facets_core::ModelId;
 
 fn parent(child_id: &ModelId) -> CanvasModel {
     let text = format!(

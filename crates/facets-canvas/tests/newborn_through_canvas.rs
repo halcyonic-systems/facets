@@ -7,9 +7,9 @@
 //! contract as soon as it was judged. `CanvasModel::crossings` now carries
 //! them across; this file is the witness in both directions.
 
-use bert_canvas::canvas::{decompose_thing, project, to_canvas};
-use bert_canvas::sl::parse_sl;
-use bert_core::decomposition::check_decomposition_contract;
+use facets_canvas::canvas::{decompose_thing, project, to_canvas};
+use facets_canvas::sl::parse_sl;
+use facets_core::decomposition::check_decomposition_contract;
 
 const AQUARIUM: &str = "system \"Aquarium\" : Concrete/Physical\n\
 component Water primitive Buffering interface\n\
@@ -39,7 +39,7 @@ fn the_worldmodel_newborn_passes_the_contract_from_birth() {
     assert!(issues.is_empty(), "{issues:?}");
 }
 
-fn aerator_child() -> (bert_core::WorldModel, bert_core::Id, bert_canvas::canvas::CanvasModel) {
+fn aerator_child() -> (facets_core::WorldModel, facets_core::Id, facets_canvas::canvas::CanvasModel) {
     let parent_canvas = parse_sl(AQUARIUM).unwrap();
     let aerator = parent_canvas.things.iter().find(|t| t.name == "Aerator").unwrap().id;
     let child = decompose_thing(&parent_canvas, aerator).unwrap();
@@ -65,13 +65,13 @@ fn the_same_newborn_through_the_canvas_keeps_its_crossings_and_passes_the_contra
     assert!(issues.is_empty(), "{issues:?}");
     // and the stored JSON round-trips them
     let json = serde_json::to_string(&saved).unwrap();
-    let back: bert_canvas::canvas::CanvasModel = serde_json::from_str(&json).unwrap();
+    let back: facets_canvas::canvas::CanvasModel = serde_json::from_str(&json).unwrap();
     assert_eq!(back.crossings, saved.crossings);
 }
 
 #[test]
 fn a_model_saved_before_crossings_existed_still_loads() {
-    let m: bert_canvas::canvas::CanvasModel =
+    let m: facets_canvas::canvas::CanvasModel =
         serde_json::from_str(r#"{"lens":"Mobus","things":[],"relations":[]}"#).unwrap();
     assert!(m.crossings.is_empty());
     // and a model with none writes no field, so pre-existing JSON stays byte-identical
@@ -93,14 +93,14 @@ fn an_interface_that_takes_a_crossing_retires_it() {
          @lens mobus\n",
     )
     .unwrap();
-    let name_of = |m: &bert_canvas::canvas::CanvasModel, id: u64| m.things.iter().find(|t| t.id == id).unwrap().name.clone();
+    let name_of = |m: &facets_canvas::canvas::CanvasModel, id: u64| m.things.iter().find(|t| t.id == id).unwrap().name.clone();
     edited.crossings = saved
         .crossings
         .iter()
         .map(|c| {
             let name = name_of(&saved, c.env);
             let env = edited.things.iter().find(|t| t.name == name).unwrap().id;
-            bert_canvas::canvas::Crossing { env, ..c.clone() }
+            facets_canvas::canvas::Crossing { env, ..c.clone() }
         })
         .collect();
     let world = project(&edited);
@@ -115,14 +115,14 @@ fn an_interface_that_takes_a_crossing_retires_it() {
     assert_eq!(to_root, vec!["bubbles".to_string()]);
     // and the seam still holds: one crossing refined, one still pending on the root
     let issues = check_decomposition_contract(&parent, &comp, &world);
-    let errors: Vec<_> = issues.iter().filter(|i| i.severity == bert_core::validate::Severity::Error).collect();
+    let errors: Vec<_> = issues.iter().filter(|i| i.severity == facets_core::validate::Severity::Error).collect();
     assert!(errors.is_empty(), "{errors:?}");
 }
 
 #[test]
 fn emit_sl_names_the_pending_crossings_as_comments_and_parse_drops_them() {
     let (_, _, saved) = aerator_child();
-    let text = bert_canvas::sl::emit_sl(&saved).unwrap();
+    let text = facets_canvas::sl::emit_sl(&saved).unwrap();
     assert!(text.contains("# 2 boundary flows land on this system itself"), "{text}");
     assert!(text.contains("#   Atmosphere -> (this system) : matter \"air\""), "{text}");
     assert!(text.contains("#   (this system) -> Water : matter \"bubbles\""), "{text}");

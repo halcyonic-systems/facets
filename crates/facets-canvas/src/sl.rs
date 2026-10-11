@@ -49,9 +49,9 @@ use std::collections::HashMap;
 
 use serde::{Deserialize, Serialize};
 
-use bert_core::model_id::{decode_uuid, encode_uuid};
-use bert_core::{Grounding, GroundingGrade};
-use bert_core::{InteractionUsability, ModelRef, ProcessPrimitive};
+use facets_core::model_id::{decode_uuid, encode_uuid};
+use facets_core::{Grounding, GroundingGrade};
+use facets_core::{InteractionUsability, ModelRef, ProcessPrimitive};
 
 use crate::canvas::{
     CanvasBoundaryProps, CanvasModel, ChildRef, Crossing, EnvKind, Genus, Kind, Kingdom,
@@ -168,7 +168,7 @@ pub fn parse_sl_full(text: &str) -> Result<SlParse, Vec<SlError>> {
     // name → thing index; names are the text surface's identifiers.
     let mut by_name: HashMap<String, usize> = HashMap::new();
     // M — the ambient milieu variables (E = ⟨O, M⟩); parallel to things, never in them.
-    let mut milieu_vars: Vec<bert_core::MilieuVariable> = Vec::new();
+    let mut milieu_vars: Vec<facets_core::MilieuVariable> = Vec::new();
     // explicit positions from the annotation layer, applied after layout.
     let mut positions: HashMap<String, (f32, f32)> = HashMap::new();
     // `@directed <n>` marks (1-based flow index, source line) to apply at the end.
@@ -644,7 +644,7 @@ pub fn parse_sl_full(text: &str) -> Result<SlParse, Vec<SlError>> {
                     continue;
                 }
                 let name = name.name();
-                if milieu_vars.iter().any(|m: &bert_core::MilieuVariable| m.name == name) {
+                if milieu_vars.iter().any(|m: &facets_core::MilieuVariable| m.name == name) {
                     fail(
                         format!(
                             "milieu variable `{name}` is already declared — fix: give this \
@@ -742,7 +742,7 @@ pub fn parse_sl_full(text: &str) -> Result<SlParse, Vec<SlError>> {
                     continue;
                 }
                 carrier = Some(Carrier::Milieu(milieu_vars.len()));
-                milieu_vars.push(bert_core::MilieuVariable { name, value, unit, description });
+                milieu_vars.push(facets_core::MilieuVariable { name, value, unit, description });
             }
             // `interface "Name" [protocol "<str>"] [description "<str>"]` —
             // the pass-way declared as its own object (#226, ratified
@@ -2593,7 +2593,7 @@ pub fn parse_sl_full(text: &str) -> Result<SlParse, Vec<SlError>> {
                     if w.eq_ignore_ascii_case("amount") {
                         match rest_tail {
                             [Tok::Word(n), after @ ..] => {
-                                match n.parse::<bert_core::rust_decimal::Decimal>() {
+                                match n.parse::<facets_core::rust_decimal::Decimal>() {
                                     // Zero is admissible (interactive params,
                                     // 2026-08-16): a declared 0 is ARREST —
                                     // "the supply is shut off" — which is a
@@ -2601,7 +2601,7 @@ pub fn parse_sl_full(text: &str) -> Result<SlParse, Vec<SlError>> {
                                     // A slider at its 0 floor writes it, and a
                                     // saved model must re-parse. Negative
                                     // stays refused: direction is the arrow's.
-                                    Ok(v) if v >= bert_core::rust_decimal::Decimal::ZERO => {
+                                    Ok(v) if v >= facets_core::rust_decimal::Decimal::ZERO => {
                                         amount = Some(v);
                                         tail = after;
                                     }
@@ -3162,8 +3162,8 @@ pub fn parse_sl_full(text: &str) -> Result<SlParse, Vec<SlError>> {
                         let bounds = match rest_tail {
                             [Tok::Word(spec), after @ ..] => {
                                 let parsed = spec.split_once("..").and_then(|(lo, hi)| {
-                                    let lo = lo.parse::<bert_core::rust_decimal::Decimal>().ok()?;
-                                    let hi = hi.parse::<bert_core::rust_decimal::Decimal>().ok()?;
+                                    let lo = lo.parse::<facets_core::rust_decimal::Decimal>().ok()?;
+                                    let hi = hi.parse::<facets_core::rust_decimal::Decimal>().ok()?;
                                     Some((lo, hi, after))
                                 });
                                 match parsed {
@@ -3188,7 +3188,7 @@ pub fn parse_sl_full(text: &str) -> Result<SlParse, Vec<SlError>> {
                             }
                         };
                         let (lo, hi, after) = bounds;
-                        if lo < bert_core::rust_decimal::Decimal::ZERO || lo >= hi {
+                        if lo < facets_core::rust_decimal::Decimal::ZERO || lo >= hi {
                             fail(
                                 "a range needs `0 <= min < max` — it bounds a positive magnitude"
                                     .into(),
@@ -5022,12 +5022,12 @@ fn parse_param_range(tail: &[Tok]) -> Result<(Option<crate::canvas::ParamRange>,
         .split_once("..")
         .and_then(|(lo, hi)| {
             Some((
-                lo.parse::<bert_core::rust_decimal::Decimal>().ok()?,
-                hi.parse::<bert_core::rust_decimal::Decimal>().ok()?,
+                lo.parse::<facets_core::rust_decimal::Decimal>().ok()?,
+                hi.parse::<facets_core::rust_decimal::Decimal>().ok()?,
             ))
         })
         .ok_or_else(|| syntax.to_string())?;
-    if lo < bert_core::rust_decimal::Decimal::ZERO || lo >= hi {
+    if lo < facets_core::rust_decimal::Decimal::ZERO || lo >= hi {
         return Err("a range needs `0 <= min < max` — it bounds a positive magnitude".into());
     }
     Ok((Some(crate::canvas::ParamRange { min: lo, max: hi }), after))
@@ -5250,7 +5250,7 @@ fn carrier_anchor(
     c: &Carrier,
     things: &[Thing],
     relations: &[Relation],
-    milieu_vars: &[bert_core::MilieuVariable],
+    milieu_vars: &[facets_core::MilieuVariable],
 ) -> Anchor {
     match c {
         Carrier::Thing(i) => Anchor::Thing(things[*i].id),
@@ -5462,7 +5462,7 @@ boundary porosity 0.7 fuzziness 0.1
         assert_eq!(world.environment.sinks.len(), 2);
         // Structure is legal for the Core reading; the parser never checked
         // any of this itself.
-        let core = bert_core::validate::validate_mode(&world, crate::canvas::Lens::Klir.mode());
+        let core = facets_core::validate::validate_mode(&world, crate::canvas::Lens::Klir.mode());
         assert!(core.issues.is_empty(), "core-mode issues: {:?}", core.issues);
     }
 

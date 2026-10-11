@@ -17,9 +17,9 @@
 //! an unauthored amount is `None` on the relation and only becomes the kernel's
 //! `Decimal::ONE` at projection, a narrowing `project()`'s doc declares.
 
-use bert_canvas::canvas::project;
-use bert_canvas::sl::{emit_sl, parse_sl};
-use bert_core::rust_decimal::Decimal;
+use facets_canvas::canvas::project;
+use facets_canvas::sl::{emit_sl, parse_sl};
+use facets_core::rust_decimal::Decimal;
 
 const AUTHORED: &str = "\
 system \"Waterworks\" : Concrete
@@ -167,7 +167,7 @@ fn projected_default_one_reads_back_unauthored() {
          flow A -> B : matter \"out\"\nflow A -> B : matter \"more\" amount 2\n",
     )
     .unwrap();
-    let back = bert_canvas::canvas::to_canvas(&project(&m));
+    let back = facets_canvas::canvas::to_canvas(&project(&m));
     assert_eq!(back.relations[0].amount, None, "default ONE must read back unauthored");
     assert_eq!(
         back.relations[1].amount,

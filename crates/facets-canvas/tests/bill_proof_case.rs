@@ -5,10 +5,10 @@
 //! kernel's flow-graph verdicts. Also dumps the broken model's canvas + analysis
 //! JSON for the TS `renderContextForPrompt` harness (the LLM leg's real input).
 
-use bert_canvas::canvas::{to_canvas, Lens};
-use bert_canvas::lenses::{analyze, CanvasAnalysis, LensDescription};
-use bert_core::validate::Severity;
-use bert_core::WorldModel;
+use facets_canvas::canvas::{to_canvas, Lens};
+use facets_canvas::lenses::{analyze, CanvasAnalysis, LensDescription};
+use facets_core::validate::Severity;
+use facets_core::WorldModel;
 
 const CORRECTED: &str = include_str!("../../../web/fixtures/bill.json");
 const BROKEN: &str = include_str!("../../../web/fixtures/bill-broken.json");

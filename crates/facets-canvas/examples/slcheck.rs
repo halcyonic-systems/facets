@@ -7,7 +7,7 @@ use std::io::Read;
 fn main() {
     let mut text = String::new();
     std::io::stdin().read_to_string(&mut text).unwrap();
-    match bert_canvas::sl::parse_sl_full(&text) {
+    match facets_canvas::sl::parse_sl_full(&text) {
         Ok(p) => {
             let things = p.model.things.len();
             let rels = p.model.relations.len();

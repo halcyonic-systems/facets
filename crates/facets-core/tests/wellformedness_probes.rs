@@ -12,10 +12,10 @@
 //! silence carries the row it belongs to. Fixing a gap means editing the doc row
 //! and this file together.
 
-use bert_core::validate::{
+use facets_core::validate::{
     is_interface_declaration_refusal, is_interface_flow_refusal, validate_mode, Severity,
 };
-use bert_core::*;
+use facets_core::*;
 use rust_decimal::Decimal;
 
 fn info(id: Id, level: i32, name: &str) -> Info {

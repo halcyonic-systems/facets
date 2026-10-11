@@ -9,8 +9,8 @@
 //! either bag still refuses, because emitting would silently drop it —
 //! every narrowing below carries its separating instance (SSF #35).
 
-use bert_canvas::canvas::project;
-use bert_canvas::sl::{emit_sl, parse_sl};
+use facets_canvas::canvas::project;
+use facets_canvas::sl::{emit_sl, parse_sl};
 
 const AUTHORED: &str = "\
 system \"Waterworks\" : Concrete

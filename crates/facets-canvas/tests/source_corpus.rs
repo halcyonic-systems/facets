@@ -18,7 +18,7 @@ use std::collections::BTreeMap;
 use std::fs;
 use std::path::{Path, PathBuf};
 
-use bert_canvas::sl::parse_sl_full;
+use facets_canvas::sl::parse_sl_full;
 
 /// Keys of the provenance header, in the order §2.1 fixes.
 const REQUIRED: [&str; 7] = ["title", "author", "work", "year", "locus", "teaches", "omits"];
@@ -256,8 +256,8 @@ fn source_corpus_ships_clean() {
         );
 
         // 4. Projects clean at Core. No escape from this one.
-        let world = bert_canvas::canvas::project(&parsed.model);
-        let core = bert_core::validate::validate_mode(&world, bert_core::Mode::Core);
+        let world = facets_canvas::canvas::project(&parsed.model);
+        let core = facets_core::validate::validate_mode(&world, facets_core::Mode::Core);
         assert!(core.issues.is_empty(), "{key}: Core issues: {:?}", core.issues);
 
         // 5. Projects clean at its own lens's mode — unless §5.3's escape applies.
@@ -270,12 +270,12 @@ fn source_corpus_ships_clean() {
             ),
             None => {
                 let mode = match tradition.as_str() {
-                    "klir" => bert_core::Mode::Core,
-                    "bunge" => bert_core::Mode::Structural,
-                    "mobus" => bert_core::Mode::Operational,
+                    "klir" => facets_core::Mode::Core,
+                    "bunge" => facets_core::Mode::Structural,
+                    "mobus" => facets_core::Mode::Operational,
                     other => panic!("{key}: unknown tradition directory `{other}`"),
                 };
-                let report = bert_core::validate::validate_mode(&world, mode);
+                let report = facets_core::validate::validate_mode(&world, mode);
                 assert!(
                     report.issues.is_empty(),
                     "{key}: {mode:?} issues: {:?} — fix the model, or declare the \

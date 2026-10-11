@@ -39,11 +39,11 @@
 //! vintage (#534), so the levels are compared as shares, not as Gtok/day. The
 //! seam contract itself is pinned by bert-lenses-kernel's llm_market_walkthrough.
 
-use bert_canvas::canvas::project;
-use bert_canvas::sl::parse_sl;
-use bert_compose::{from_spec, run::RecordedRun, Circuit, NodeKind};
-use bert_core::operational::validate_operational;
-use bert_core::ProcessPrimitive;
+use facets_canvas::canvas::project;
+use facets_canvas::sl::parse_sl;
+use facets_compose::{from_spec, run::RecordedRun, Circuit, NodeKind};
+use facets_core::operational::validate_operational;
+use facets_core::ProcessPrimitive;
 
 const HORIZON: f64 = 60.0;
 

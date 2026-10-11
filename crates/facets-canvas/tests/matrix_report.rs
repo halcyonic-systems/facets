@@ -24,10 +24,10 @@
 use std::fs;
 use std::path::{Path, PathBuf};
 
-use bert_canvas::canvas::Lens;
-use bert_canvas::lenses::{analyze, ResidueEntry};
-use bert_canvas::sl::parse_sl_full;
-use bert_core::validate::Severity;
+use facets_canvas::canvas::Lens;
+use facets_canvas::lenses::{analyze, ResidueEntry};
+use facets_canvas::sl::parse_sl_full;
+use facets_core::validate::Severity;
 
 const LENS_NAMES: [&str; 3] = ["klir", "bunge", "mobus"];
 
@@ -66,7 +66,7 @@ struct Cell {
     hidden: Vec<ResidueEntry>,
 }
 
-fn cell(model: &bert_canvas::canvas::CanvasModel, lens: Lens) -> Cell {
+fn cell(model: &facets_canvas::canvas::CanvasModel, lens: Lens) -> Cell {
     let a = analyze(model, lens);
     let errs: Vec<_> = a
         .validation
@@ -243,14 +243,14 @@ fn emit_cross_lens_matrix() {
             println!("demo\t{demo}\tREAD-FAIL\t-\t-\t-\t{}", path.display());
             continue;
         };
-        let world: bert_core::WorldModel = match serde_json::from_str(&text) {
+        let world: facets_core::WorldModel = match serde_json::from_str(&text) {
             Ok(w) => w,
             Err(e) => {
                 println!("demo\t{demo}\tPARSE-FAIL\t-\t-\t-\t{e}");
                 continue;
             }
         };
-        let cm = bert_canvas::canvas::to_canvas(&world);
+        let cm = facets_canvas::canvas::to_canvas(&world);
         let pinned = format!("{:?}", cm.lens).to_lowercase();
         let cells = read_all_lenses(&cm);
         println!("demo\t{demo}\t{pinned}\t{}", row(&cells));
@@ -283,7 +283,7 @@ fn emit_cross_lens_matrix() {
     println!();
 }
 
-fn read_all_lenses(model: &bert_canvas::canvas::CanvasModel) -> Vec<Cell> {
+fn read_all_lenses(model: &facets_canvas::canvas::CanvasModel) -> Vec<Cell> {
     [Lens::Klir, Lens::Bunge, Lens::Mobus]
         .into_iter()
         .map(|lens| cell(model, lens))

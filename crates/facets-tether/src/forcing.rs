@@ -28,10 +28,10 @@ use std::collections::HashMap;
 
 use serde::Serialize;
 
-use bert_core::rust_decimal::Decimal;
-use bert_core::{Id, Parameter, System, WorldModel};
-use bert_compose::circuit::NodeKind;
-use bert_compose::{Circuit, RecordedRun};
+use facets_core::rust_decimal::Decimal;
+use facets_core::{Id, Parameter, System, WorldModel};
+use facets_compose::circuit::NodeKind;
+use facets_compose::{Circuit, RecordedRun};
 
 use crate::tether::{Comparison, ModelParams};
 
@@ -231,17 +231,17 @@ pub fn force_and_run(
     // Check the run's precondition before doing any import work: `(Δt, T)` must
     // name a run at all. The precondition itself belongs to dynamics, not to
     // CSV import, so it is stated and enforced once in the engine
-    // (`bert_compose::ticks_over`) and only *asked* here — the wizard can produce
+    // (`facets_compose::ticks_over`) and only *asked* here — the wizard can produce
     // dt=0 from an empty Δt field, and refusing early means a legible verdict
     // instead of an import that only fails at the last step. Deleting this call
     // does not open a door: `record_over` below refuses the same inputs.
-    bert_compose::ticks_over(dt, t)?;
+    facets_compose::ticks_over(dt, t)?;
     let (model, imported) = prepare_forced(model, csv_text, manifest, today)?;
 
-    let spec = bert_core::operational::validate_operational(&model)
+    let spec = facets_core::operational::validate_operational(&model)
         .map_err(|errors| format!("model is not executable ({} reason(s))", errors.len()))?;
-    let mut circuit = bert_compose::from_spec(&spec);
-    let run = bert_compose::RecordedRun::record_over(&mut circuit, &spec, dt, t)?;
+    let mut circuit = facets_compose::from_spec(&spec);
+    let run = facets_compose::RecordedRun::record_over(&mut circuit, &spec, dt, t)?;
     Ok(summarize(&model, &imported, &spec, &circuit, &run, dt))
 }
 
@@ -300,11 +300,11 @@ pub fn prepare_forced(
 /// [`ImportedData`] (so `comparisons` is empty by construction — nothing was
 /// observed, and the readout says so rather than inventing a baseline).
 pub fn run_unforced(model: WorldModel, dt: f64, t: f64) -> Result<RunReadout, String> {
-    bert_compose::ticks_over(dt, t)?;
-    let spec = bert_core::operational::validate_operational(&model)
+    facets_compose::ticks_over(dt, t)?;
+    let spec = facets_core::operational::validate_operational(&model)
         .map_err(|errors| format!("model is not executable ({} reason(s))", errors.len()))?;
-    let mut circuit = bert_compose::from_spec(&spec);
-    let run = bert_compose::RecordedRun::record_over(&mut circuit, &spec, dt, t)?;
+    let mut circuit = facets_compose::from_spec(&spec);
+    let run = facets_compose::RecordedRun::record_over(&mut circuit, &spec, dt, t)?;
     Ok(summarize(&model, &crate::tether::ImportedData::default(), &spec, &circuit, &run, dt))
 }
 
@@ -369,7 +369,7 @@ fn category_order(cat: &str) -> u8 {
 pub fn summarize(
     model: &WorldModel,
     imported: &crate::tether::ImportedData,
-    spec: &bert_core::operational::OperationalSpec,
+    spec: &facets_core::operational::OperationalSpec,
     circuit: &Circuit,
     run: &RecordedRun,
     dt: f64,
@@ -389,16 +389,16 @@ pub fn summarize(
     // to the abstract `·Δt`. Other node kinds and unparseable/absent units keep
     // the flow-copied fallback verbatim.
     let time_unit = model.time_unit.as_deref();
-    let unit_of = |node: &bert_compose::circuit::Node| -> (String, bool) {
+    let unit_of = |node: &facets_compose::circuit::Node| -> (String, bool) {
         if !node.stock_unit.is_empty() {
             return (node.stock_unit.clone(), false);
         }
         if matches!(
             node.kind,
-            NodeKind::Process(bert_core::ProcessPrimitive::Buffering)
+            NodeKind::Process(facets_core::ProcessPrimitive::Buffering)
         ) {
             if let Some(derived) =
-                bert_core::units::derived_stock_unit(&node.out_substance.unit, time_unit)
+                facets_core::units::derived_stock_unit(&node.out_substance.unit, time_unit)
             {
                 return (derived, true);
             }
@@ -437,7 +437,7 @@ pub fn summarize(
     let col_of = |kind: &NodeKind| -> usize {
         match kind {
             NodeKind::Sink => 2,
-            NodeKind::Process(bert_core::ProcessPrimitive::Buffering) => 1,
+            NodeKind::Process(facets_core::ProcessPrimitive::Buffering) => 1,
             _ => 0,
         }
     };
@@ -646,15 +646,15 @@ mod tests {
             .iter_mut()
             .find(|s| {
                 s.agent.as_ref().and_then(|a| a.primitive)
-                    == Some(bert_core::ProcessPrimitive::Buffering)
+                    == Some(facets_core::ProcessPrimitive::Buffering)
             })
             .expect("the sample has a Buffering stock");
         let buffer_name = buffer.info.name.clone();
         buffer.agent.as_mut().unwrap().stock_unit = "ML".to_string();
 
-        let spec = bert_core::operational::validate_operational(&model).expect("projects");
-        let mut circuit = bert_compose::from_spec(&spec);
-        let run = bert_compose::RecordedRun::record_over(&mut circuit, &spec, 1.0, 4.0)
+        let spec = facets_core::operational::validate_operational(&model).expect("projects");
+        let mut circuit = facets_compose::from_spec(&spec);
+        let run = facets_compose::RecordedRun::record_over(&mut circuit, &spec, 1.0, 4.0)
             .expect("Δt = 1 over T = 4 names a run");
         let readout = summarize(
             &model,
@@ -693,7 +693,7 @@ mod tests {
                 .iter()
                 .find(|s| {
                     s.agent.as_ref().and_then(|a| a.primitive)
-                        == Some(bert_core::ProcessPrimitive::Buffering)
+                        == Some(facets_core::ProcessPrimitive::Buffering)
                 })
                 .expect("the sample has a Buffering stock");
             assert!(
@@ -706,9 +706,9 @@ mod tests {
             ix.unit = "ML/mo".to_string();
         }
 
-        let spec = bert_core::operational::validate_operational(&model).expect("projects");
-        let mut circuit = bert_compose::from_spec(&spec);
-        let run = bert_compose::RecordedRun::record_over(&mut circuit, &spec, 1.0, 4.0)
+        let spec = facets_core::operational::validate_operational(&model).expect("projects");
+        let mut circuit = facets_compose::from_spec(&spec);
+        let run = facets_compose::RecordedRun::record_over(&mut circuit, &spec, 1.0, 4.0)
             .expect("Δt = 1 over T = 4 names a run");
         let readout = summarize(
             &model,
@@ -746,7 +746,7 @@ mod tests {
             .iter()
             .find(|s| {
                 s.agent.as_ref().and_then(|a| a.primitive)
-                    == Some(bert_core::ProcessPrimitive::Buffering)
+                    == Some(facets_core::ProcessPrimitive::Buffering)
             })
             .expect("the sample has a Buffering stock")
             .info
@@ -756,9 +756,9 @@ mod tests {
             ix.unit = "kW".to_string();
         }
 
-        let spec = bert_core::operational::validate_operational(&model).expect("projects");
-        let mut circuit = bert_compose::from_spec(&spec);
-        let run = bert_compose::RecordedRun::record_over(&mut circuit, &spec, 1.0, 4.0)
+        let spec = facets_core::operational::validate_operational(&model).expect("projects");
+        let mut circuit = facets_compose::from_spec(&spec);
+        let run = facets_compose::RecordedRun::record_over(&mut circuit, &spec, 1.0, 4.0)
             .expect("Δt = 1 over T = 4 names a run");
         let readout = summarize(
             &model,
@@ -794,7 +794,7 @@ mod tests {
             .iter()
             .find(|s| {
                 s.agent.as_ref().and_then(|a| a.primitive)
-                    == Some(bert_core::ProcessPrimitive::Buffering)
+                    == Some(facets_core::ProcessPrimitive::Buffering)
             })
             .expect("the sample has a Buffering stock")
             .info
@@ -805,9 +805,9 @@ mod tests {
         }
         model.time_unit = Some("h".to_string());
 
-        let spec = bert_core::operational::validate_operational(&model).expect("projects");
-        let mut circuit = bert_compose::from_spec(&spec);
-        let run = bert_compose::RecordedRun::record_over(&mut circuit, &spec, 1.0, 4.0)
+        let spec = facets_core::operational::validate_operational(&model).expect("projects");
+        let mut circuit = facets_compose::from_spec(&spec);
+        let run = facets_compose::RecordedRun::record_over(&mut circuit, &spec, 1.0, 4.0)
             .expect("Δt = 1 over T = 4 names a run");
         let readout = summarize(
             &model,

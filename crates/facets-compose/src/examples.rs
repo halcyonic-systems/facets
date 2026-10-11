@@ -9,7 +9,7 @@
 //! is identical (the K≅2 artifact).
 
 use crate::circuit::{Circuit, DeclaredSubstance, Node, NodeKind, Wire, SUBSTANCES};
-use bert_core::{ProcessPrimitive::*, SubstanceType};
+use facets_core::{ProcessPrimitive::*, SubstanceType};
 use glam::vec2 as pos2;
 
 /// Look up a curated substance by name — examples speak human (water, money,

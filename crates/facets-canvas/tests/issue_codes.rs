@@ -19,10 +19,10 @@
 //! looks contradicted, because the two lines drawn at it are `mere` and mere
 //! relations do not bond. The kernel counts them so the surface can say so.
 
-use bert_canvas::canvas::Lens;
-use bert_canvas::lenses::analyze;
-use bert_canvas::sl::parse_sl_full;
-use bert_core::validate::{doc, Severity};
+use facets_canvas::canvas::Lens;
+use facets_canvas::lenses::analyze;
+use facets_canvas::sl::parse_sl_full;
+use facets_core::validate::{doc, Severity};
 use std::collections::BTreeMap;
 
 /// The shape of the 2026-08-12 draft, reduced to what produces the two

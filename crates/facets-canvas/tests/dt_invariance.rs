@@ -44,10 +44,10 @@
 //! required FOR THAT MODEL — scope the exclusion to the declared construct,
 //! with the declaration as the license, never as a blanket exemption.
 
-use bert_canvas::canvas::{project, to_canvas};
-use bert_compose::{from_spec, run::RecordedRun};
-use bert_core::operational::validate_operational;
-use bert_core::WorldModel;
+use facets_canvas::canvas::{project, to_canvas};
+use facets_compose::{from_spec, run::RecordedRun};
+use facets_core::operational::validate_operational;
+use facets_core::WorldModel;
 
 const HORIZON: f64 = 30.0;
 

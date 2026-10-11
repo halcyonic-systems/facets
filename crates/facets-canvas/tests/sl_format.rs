@@ -7,8 +7,8 @@
 use std::fs;
 use std::path::{Path, PathBuf};
 
-use bert_canvas::canvas::CanvasModel;
-use bert_canvas::sl::{emit_sl, emit_sl_with, format_sl, parse_sl, parse_sl_full};
+use facets_canvas::canvas::CanvasModel;
+use facets_canvas::sl::{emit_sl, emit_sl_with, format_sl, parse_sl, parse_sl_full};
 
 const COMMENTS: &str = include_str!("../../../fixtures/sl/stanza/comments.sl");
 const PINNED: &str = include_str!("../../../fixtures/sl/stanza/pinned.sl");

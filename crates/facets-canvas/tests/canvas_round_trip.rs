@@ -20,10 +20,10 @@
 //! year. If the canvas ever drops a new run-relevant field, this test is
 //! designed to go red again — that red is the finding, not a flake.
 
-use bert_canvas::canvas::{project, to_canvas};
-use bert_compose::{from_spec, run::RecordedRun};
-use bert_core::operational::validate_operational;
-use bert_core::WorldModel;
+use facets_canvas::canvas::{project, to_canvas};
+use facets_compose::{from_spec, run::RecordedRun};
+use facets_core::operational::validate_operational;
+use facets_core::WorldModel;
 
 const TICKS: usize = 30;
 const DT: f64 = 1.0;

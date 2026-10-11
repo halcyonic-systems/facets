@@ -64,7 +64,7 @@
 //! Message is information: copied, gated, manufactured (Inverting) — never
 //! conserved, never in the ledger.
 
-use bert_core::{ProcessPrimitive, SubstanceType};
+use facets_core::{ProcessPrimitive, SubstanceType};
 use std::collections::VecDeque;
 
 /// Ticks of per-node history kept for the inline sparkline.
@@ -346,7 +346,7 @@ pub struct Node {
     /// it, the way only Inverting reads `setpoint`; its numbers are the
     /// declared policy (the goal) and the kernel's `Policy::decide` is the
     /// procedure (Mobus §11.3.4.1).
-    pub policy: bert_core::Policy,
+    pub policy: facets_core::Policy,
     /// The knob a command-form agent writes at the end of every tick (ADR
     /// 0008 D1, Mobus §12.2.3.2): `None` is the signal form, whose decision
     /// rides its message outwire. Only `NodeKind::Agent` reads it. The write
@@ -395,7 +395,7 @@ impl Node {
             time_constant: 0.0,   // 0 = fixed-rate drain
             maintenance: 0.0,     // 0 = no upkeep loss
             back_pressure: false, // false = push model sheds; true = backs up
-            policy: bert_core::Policy::default(),
+            policy: facets_core::Policy::default(),
             knob: None,
             stock_unit: String::new(),
             process: None,
@@ -2460,7 +2460,7 @@ mod tests {
     /// the two cannot drift.
     #[test]
     fn validate_consumes_table_matches_engine() {
-        use bert_core::validate::primitive_consumes;
+        use facets_core::validate::primitive_consumes;
         use ProcessPrimitive::*;
         for p in [
             Buffering, Combining, Splitting, Amplifying, Modulating, Sensing, Inverting, Copying,
@@ -3938,7 +3938,7 @@ mod tests {
         fn agent(gain: f64, target: f64) -> Circuit {
             let mut c = body();
             c.nodes.push(node(NodeKind::Agent)); // 4 thermostat
-            c.nodes[4].policy = bert_core::Policy::Proportional { target, gain };
+            c.nodes[4].policy = facets_core::Policy::Proportional { target, gain };
             let mut tap = Wire::new(2, 4);
             tap.substance_override = Some(SubstanceType::Message);
             c.wires.push(tap);
@@ -3981,7 +3981,7 @@ mod tests {
     /// `hospital-beds-agent.sl` settles well above it; the ledger balances.
     #[test]
     fn agent_table_reads_the_bin() {
-        let p = bert_core::Policy::Table { bounds: vec![20.0, 36.0], outputs: vec![1.0, 0.5], otherwise: 0.0 };
+        let p = facets_core::Policy::Table { bounds: vec![20.0, 36.0], outputs: vec![1.0, 0.5], otherwise: 0.0 };
         assert_eq!(p.decide(19.9), 1.0);
         assert_eq!(p.decide(20.0), 0.5);
         assert_eq!(p.decide(35.9), 0.5);
@@ -3993,7 +3993,7 @@ mod tests {
         let (lo, hi) = tail.iter().fold((f32::MAX, f32::MIN), |(a, b), &x| (a.min(x), b.max(x)));
         assert!(lo < 20.0 && hi > 20.0 && hi < 24.0, "the ward never sawed across the first bound: {beds:?}");
         assert!(balance.abs() < 1e-3, "leak: {balance}");
-        let relay = bert_core::Policy::Threshold { above: 36.0, below: None, emit: 0.0, otherwise: 1.0 };
+        let relay = facets_core::Policy::Threshold { above: 36.0, below: None, emit: 0.0, otherwise: 1.0 };
         let (one_level, _) = ward(relay, 24);
         assert!(one_level[6..].iter().all(|&b| b > 28.0), "{one_level:?}");
     }
@@ -4002,7 +4002,7 @@ mod tests {
     /// 8 a day through a back-pressured triage valve into a 40-bed stock
     /// draining over four days, with `policy` on the gatekeeper. Returns
     /// the occupancy series and the ledger balance.
-    fn ward(policy: bert_core::Policy, ticks: usize) -> (Vec<f32>, f32) {
+    fn ward(policy: facets_core::Policy, ticks: usize) -> (Vec<f32>, f32) {
         use ProcessPrimitive::*;
         let mut c = Circuit::default();
         c.nodes.push(node(NodeKind::Source)); // 0 referrals
@@ -4042,7 +4042,7 @@ mod tests {
     #[test]
     fn agent_trace_remembers_as_run_state_and_window_one_is_proportional() {
         use ProcessPrimitive::*;
-        fn room(policy: bert_core::Policy) -> Circuit {
+        fn room(policy: facets_core::Policy) -> Circuit {
             let mut c = Circuit::default();
             c.nodes.push(node(NodeKind::Source)); // 0 grid
             c.nodes.push(node(NodeKind::Process(Modulating))); // 1 switch
@@ -4072,13 +4072,13 @@ mod tests {
                 })
                 .collect()
         };
-        let proportional = bert_core::Policy::Proportional { target: 2.0, gain: 0.5 };
-        let one = bert_core::Policy::Trace { window: 1, target: 2.0, gain: 0.5 };
-        let three = bert_core::Policy::Trace { window: 3, target: 2.0, gain: 0.5 };
+        let proportional = facets_core::Policy::Proportional { target: 2.0, gain: 0.5 };
+        let one = facets_core::Policy::Trace { window: 1, target: 2.0, gain: 0.5 };
+        let three = facets_core::Policy::Trace { window: 3, target: 2.0, gain: 0.5 };
         assert_eq!(trace(&mut room(proportional), 72), trace(&mut room(one.clone()), 72), "window 1 is not Proportional");
         let mut c = room(three.clone());
         let traced = trace(&mut c, 72);
-        let memoryless = trace(&mut room(bert_core::Policy::Proportional { target: 2.0, gain: 0.5 }), 72);
+        let memoryless = trace(&mut room(facets_core::Policy::Proportional { target: 2.0, gain: 0.5 }), 72);
         let peak = |s: &[f32]| s.iter().cloned().fold(f32::MIN, f32::max);
         assert!(peak(&traced) > peak(&memoryless) + 0.3, "{} vs {}", peak(&traced), peak(&memoryless));
         let settled = |s: &[f32]| (0..s.len()).find(|&i| s[i..].iter().all(|&x| (x - 5.0 / 3.0).abs() < 1.0 / 60.0)).unwrap_or(s.len());
@@ -4101,7 +4101,7 @@ mod tests {
         assert_eq!(three.decide_in(1.0, None, &[9.0, 9.0, 3.0, 2.0]), 0.0, "only the last window − 1 count");
         assert_eq!(one.decide_in(1.0, None, &[9.0, 9.0]), proportional_decide(1.0), "window 1 ignores the past");
         fn proportional_decide(level: f64) -> f64 {
-            bert_core::Policy::Proportional { target: 2.0, gain: 0.5 }.decide(level)
+            facets_core::Policy::Proportional { target: 2.0, gain: 0.5 }.decide(level)
         }
     }
 
@@ -4130,7 +4130,7 @@ mod tests {
             c.nodes[1].time_constant = 10.0;
             c.nodes[1].initial_storage = 0.21;
             c.nodes[1].storage = 0.21;
-            c.nodes[4].policy = bert_core::Policy::Threshold { above: 0.3, below: None, emit: 1.0, otherwise: 0.0 };
+            c.nodes[4].policy = facets_core::Policy::Threshold { above: 0.3, below: None, emit: 1.0, otherwise: 0.0 };
             c.wires.push(Wire::new(0, 1)); // 0 feed
             let mut landed = Wire::new(1, 2); // 1 landed
             landed.rate = Some(0.0);
@@ -4225,7 +4225,7 @@ mod tests {
         c.nodes[2].time_constant = 5.0;
         c.nodes[2].initial_storage = 0.5;
         c.nodes[2].storage = 0.5;
-        c.nodes[4].policy = bert_core::Policy::Threshold {
+        c.nodes[4].policy = facets_core::Policy::Threshold {
             above: 2.0,
             below,
             emit: 0.0,
@@ -4270,7 +4270,7 @@ mod tests {
         // The hold is the last command and only that: a reading inside the
         // band after `emit` keeps emitting, after `else` keeps `else`, and
         // before any command takes `else`.
-        let p = bert_core::Policy::Threshold { above: 2.0, below: Some(1.0), emit: 0.0, otherwise: 1.0 };
+        let p = facets_core::Policy::Threshold { above: 2.0, below: Some(1.0), emit: 0.0, otherwise: 1.0 };
         assert_eq!(p.decide_with(1.5, Some(0.0)), 0.0);
         assert_eq!(p.decide_with(1.5, Some(1.0)), 1.0);
         assert_eq!(p.decide_with(1.5, None), 1.0);

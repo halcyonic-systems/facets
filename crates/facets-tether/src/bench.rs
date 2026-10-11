@@ -11,7 +11,7 @@
 //!
 //! Knobs are addressed by the names the author sees — a flow by its label and
 //! endpoints, a component by its name — never by circuit index. An amount is
-//! routed exactly as `bert_compose::from_spec` routes it (a source's lone
+//! routed exactly as `facets_compose::from_spec` routes it (a source's lone
 //! pushed outflow or gradient flow sits on the node; everything else on the
 //! wire), so a session that is later written back as a model agrees with the
 //! canvas. A flow forced by data refuses a live edit: the column is the
@@ -19,11 +19,11 @@
 
 use std::collections::HashMap;
 
-use bert_compose::circuit::{NodeFlux, NodeKind};
-use bert_compose::session::Session;
-use bert_compose::RecordedRun;
-use bert_core::operational::OperationalSpec;
-use bert_core::{Id, WorldModel};
+use facets_compose::circuit::{NodeFlux, NodeKind};
+use facets_compose::session::Session;
+use facets_compose::RecordedRun;
+use facets_core::operational::OperationalSpec;
+use facets_core::{Id, WorldModel};
 use serde::Serialize;
 
 use crate::forcing::{summarize, RunReadout};
@@ -98,7 +98,7 @@ pub struct BenchSession {
 impl BenchSession {
     /// Open a model from its declared amounts alone, stepped nowhere yet.
     pub fn open_unforced(model: WorldModel, dt: f64) -> Result<Self, String> {
-        bert_compose::ticks_over(dt, dt)?;
+        facets_compose::ticks_over(dt, dt)?;
         Self::open(model, ImportedData::default(), dt)
     }
 
@@ -111,15 +111,15 @@ impl BenchSession {
         dt: f64,
         today: &str,
     ) -> Result<Self, String> {
-        bert_compose::ticks_over(dt, dt)?;
+        facets_compose::ticks_over(dt, dt)?;
         let (model, imported) = crate::forcing::prepare_forced(model, csv_text, manifest, today)?;
         Self::open(model, imported, dt)
     }
 
     fn open(model: WorldModel, imported: ImportedData, dt: f64) -> Result<Self, String> {
-        let spec = bert_core::operational::validate_operational(&model)
+        let spec = facets_core::operational::validate_operational(&model)
             .map_err(|errors| format!("model is not executable ({} reason(s))", errors.len()))?;
-        let mut circuit = bert_compose::from_spec(&spec);
+        let mut circuit = facets_compose::from_spec(&spec);
         if let Some(cycle) = circuit.algebraic_cycle() {
             let names: Vec<&str> = cycle
                 .iter()
@@ -167,7 +167,7 @@ impl BenchSession {
     }
 
     /// The engine as it stands, read-only: for the ledger and the probes.
-    pub fn circuit(&self) -> &bert_compose::Circuit {
+    pub fn circuit(&self) -> &facets_compose::Circuit {
         &self.session.circuit
     }
 
@@ -182,7 +182,7 @@ impl BenchSession {
     /// batch run takes (`ticks_over`), so a bench opened and stepped over T
     /// reads as the batch run over T. A horizon already reached steps nothing.
     pub fn step_over(&mut self, total_time: f64) -> Result<(), String> {
-        let ticks = bert_compose::ticks_over(self.dt, total_time)?;
+        let ticks = facets_compose::ticks_over(self.dt, total_time)?;
         let done = self.session.circuit.tick as usize;
         if ticks > done {
             self.step((ticks - done) as u32);
@@ -217,8 +217,8 @@ impl BenchSession {
                 let Some(node) = circuit.nodes.iter().find(|n| n.id == d.node) else { continue };
                 let Some(knob) = node.knob.as_ref() else { continue };
                 let (wire, field) = match knob {
-                    bert_compose::circuit::AgentKnob::Amount { wire, .. } => (*wire, "amount"),
-                    bert_compose::circuit::AgentKnob::Share { first, .. } => (*first, "share"),
+                    facets_compose::circuit::AgentKnob::Amount { wire, .. } => (*wire, "amount"),
+                    facets_compose::circuit::AgentKnob::Share { first, .. } => (*first, "share"),
                 };
                 let target = self.flow_target(wire);
                 self.note_edit(KnobEdit {

@@ -18,9 +18,9 @@
 use serde::{Deserialize, Serialize};
 use serde_json::Value;
 
-use bert_core::{ModelId, WorldModel};
+use facets_core::{ModelId, WorldModel};
 
-use bert_canvas::canvas::{to_canvas, CanvasModel};
+use facets_canvas::canvas::{to_canvas, CanvasModel};
 
 /// The archive's format marker. Migration is necessarily destructive — what an
 /// old `WorldModel` file already dropped cannot be recovered — so the marker's
@@ -101,7 +101,7 @@ pub fn identity(text: &str) -> Option<ModelId> {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use bert_canvas::canvas::{project, Kind, Kingdom, Lens, Relation, Role, SystemType, Thing};
+    use facets_canvas::canvas::{project, Kind, Kingdom, Lens, Relation, Role, SystemType, Thing};
 
     /// A model wearing every word the old archive destroyed.
     fn lossy_model() -> CanvasModel {
@@ -239,7 +239,7 @@ mod tests {
     /// back with both absent (the skip-if-None contract).
     #[test]
     fn archive_keeps_klir_source_system_metadata() {
-        use bert_canvas::canvas::ScaleType;
+        use facets_canvas::canvas::ScaleType;
         let mut before = lossy_model();
         before.things[0].scale = Some(ScaleType::Nominal);
         before.things[0].states = Some(vec!["Green".into(), "Yellow".into(), "Red".into()]);
@@ -328,7 +328,7 @@ mod tests {
 #[cfg(test)]
 mod decomposition_seam {
     use super::*;
-    use bert_canvas::canvas::{decompose_thing, CanvasModel, Kind, Lens, Relation, Role, Thing};
+    use facets_canvas::canvas::{decompose_thing, CanvasModel, Kind, Lens, Relation, Role, Thing};
 
     fn thing(id: u64, name: &str, role: Role) -> Thing {
         Thing {
@@ -395,7 +395,7 @@ mod decomposition_seam {
             metrics: vec![],
             klir_level: None,
         };
-        m.things[0].primitive = Some(bert_core::ProcessPrimitive::Combining);
+        m.things[0].primitive = Some(facets_core::ProcessPrimitive::Combining);
 
         let child = decompose_thing(&m, 1).expect("the door opens for an interior component");
         let stamped_id = child.model_id.expect("the kernel mints the newborn an identity");

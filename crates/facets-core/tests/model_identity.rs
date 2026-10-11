@@ -2,7 +2,7 @@
 //! an id stays byte-identical on disk, and a minted id round-trips through the
 //! canonical base58 encoding.
 
-use bert_core::{ModelId, WorldModel};
+use facets_core::{ModelId, WorldModel};
 use serde_json::json;
 
 /// A minimal, id-less model — the shape every model authored before step 2.5 has.

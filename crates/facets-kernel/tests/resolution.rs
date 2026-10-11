@@ -4,10 +4,10 @@
 //! every crossing on `unresolved`; stage 2 (Fig. 4.15, six named interfaces)
 //! resolves it; and three wrong stage 2s are refused for three different
 //! reasons: an extra crossing, a renamed counterparty, a re-kinded flow.
-use bert_canvas::canvas::CanvasModel;
-use bert_canvas::lenses::{analyze, check_resolution_canvas};
-use bert_canvas::sl::parse_sl;
-use bert_core::validate::Severity;
+use facets_canvas::canvas::CanvasModel;
+use facets_canvas::lenses::{analyze, check_resolution_canvas};
+use facets_canvas::sl::parse_sl;
+use facets_core::validate::Severity;
 
 fn compile(sl: &str) -> CanvasModel {
     parse_sl(sl).unwrap_or_else(|errs| {
@@ -70,7 +70,7 @@ flow Ventilation -> ATMOSPHERE : energy "F-1.5" substance heat
 @lens mobus
 "#;
 
-fn codes(report: &bert_canvas::lenses::DecompositionReport) -> Vec<String> {
+fn codes(report: &facets_canvas::lenses::DecompositionReport) -> Vec<String> {
     report.issues.iter().map(|i| i.code.clone()).collect()
 }
 
@@ -80,7 +80,7 @@ fn stage_1_is_a_clean_mobus_model() {
     let verdict = analyze(&m, m.lens).validation;
     let errors: Vec<_> = verdict.issues.iter().filter(|i| matches!(i.severity, Severity::Error)).map(|i| i.message.clone()).collect();
     assert!(errors.is_empty(), "stage 1 carries Error verdicts: {errors:?}");
-    let facts = bert_canvas::lenses::lens_facts(&m);
+    let facts = facets_canvas::lenses::lens_facts(&m);
     let u = m.things.iter().find(|t| t.name == "unresolved").unwrap();
     assert_eq!(facts.unresolved_thing_id, Some(u.id));
     // The wrapper warning stays silent: the plant is the sole non-interface

@@ -15,8 +15,8 @@ use std::fs;
 use std::io::Read;
 use std::path::Path;
 
-use bert_canvas::canvas::CanvasModel;
-use bert_canvas::sl::{parse_sl_full, SlError};
+use facets_canvas::canvas::CanvasModel;
+use facets_canvas::sl::{parse_sl_full, SlError};
 
 /// Why a model could not be produced. Each variant maps to one exit code, so a
 /// caller can branch on the kind of failure without reading the message.
@@ -63,7 +63,7 @@ pub fn load(path: &Path) -> Result<CanvasModel, LoadError> {
         path.extension().and_then(|e| e.to_str()) != Some("sl")
     };
     if json {
-        bert_lenses_kernel::archive::read(&text).map_err(LoadError::NotAModel)
+        facets_kernel::archive::read(&text).map_err(LoadError::NotAModel)
     } else {
         compile(&text)
     }

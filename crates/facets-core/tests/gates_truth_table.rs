@@ -9,7 +9,7 @@
 //! The fixture is generated offline (no Lean toolchain in Rust CI); regenerate
 //! it with the command recorded in the fixture's `_generator.command`.
 
-use bert_core::Mode;
+use facets_core::Mode;
 use serde_json::Value;
 
 mod common;

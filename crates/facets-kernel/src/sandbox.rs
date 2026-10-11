@@ -4,7 +4,7 @@
 //! the truth → serialize; see `api`). A live sandbox cannot be that: its
 //! defining interaction is a parameter tweaked MID-RUN without resetting the
 //! stocks, which requires a `Circuit` held across calls. The state lives in
-//! [`bert_compose::session::Session`] — engine side, natively tested — and
+//! [`facets_compose::session::Session`] — engine side, natively tested — and
 //! this class stays marshaling-only: every method delegates and converts.
 //!
 //! The carve-out from the stateless invariant is deliberate and bounded:
@@ -16,7 +16,7 @@
 
 use wasm_bindgen::prelude::*;
 
-use bert_compose::session::{self, Session};
+use facets_compose::session::{self, Session};
 
 use crate::api::to_js;
 

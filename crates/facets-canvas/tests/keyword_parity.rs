@@ -19,7 +19,7 @@ use std::collections::BTreeSet;
 use std::fs;
 use std::path::Path;
 
-use bert_canvas::sl::{POSITIONAL_KEYWORDS, RESERVED_WORDS};
+use facets_canvas::sl::{POSITIONAL_KEYWORDS, RESERVED_WORDS};
 
 fn spec_text() -> String {
     let path = Path::new(env!("CARGO_MANIFEST_DIR")).join("../../docs/language/spec.md");

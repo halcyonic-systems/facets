@@ -18,7 +18,7 @@
 //! at the SSF repo with `SSF_DIR=/path/to/systems-science-foundations` (runs
 //! `lake exe gates-oracle` there).
 
-use bert_core::Mode;
+use facets_core::Mode;
 use serde_json::{json, Value};
 use std::path::PathBuf;
 use std::process::{Command, Stdio};

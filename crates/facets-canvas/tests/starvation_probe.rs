@@ -4,13 +4,13 @@
 //! separating instances the future stoichiometric-coupling work must flip
 //! DELIBERATELY (Liebig limiting-factor semantics — "named but not faked",
 //! translation-apparatus walkthrough; the engine gap measured here).
-use bert_tether::forcing::force_and_run;
-use bert_tether::manifest::RunManifest;
+use facets_tether::forcing::force_and_run;
+use facets_tether::manifest::RunManifest;
 
 fn run_with_aa(aa_series: impl Fn(usize) -> i32) -> Vec<f32> {
     let sl = include_str!("../../../assets/examples/translation-apparatus.sl");
-    let model = bert_canvas::sl::parse_sl(sl).expect("parses");
-    let world = bert_canvas::canvas::project(&model);
+    let model = facets_canvas::sl::parse_sl(sl).expect("parses");
+    let world = facets_canvas::canvas::project(&model);
     let mut csv = String::from("time,mRNA transcript,free amino acid,ATP,GTP\n");
     for t in 0..16 {
         csv.push_str(&format!("{t},20,{},20,40\n", aa_series(t)));
@@ -58,17 +58,17 @@ fn a_brief_amino_acid_starvation_is_absorbed_not_propagated() {
 #[test]
 fn a_zero_amount_from_the_canvas_path_reports_its_fate() {
     let sl = include_str!("../../../assets/examples/translation-apparatus.sl");
-    let mut model = bert_canvas::sl::parse_sl(sl).expect("parses");
+    let mut model = facets_canvas::sl::parse_sl(sl).expect("parses");
     for r in &mut model.relations {
         if r.name == "mRNA transcript" {
-            r.amount = Some(bert_core::rust_decimal::Decimal::ZERO);
+            r.amount = Some(facets_core::rust_decimal::Decimal::ZERO);
         }
     }
-    let world = bert_canvas::canvas::project(&model);
-    match bert_core::operational::validate_operational(&world) {
+    let world = facets_canvas::canvas::project(&model);
+    match facets_core::operational::validate_operational(&world) {
         Ok(spec) => {
-            let mut c = bert_compose::from_spec(&spec);
-            match bert_compose::RecordedRun::record_over(&mut c, &spec, 1.0, 15.0) {
+            let mut c = facets_compose::from_spec(&spec);
+            match facets_compose::RecordedRun::record_over(&mut c, &spec, 1.0, 15.0) {
                 Ok(run) => println!("ZERO RUNS OK, ticks {}", run.history.len()),
                 Err(e) => println!("ZERO RUN REFUSED: {e}"),
             }

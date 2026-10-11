@@ -5,9 +5,9 @@
 //! design pass said it must: a non-stock to watch, a process that reads no
 //! signal, an agent over an agent, a flow written against it, a zero gain,
 //! and the agent fields named on a component.
-use bert_canvas::canvas::{project, AgentRule, EngineField, Kind, ParamAnchor};
-use bert_canvas::sl::{emit_sl, parse_sl};
-use bert_core::Policy;
+use facets_canvas::canvas::{project, AgentRule, EngineField, Kind, ParamAnchor};
+use facets_canvas::sl::{emit_sl, parse_sl};
+use facets_core::Policy;
 
 const ROOM: &str = "\
 system \"Room\" : Concrete/Technical
@@ -62,7 +62,7 @@ fn an_agent_line_parses_draws_its_wires_and_projects_as_an_agent() {
     let agent = sys.agent.as_ref().unwrap();
     assert_eq!(agent.primitive, None);
     assert_eq!(agent.policy, Some(Policy::Proportional { target: 2.0, gain: 0.5 }));
-    let spec = bert_core::operational::validate_operational(&world).expect("projects");
+    let spec = facets_core::operational::validate_operational(&world).expect("projects");
     assert_eq!(spec.agents.len(), 1);
     assert_eq!(spec.agents[0].name, "Thermostat");
     assert!(spec.processes.iter().all(|p| p.name != "Thermostat"));
@@ -96,7 +96,7 @@ fn an_agent_emits_as_its_line_and_never_as_flows() {
 fn the_kernel_read_back_keeps_the_agent() {
     let m = parse_sl(ROOM).unwrap();
     let world = project(&m);
-    let back = bert_canvas::canvas::to_canvas(&world);
+    let back = facets_canvas::canvas::to_canvas(&world);
     let th = back.things.iter().find(|t| t.name == "Thermostat").unwrap();
     assert_eq!(th.rule, Some(AgentRule::Proportional));
     assert_eq!(th.cognitive_params.get("target"), Some(&2.0));
@@ -109,7 +109,7 @@ fn directed_marks_count_flow_lines_not_the_drawn_pair() {
     let text = format!("{ROOM}\n@directed 1\n");
     let m = parse_sl(&text).unwrap();
     let grid = m.things.iter().find(|t| t.name == "Grid").unwrap();
-    let directed: Vec<&bert_canvas::canvas::Relation> = m.relations.iter().filter(|r| r.klir_directed).collect();
+    let directed: Vec<&facets_canvas::canvas::Relation> = m.relations.iter().filter(|r| r.klir_directed).collect();
     assert_eq!(directed.len(), 1);
     assert_eq!(directed[0].a, grid.id, "@directed 1 is the first flow the author wrote");
     assert!(emit_sl(&m).unwrap().contains("@directed 1\n"));
@@ -185,7 +185,7 @@ fn a_threshold_rule_parses_projects_and_emits_back() {
     let text = emit_sl(&m).unwrap();
     assert!(text.contains("agent Thermostat watches Room rule threshold above 2 emit 0 else 1 manages Switch"), "{text}");
     assert_eq!(emit_sl(&parse_sl(&text).unwrap()).unwrap(), text);
-    let back = bert_canvas::canvas::to_canvas(&world);
+    let back = facets_canvas::canvas::to_canvas(&world);
     assert_eq!(back.things.iter().find(|t| t.name == "Thermostat").unwrap().rule, Some(AgentRule::Threshold));
 }
 
@@ -232,7 +232,7 @@ fn a_banded_threshold_parses_projects_and_emits_back() {
     let text = emit_sl(&m).unwrap();
     assert!(text.contains("rule threshold above 2.2 below 1.8 emit 0 else 1 manages Switch"), "{text}");
     assert_eq!(emit_sl(&parse_sl(&text).unwrap()).unwrap(), text);
-    let back = bert_canvas::canvas::to_canvas(&world);
+    let back = facets_canvas::canvas::to_canvas(&world);
     assert_eq!(back.things.iter().find(|t| t.name == "Thermostat").unwrap().cognitive_params.get("below"), Some(&1.8));
     // The bandless line projects to a policy with no band, so a model that
     // never says `below` runs exactly as it did before the word existed.
@@ -303,7 +303,7 @@ fn a_table_rule_parses_projects_and_emits_back() {
     let text = emit_sl(&m).unwrap();
     assert!(text.contains("rule table under 20 emit 1 under 36 emit 0.5 else 0 manages Triage"), "{text}");
     assert_eq!(emit_sl(&parse_sl(&text).unwrap()).unwrap(), text);
-    let back = bert_canvas::canvas::to_canvas(&world);
+    let back = facets_canvas::canvas::to_canvas(&world);
     let g = back.things.iter().find(|t| t.name == "Gatekeeper").unwrap();
     assert_eq!(g.rule, Some(AgentRule::Table));
     assert_eq!(g.cognitive_params.get("under2"), Some(&36.0));
@@ -373,7 +373,7 @@ fn a_trace_rule_parses_projects_and_emits_back() {
     let text = emit_sl(&m).unwrap();
     assert!(text.contains("rule trace window 3 target 2 gain 0.5 manages Switch"), "{text}");
     assert_eq!(emit_sl(&parse_sl(&text).unwrap()).unwrap(), text);
-    let back = bert_canvas::canvas::to_canvas(&world);
+    let back = facets_canvas::canvas::to_canvas(&world);
     assert_eq!(back.things.iter().find(|t| t.name == "Thermostat").unwrap().cognitive_params.get("window"), Some(&3.0));
 }
 
@@ -426,8 +426,8 @@ param \"closes below\" : above of Quota range 0.05..0.6
 
 #[test]
 fn the_command_form_parses_projects_as_a_share_command_and_emits_back() {
-    use bert_core::operational::OperationalCommand;
-    use bert_core::AgentCommand;
+    use facets_core::operational::OperationalCommand;
+    use facets_core::AgentCommand;
     let m = parse_sl(QUOTA).unwrap();
     let q = m.things.iter().find(|t| t.name == "Quota").unwrap();
     assert_eq!(q.rule, Some(AgentRule::Threshold));
@@ -447,8 +447,8 @@ fn the_command_form_parses_projects_as_a_share_command_and_emits_back() {
     assert_eq!(of, world.systems.iter().find(|s| s.info.name == "Fish").unwrap().info.id);
     let landed = world.interactions.iter().find(|ix| ix.info.id == first).unwrap();
     assert_eq!(landed.info.name, "landed");
-    assert_eq!(landed.amount, bert_core::rust_decimal::Decimal::ZERO, "the interior leg's weight survives the fusion");
-    let spec = bert_core::operational::validate_operational(&world).expect("projects");
+    assert_eq!(landed.amount, facets_core::rust_decimal::Decimal::ZERO, "the interior leg's weight survives the fusion");
+    let spec = facets_core::operational::validate_operational(&world).expect("projects");
     let agent = &spec.agents[0];
     let Some(OperationalCommand::Share { first, second, .. }) = agent.command.clone() else { panic!("resolved") };
     assert_eq!(spec.flows[first].name, "landed");
@@ -465,7 +465,7 @@ fn the_command_form_parses_projects_as_a_share_command_and_emits_back() {
     assert_eq!(again.things.iter().find(|t| t.name == "Quota").unwrap().manages_param.as_deref(), Some("landed share"));
 
     // The kernel read-back keeps the command as the agent's param.
-    let back = bert_canvas::canvas::to_canvas(&world);
+    let back = facets_canvas::canvas::to_canvas(&world);
     let q = back.things.iter().find(|t| t.name == "Quota").unwrap();
     assert_eq!(q.manages_param.as_deref(), Some("landed share"));
     assert!(back.params.iter().any(|p| p.name == "landed share"));
@@ -510,6 +510,6 @@ fn the_command_form_faults_are_named() {
     let m = parse_sl(&ranged).unwrap();
     let world = project(&m);
     let sys = world.systems.iter().find(|s| s.info.name == "Quota").unwrap();
-    assert!(matches!(sys.agent.as_ref().unwrap().command, Some(bert_core::AgentCommand::Amount { .. })));
+    assert!(matches!(sys.agent.as_ref().unwrap().command, Some(facets_core::AgentCommand::Amount { .. })));
     assert!(emit_sl(&m).unwrap().contains("manages param \"feed rate\""));
 }

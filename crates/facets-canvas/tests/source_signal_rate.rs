@@ -13,10 +13,10 @@
 //! identical power. Their outputs must stand in the declared ratio; if the
 //! engine replicates the source's activity instead, they come out equal.
 
-use bert_canvas::canvas::project;
-use bert_canvas::sl::parse_sl;
-use bert_compose::{from_spec, run::RecordedRun};
-use bert_core::operational::validate_operational;
+use facets_canvas::canvas::project;
+use facets_canvas::sl::parse_sl;
+use facets_compose::{from_spec, run::RecordedRun};
+use facets_core::operational::validate_operational;
 
 const RIG: &str = "\
 system \"Signal Rig\" : Concrete/Technical

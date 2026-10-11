@@ -252,7 +252,7 @@ fn check_stock_units(model: &WorldModel, issues: &mut Vec<ValidationIssue>) {
 /// [`units::Unit::stock_candidate_dimensions`]) — only a genuinely irreconcilable
 /// pair refuses, never an honest `L`-flow / `L`-stock.
 ///
-/// #220: unreachable from the canvas today — `bert_canvas::project` writes an
+/// #220: unreachable from the canvas today — `facets_canvas::project` writes an
 /// empty `unit` on every interaction and a canvas `Relation` has no unit field,
 /// so the flow unit never parses and the gate never opens. It is live for
 /// compose-emitted and loaded models. Closing that gap means giving the canvas a
@@ -1120,7 +1120,7 @@ fn check_interface_references(
 // `check_orphan_interfaces` was removed in bert-lenses#220. It warned when an
 // interface was neither routed by a flow nor claimed by a `parent_interface`.
 // The second disjunct made it a tautology over every canvas-projected model —
-// `bert_canvas::project` sets `parent_interface` on every designated component —
+// `facets_canvas::project` sets `parent_interface` on every designated component —
 // so it read as coverage of the flowless case while never firing on one.
 //
 // Both repairs collapse into a check that already exists. Dropping the
@@ -1159,7 +1159,7 @@ fn check_interface_references(
 /// removed in #220 — see the note above).
 ///
 /// The location is the interface's own path and carries no field suffix — see
-/// [`is_interface_flow_refusal`], which `bert_canvas` uses to keep this refusal
+/// [`is_interface_flow_refusal`], which `facets_canvas` uses to keep this refusal
 /// out of the connection gesture (bert-lenses#213).
 /// The CONVERSE of [`check_interfaces_carry_flow`] (#216, A2): every
 /// boundary-crossing flow routes through a designated interface.
@@ -1283,7 +1283,7 @@ fn check_interfaces_carry_flow(model: &WorldModel, issues: &mut Vec<ValidationIs
 /// to an interface's own path with no field suffix — the only check that writes
 /// one, since [`check_s0_interface_processors`] shares the path but rates
 /// Warning, and the duplicate-id check suffixes
-/// `.info.id`. Public because `bert_canvas` has to recognize it: the stamp
+/// `.info.id`. Public because `facets_canvas` has to recognize it: the stamp
 /// precedes the flow, so refusing at gesture time would refuse a half-drawn
 /// model (bert-lenses#212, #213).
 pub fn is_interface_flow_refusal(issue: &ValidationIssue) -> bool {
@@ -1306,7 +1306,7 @@ pub fn is_interface_flow_refusal(issue: &ValidationIssue) -> bool {
 /// found.
 ///
 /// **Severity: Error (a refusal), Operational and Full only.** Not a partial
-/// authoring state: `bert_canvas::project` DERIVES `receives_from`/`exports_to`
+/// authoring state: `facets_canvas::project` DERIVES `receives_from`/`exports_to`
 /// from the same bond list it turns into interactions, so declaration and graph
 /// move together and no canvas model ever passes through this shape. The only
 /// way to write one is to state both halves explicitly — a hand-authored or
@@ -1401,7 +1401,7 @@ fn check_interface_declarations_match_flows(model: &WorldModel, issues: &mut Vec
 /// Is this issue [`check_interface_declarations_match_flows`]'s refusal? An
 /// Error addressed to an interface's `receives_from`/`exports_to` field — no
 /// other check writes that suffix. Public for the same reason as
-/// [`is_interface_flow_refusal`]: `bert_canvas` keeps it out of the connection
+/// [`is_interface_flow_refusal`]: `facets_canvas` keeps it out of the connection
 /// gesture. The declaration can outrun the graph mid-authoring on any path that
 /// writes it directly, and refusing a drag for it would be bert-lenses#212 a
 /// fourth time.
@@ -3671,7 +3671,7 @@ mod tests {
     }
 
     /// Kernel-side firing witness for `check_interfaces_carry_flow`. The
-    /// canvas-path witness lives in `bert_canvas` (`project` then
+    /// canvas-path witness lives in `facets_canvas` (`project` then
     /// `validate_mode`); this one proves the check on a hand-built model, so the
     /// kernel's own suite carries a witness for its own refusal.
     #[test]
@@ -3972,7 +3972,7 @@ mod tests {
         /// Test that makes this check produce an issue. `None` means no model
         /// reaches it through the typed path, and `note` says why.
         witness: Option<&'static str>,
-        /// Can a model `bert_canvas::project` can actually emit make it fire?
+        /// Can a model `facets_canvas::project` can actually emit make it fire?
         /// Documentation, not mechanically enforced — the canvas lives in a
         /// sibling crate. `false` marks a check that is dead in practice for
         /// canvas-authored work, which is the class #220 was opened over.
@@ -4080,7 +4080,7 @@ mod tests {
             witness: Some("flowless_interface_is_refused_at_operational_in_kernel"),
             canvas: true,
             note: "stamp a component `interface` and draw no crossing flow; the \
-                   canvas-path witness is bert_canvas's \
+                   canvas-path witness is facets_canvas's \
                    flowless_interface_is_refused_at_operational",
         },
         CheckAudit {

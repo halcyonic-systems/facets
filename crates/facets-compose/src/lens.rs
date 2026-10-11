@@ -10,7 +10,7 @@
 //! four and the CSVs are byte-identical — that identity IS the artifact.
 
 use crate::circuit::NodeKind;
-use bert_core::ProcessPrimitive;
+use facets_core::ProcessPrimitive;
 
 /// A stable slot per primitive, so each lens is just a 12-name row.
 /// Order: Source, Sink, Buffering, Combining, Splitting, Amplifying,

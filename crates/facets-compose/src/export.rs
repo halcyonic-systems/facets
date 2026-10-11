@@ -12,7 +12,7 @@
 //! Interaction parameter — so nothing is lost on the way back.
 
 use crate::circuit::{Circuit, DeclaredSubstance, FlowMode, Node, NodeKind, Wire};
-use bert_core::{
+use facets_core::{
     AgentCommand, AgentKind, AgentModel, Boundary, Complexity, Environment, ExternalEntity, ExternalEntityType,
     Id, IdType, Info, Interaction, InteractionType, InteractionUsability, Interface,
     InterfaceType, Parameter, ProcessPrimitive, Substance, System, Transform2d, WorldModel,
@@ -42,7 +42,7 @@ fn info(i: Id, level: i32, name: &str, description: &str) -> Info {
 
 fn transform(x: f32, y: f32) -> Option<Transform2d> {
     Some(Transform2d {
-        translation: bert_core::Vec2::new(x, y),
+        translation: facets_core::Vec2::new(x, y),
         rotation: 0.0,
     })
 }
@@ -296,14 +296,14 @@ pub fn to_world_model(circuit: &Circuit, name: &str) -> WorldModel {
             sink: node_id[&wire.to].clone(),
             sink_interface: None,
             // Source-fed flows carry the asserted emission rate.
-            amount: bert_core::rust_decimal::Decimal::try_from(
+            amount: facets_core::rust_decimal::Decimal::try_from(
                 if matches!(circuit.nodes[wire.from].kind, NodeKind::Source) {
                     circuit.nodes[wire.from].param
                 } else {
                     1.0
                 },
             )
-            .unwrap_or(bert_core::rust_decimal::Decimal::ONE),
+            .unwrap_or(facets_core::rust_decimal::Decimal::ONE),
             unit: from.out_substance.unit.clone(),
             // Gradient conductance (k) rides as a flow parameter.
             ample: wire.ample,
@@ -417,7 +417,7 @@ pub fn to_world_model(circuit: &Circuit, name: &str) -> WorldModel {
         model_id: None,
         // Compose's dynamics live in the engine, not the dynamical-face string
         // slots, so exports declare the Operational rung they actually occupy.
-        mode: Some(bert_core::Mode::Operational),
+        mode: Some(facets_core::Mode::Operational),
         environment,
         systems,
         interactions,
@@ -442,7 +442,7 @@ pub fn model_name(model: &WorldModel) -> String {
 /// comes from the [`OperationalSpec`], so the loader cannot disagree with the
 /// contract that produced it — agreement by construction, not by test.
 /// Canvas-only concerns (node positions) are the caller's overlay.
-pub fn from_spec(spec: &bert_core::operational::OperationalSpec) -> Circuit {
+pub fn from_spec(spec: &facets_core::operational::OperationalSpec) -> Circuit {
     let mut c = Circuit::default();
     let mut ids: Vec<(Id, usize)> = Vec::new();
     let grid = |i: usize| {
@@ -513,10 +513,10 @@ pub fn from_spec(spec: &bert_core::operational::OperationalSpec) -> Circuit {
         // is built per flow below in that order, so the positions are the
         // wire indices.
         node.knob = a.command.as_ref().map(|c| match c {
-            bert_core::operational::OperationalCommand::Amount { param, flow } => {
+            facets_core::operational::OperationalCommand::Amount { param, flow } => {
                 crate::circuit::AgentKnob::Amount { param: param.clone(), wire: *flow }
             }
-            bert_core::operational::OperationalCommand::Share { param, first, second } => {
+            facets_core::operational::OperationalCommand::Share { param, first, second } => {
                 crate::circuit::AgentKnob::Share { param: param.clone(), first: *first, second: *second }
             }
         });
@@ -639,7 +639,7 @@ fn is_agent(s: &System) -> bool {
 }
 
 pub fn from_world_model(model: &WorldModel) -> Result<Circuit, String> {
-    let spec = bert_core::operational::validate_operational(model).map_err(|errs| {
+    let spec = facets_core::operational::validate_operational(model).map_err(|errs| {
         errs.iter()
             .map(|e| format!("{}: {}", e.location, e.reason))
             .collect::<Vec<_>>()
@@ -685,8 +685,8 @@ pub fn from_world_model(model: &WorldModel) -> Result<Circuit, String> {
 mod tests {
     use super::*;
     use crate::circuit::{Node, Wire};
-    use bert_core::validate::{validate, Severity};
-    use bert_core::ProcessPrimitive;
+    use facets_core::validate::{validate, Severity};
+    use facets_core::ProcessPrimitive;
     use glam::vec2 as pos2;
 
     /// Law: per-flow rates survive the spec→circuit seam into execution —
@@ -700,8 +700,8 @@ mod tests {
     /// the spec" — which is exactly how the collapse went unseen.)
     #[test]
     fn from_spec_keeps_per_flow_source_rates_through_execution() {
-        use bert_core::operational::{OperationalFlow, OperationalSpec, OperationalTerminal};
-        use bert_core::{Id, IdType, SubstanceType};
+        use facets_core::operational::{OperationalFlow, OperationalSpec, OperationalTerminal};
+        use facets_core::{Id, IdType, SubstanceType};
 
         let id = |ty: IdType, n: i64| Id {
             ty,
@@ -789,10 +789,10 @@ mod tests {
     /// signal-bound value). The ample wire itself delivers zero quantity.
     #[test]
     fn ample_signal_equals_huge_signal_and_beats_meager() {
-        use bert_core::operational::{
+        use facets_core::operational::{
             OperationalFlow, OperationalProcess, OperationalSpec, OperationalTerminal,
         };
-        use bert_core::{Id, IdType, SubstanceType};
+        use facets_core::{Id, IdType, SubstanceType};
 
         let id = |ty: IdType, n: i64| Id { ty, indices: vec![n] };
         let rig = |signal_amount: f64, ample: bool| -> Circuit {
@@ -886,8 +886,8 @@ mod tests {
     /// series can reach the wire yet fail to run, so both levels are tested.
     #[test]
     fn from_spec_carries_and_executes_a_forced_series() {
-        use bert_core::operational::{OperationalFlow, OperationalSpec, OperationalTerminal};
-        use bert_core::{Id, IdType, SubstanceType};
+        use facets_core::operational::{OperationalFlow, OperationalSpec, OperationalTerminal};
+        use facets_core::{Id, IdType, SubstanceType};
 
         let id = |ty: IdType, n: i64| Id { ty, indices: vec![n] };
         let spec = OperationalSpec {
@@ -946,10 +946,10 @@ mod tests {
     /// → circuit → a 75/25 split that conserves.
     #[test]
     fn from_spec_carries_a_splitter_weight_series() {
-        use bert_core::operational::{
+        use facets_core::operational::{
             OperationalFlow, OperationalProcess, OperationalSpec, OperationalTerminal,
         };
-        use bert_core::{Id, IdType, ProcessPrimitive, SubstanceType};
+        use facets_core::{Id, IdType, ProcessPrimitive, SubstanceType};
 
         let id = |ty: IdType, n: i64| Id { ty, indices: vec![n] };
         let flow = |name: &str, s: Id, k: Id, weight: Option<Vec<f64>>| OperationalFlow {
@@ -1018,8 +1018,8 @@ mod tests {
     /// makes the wire zero-order-hold its series on the slower clock.
     #[test]
     fn from_spec_carries_a_slow_channel_stride() {
-        use bert_core::operational::{OperationalFlow, OperationalSpec, OperationalTerminal};
-        use bert_core::{Id, IdType, SubstanceType};
+        use facets_core::operational::{OperationalFlow, OperationalSpec, OperationalTerminal};
+        use facets_core::{Id, IdType, SubstanceType};
 
         let id = |ty: IdType, n: i64| Id { ty, indices: vec![n] };
         let spec = OperationalSpec {
@@ -1077,7 +1077,7 @@ mod tests {
         c.nodes[1].initial_storage = 12.0; // asserted starting stock
         c.nodes[0].out_substance = crate::circuit::DeclaredSubstance::named(
             "water",
-            bert_core::SubstanceType::Material,
+            facets_core::SubstanceType::Material,
             "L",
         );
 
@@ -1118,7 +1118,7 @@ mod tests {
         );
         assert_eq!(
             src_flow.substance.ty,
-            bert_core::SubstanceType::Material,
+            facets_core::SubstanceType::Material,
             "over its base"
         );
         assert_eq!(src_flow.unit, "L", "declared unit on the interaction");
@@ -1132,7 +1132,7 @@ mod tests {
     /// and the projected spec drives a circuit whose ledger balances.
     #[test]
     fn export_satisfies_the_seam_contract() {
-        use bert_core::operational::validate_operational;
+        use facets_core::operational::validate_operational;
 
         let mut c = Circuit::default();
         c.nodes
@@ -1168,12 +1168,12 @@ mod tests {
         assert!(r.balance().abs() < 1e-3, "projected circuit conserves");
 
         // Representational rungs refuse: the hard gate, loud by design.
-        model.mode = Some(bert_core::Mode::Core);
+        model.mode = Some(facets_core::Mode::Core);
         assert!(
             validate_operational(&model).is_err(),
             "Klir rung must refuse execution"
         );
-        model.mode = Some(bert_core::Mode::Structural);
+        model.mode = Some(facets_core::Mode::Structural);
         assert!(
             validate_operational(&model).is_err(),
             "Bunge rung must refuse execution"
@@ -1243,7 +1243,7 @@ mod tests {
             pos2(60.0, 0.0),
         ));
         c.nodes.push(Node::new(NodeKind::Sink, 3, pos2(120.0, 0.0)));
-        c.nodes[0].policy = bert_core::Policy::Proportional {
+        c.nodes[0].policy = facets_core::Policy::Proportional {
             target: 2.5,
             gain: 0.25,
         };
@@ -1252,7 +1252,7 @@ mod tests {
         let model: WorldModel =
             serde_json::from_str(&serde_json::to_string(&to_world_model(&c, "AG")).unwrap())
                 .unwrap();
-        let spec = bert_core::operational::validate_operational(&model).expect("projects");
+        let spec = facets_core::operational::validate_operational(&model).expect("projects");
         assert_eq!(spec.agents.len(), 1, "the agent has its own list");
         assert_eq!(spec.processes.len(), 1, "and is not counted as a process");
         let r = from_world_model(&model).expect("loads");
@@ -1263,7 +1263,7 @@ mod tests {
             .expect("agent survives");
         assert_eq!(
             ag.policy,
-            bert_core::Policy::Proportional {
+            facets_core::Policy::Proportional {
                 target: 2.5,
                 gain: 0.25
             }
@@ -1296,7 +1296,7 @@ mod tests {
         c.nodes.push(Node::new(NodeKind::Sink, 4, pos2(200.0, 0.0)));
         c.nodes[0].param = 2.5;
         c.nodes[0].out_substance =
-            DeclaredSubstance::named("water", bert_core::SubstanceType::Material, "L");
+            DeclaredSubstance::named("water", facets_core::SubstanceType::Material, "L");
         c.nodes[1].name = "Tank".to_string();
         c.nodes[1].initial_storage = 12.0;
         c.nodes[1].storage = 12.0;
@@ -1305,7 +1305,7 @@ mod tests {
         c.nodes[1].time_constant = 4.0;
         c.nodes[1].maintenance = 0.3;
         c.nodes[1].out_substance =
-            DeclaredSubstance::named("water", bert_core::SubstanceType::Material, "L");
+            DeclaredSubstance::named("water", facets_core::SubstanceType::Material, "L");
         c.nodes[2].release_rate = 0.0;
         c.wires.push(Wire::new(0, 1));
         c.wires.push(Wire::gradient(1, 2, 0.42));
@@ -1385,7 +1385,7 @@ mod tests {
     #[test]
     fn a_model_that_projects_to_nothing_builds_no_circuit() {
         let empty: WorldModel = serde_json::from_str(EMPTY_OPERATIONAL).expect("parses");
-        let spec = bert_core::operational::validate_operational(&empty)
+        let spec = facets_core::operational::validate_operational(&empty)
             .expect("an empty Operational model projects — there is nothing to refuse");
         assert!(
             spec.sources.is_empty() && spec.sinks.is_empty() && spec.processes.is_empty(),

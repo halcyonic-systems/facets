@@ -14,8 +14,8 @@
 
 use serde::{Deserialize, Serialize};
 
-use bert_core::validate::{validate_mode, Severity, ValidationIssue};
-use bert_core::{
+use facets_core::validate::{validate_mode, Severity, ValidationIssue};
+use facets_core::{
     AgentCommand, AgentModel, Boundary, Complexity, Environment, ExternalEntity, ExternalEntityType, Grounding,
     HcgsArchetype, Id, IdType, Info, Interaction, InteractionType, InteractionUsability, Interface, InterfaceType,
     Mode, ModelRef, ProcessPrimitive, Substance, SubstanceType, System, Transform2d, Vec2, WorldModel,
@@ -142,7 +142,7 @@ fn kind_to_substance(k: Kind) -> SubstanceType {
 /// A reference from a component to the child model that realizes it (SL's
 /// `decomposes` clause; bert-lenses#89 step 4). Two halves: a human `name` label
 /// (may drift harmlessly across renames) and the stamped `id` — the stable key,
-/// the same `ModelRef` the kernel carries in [`bert_core::System::child_model`].
+/// the same `ModelRef` the kernel carries in [`facets_core::System::child_model`].
 /// The kernel stores only the id; the name is the surface layer's readability
 /// affordance, so a reference reconstructed from a kernel model (`to_canvas`)
 /// carries the component's own name as its label.
@@ -215,7 +215,7 @@ pub struct Thing {
     /// The child model this component decomposes into, by reference (SL's
     /// `decomposes`; bert-lenses#89 step 4). `None` for atomic components and
     /// every model authored before step 4; `skip_serializing_if` so those stay
-    /// byte-identical on disk. Projects to [`bert_core::System::child_model`]
+    /// byte-identical on disk. Projects to [`facets_core::System::child_model`]
     /// (the id only); ignored on env things (their internals are opaque).
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub child_model: Option<ChildRef>,
@@ -229,7 +229,7 @@ pub struct Thing {
     pub stock_unit: String,
     /// What this thing IS, in the author's own words (bert-lenses#326). The
     /// original BERT carried one on every entity and the rebuild dropped it,
-    /// while `bert_core::Info` kept the destination field and received an
+    /// while `facets_core::Info` kept the destination field and received an
     /// empty string forever; this restores the authoring path to it. Prose,
     /// never semantics: no verdict reads it, and two models differing only
     /// here are the same system. `skip` when empty so models authored before
@@ -334,7 +334,7 @@ pub struct Relation {
     /// authored before this field byte-identical on disk.
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub weight: Option<u64>,
-    /// The flow's magnitude — [`bert_core::Interaction::amount`], which the
+    /// The flow's magnitude — [`facets_core::Interaction::amount`], which the
     /// kernel has carried from the beginning and this struct dropped, capping
     /// every canvas-authored model at emission rate 1.0 (#216, C1). A structural
     /// attribute of the edge, not dynamics: it does not vary during a run.
@@ -342,18 +342,18 @@ pub struct Relation {
     /// file keeps the difference; only [`project`] conflates them (declared
     /// there). `skip` keeps pre-#216 models byte-identical on disk.
     #[serde(default, skip_serializing_if = "Option::is_none")]
-    pub amount: Option<bert_core::rust_decimal::Decimal>,
-    /// The magnitude's unit — [`bert_core::Interaction::unit`] (#216, C1).
+    pub amount: Option<facets_core::rust_decimal::Decimal>,
+    /// The magnitude's unit — [`facets_core::Interaction::unit`] (#216, C1).
     /// Empty = undeclared.
     #[serde(default, skip_serializing_if = "String::is_empty")]
     pub unit: String,
     /// What flows, named separately from what the flow is *called* —
-    /// [`bert_core::Substance::sub_type`] (#216, C4). "F-1.1 — iron-input" is a
+    /// [`facets_core::Substance::sub_type`] (#216, C4). "F-1.1 — iron-input" is a
     /// label; `iron` is a substance, and `check_stock_dimensions` reasons over
     /// the latter. Empty = undeclared.
     #[serde(default, skip_serializing_if = "String::is_empty")]
     pub substance: String,
-    /// `ample` (#9) — see [`bert_core::Interaction::ample`]: an availability
+    /// `ample` (#9) — see [`facets_core::Interaction::ample`]: an availability
     /// assertion on an informational flow; no magnitude. The SL parser refuses
     /// it with `amount`/`unit`, on `mere`, and on non-informational kinds.
     /// `skip` keeps pre-existing models byte-identical on disk.
@@ -510,26 +510,26 @@ impl AgentRule {
         (out.len() == bag.len()).then_some(out)
     }
     /// The rule of a kernel policy.
-    pub fn of(policy: &bert_core::Policy) -> AgentRule {
+    pub fn of(policy: &facets_core::Policy) -> AgentRule {
         match policy {
-            bert_core::Policy::Proportional { .. } => AgentRule::Proportional,
-            bert_core::Policy::Threshold { .. } => AgentRule::Threshold,
-            bert_core::Policy::Table { .. } => AgentRule::Table,
-            bert_core::Policy::Trace { .. } => AgentRule::Trace,
+            facets_core::Policy::Proportional { .. } => AgentRule::Proportional,
+            facets_core::Policy::Threshold { .. } => AgentRule::Threshold,
+            facets_core::Policy::Table { .. } => AgentRule::Table,
+            facets_core::Policy::Trace { .. } => AgentRule::Trace,
         }
     }
     /// The kernel's policy over this rule's declared numbers, read by word;
     /// `None` for a word the bag does not carry. A required word that is
     /// missing reads as 1, the bag's own default; an optional one as absent;
     /// a table's bins run from `under1` to the first bin the bag lacks.
-    pub fn policy(self, num: impl Fn(&str) -> Option<f64>) -> bert_core::Policy {
+    pub fn policy(self, num: impl Fn(&str) -> Option<f64>) -> facets_core::Policy {
         let req = |w: &str| num(w).unwrap_or(1.0);
         match self {
-            AgentRule::Proportional => bert_core::Policy::Proportional {
+            AgentRule::Proportional => facets_core::Policy::Proportional {
                 target: req("target"),
                 gain: req("gain"),
             },
-            AgentRule::Threshold => bert_core::Policy::Threshold {
+            AgentRule::Threshold => facets_core::Policy::Threshold {
                 above: req("above"),
                 below: num("below"),
                 emit: req("emit"),
@@ -541,9 +541,9 @@ impl AgentRule {
                     bounds.push(b);
                     outputs.push(req(&format!("emit{}", bounds.len())));
                 }
-                bert_core::Policy::Table { bounds, outputs, otherwise: req("else") }
+                facets_core::Policy::Table { bounds, outputs, otherwise: req("else") }
             }
-            AgentRule::Trace => bert_core::Policy::Trace {
+            AgentRule::Trace => facets_core::Policy::Trace {
                 window: req("window").max(1.0) as usize,
                 target: req("target"),
                 gain: req("gain"),
@@ -641,15 +641,15 @@ impl EngineField {
     /// The primitive that reads this field (the component line's own gate);
     /// `None` for the ones an agent line declares (facets#269), which no
     /// work process reads.
-    pub fn reader(self) -> Option<bert_core::ProcessPrimitive> {
+    pub fn reader(self) -> Option<facets_core::ProcessPrimitive> {
         match self {
-            EngineField::Setpoint => Some(bert_core::ProcessPrimitive::Inverting),
+            EngineField::Setpoint => Some(facets_core::ProcessPrimitive::Inverting),
             EngineField::Target
             | EngineField::Gain
             | EngineField::Above
             | EngineField::Below
             | EngineField::Window => None,
-            _ => Some(bert_core::ProcessPrimitive::Buffering),
+            _ => Some(facets_core::ProcessPrimitive::Buffering),
         }
     }
     /// A field an agent line declares rather than a component line.
@@ -696,8 +696,8 @@ pub struct ParamDecl {
 /// Inclusive bounds, in the anchored flow's own unit.
 #[derive(Serialize, Deserialize, Clone, Copy, Debug, PartialEq)]
 pub struct ParamRange {
-    pub min: bert_core::rust_decimal::Decimal,
-    pub max: bert_core::rust_decimal::Decimal,
+    pub min: facets_core::rust_decimal::Decimal,
+    pub max: facets_core::rust_decimal::Decimal,
 }
 
 /// What a declared metric computes over the run's trace (#203). The verb set
@@ -749,7 +749,7 @@ pub struct Crossing {
     #[serde(default, skip_serializing_if = "String::is_empty")]
     pub substance: String,
     #[serde(default, skip_serializing_if = "Option::is_none")]
-    pub amount: Option<bert_core::rust_decimal::Decimal>,
+    pub amount: Option<facets_core::rust_decimal::Decimal>,
     #[serde(default, skip_serializing_if = "String::is_empty")]
     pub unit: String,
 }
@@ -781,7 +781,7 @@ pub struct CanvasModel {
     /// `to_canvas` copies it in, `project` writes it back, and a model without
     /// one stays without one (`skip_serializing_if` keeps old files identical).
     #[serde(default, skip_serializing_if = "Option::is_none")]
-    pub model_id: Option<bert_core::ModelId>,
+    pub model_id: Option<facets_core::ModelId>,
     #[serde(default)]
     pub things: Vec<Thing>,
     #[serde(default)]
@@ -804,7 +804,7 @@ pub struct CanvasModel {
     /// the absence of edges IS the ontology. One struct, defined in the
     /// kernel, shared here. `skip` when empty: old models stay byte-identical.
     #[serde(default, skip_serializing_if = "Vec::is_empty")]
-    pub milieu: Vec<bert_core::MilieuVariable>,
+    pub milieu: Vec<facets_core::MilieuVariable>,
     #[serde(default)]
     pub boundary: CanvasBoundaryProps,
     /// Author-asserted system type (genus + optional domain). serde `default` so
@@ -1405,7 +1405,7 @@ pub fn project_with_map(model: &CanvasModel) -> Projection {
                         .find(|x| x.a == processor && x.b == r.a)
                         .and_then(|x| x.amount)
                 })
-                .unwrap_or(bert_core::rust_decimal::Decimal::ONE),
+                .unwrap_or(facets_core::rust_decimal::Decimal::ONE),
             unit: r.unit.clone(),
             ample: r.ample,
             parameters: vec![],
@@ -1445,7 +1445,7 @@ pub fn project_with_map(model: &CanvasModel) -> Projection {
             source_interface: None,
             sink,
             sink_interface: None,
-            amount: c.amount.unwrap_or(bert_core::rust_decimal::Decimal::ONE),
+            amount: c.amount.unwrap_or(facets_core::rust_decimal::Decimal::ONE),
             unit: c.unit.clone(),
             ample: false,
             parameters: vec![],
@@ -1639,7 +1639,7 @@ pub fn to_canvas(model: &WorldModel) -> CanvasModel {
             // reconstructed reference with the component's own name.
             child_model: s.child_model.map(|id| ChildRef {
                 name: if s.info.name.is_empty() {
-                    bert_core::model_id::encode_uuid(&id.as_uuid())
+                    facets_core::model_id::encode_uuid(&id.as_uuid())
                 } else {
                     s.info.name.clone()
                 },
@@ -1791,7 +1791,7 @@ pub fn to_canvas(model: &WorldModel) -> CanvasModel {
             // typed (#262). A genuinely authored 1 is indistinguishable and
             // also reads back None: the same trade the placeholder root name
             // makes below, and projection resupplies the ONE either way.
-            amount: Some(ix.amount).filter(|a| *a != bert_core::rust_decimal::Decimal::ONE),
+            amount: Some(ix.amount).filter(|a| *a != facets_core::rust_decimal::Decimal::ONE),
             unit: ix.unit.clone(),
             substance: ix.substance.sub_type.clone(),
             ample: ix.ample,
@@ -1866,7 +1866,7 @@ pub fn to_canvas(model: &WorldModel) -> CanvasModel {
 
 /// Derive the newborn child of the canvas component `thing_id` — the door's
 /// canvas half (bert-lenses#89 step 5b). Projects the editing model and hands
-/// the projected component to [`bert_core::decomposition::derive_child`], which
+/// the projected component to [`facets_core::decomposition::derive_child`], which
 /// derives G′, mints the child's identity, and judges eligibility (interface
 /// components refuse under the v1 narrowing). The caller saves the returned
 /// model and stamps the parent's `child_model` reference — stamping is tooling,
@@ -1877,16 +1877,16 @@ pub fn decompose_thing(
 ) -> Result<WorldModel, Vec<ValidationIssue>> {
     let p = project_with_map(model);
     match p.thing_ids.get(&thing_id) {
-        Some(comp) => bert_core::decomposition::derive_child(&p.world, comp),
+        Some(comp) => facets_core::decomposition::derive_child(&p.world, comp),
         None => Err(vec![ValidationIssue {
-            severity: bert_core::validate::Severity::Error,
+            severity: facets_core::validate::Severity::Error,
             code: "not_a_relatum".to_string(),
             location: format!("thing {thing_id}"),
             message: "nothing to decompose here: the selected element does not project as a \
                       model relatum"
                 .to_string(),
             suggestion: Some("Select a component of the model".to_string()),
-            doc: Some(bert_core::validate::doc::DECOMPOSITION.to_string()),
+            doc: Some(facets_core::validate::doc::DECOMPOSITION.to_string()),
             subject: None,
         }]),
     }
@@ -1917,8 +1917,8 @@ pub fn decompose_thing(
 /// any path that writes the declaration directly the declaration precedes the
 /// flow, and refusing the drag would be #212 a fourth time.
 fn belongs_at_the_gesture(issue: &ValidationIssue) -> bool {
-    if bert_core::validate::is_interface_flow_refusal(issue)
-        || bert_core::validate::is_interface_declaration_refusal(issue)
+    if facets_core::validate::is_interface_flow_refusal(issue)
+        || facets_core::validate::is_interface_declaration_refusal(issue)
     {
         return false;
     }
@@ -1961,7 +1961,7 @@ pub fn validate_connection(model: &CanvasModel, candidate: &Relation) -> Vec<Val
 /// Read a model AS A KLIR STATE MACHINE for the #67 DTMC run: its things are the
 /// states `T`, its directed relations are the transitions `R`. Returns the state
 /// labels and the weighted edges (`from_index`, `to_index`, `weight`) a
-/// [`bert_compose::markov::Chain`] consumes.
+/// [`facets_compose::markov::Chain`] consumes.
 ///
 /// This reads the Klir `(T, R)` structure DIRECTLY — it never projects to a
 /// `WorldModel` or calls `validate_operational`, so the Mobus irreflexivity gate
@@ -2279,7 +2279,7 @@ mod tests {
             crossings: vec![],
             lens: Lens::Mobus,
             model_id: None,
-            milieu: vec![bert_core::MilieuVariable {
+            milieu: vec![facets_core::MilieuVariable {
                 name: "pH".into(),
                 value: Some(7.2),
                 unit: String::new(),
@@ -2354,7 +2354,7 @@ mod tests {
         assert_eq!(ix.sink, world.systems[1].info.id);
         assert_eq!(ix.sink_interface, Some(ifaces[0].info.id.clone()));
         // And the lowered model is well-formed where it counts.
-        let report = validate_mode(&world, bert_core::Mode::Operational);
+        let report = validate_mode(&world, facets_core::Mode::Operational);
         assert!(
             !report.issues.iter().any(|i| i.severity == Severity::Error),
             "fused projection validates clean: {:?}",
@@ -2486,23 +2486,23 @@ mod tests {
             klir_level: None,
         };
         let world = project(&model);
-        let report = validate_mode(&world, bert_core::Mode::Operational);
+        let report = validate_mode(&world, facets_core::Mode::Operational);
         let hit = report
             .issues
             .iter()
-            .find(|i| bert_core::validate::is_interface_flow_refusal(i))
+            .find(|i| facets_core::validate::is_interface_flow_refusal(i))
             .expect("Operational refuses the flowless interface");
         assert_eq!(hit.severity, Severity::Error);
         assert_eq!(hit.location, "systems[0].boundary.interfaces[0]");
         assert!(hit.message.contains("Gate"), "names the designation: {hit:?}");
 
         // Structural is Bunge's mode and Core is Klir's; neither runs the check.
-        for quiet in [bert_core::Mode::Core, bert_core::Mode::Structural] {
+        for quiet in [facets_core::Mode::Core, facets_core::Mode::Structural] {
             assert!(
                 !validate_mode(&world, quiet)
                     .issues
                     .iter()
-                    .any(bert_core::validate::is_interface_flow_refusal),
+                    .any(facets_core::validate::is_interface_flow_refusal),
                 "{quiet:?} must be unaffected"
             );
         }
@@ -2546,7 +2546,7 @@ mod tests {
                 .validation
                 .issues
                 .iter()
-                .any(bert_core::validate::is_interface_flow_refusal),
+                .any(facets_core::validate::is_interface_flow_refusal),
             "the audit keeps the refusal the gesture deferred"
         );
     }
@@ -2591,7 +2591,7 @@ mod tests {
                 .validation
                 .issues
                 .iter()
-                .any(bert_core::validate::is_interface_flow_refusal),
+                .any(facets_core::validate::is_interface_flow_refusal),
             "a flow now crosses at Gate; the refusal must clear"
         );
     }
@@ -2653,7 +2653,7 @@ mod tests {
         // And it re-projects to a still-executable model (display-faithful round-trip).
         let back = project(&cm);
         assert!(
-            bert_core::operational::validate_operational(&back).is_ok(),
+            facets_core::operational::validate_operational(&back).is_ok(),
             "reloaded demo should still project to an executable model"
         );
     }
@@ -2748,7 +2748,7 @@ mod tests {
         assert!(child.model_id.is_some(), "the child is born nameable");
         assert_eq!(child.systems[0].info.name, "C");
         let p = project_with_map(&model);
-        let issues = bert_core::decomposition::check_decomposition_contract(
+        let issues = facets_core::decomposition::check_decomposition_contract(
             &p.world,
             &p.thing_ids[&3],
             &child,

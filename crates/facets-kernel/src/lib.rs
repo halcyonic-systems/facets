@@ -2,14 +2,14 @@
 //!
 //! THE LOAD-BEARING INVARIANT: this crate is the *seam*, not the brain. Every
 //! `#[wasm_bindgen]` function in [`api`] follows one shape — deserialize JS input
-//! → call the truth ([`bert_core`] semantic authority, [`bert_compose`] engine,
-//! [`bert_canvas`] canvas/lens domain, [`bert_tether`] import ritual) → serialize
+//! → call the truth ([`facets_core`] semantic authority, [`facets_compose`] engine,
+//! [`facets_canvas`] canvas/lens domain, [`facets_tether`] import ritual) → serialize
 //! the result. No systemhood verdict, validation, projection, or simulation is
 //! ever computed here. Any systems logic in this crate — or in JS — is a bug.
 //!
 //! The domain lives in sibling pure-Rust crates (no wasm-bindgen):
-//! - [`bert_canvas`]: `CanvasModel`, `project`, `lens_facts`, `describe`.
-//! - [`bert_tether`]: the CSV tether, the run manifest, the forced-run pipeline.
+//! - [`facets_canvas`]: `CanvasModel`, `project`, `lens_facts`, `describe`.
+//! - [`facets_tether`]: the CSV tether, the run manifest, the forced-run pipeline.
 //!
 //! The exact JSON shapes this boundary returns are frozen in `API.md`.
 
@@ -51,7 +51,7 @@ pub fn __install_panic_hook() {
 #[cfg(all(target_arch = "wasm32", feature = "panic-probe"))]
 #[wasm_bindgen::prelude::wasm_bindgen]
 pub fn __trap_probe(canvas_json: &str) -> Result<wasm_bindgen::JsValue, wasm_bindgen::JsError> {
-    let model: bert_canvas::canvas::CanvasModel = serde_json::from_str(canvas_json)
+    let model: facets_canvas::canvas::CanvasModel = serde_json::from_str(canvas_json)
         .map_err(|e| wasm_bindgen::JsError::new(&format!("invalid canvas model: {e}")))?;
     let _held = serde_wasm_bindgen::to_value(&model)
         .map_err(|e| wasm_bindgen::JsError::new(&e.to_string()))?;

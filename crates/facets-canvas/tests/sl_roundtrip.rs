@@ -4,12 +4,12 @@
 //! text (canvas-born, gap ids), the guarantee is canonicalization:
 //! `emit(parse(emit(m))) == emit(m)`.
 
-use bert_canvas::canvas::{
+use facets_canvas::canvas::{
     project, to_canvas, CanvasBoundaryProps, CanvasModel, ChildRef, Kind, KlirVarKind, Lens,
     Relation, Role, ScaleType, SystemType, Thing,
 };
-use bert_canvas::sl::{emit_sl, parse_sl};
-use bert_core::{ModelId, ModelRef};
+use facets_canvas::sl::{emit_sl, parse_sl};
+use facets_core::{ModelId, ModelRef};
 
 const CORPUS: [(&str, &str); 4] = [
     ("process-m", include_str!("../../../fixtures/sl/process-m.sl")),
@@ -45,8 +45,8 @@ fn corpus_projects_clean_at_core() {
     // as the edu-suite's first lessons, so it must not ship with issues.
     for (name, text) in CORPUS {
         let m = parse_sl(text).unwrap();
-        let world = bert_canvas::canvas::project(&m);
-        let report = bert_core::validate::validate_mode(&world, bert_core::Mode::Core);
+        let world = facets_canvas::canvas::project(&m);
+        let report = facets_core::validate::validate_mode(&world, facets_core::Mode::Core);
         assert!(report.issues.is_empty(), "{name} Core issues: {:?}", report.issues);
     }
 }
@@ -150,15 +150,15 @@ fn soi_name_survives_both_round_trips() {
     let emitted = emit_sl(&m).unwrap();
     assert!(emitted.starts_with("system \"Process M\" : Concrete\n"), "{emitted}");
 
-    let world = bert_canvas::canvas::project(&m);
+    let world = facets_canvas::canvas::project(&m);
     assert_eq!(world.systems[0].info.name, "Process M");
-    let back = bert_canvas::canvas::to_canvas(&world);
+    let back = facets_canvas::canvas::to_canvas(&world);
     assert_eq!(back.name.as_deref(), Some("Process M"));
 
     let unnamed = parse_sl("component Work\n").unwrap();
-    let world = bert_canvas::canvas::project(&unnamed);
+    let world = facets_canvas::canvas::project(&unnamed);
     assert_eq!(world.systems[0].info.name, "System");
-    assert_eq!(bert_canvas::canvas::to_canvas(&world).name, None);
+    assert_eq!(facets_canvas::canvas::to_canvas(&world).name, None);
 }
 
 /// Law (bert-lenses#94 tail): the model's time-unit symbol and a declared stock
@@ -331,7 +331,7 @@ fn decomposes_clause_parses_and_emits_last() {
     assert_eq!(child.name, "furnace-interior");
     // The id decodes to the known uuid the fixture's base58 string names — no
     // uuid dev-dep needed, the kernel's own base58 codec is the bridge.
-    let expected = ModelRef::new(bert_core::model_id::decode_uuid("Hrs6K91KnZZsiPcWzftv8U").unwrap());
+    let expected = ModelRef::new(facets_core::model_id::decode_uuid("Hrs6K91KnZZsiPcWzftv8U").unwrap());
     assert_eq!(child.id, expected);
 
     let emitted = emit_sl(&m).unwrap();

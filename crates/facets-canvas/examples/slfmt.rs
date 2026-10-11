@@ -34,7 +34,7 @@ fn main() {
         })
     };
 
-    match bert_canvas::sl::format_sl(&text) {
+    match facets_canvas::sl::format_sl(&text) {
         Ok(formatted) => {
             if check {
                 if formatted == text {

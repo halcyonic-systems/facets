@@ -11,7 +11,7 @@
 use std::fs;
 use std::path::Path;
 
-use bert_canvas::sl::parse_sl_full;
+use facets_canvas::sl::parse_sl_full;
 
 #[test]
 fn examples_open_clean_and_declare_genus() {
@@ -39,12 +39,12 @@ fn examples_open_clean_and_declare_genus() {
 
         // Warnings are allowed — a structural example opens as a diagram, it
         // does not run. Only a Core Error blocks a clean open.
-        let world = bert_canvas::canvas::project(&parsed.model);
-        let core = bert_core::validate::validate_mode(&world, bert_core::Mode::Core);
+        let world = facets_canvas::canvas::project(&parsed.model);
+        let core = facets_core::validate::validate_mode(&world, facets_core::Mode::Core);
         let errors: Vec<_> = core
             .issues
             .iter()
-            .filter(|i| matches!(i.severity, bert_core::validate::Severity::Error))
+            .filter(|i| matches!(i.severity, facets_core::validate::Severity::Error))
             .collect();
         assert!(errors.is_empty(), "{name}: Core errors: {errors:?}");
     }

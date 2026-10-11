@@ -10,7 +10,7 @@
 //! refusal. Bunge admits the diagonal, Mobus forbids it (§4.3 requires k ≠ o),
 //! so the file is legal Bunge structure and refused Mobus structure. That
 //! divergence was asserted in two places that never met — the message in
-//! `bert_core::validate::check_self_loops`, and an English `# note:` in the
+//! `facets_core::validate::check_self_loops`, and an English `# note:` in the
 //! `.sl` file. Under the ship gate the entry validates as Bunge/Structural,
 //! where the self-loop check does not run, so nothing ever executed the lesson.
 //! Renaming the message or narrowing its mode gate would have left the corpus
@@ -22,10 +22,10 @@ use std::collections::BTreeMap;
 use std::fs;
 use std::path::{Path, PathBuf};
 
-use bert_canvas::canvas::{CanvasModel, Lens};
-use bert_canvas::lenses::{analyze, check_cross_level, describe};
-use bert_canvas::sl::parse_sl_full;
-use bert_core::validate::Severity;
+use facets_canvas::canvas::{CanvasModel, Lens};
+use facets_canvas::lenses::{analyze, check_cross_level, describe};
+use facets_canvas::sl::parse_sl_full;
+use facets_core::validate::Severity;
 
 fn corpus_entry(rel: &str) -> String {
     let path = PathBuf::from(env!("CARGO_MANIFEST_DIR"))

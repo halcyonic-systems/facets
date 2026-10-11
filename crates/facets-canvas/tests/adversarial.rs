@@ -13,10 +13,10 @@
 //! panic would abort the test binary). Where a verdict is meaningful we also
 //! check it, but the load-bearing guarantee is: none of these abort.
 
-use bert_canvas::canvas::{
+use facets_canvas::canvas::{
     project, to_canvas, validate_connection, CanvasModel, Kind, Lens, Relation, Role, Thing,
 };
-use bert_canvas::lenses::{analyze, describe, lens_facts};
+use facets_canvas::lenses::{analyze, describe, lens_facts};
 
 fn thing(id: u64, name: &str, role: Role) -> Thing {
     Thing {

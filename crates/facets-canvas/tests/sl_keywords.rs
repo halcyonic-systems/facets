@@ -10,7 +10,7 @@
 //! Regenerate after an intentional vocabulary change:
 //!   BLESS_FIXTURES=1 cargo test -p facets-canvas --test sl_keywords
 
-use bert_canvas::sl::{
+use facets_canvas::sl::{
     KIND_WORDS, KINGDOM_WORDS, POSITIONAL_KEYWORDS, PRIMITIVE_WORDS, RESERVED_WORDS, SCALE_WORDS,
 };
 

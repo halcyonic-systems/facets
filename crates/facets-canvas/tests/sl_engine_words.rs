@@ -2,8 +2,8 @@
 //! `reservoir <n>` on a source line. Each parses onto the bag the engine
 //! reads, emits back as itself, and refuses off its one reader (#112
 //! separating rule: a clause nothing consumes is a fault, never a bag).
-use bert_canvas::canvas::{project, EnvKind, Role};
-use bert_canvas::sl::{emit_sl, parse_sl};
+use facets_canvas::canvas::{project, EnvKind, Role};
+use facets_canvas::sl::{emit_sl, parse_sl};
 
 const LIEBIG: &str = "\
 system \"Bakery\" : Concrete/Technical
@@ -45,7 +45,7 @@ fn limiting_and_reservoir_parse_project_and_emit_back() {
     assert_eq!(src.reservoir, Some(100.0));
     let power = world.environment.sources.iter().find(|s| s.info.name == "Power").unwrap();
     assert_eq!(power.reservoir, None);
-    let spec = bert_core::operational::validate_operational(&world).unwrap();
+    let spec = facets_core::operational::validate_operational(&world).unwrap();
     assert_eq!(spec.sources.iter().find(|s| s.name == "Flour").unwrap().reservoir, Some(100.0));
     assert_eq!(spec.processes.iter().find(|p| p.name == "Oven").unwrap().cognitive_params.get("limiting"), Some(&1.0));
 
@@ -53,7 +53,7 @@ fn limiting_and_reservoir_parse_project_and_emit_back() {
     assert!(text.contains("component Oven primitive Combining limiting"), "{text}");
     assert!(text.contains("source Flour reservoir 100"), "{text}");
     let again = parse_sl(&text).unwrap();
-    let bags = |m: &bert_canvas::canvas::CanvasModel| {
+    let bags = |m: &facets_canvas::canvas::CanvasModel| {
         let mut v: Vec<(String, Vec<(String, f64)>)> = m
             .things
             .iter()

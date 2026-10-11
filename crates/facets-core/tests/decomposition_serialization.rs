@@ -5,7 +5,7 @@
 //! `child_model` reference; it must survive save -> load -> save byte-identical,
 //! a reference to an unknown model must still load, and the SL gap must be loud.
 
-use bert_core::{ModelId, ModelRef, WorldModel};
+use facets_core::{ModelId, ModelRef, WorldModel};
 use serde_json::json;
 use uuid::Uuid;
 

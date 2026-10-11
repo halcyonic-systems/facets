@@ -18,8 +18,8 @@
 //! - a metric is a derived reading of kernel-executed values, never a new
 //!   source of truth — nothing in this file touches the engine.
 
-use bert_canvas::canvas::MetricExpr;
-use bert_canvas::sl::{emit_sl, parse_sl};
+use facets_canvas::canvas::MetricExpr;
+use facets_canvas::sl::{emit_sl, parse_sl};
 
 const MARKET: &str = "\
 system \"Toy Market\" : Concrete/Social

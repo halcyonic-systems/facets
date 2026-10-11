@@ -13,10 +13,10 @@
 //! Re-mint after editing an `.sl`:
 //! `BLESS_SL_DEMOS=1 cargo test -p facets-canvas --test sl_demos`
 
-use bert_canvas::canvas::project;
-use bert_canvas::sl::parse_sl;
-use bert_compose::{from_spec, run::RecordedRun};
-use bert_core::operational::validate_operational;
+use facets_canvas::canvas::project;
+use facets_canvas::sl::parse_sl;
+use facets_compose::{from_spec, run::RecordedRun};
+use facets_core::operational::validate_operational;
 
 // One resident since the #318 consolidation. `watershed` and `supply-chain`
 // were the other two; both were archived out of the shipped library, and their
@@ -49,13 +49,13 @@ fn sl_demo_bundles_force_and_run() {
             env!("CARGO_MANIFEST_DIR")
         ))
         .unwrap();
-        let model: bert_core::WorldModel = serde_json::from_str(&model_json).unwrap();
-        let manifest: bert_tether::manifest::RunManifest =
+        let model: facets_core::WorldModel = serde_json::from_str(&model_json).unwrap();
+        let manifest: facets_tether::manifest::RunManifest =
             serde_json::from_value(bundle["mapping"].clone()).unwrap();
         let csv = bundle["csv"].as_str().unwrap();
         let t = bundle["t"].as_f64().unwrap();
         let readout =
-            bert_tether::forcing::force_and_run(model, csv, &manifest, 1.0, t, "2026-07-27")
+            facets_tether::forcing::force_and_run(model, csv, &manifest, 1.0, t, "2026-07-27")
                 .unwrap_or_else(|e| panic!("{name} bundle refuses to run: {e}"));
         assert!(
             readout.ticks > 0 && !readout.trajectories.is_empty(),

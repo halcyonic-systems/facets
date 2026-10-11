@@ -10,8 +10,8 @@
 //! expected here.
 #![allow(dead_code)]
 
-use bert_core::validate::validate_mode;
-use bert_core::{Mode, WorldModel};
+use facets_core::validate::validate_mode;
+use facets_core::{Mode, WorldModel};
 use serde_json::{json, Value};
 
 /// Build a minimal, otherwise-clean `WorldModel` realizing a kernel: `n`

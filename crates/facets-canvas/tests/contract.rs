@@ -11,12 +11,12 @@
 //! Regenerate after an intentional shape change:
 //!   BLESS_FIXTURES=1 cargo test -p facets-canvas --test contract
 
-use bert_canvas::canvas::{
+use facets_canvas::canvas::{
     CanvasBoundaryProps, CanvasModel, ChildRef, Genus, Kind, Kingdom, Lens, Relation, Role,
     SystemType, Thing,
 };
-use bert_canvas::lenses::{analyze, describe, lens_facts};
-use bert_core::{ModelId, ModelRef};
+use facets_canvas::lenses::{analyze, describe, lens_facts};
+use facets_core::{ModelId, ModelRef};
 
 /// Write-or-assert a fixture. With `BLESS_FIXTURES=1` it (re)writes the file;
 /// otherwise it asserts the serialization matches the committed fixture exactly,
@@ -190,7 +190,7 @@ fn lens_description_fixtures() {
 /// resolved to the decomposed component. Deterministic: nothing is minted.
 #[test]
 fn decomposition_report_fixture() {
-    let report = bert_canvas::lenses::check_decompositions_canvas(
+    let report = facets_canvas::lenses::check_decompositions_canvas(
         &sample(),
         &std::collections::HashMap::new(),
     );
@@ -205,7 +205,7 @@ fn decomposition_report_fixture() {
 fn sl_error_fixture() {
     // The SL parse-fault list crosses the edge inside compile_sl's `{ errors }`
     // arm; the element shape gets its own fixture, like EdgeFact/PortFact.
-    let errors = bert_canvas::sl::parse_sl("flow Ghost -> Nowhere\nwidget X\n")
+    let errors = facets_canvas::sl::parse_sl("flow Ghost -> Nowhere\nwidget X\n")
         .expect_err("sample must not parse");
     assert!(errors.len() >= 2, "need multiple SlErrors to fixture");
     check_fixture("sl_errors", &errors);
@@ -245,27 +245,27 @@ fn notation_cell_fixtures() {
     // Klir's observer toggle: orient the drive relation so the incidence matrix
     // carries a directed mark and its mirrored cell does not.
     m.relations[0].klir_directed = true;
-    let incidence = bert_canvas::notation::klir_incidence_cells(&m);
+    let incidence = facets_canvas::notation::klir_incidence_cells(&m);
     assert!(
         incidence
             .cells
             .iter()
-            .any(|c| c.mark == bert_canvas::notation::KlirMark::Directed),
+            .any(|c| c.mark == facets_canvas::notation::KlirMark::Directed),
         "need a directed cell to fixture"
     );
     check_fixture("klir_incidence", &incidence);
 
-    let coupling = bert_canvas::notation::bunge_coupling_cells(&m, true);
+    let coupling = facets_canvas::notation::bunge_coupling_cells(&m, true);
     assert!(
         matches!(
             coupling.cells[0].status,
-            bert_canvas::notation::CellStatus::Forbidden { .. }
+            facets_canvas::notation::CellStatus::Forbidden { .. }
         ),
         "M₀₀ must come back forbidden, with a reason"
     );
     check_fixture("bunge_coupling_en_bloc", &coupling);
     check_fixture(
         "bunge_coupling_itemized",
-        &bert_canvas::notation::bunge_coupling_cells(&m, false),
+        &facets_canvas::notation::bunge_coupling_cells(&m, false),
     );
 }

@@ -21,9 +21,9 @@
 //! `validate_operational(model).is_ok()` on every state — that equality is the
 //! load-bearing check, and it is what the buggy sibling violates.
 
-use bert_core::operational::validate_operational;
-use bert_core::transition::{validate_transition, Transition};
-use bert_core::Mode;
+use facets_core::operational::validate_operational;
+use facets_core::transition::{validate_transition, Transition};
+use facets_core::Mode;
 use serde_json::Value;
 use std::path::PathBuf;
 
@@ -88,7 +88,7 @@ impl SpecState {
         }
     }
 
-    fn model(&self) -> bert_core::WorldModel {
+    fn model(&self) -> facets_core::WorldModel {
         concrete_model(self.mode(), self.has_bond, self.irreflexive, self.executable)
     }
 

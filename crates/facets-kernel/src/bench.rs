@@ -2,12 +2,12 @@
 //! engine session — the second stateful export beside `SandboxSession`, and
 //! for the same reason: a knob turned mid-run without resetting the stocks
 //! needs a circuit held across calls. The state lives engine-side in
-//! `bert_tether::bench::BenchSession` (natively tested, `tests/bench.rs`);
+//! `facets_tether::bench::BenchSession` (natively tested, `tests/bench.rs`);
 //! this class marshals. Trap story as for the sandbox: the face discards the
 //! handle and reopens it from the document, which is a `WorldModel`.
 use wasm_bindgen::prelude::*;
 
-use bert_tether::bench::BenchSession;
+use facets_tether::bench::BenchSession;
 
 use crate::api::{to_js, RunResultRich};
 
@@ -41,7 +41,7 @@ impl BenchHandle {
     ) -> Result<BenchHandle, JsError> {
         let model = serde_json::from_str(model_json)
             .map_err(|e| JsError::new(&format!("invalid model JSON: {e}")))?;
-        let manifest: bert_tether::manifest::RunManifest = serde_json::from_str(manifest_json)
+        let manifest: facets_tether::manifest::RunManifest = serde_json::from_str(manifest_json)
             .map_err(|e| JsError::new(&format!("invalid manifest: {e}")))?;
         Ok(BenchHandle {
             inner: BenchSession::open_forced(model, csv_text, &manifest, dt, today).map_err(err)?,

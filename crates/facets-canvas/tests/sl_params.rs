@@ -18,9 +18,9 @@
 //!   below is a fixture that fails its check;
 //! - normalization is presentation — nothing in this file touches the engine.
 
-use bert_canvas::canvas::{project, ParamAnchor};
-use bert_canvas::sl::{emit_sl, parse_sl};
-use bert_core::rust_decimal::Decimal;
+use facets_canvas::canvas::{project, ParamAnchor};
+use facets_canvas::sl::{emit_sl, parse_sl};
+use facets_core::rust_decimal::Decimal;
 
 const MARKET: &str = "\
 system \"Toy Market\" : Concrete/Social
@@ -226,7 +226,7 @@ param \"target\" : setpoint of Valve range 1..5
 /// keeps its range, and emits back as the line it was read from.
 #[test]
 fn a_field_param_names_a_component_lines_engine_parameter() {
-    use bert_canvas::canvas::EngineField;
+    use facets_canvas::canvas::EngineField;
     let m = parse_sl(BARREL).unwrap();
     let barrel = m.things.iter().find(|t| t.name == "Barrel").unwrap().id;
     let valve = m.things.iter().find(|t| t.name == "Valve").unwrap().id;

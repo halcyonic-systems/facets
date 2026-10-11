@@ -20,8 +20,8 @@
 //! below) rather than calling the kernel's own layout helpers — an independent
 //! derivation, so a shared bug cannot vacuously agree with itself.
 
-use bert_canvas::canvas::{CanvasModel, Role};
-use bert_canvas::sl::parse_sl;
+use facets_canvas::canvas::{CanvasModel, Role};
+use facets_canvas::sl::parse_sl;
 
 /// Mirrors `web/src/canvas/style.ts` `nodeR` (34) and
 /// `web/src/canvas/geometry.ts` `RING_PAD = NODE_R + 36`.

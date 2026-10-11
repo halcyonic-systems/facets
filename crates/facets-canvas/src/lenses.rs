@@ -23,8 +23,8 @@
 use serde::Serialize;
 use std::collections::{HashMap, HashSet};
 
-use bert_core::validate::{doc, validate_mode, Severity, ValidationIssue, ValidationResult};
-use bert_core::{EdgeLocus, Id, Interaction, Mode};
+use facets_core::validate::{doc, validate_mode, Severity, ValidationIssue, ValidationResult};
+use facets_core::{EdgeLocus, Id, Interaction, Mode};
 
 use crate::canvas::{project_with_map, CanvasModel, Kind, KlirLevel, Lens, Role, Thing};
 
@@ -155,7 +155,7 @@ pub fn lens_facts(model: &CanvasModel) -> LensFacts {
     let roles: HashMap<u64, Role> = model.things.iter().map(|t| (t.id, t.role)).collect();
 
     // Nodes: the boundary identity, mapped back to canvas ids.
-    let canvas_of: HashMap<&bert_core::Id, u64> =
+    let canvas_of: HashMap<&facets_core::Id, u64> =
         p.thing_ids.iter().map(|(k, v)| (v, *k)).collect();
     let boundary_thing_ids: Vec<u64> = p
         .world
@@ -868,7 +868,7 @@ pub fn analyze(model: &CanvasModel, lens: Lens) -> CanvasAnalysis {
 }
 
 /// The decomposition seam verdict, canvas-keyed (bert-lenses#89 step 5b): the
-/// same issues [`bert_core::decomposition::check_decompositions`] produces,
+/// same issues [`facets_core::decomposition::check_decompositions`] produces,
 /// paired with canvas navigation targets resolved from the projection's id maps
 /// — exactly the [`CanvasAnalysis`] pattern, so the audit panel can navigate a
 /// seam violation to its decomposed component like any other issue.
@@ -912,7 +912,7 @@ pub fn check_decompositions_canvas(
 ) -> DecompositionReport {
     let p = project_with_map(model);
     let resolved = normalize_referents(resolved);
-    let issues = bert_core::decomposition::check_decompositions(&p.world, &resolved);
+    let issues = facets_core::decomposition::check_decompositions(&p.world, &resolved);
     let thing_of: HashMap<&Id, u64> = p.thing_ids.iter().map(|(k, v)| (v, *k)).collect();
     let issue_targets = issues
         .iter()
@@ -1132,7 +1132,7 @@ pub const AGENT_PARAM_MISSING_CODE: &str = "agent_param_missing";
 /// line draws both wires, so this bites a model built by gesture or from
 /// JSON: the Review panel names what is missing and what would repair it.
 fn check_agent_is_given_agency(model: &CanvasModel, issues: &mut Vec<ValidationIssue>) {
-    use bert_core::ProcessPrimitive as P;
+    use facets_core::ProcessPrimitive as P;
     let by_id: HashMap<u64, &Thing> = model.things.iter().map(|t| (t.id, t)).collect();
     for t in model.things.iter().filter(|t| t.role == Role::Component && t.rule.is_some()) {
         let reads_a_stock = model.relations.iter().any(|r| {
@@ -1198,7 +1198,7 @@ fn check_agent_is_given_agency(model: &CanvasModel, issues: &mut Vec<ValidationI
 }
 
 fn check_interface_does_work(model: &CanvasModel, issues: &mut Vec<ValidationIssue>) {
-    use bert_core::ProcessPrimitive as P;
+    use facets_core::ProcessPrimitive as P;
     let by_id: HashMap<u64, &Thing> = model.things.iter().map(|t| (t.id, t)).collect();
     let norm = |s: &str| s.trim().to_lowercase();
     for t in model.things.iter().filter(|t| t.role == Role::Component && t.interface && !t.passway) {
@@ -1458,7 +1458,7 @@ fn check_ambient_environment_things(
                  sends or receives.",
                 t.name
             )),
-            doc: Some(bert_core::validate::doc::MILIEU.to_string()),
+            doc: Some(facets_core::validate::doc::MILIEU.to_string()),
             subject: None,
         });
     }
@@ -1486,7 +1486,7 @@ fn check_mobus_openness(facts: &LensFacts, issues: &mut Vec<ValidationIssue>) {
                  object), or keep this as a closed authoring intermediate"
                     .to_string(),
             ),
-            doc: Some(bert_core::validate::doc::OPENNESS.to_string()),
+            doc: Some(facets_core::validate::doc::OPENNESS.to_string()),
             subject: None,
         });
     }
@@ -2092,7 +2092,7 @@ mod tests {
         }
         for t in &mut m.things {
             if t.role == Role::Component {
-                t.primitive = Some(bert_core::ProcessPrimitive::Buffering);
+                t.primitive = Some(facets_core::ProcessPrimitive::Buffering);
             }
         }
         let mobus = analyze(&m, Lens::Mobus).residue;
@@ -2129,8 +2129,8 @@ mod tests {
 
         m.things[0].child_model = Some(crate::canvas::ChildRef {
             name: "A-inner".to_string(),
-            id: bert_core::ModelRef::to(
-                "Hrs6K91KnZZsiPcWzftv8U".parse::<bert_core::ModelId>().unwrap(),
+            id: facets_core::ModelRef::to(
+                "Hrs6K91KnZZsiPcWzftv8U".parse::<facets_core::ModelId>().unwrap(),
             ),
         });
         let l = klir_ladder(&m);
@@ -2278,8 +2278,8 @@ mod tests {
             cognitive_params: [("target".to_string(), 1.0), ("gain".to_string(), 1.0)].into_iter().collect(),
             ..thing(id, "Thermostat", Role::Component)
         };
-        let stock = |id: u64| Thing { primitive: Some(bert_core::ProcessPrimitive::Buffering), ..thing(id, "Room", Role::Component) };
-        let valve = |id: u64| Thing { primitive: Some(bert_core::ProcessPrimitive::Modulating), ..thing(id, "Switch", Role::Component) };
+        let stock = |id: u64| Thing { primitive: Some(facets_core::ProcessPrimitive::Buffering), ..thing(id, "Room", Role::Component) };
+        let valve = |id: u64| Thing { primitive: Some(facets_core::ProcessPrimitive::Modulating), ..thing(id, "Switch", Role::Component) };
         let tap = |id: u64, a: u64, b: u64| Relation { kind: Kind::Informational, ..relation(id, a, b, true) };
         // tap only: no actuator
         let m = model(
@@ -2343,7 +2343,7 @@ mod tests {
         assert_eq!(found.len(), 1, "one warning for the one ambient name");
         let (idx, issue) = found[0];
         assert_eq!(issue.severity, Severity::Warning);
-        assert_eq!(issue.doc.as_deref(), Some(bert_core::validate::doc::MILIEU));
+        assert_eq!(issue.doc.as_deref(), Some(facets_core::validate::doc::MILIEU));
         assert!(issue.message.contains("milieu Ambient Air"));
         assert_eq!(a.issue_targets[idx].thing, Some(3), "the target names the canvas thing");
     }
@@ -2430,7 +2430,7 @@ mod tests {
             vec![thing(1, "A", Role::Component), thing(2, "B", Role::Component)],
             vec![relation(10, 1, 2, true)],
         );
-        m.milieu.push(bert_core::MilieuVariable {
+        m.milieu.push(facets_core::MilieuVariable {
             name: "temperature".to_string(),
             value: None,
             unit: String::new(),

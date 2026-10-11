@@ -3,7 +3,7 @@
 //! social scientist meets a sentence and an engineer can drill to the code.
 
 use crate::circuit::NodeKind;
-use bert_core::ProcessPrimitive;
+use facets_core::ProcessPrimitive;
 use serde::Serialize;
 
 /// Vendored from the desktop shell (progressive disclosure: a social
