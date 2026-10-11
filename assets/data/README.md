@@ -227,10 +227,10 @@ double count downloads in the case a user performs cloning of a whole
 repository." The page offers Publisher Analytics to publishers who need to
 "exclude downloads from CI/CD pipelines, or deduplicate users (i.e. count
 unique downloaders)", which is to say the public count does neither. The
-#523 comment of 2026-10-11 also quotes a Hub report saying downloads "do not
-capture API usage, private deployments, or models distributed through other
-channels"; that page was not relocated when this section was written, so the
-sentence travels as the comment's reading, not as a page read here.
+Hub's own report, "The State of Open Models, Summer 2026" (huggingface.co/blog/
+state-of-open-models-summer-2026, 2026-08-14, read 2026-10-11), says in its
+notes on method that downloads "do not capture API usage, private deployments,
+or models distributed through other channels".
 
 **The mapping.** `hf-family-mapping.csv` claims a repo by its namespace and a
 case-sensitive prefix of the repo name, the longest matching prefix winning
