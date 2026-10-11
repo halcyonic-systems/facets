@@ -39,8 +39,14 @@ four (ADR 0008 D4, spec §4.7): `proportional`, a dial; `threshold`, a switch,
 with an optional dead band; `table`, a graded response, one output per bin of
 the reading; `trace`, a dial over the mean of its last few readings — the
 only one with a memory, which the engine keeps as run state and clears each
-run. The bench shelf carries one witness per rule against its control
-(`assets/bench/README.md`).
+run. An agent acts in one of two forms: `manages <process>` signals the
+process over the command line each tick; `manages param "<name>"` (ADR 0008
+D1) writes a declared `param` of the same file at the end of each tick,
+which the next tick runs under, so the inputs rail shows that knob as set by
+the agent. The param is a flow amount with a range or the shares of a two-way
+split, declared before the agent, and the rule's commands must fit its range.
+The bench shelf carries one witness per rule against its control, and the
+quota fishery in both forms (`assets/bench/README.md`).
 
 ## What actually makes a model run
 
