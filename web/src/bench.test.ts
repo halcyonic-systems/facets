@@ -17,6 +17,7 @@ describe("the bench shelf", () => {
       "Hospital Beds (table)",
       "Logistic Harvest",
       "Logistic Harvest (quota)",
+      "Logistic Harvest (quota, command)",
       "Membrane Pump",
       "SIR Epidemic",
       "SIR Epidemic (public)",

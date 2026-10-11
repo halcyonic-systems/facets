@@ -326,3 +326,84 @@ fn the_agent_forms_differ_from_their_aggregate_controls_as_the_readme_says() {
     let agent = run("assets/bench/bank-run-agent.sl", "40", &[]);
     assert!(empties(&control) >= 28 && empties(&agent) <= 18, "{} vs {}", empties(&control), empties(&agent));
 }
+
+/// The command form of the quota agent (ADR 0008 D1; `logistic-harvest-quota.sl`)
+/// pinned to its controls from the terminal, as the README row says: pinned
+/// closed it traces the signal form pinned closed to one f32 ulp; with the
+/// split opened from tick 0 and the agent pinned open it traces the aggregate
+/// control at a two-day catch time digit for digit; left to itself it opens
+/// and closes one day after the signal form, so the sawtooths differ in phase
+/// and the eighty-day totals differ slightly; the knob log carries the
+/// agent's writes under its name, only when the share changes; and the tick
+/// log carries the decisions column.
+#[test]
+fn the_command_form_acts_one_day_after_the_signal_form_and_pins_to_its_controls() {
+    let run = |file: &str, t: &str, log: bool, sets: &[&str]| {
+        let mut args = vec!["bench", file, "--t", t];
+        if !log {
+            args.push("--no-log");
+        }
+        for s in sets {
+            args.push("--set");
+            args.push(s);
+        }
+        let out = bert(&args);
+        assert_eq!(code(&out), 0, "{}", stderr(&out));
+        let v = stdout_json(&out);
+        assert_eq!(v["conserved"], true, "{file}");
+        v
+    };
+    let series = |v: &serde_json::Value, name: &str| -> Vec<f64> {
+        v["trajectories"].as_array().unwrap().iter().find(|t| t["name"] == name).unwrap()["series"]
+            .as_array().unwrap().iter().map(|x| x.as_f64().unwrap()).collect()
+    };
+    let level = |v: &serde_json::Value, name: &str| -> f64 {
+        v["levels"].as_array().unwrap().iter().find(|l| l["name"] == name).unwrap()["value"].as_f64().unwrap()
+    };
+    let within_ulp = |a: f64, b: f64| ((a as f32).to_bits() as i64 - (b as f32).to_bits() as i64).abs() <= 1;
+    // Pinned closed, the two forms are one fishery to the ulp.
+    let cmd = run("assets/bench/logistic-harvest-quota.sl", "4", false, &["Quota.above=100"]);
+    let sig = run("assets/bench/logistic-harvest-agent.sl", "4", false, &["Quota.above=100"]);
+    let (c, s) = (series(&cmd, "Fish"), series(&sig, "Fish"));
+    assert!(c.iter().zip(&s).all(|(&a, &b)| within_ulp(a, b)), "{c:?} vs {s:?}");
+    assert_eq!(c[0], 0.29);
+    // Opened from tick 0 and held open, it is the aggregate control.
+    let cmd = run(
+        "assets/bench/logistic-harvest-quota.sl",
+        "10",
+        false,
+        &["Quota.above=0.001", "landed|Fish|Market=1", "released|Fish|Return=0"],
+    );
+    let control = run("assets/bench/logistic-harvest.sl", "10", false, &["Fish.time_constant=2"]);
+    assert_eq!(series(&cmd, "Fish"), series(&control, "Fish"));
+    assert_eq!(series(&control, "Fish")[..3], [0.19, 0.18097499, 0.172787]);
+    // Left to itself: the command lands one day after the signal, the
+    // totals differ slightly, the log says who turned what.
+    let cmd = run("assets/bench/logistic-harvest-quota.sl", "12", true, &[]);
+    let sig = run("assets/bench/logistic-harvest-agent.sl", "12", false, &[]);
+    let landed = |v: &serde_json::Value| -> Vec<f64> {
+        v["flows"].as_array().unwrap().iter().find(|f| f["name"] == "landed" && f["from"] == "Fish").unwrap()["series"]
+            .as_array().unwrap().iter().map(|x| x.as_f64().unwrap()).collect()
+    };
+    let first_open = |s: &[f64]| s.iter().position(|&x| x > 0.0).unwrap();
+    let (cl, sl) = (landed(&cmd), series(&sig, "Fish"));
+    assert_eq!(first_open(&cl), 3, "{cl:?}");
+    assert!(sl[2] < sl[1], "the signal form lands on day 3: {sl:?}");
+    assert!((level(&cmd, "Market") - 1.4267874).abs() < 1e-5, "{}", level(&cmd, "Market"));
+    assert!((level(&sig, "Market") - 1.4192014).abs() < 1e-5, "{}", level(&sig, "Market"));
+    let edits = cmd["edits"].as_array().unwrap();
+    assert_eq!(edits.len(), 4, "{edits:?}");
+    assert_eq!(edits[0]["by"], serde_json::json!({"kind": "agent", "name": "Quota"}));
+    assert_eq!(edits[0]["target"], "Fish -> Market : landed");
+    assert_eq!(edits[0]["field"], "share");
+    assert_eq!(edits.iter().map(|e| e["tick"].as_u64().unwrap()).collect::<Vec<_>>(), [1, 3, 10, 12]);
+    assert_eq!(edits.iter().map(|e| e["value"].as_f64().unwrap()).collect::<Vec<_>>(), [0.0, 1.0, 0.0, 1.0]);
+    assert_eq!(control["edits"][0]["by"], serde_json::json!({"kind": "human"}));
+    let log = cmd["log"].as_array().unwrap();
+    let d = &log[2]["decisions"][0];
+    assert_eq!(d["agent"], "Quota");
+    assert_eq!(d["knob"], "param \"landed share\"");
+    assert_eq!(d["output"], 1.0);
+    assert_eq!(d["written"], 1.0);
+    assert!((d["reading"].as_f64().unwrap() - 0.413975).abs() < 1e-6);
+}
