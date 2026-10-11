@@ -62,17 +62,23 @@ OpenRouter asks: **Source: OpenRouter (openrouter.ai/rankings), as of
 |---|---|---|
 | `openrouter-rankings-daily-vintage-<pulldate>.csv` | `pull` | `date,model_permaslug,total_tokens` — the API's rows, untouched, ordered by date then permaslug (`other` last within its date, as the API returns it) |
 | `openrouter-routed-share-vintage-<pulldate>.csv` | `aggregate` | `date,frontier_tokens,open_tokens,unknown_tokens,other_tokens,open_share_low,open_share_high`, one row per day |
-| `openrouter-routed-share-monthly-vintage-<pulldate>.csv` | `aggregate` | the same columns, one row per calendar month (`YYYY-MM`) |
+| `openrouter-routed-share-monthly-vintage-<pulldate>.csv` | `aggregate` | the same columns plus `days` (observed days in the month), one row per calendar month (`YYYY-MM`) |
 | `openrouter-routed-by-lab-vintage-<pulldate>.csv` | `aggregate` | `date,lab,tokens` |
-| `openrouter-routed-share-bundle-vintage-<pulldate>.json` | `bundle` | the forcing bundle: `month,frontier_weight,open_weight` on the Router's outwires, unit `weight`, force on, `every: 30` |
+| `openrouter-routed-share-bundle-vintage-<pulldate>.json` | `bundle` | the forcing bundle: `month,frontier_weight,open_weight,routed_workload`; the level in `Gtok/day` onto `routed workload`, the two weights onto the Router's outwires, all three forced, `every: 30` |
 | `openrouter-model-classification.csv` | by hand | `model_permaslug_prefix_or_slug,match,lab,weights,source,checked` |
 
 ```bash
 export OPENROUTER_API_KEY=...            # the key stays in the environment; the script never reads a file or prints it
 python3 scripts/openrouter_rankings_vintage.py pull --start 2025-01-01          # yesterday (UTC) as the end, today as the pull date
 python3 scripts/openrouter_rankings_vintage.py aggregate --vintage <pulldate>
-python3 scripts/openrouter_rankings_vintage.py bundle --vintage <pulldate>
+python3 scripts/openrouter_rankings_vintage.py bundle --vintage <pulldate> --demo
 ```
+
+`--demo` also writes `assets/demos/llm-market.json`, the bundle the gallery's
+"LLM Serving Market" card opens, so the model arrives already driven by the
+observed series with no import step. The demo bundle is a byte-for-byte copy
+of the vintage bundle; regenerate it from the vintage with that one command,
+never by hand.
 
 `pull` fetches through leg 4 of the llm-market data pipeline
 (`tools/pipeline/fetch_usage_openrouter.py`, which pages the same endpoint and
@@ -134,7 +140,14 @@ source.
    row per calendar month, riding `every: 30` on the model's day tick; the two
    token sums go in as relative weights (Mobus Eq. 4.5), so only their ratio
    reaches the run, and the bundle carries the high end of the range because
-   unknown and other are on neither wire.
+   unknown and other are on neither wire. `routed_workload` is the observed
+   level: all four token classes that month, `other` included, per observed
+   day, in Gtok/day; it replaces the model's declared 6000 and the invented
+   30-day ramp the demo used to carry. Vintage 2026-10-10 reads 71.9 Gtok/day
+   in 2025-01 and 19,197 in 2026-09, which is above the `0..12000` range the
+   `.sl` declares for the knob and three times the digest figure its
+   grounding line quotes; the series is the observation, the declaration is
+   the thing to revisit.
 5. **Resellers.** OpenRouter's own newsletter excludes reseller activity from
    its weekly totals; whether the Data API does the same is not stated on the
    pages read. The series is used as published and this uncertainty travels

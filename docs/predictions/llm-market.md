@@ -75,7 +75,10 @@ The model is two levels, and a run is per level:
   every routed share come from the Dirac labs-market-share digest of
   OpenRouter rankings, June–July 2026; sources disagree on Anthropic's share
   (12–24%) and the midpoint is taken. The demo bundle's forcing CSV
-  (`assets/demos/llm-market.json`) drives this interface and no other.
+  (`assets/demos/llm-market.json`) drives this interface and no other; since
+  vintage 2026-10-10 that bundle is the observed OpenRouter series itself
+  (routed level and the Router's split, monthly), regenerated from the
+  vintage by the sensor (`assets/data/README.md`).
 - **Self-hosted interface — unknown.** No public sensor counts self-hosted
   serving. The amount is a labelled placeholder (a round half of the routed
   figure) and the split across the open models is asserted to mirror the

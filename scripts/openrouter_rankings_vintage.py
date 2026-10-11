@@ -58,7 +58,13 @@ SHARE_COLUMNS = [
     "open_share_low",
     "open_share_high",
 ]
+# The monthly file adds the count of observed days, which the bundle divides
+# by: a vintage's last month is partial, and a level per calendar day would
+# put a cliff at the run's end.
+MONTHLY_COLUMNS = SHARE_COLUMNS + ["days"]
 LAB_COLUMNS = ["date", "lab", "tokens"]
+DEMO_BUNDLE = ROOT / "assets" / "demos" / "llm-market.json"
+DEMO_TITLE = "LLM Serving Market"
 CLASS_COLUMNS = ["model_permaslug_prefix_or_slug", "match", "lab", "weights", "source", "checked"]
 WEIGHTS = {"open", "closed", "unknown"}
 MATCH_KINDS = {"slug", "prefix"}
@@ -70,6 +76,14 @@ OTHER = "other"
 TICKS_PER_MONTH = 30
 BUNDLE_MAPPING = [
     {"column": "month", "as": "time"},
+    {
+        "column": "routed_workload",
+        "as": "flow",
+        "element": "routed workload",
+        "unit": "Gtok/day",
+        "force": True,
+        "every": TICKS_PER_MONTH,
+    },
     {
         "column": "frontier_weight",
         "as": "flow",
@@ -321,10 +335,16 @@ def resample_monthly(share_rows):
     months = OrderedDict()
     for r in share_rows:
         m = r["date"][:7]
-        acc = months.setdefault(m, [0, 0, 0, 0])
+        acc = months.setdefault(m, [0, 0, 0, 0, 0])
         for i, c in enumerate(("frontier_tokens", "open_tokens", "unknown_tokens", "other_tokens")):
             acc[i] += int(r[c])
-    return [share_row(m, *months[m]) for m in sorted(months)]
+        acc[4] += 1
+    out = []
+    for m in sorted(months):
+        row = share_row(m, *months[m][:4])
+        row["days"] = str(months[m][4])
+        out.append(row)
+    return out
 
 
 def cmd_aggregate(args):
@@ -334,7 +354,7 @@ def cmd_aggregate(args):
     share_rows, lab_rows = aggregate_rows(raw, by_slug, by_prefix)
     monthly = resample_monthly(share_rows)
     write_text(share_path(args.vintage), csv_text(SHARE_COLUMNS, share_rows), args.dry_run)
-    write_text(monthly_path(args.vintage), csv_text(SHARE_COLUMNS, monthly), args.dry_run)
+    write_text(monthly_path(args.vintage), csv_text(MONTHLY_COLUMNS, monthly), args.dry_run)
     write_text(by_lab_path(args.vintage), csv_text(LAB_COLUMNS, lab_rows), args.dry_run)
     print(f"{len(share_rows)} days, {len(monthly)} months, {len(lab_rows)} (date, lab) rows")
 
@@ -349,23 +369,41 @@ def build_bundle(monthly, vintage):
     each row one calendar month, `every: 30` on the model's day tick."""
     if not monthly:
         raise SensorError("no monthly rows; nothing to bundle")
-    lines = ["month,frontier_weight,open_weight"]
+    # The routed level is the observed one: every routed token that month
+    # (all four classes, `other` included) per calendar day, in Gtok/day,
+    # the unit the model's "routed workload" flow declares. The last month
+    # of a vintage is partial, so its level is per observed day, not per
+    # calendar day.
+    lines = ["month,frontier_weight,open_weight,routed_workload"]
     for i, r in enumerate(monthly):
-        lines.append(f"{i},{r['frontier_tokens']},{r['open_tokens']}")
+        total = sum(int(r[c]) for c in ("frontier_tokens", "open_tokens", "unknown_tokens", "other_tokens"))
+        level = total / int(r["days"]) / 1e9
+        lines.append(f"{i},{r['frontier_tokens']},{r['open_tokens']},{level:.6g}")
     first, last = monthly[0]["date"], monthly[-1]["date"]
+    classified = sum(int(r["frontier_tokens"]) + int(r["open_tokens"]) for r in monthly)
+    everything = sum(
+        int(r[c]) for r in monthly for c in ("frontier_tokens", "open_tokens", "unknown_tokens", "other_tokens")
+    )
+    coverage = 100 * classified / everything if everything else 0
     return OrderedDict(
         [
-            ("title", "LLM Serving Market, routed share observed"),
+            ("title", DEMO_TITLE),
             (
                 "blurb",
-                "The pooled llm-market with the Router's split forced by the routed-share "
-                f"series: OpenRouter rankings-daily, vintage {vintage}, monthly sums "
-                f"{first} to {last} of tokens routed to frontier (closed-weight) and to "
-                "open-weight models, per the classification table in assets/data. The two "
-                "columns are relative weights, so only their ratio reaches the run; models "
-                "classified unknown and the API's aggregated other row are left out of "
-                "both, which is the high end of the share's range. Rankings data by "
-                "OpenRouter (CC BY 4.0). Self-hosted serving stays at its placeholder.",
+                "The LLM serving market at level 0, with its routed interface driven by "
+                "an observed series: OpenRouter's rankings-daily, vintage "
+                f"{vintage}, {first} to {last}, monthly. The routed workload is every "
+                "token OpenRouter routed that month per day, and the Router's split is "
+                "the tokens that went to closed-weight models against those that went to "
+                "open-weight ones, each model classified from its own card or lab page "
+                f"({coverage:.0f}% of routed tokens classified; stealth models and the "
+                "long tail below the top 50 are counted in the workload but in neither "
+                "weight, so the split shown is the high end of the open share's range). "
+                "Each serving subsystem turns compute into served tokens, every Gtok of "
+                "work dissipated as heat; zoom into a subsystem for its roster, or "
+                "double-click to enter. The self-hosted workload has no public sensor and "
+                "stays at the model's declared placeholder, grounded unknown. "
+                "Rankings data by OpenRouter, CC BY 4.0.",
             ),
             ("model", "llm-market"),
             ("genus", "Social"),
@@ -387,9 +425,15 @@ def build_bundle(monthly, vintage):
 
 
 def cmd_bundle(args):
-    monthly = read_csv(monthly_path(args.vintage), SHARE_COLUMNS)
+    monthly = read_csv(monthly_path(args.vintage), MONTHLY_COLUMNS)
     bundle = build_bundle(monthly, args.vintage)
-    write_text(bundle_path(args.vintage), json.dumps(bundle, indent=2) + "\n", args.dry_run)
+    text = json.dumps(bundle, indent=2) + "\n"
+    write_text(bundle_path(args.vintage), text, args.dry_run)
+    # The gallery's llm-market card opens this same bundle: the model arrives
+    # already driven by the observed series, no import step. The vintage copy
+    # under assets/data is the generated artifact; the demo is its mirror.
+    if args.demo:
+        write_text(DEMO_BUNDLE, text, args.dry_run)
 
 
 # -------------------------------------------------------------------- self-test
@@ -444,14 +488,20 @@ def cmd_self_test(args):
     check(lab_keys == sorted(lab_keys), "by-lab rows are not ordered")
     check(("2026-09-01", "other") in lab_keys and ("2026-09-01", "OpenRouter stealth") in lab_keys, "by-lab keeps other and stealth")
 
+    check([r["days"] for r in monthly] == ["2", "1"], f"observed days {monthly}")
+
     bundle = build_bundle(monthly, "fixture")
-    check(bundle["csv"].splitlines()[0] == "month,frontier_weight,open_weight", "bundle header")
-    check(bundle["csv"].splitlines()[1] == "0,2200,5800", f"bundle first row {bundle['csv']!r}")
+    check(bundle["csv"].splitlines()[0] == "month,frontier_weight,open_weight,routed_workload", "bundle header")
+    # September: 2200 + 5800 + 400 + 1100 = 9500 tokens over 2 observed days,
+    # in Gtok/day; unknown and other are in the level but in neither weight.
+    check(bundle["csv"].splitlines()[1] == "0,2200,5800,4.75e-06", f"bundle first row {bundle['csv']!r}")
+    check(bundle["csv"].splitlines()[2] == "1,900,3600,5.5e-06", f"bundle second row {bundle['csv']!r}")
     check(bundle["t"] == 2 * TICKS_PER_MONTH, "bundle horizon")
+    check(bundle["title"] == DEMO_TITLE, "bundle title is the library card's")
     elements = [m.get("element") for m in bundle["mapping"]["mapping"]]
-    check(elements == [None, "routed frontier workload", "routed open-weight workload"], "bundle targets")
-    check(all(m.get("every") == TICKS_PER_MONTH and m.get("force") and m.get("unit") == "weight"
-              for m in bundle["mapping"]["mapping"][1:]), "bundle weight columns")
+    check(elements == [None, "routed workload", "routed frontier workload", "routed open-weight workload"], "bundle targets")
+    check(all(m.get("every") == TICKS_PER_MONTH and m.get("force") for m in bundle["mapping"]["mapping"][1:]), "bundle forced columns")
+    check([m.get("unit") for m in bundle["mapping"]["mapping"][1:]] == ["Gtok/day", "weight", "weight"], "bundle units")
 
     # Same input, same bytes: the files are diffable across re-runs.
     once = csv_text(SHARE_COLUMNS, share_rows) + csv_text(LAB_COLUMNS, lab_rows)
@@ -506,6 +556,7 @@ def main(argv=None):
 
     s = sub.add_parser("bundle", help="monthly file -> forcing bundle for the pooled llm-market")
     s.add_argument("--vintage", required=True)
+    s.add_argument("--demo", action="store_true", help="also write assets/demos/llm-market.json")
     s.add_argument("--dry-run", action="store_true")
     s.set_defaults(fn=cmd_bundle)
 
