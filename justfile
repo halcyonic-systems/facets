@@ -116,6 +116,7 @@ check: web-deps
     python3 scripts/hf_downloads_vintage.py self-test
     python3 scripts/ollama_pulls_vintage.py self-test
     python3 scripts/rename_inventory.py --self-test
+    python3 scripts/rename_apply.py --self-test
     cargo test --workspace
     node scripts/check_tm_grammar.mjs
     node scripts/check_chat_css.mjs
