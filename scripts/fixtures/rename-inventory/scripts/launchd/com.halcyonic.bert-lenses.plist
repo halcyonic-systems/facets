@@ -1,0 +1,9 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<plist version="1.0">
+<dict>
+    <key>Label</key>
+    <string>com.halcyonic.bert-lenses</string>
+    <key>WorkingDirectory</key>
+    <string>/Users/home/halcyonic-apps/bert-lenses</string>
+</dict>
+</plist>

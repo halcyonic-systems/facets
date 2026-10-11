@@ -1,0 +1,4 @@
+[package]
+name = "bert-core"
+version = "0.1.0"
+description = "BERT's System Language kernel, vendored."

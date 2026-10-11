@@ -1,0 +1,5 @@
+jobs:
+  build:
+    steps:
+      - run: cargo build --workspace --exclude bert-cli --target wasm32-unknown-unknown
+      - working-directory: crates/bert-lenses-kernel
