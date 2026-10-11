@@ -10,7 +10,7 @@ import { compileSl } from "./kernel";
 import { stage2Report } from "./resolution";
 
 initSync({
-  module: fs.readFileSync(path.resolve(__dirname, "../../crates/bert-lenses-kernel/pkg/bert_lenses_kernel_bg.wasm")),
+  module: fs.readFileSync(path.resolve(__dirname, "../../crates/facets-kernel/pkg/bert_lenses_kernel_bg.wasm")),
 });
 
 const GARDEN = fs.readFileSync(path.resolve(__dirname, "../../assets/examples/rain-barrel-garden.sl"), "utf8");

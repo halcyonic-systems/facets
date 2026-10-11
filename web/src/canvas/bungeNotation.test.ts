@@ -3,7 +3,7 @@
 // The matrix assertions this file used to hold — composition-before-environment
 // ordering, index 0 first under en bloc, index 0 gathering every environment
 // thing at once, M₀₀ = 0, bond-vs-mere directionality — moved with the rules
-// themselves into `crates/bert-canvas/src/notation.rs`
+// themselves into `crates/facets-canvas/src/notation.rs`
 // (`en_bloc_puts_index_zero_first_and_keeps_only_components`,
 // `index_zero_gathers_every_environment_thing_at_once`,
 // `m00_is_empty_and_names_its_own_rule`, and their siblings), and cross the wasm

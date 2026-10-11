@@ -118,7 +118,7 @@ export function ready(): Promise<void> {
 if (typeof window !== "undefined" && import.meta.hot) void ready();
 
 /**
- * A typed failure from the kernel boundary. The Rust API (crates/bert-lenses-
+ * A typed failure from the kernel boundary. The Rust API (crates/facets-
  * kernel/API.md, "Error contract") guarantees every boundary function either
  * returns its documented shape or throws a `JsError` — never panics. This class
  * is how the face SEES that throw: `call` below catches the raw wasm exception

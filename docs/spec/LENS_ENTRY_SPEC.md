@@ -115,7 +115,7 @@ that instance, and the collapse is *proved*, not asserted, by
   regenerating the fixture and moving that pin are one atomic change (its
   "Update discipline" section).
 
-- **Consumption** — `crates/bert-core/tests/gates_truth_table.rs`
+- **Consumption** — `crates/facets-core/tests/gates_truth_table.rs`
   (`rust_gates_agree_with_lean_verdicts_on_every_row`, on the standard
   `cargo test --workspace` CI job). It rebuilds each row as a `WorldModel` and
   asserts `validate_mode`'s entry verdict for each of the four modes equals the
@@ -128,7 +128,7 @@ that instance, and the collapse is *proved*, not asserted, by
     — a gate has drifted from its Lean precondition
   ```
 
-- **Oracle (rung 1.5)** — `crates/bert-core/tests/gates_oracle.rs`
+- **Oracle (rung 1.5)** — `crates/facets-core/tests/gates_oracle.rs`
   (`rust_gates_agree_with_lean_oracle_beyond_the_fixture_bound`). The fixture
   can only disagree on a row someone thought to enumerate; this test removes
   the bound. It generates a fixed-seed corpus of `(T, R)` kernels past `n = 2`

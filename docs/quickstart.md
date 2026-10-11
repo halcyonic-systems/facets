@@ -192,7 +192,7 @@ The engine's run is one [dynamics-kind](glossary.md#dynamics-kind): a
 deterministic map over ℝⁿ stocks under a model-declared additive invariant,
 with the agent layer's rules inside the same step (ADR 0008); a discrete-time
 Markov chain is the second run mode (`run_markov`,
-`crates/bert-compose/src/markov.rs`). Further kinds are declarable. The ledger is a result shown in the panel, not a
+`crates/facets-compose/src/markov.rs`). Further kinds are declarable. The ledger is a result shown in the panel, not a
 saved tier ([Save ≠ Export](glossary.md#save-vs-export)).
 
 Two entries carry a bundle today, **LLM Serving Market** and **Translation

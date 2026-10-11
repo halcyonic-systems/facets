@@ -233,7 +233,7 @@ the distribution monad) rather than in `Set`.
 
 ### What today's engine supports — VERIFIED directly
 
-Read of `crates/bert-compose/src/circuit.rs` (2,479 lines) confirms:
+Read of `crates/facets-compose/src/circuit.rs` (2,479 lines) confirms:
 
 - `Circuit::step()` (line 705) is a fixed-Δt deterministic self-map — axis C = `Id`,
   axis A = discrete, axis B = ℝ-valued node stocks.

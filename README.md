@@ -130,7 +130,7 @@ holds you to it.
 
 That exchange is pinned by a test — if the kernel stops refusing this model, or
 stops citing that definition, the build fails
-([`crates/bert-canvas/tests/readme_claims.rs`](crates/bert-canvas/tests/readme_claims.rs)).
+([`crates/facets-canvas/tests/readme_claims.rs`](crates/facets-canvas/tests/readme_claims.rs)).
 A claim on a front page is a claim like any other.
 
 ## Reading a verdict
@@ -168,7 +168,7 @@ disagreement is information about your model.
 | **author a model that RUNS** — dynamics, forcing, the gallery | [`docs/authoring-models.md`](docs/authoring-models.md) — the `.sl` → mint → bundle loop, and the five facts that bite | [`assets/examples/predator-prey.sl`](assets/examples/predator-prey.sl), a runnable source |
 | **assess the theory** — alone, with an expert, or with an LLM | [`docs/theory-fidelity.md`](docs/theory-fidelity.md) — take/drop/why per tradition | [`docs/lean-provenance.md`](docs/lean-provenance.md) for the pinned commit and the per-claim map |
 | **read the language** | [`docs/language/`](docs/language/) — spec, corpus, lineage | the [concordance](docs/language/terminology-concordance.md): every word's lineage cited |
-| **work on the code** | [`AGENTS.md`](AGENTS.md) — invariants and the crate layout | [`crates/bert-lenses-kernel/API.md`](crates/bert-lenses-kernel/API.md), the frozen JS↔wasm surface |
+| **work on the code** | [`AGENTS.md`](AGENTS.md) — invariants and the crate layout | [`crates/facets-kernel/API.md`](crates/facets-kernel/API.md), the frozen JS↔wasm surface |
 
 No systems-science background is needed for the first row: each lens's palette
 carries its tradition's vocabulary as you author, so you pick it up in place.
@@ -201,7 +201,7 @@ run it: a deterministic run under a model-declared invariant, driven by your own
 data. The conservation engine implements one dynamics-kind — an Id-functor over
 ℝⁿ stocks with an additive conservation invariant — and a Klir model with
 weighted directed relations runs as a discrete-time Markov chain instead
-(`bert-compose/src/markov.rs`, #67), kept deliberately separate: a distribution
+(`facets-compose/src/markov.rs`, #67), kept deliberately separate: a distribution
 over states, no conserved quantity. A run has one kind, never a mix (ADR 0008
 D2); further kinds are *declarable*, not implemented. Conservation is a property the model declares, not
 one the engine assumes; the position of record is
@@ -408,7 +408,7 @@ absent, so neither needs a separate install step on a cold clone.
 <summary>Manual commands (what the recipes wrap)</summary>
 
 ```bash
-cd crates/bert-lenses-kernel
+cd crates/facets-kernel
 wasm-pack build --target web --out-dir pkg --dev     # --release for the shipped bundle
 cd ../../web && npm ci && npm run dev                 # prints the URL; 5173 unless taken
 cargo test --workspace
@@ -427,7 +427,7 @@ computed in JS.
 
 ```bash
 just bert verdict assets/examples/predator-prey.sl        # via cargo, no install
-cargo install --path crates/bert-cli                  # or put `bert` on PATH
+cargo install --path crates/facets-cli                  # or put `bert` on PATH
 ```
 
 ```
@@ -446,7 +446,7 @@ decides.
 **stdout carries JSON and only JSON**, so a pipeline never has to skip a banner
 line; human diagnostics (line-anchored parse faults, the refusal summary) go to
 stderr. The shapes are the kernel's own serde types, the same ones
-[`API.md`](crates/bert-lenses-kernel/API.md) documents: `compile` prints a
+[`API.md`](crates/facets-kernel/API.md) documents: `compile` prints a
 `CanvasModel`, `verdict` a `CanvasAnalysis`, `describe` a `LensDescription`,
 `run` a `RunResult`. `layout` is the one CLI-shaped answer — a straight
 selection of `id`/`name`/`role`/`env_kind`/`x`/`y` off the model, no derivation.
@@ -489,11 +489,11 @@ The door's own tests come in two strengths, and the split is deliberate (#317).
 door — every word of the verdict under each of the three lenses, the formal
 object, the layout, the whole trajectory. It covers the three keep-set models
 that run and carry claims plus one corpus entry per tradition, so the cross-lens
-door stays covered. Regenerate with `BLESS_CLI_GOLDEN=1 cargo test -p bert-cli`
+door stays covered. Regenerate with `BLESS_CLI_GOLDEN=1 cargo test -p facets-cli`
 and read the diff: an unexplained change is the finding.
 
 Every other bundled model gets the **weak** check instead
-(`crates/bert-cli/tests/library_survey.rs`): it parses, and the door answers
+(`crates/facets-cli/tests/library_survey.rs`): it parses, and the door answers
 with a code from the table and JSON on stdout. No content is snapshotted, so a
 model can be renamed, merged or repaired without re-blessing anything. The
 survey still *prints* what it will not assert — a model refused under its own
@@ -502,9 +502,9 @@ pinned lens shows up in the test output, which is how `bitcoin` was found (#316)
 like a regression.
 
 `bert-cli` is the one package excluded from the workspace `wasm32-unknown-unknown`
-build (`--exclude bert-cli` in `justfile` and `ci.yml`) — a native binary of argv
+build (`--exclude facets-cli` in `justfile` and `ci.yml`) — a native binary of argv
 and the filesystem has nothing to do in a browser. The exclusion is *checked*,
-not merely commented: `crates/bert-cli/tests/wasm_gate.rs` fails if the list ever
+not merely commented: `crates/facets-cli/tests/wasm_gate.rs` fails if the list ever
 grows, so the wasm gate cannot quietly widen into one that skips things.
 
 ## Where to look
@@ -520,7 +520,7 @@ are not under `docs/`:
 
 - [`AGENTS.md`](AGENTS.md) — the agent runbook: invariants, the six-crate layout,
   working rules, and the 8-step palette-extension procedure.
-- [`crates/bert-lenses-kernel/API.md`](crates/bert-lenses-kernel/API.md) — the
+- [`crates/facets-kernel/API.md`](crates/facets-kernel/API.md) — the
   frozen JS↔wasm surface (append-only).
 - [`web/DESIGN.md`](web/DESIGN.md) — Halcyonic Frost design tokens for the face,
   and the one owner of the design system.
@@ -540,7 +540,7 @@ repository since 2026-08-27, when the chat client was merged in and the project
 took the name Facets), and **Model** at `/model/`, whose door opened on
 2026-09-07 with the hosted co-author on and opt-in. The rendered reference layer
 is at `/docs/`. Per-lens authoring (Phase 4) is built (`analyze_canvas` and the
-authoring palette, `crates/bert-lenses-kernel/API.md`); the read-only LLM
+authoring palette, `crates/facets-kernel/API.md`); the read-only LLM
 analysis seam shipped 2026-07-17. The agent layer landed 2026-10-10/11 (ADR
 0008; spec v1.10–v1.13): an `agent` line in both forms, the signal form
 `manages <process>` and the command form `manages param "<name>"`, with the

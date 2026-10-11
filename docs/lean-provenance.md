@@ -34,8 +34,8 @@ The tables below are **generated** from [`lean-manifest.json`](lean-manifest.jso
 
 Two further mechanical checks bind this repo to SSF and run in CI or on any checkout with SSF present:
 
-- `crates/bert-core/tests/gates_truth_table.rs` — Rust gates vs the committed Lean-emitted fixture, every row, both directions.
-- `crates/bert-core/src/transition.rs` (`lean_citations_resolve_or_skip_gracefully`) — every Lean name that module cites must still exist in `ViewGeneration.lean`.
+- `crates/facets-core/tests/gates_truth_table.rs` — Rust gates vs the committed Lean-emitted fixture, every row, both directions.
+- `crates/facets-core/src/transition.rs` (`lean_citations_resolve_or_skip_gracefully`) — every Lean name that module cites must still exist in `ViewGeneration.lean`.
 
 **Citations are anchored by declaration name, never by line number.** A line number into another repository is not a citation; it is a coincidence with a timestamp (issue [#127](https://github.com/halcyonic-systems/facets/issues/127)). The manifest has no field to put one in, which is deliberate. Where a `file:line` into SSF survives in this repo it is in `docs/design/**` and `docs/archive/**` — research and historical documents, outside the LIVE doc set and outside the manifest.
 
@@ -49,7 +49,7 @@ Read the *kind* column adversarially, because it is the column that constrains t
 
 ### The kernel and the three generated views
 
-Stated in: [`theory-fidelity.md`](theory-fidelity.md) ("What the kernel actually is"), [`spec/LENS_ENTRY_SPEC.md`](spec/LENS_ENTRY_SPEC.md) §A/§C, `README.md`, `crates/bert-core/src/transition.rs` header table.
+Stated in: [`theory-fidelity.md`](theory-fidelity.md) ("What the kernel actually is"), [`spec/LENS_ENTRY_SPEC.md`](spec/LENS_ENTRY_SPEC.md) §A/§C, `README.md`, `crates/facets-core/src/transition.rs` header table.
 
 | # | Claim | SSF file | Declaration(s) — *kind* | What the Lean gives |
 |---|---|---|---|---|
@@ -68,7 +68,7 @@ Stated in: [`theory-fidelity.md`](theory-fidelity.md) ("What the kernel actually
 
 ### The truth-table and oracle bindings (spec §D)
 
-Stated in: [`spec/LENS_ENTRY_SPEC.md`](spec/LENS_ENTRY_SPEC.md) §C–§D, `fixtures/gates_truth_table.json` (`_generator`), `crates/bert-core/tests/gates_truth_table.rs`, `crates/bert-core/tests/gates_oracle.rs`.
+Stated in: [`spec/LENS_ENTRY_SPEC.md`](spec/LENS_ENTRY_SPEC.md) §C–§D, `fixtures/gates_truth_table.json` (`_generator`), `crates/facets-core/tests/gates_truth_table.rs`, `crates/facets-core/tests/gates_oracle.rs`.
 
 | # | Claim | SSF file | Declaration(s) — *kind* | What the Lean gives |
 |---|---|---|---|---|
@@ -83,7 +83,7 @@ Stated in: [`spec/LENS_ENTRY_SPEC.md`](spec/LENS_ENTRY_SPEC.md) §C–§D, `fixt
 
 ### Bond semantics and the Mobus tuple
 
-Stated in: [`theory-fidelity.md`](theory-fidelity.md) (Bunge and Mobus sections), `crates/bert-canvas/src/lenses.rs` (bond criterion), this repo's `AGENTS.md` invariant #7. Tuple slot attribution is the terminology concordance's job ([`language/terminology-concordance.md`](language/terminology-concordance.md), row 1); this table maps only claim → proof.
+Stated in: [`theory-fidelity.md`](theory-fidelity.md) (Bunge and Mobus sections), `crates/facets-canvas/src/lenses.rs` (bond criterion), this repo's `AGENTS.md` invariant #7. Tuple slot attribution is the terminology concordance's job ([`language/terminology-concordance.md`](language/terminology-concordance.md), row 1); this table maps only claim → proof.
 
 | # | Claim | SSF file | Declaration(s) — *kind* | What the Lean gives |
 |---|---|---|---|---|
@@ -98,7 +98,7 @@ Stated in: [`theory-fidelity.md`](theory-fidelity.md) (Bunge and Mobus sections)
 
 ### The decomposition seam (bert-lenses#89)
 
-Stated in: `crates/bert-core/src/decomposition.rs` (header transcription table — the Rust check is a literal transcription, row by row), [`design/decomposition-foundations.md`](design/decomposition-foundations.md).
+Stated in: `crates/facets-core/src/decomposition.rs` (header transcription table — the Rust check is a literal transcription, row by row), [`design/decomposition-foundations.md`](design/decomposition-foundations.md).
 
 | # | Claim | SSF file | Declaration(s) — *kind* | What the Lean gives |
 |---|---|---|---|---|
@@ -112,7 +112,7 @@ Stated in: `crates/bert-core/src/decomposition.rs` (header transcription table �
 
 ### The agent layer (facets#269, ADR 0008 D6)
 
-Stated in: [`decisions/0008-agent-layer.md`](decisions/0008-agent-layer.md) D6, [`language/spec.md`](language/spec.md) §4.7, `crates/bert-compose/src/circuit.rs` (`NodeKind::Agent`).
+Stated in: [`decisions/0008-agent-layer.md`](decisions/0008-agent-layer.md) D6, [`language/spec.md`](language/spec.md) §4.7, `crates/facets-compose/src/circuit.rs` (`NodeKind::Agent`).
 
 | # | Claim | SSF file | Declaration(s) — *kind* | What the Lean gives |
 |---|---|---|---|---|
@@ -174,10 +174,10 @@ lake env lean --run Systems/Klir/GatesTruthTable.lean \
 
 # 6. Run the Rust-side bindings against the pinned checkout (from facets):
 cd ../facets
-cargo test -p bert-core --test gates_truth_table          # fixture rows
+cargo test -p facets-core --test gates_truth_table          # fixture rows
 SSF_DIR=../systems-science-foundations \
-  cargo test -p bert-core --test gates_oracle             # the live oracle
-cargo test -p bert-core transition                        # includes lean_citations_resolve
+  cargo test -p facets-core --test gates_oracle             # the live oracle
+cargo test -p facets-core transition                        # includes lean_citations_resolve
 ```
 
 Step 0 needs no Lean toolchain and no SSF build, only an SSF checkout. Steps 1–4 need no part of this repo; steps 5–6 close the loop back into it. If SSF is checked out at the default sibling path, steps 5–6's tests find it without any env var, and the citation-drift gate in `transition.rs` runs on every `cargo test --workspace` instead of skipping.

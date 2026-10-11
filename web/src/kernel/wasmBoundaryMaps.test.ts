@@ -10,7 +10,7 @@ import path from "node:path";
 import { initSync, compile_sl, project as wasmProject, run_rich } from "bert-lenses-kernel";
 
 const wasmBytes = fs.readFileSync(
-  path.resolve(__dirname, "../../../crates/bert-lenses-kernel/pkg/bert_lenses_kernel_bg.wasm"),
+  path.resolve(__dirname, "../../../crates/facets-kernel/pkg/bert_lenses_kernel_bg.wasm"),
 );
 initSync({ module: wasmBytes });
 

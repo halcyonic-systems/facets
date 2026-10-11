@@ -2,7 +2,7 @@
 
 **Status: RESEARCH.** A plan of record — an execution record, carrying no normative weight (see [`README.md`](README.md), "Plans and drafts").
 
-*2026-07-23 · plan of record. The honest continuation of #100 (per-lens registers, shipped/closed). Grounded in the code (`KlirRegister.tsx`, `RunPanel.tsx`, `BungeStateSpace.tsx`, `crates/bert-canvas/src/canvas.rs`) and the dynamics spine (`dynamics-coalgebra-halfa.md`, SSF `Transition.lean`).*
+*2026-07-23 · plan of record. The honest continuation of #100 (per-lens registers, shipped/closed). Grounded in the code (`KlirRegister.tsx`, `RunPanel.tsx`, `BungeStateSpace.tsx`, `crates/facets-canvas/src/canvas.rs`) and the dynamics spine (`dynamics-coalgebra-halfa.md`, SSF `Transition.lean`).*
 
 ## The three pieces (distinct size and risk — do NOT lump them)
 
@@ -42,12 +42,12 @@
 - **Authored (the schema touch):** `scale` and `states` per variable/thing.
 
 **The schema touch, following the proven optional-field pattern** (`Thing.primitive` / `.child_model` / `.stock_unit` all use `#[serde(default, skip_serializing_if = "Option::is_none")]` so pre-existing models stay byte-identical):
-1. `crates/bert-canvas/src/canvas.rs` — add to `Thing`:
+1. `crates/facets-canvas/src/canvas.rs` — add to `Thing`:
    - `scale: Option<ScaleType>` (new enum `Nominal | Ordinal | Interval | Ratio`).
    - `states: Option<...>` — **the state set; representation is the load-bearing decision (below).**
 2. **wasm boundary** — `Thing` already crosses via `CanvasModel` serialization (`api.rs`); optional fields ride along for free, but confirm the TS `Thing` type (`web/src/kernel/types`) gains them.
 3. **persistence** — `writeArchive`/`openModel` are serde-driven; `skip_serializing_if` keeps old files identical. Add a round-trip fixture.
-4. **SL syntax** — a `scale` / `states` attribute on `component` lines (`crates/bert-canvas/src/sl.rs` parse + emit), with a `sl_roundtrip` golden. Design the surface (below).
+4. **SL syntax** — a `scale` / `states` attribute on `component` lines (`crates/facets-canvas/src/sl.rs` parse + emit), with a `sl_roundtrip` golden. Design the surface (below).
 5. **UI** — a third `KlirRegister` view `"table"` beside the existing `"sets" | "matrix"` toggle (`KlirRegister.tsx:69`): Table 4.1 (variable · basic/supporting · in/out · scale · state set) + an inline editor for the two authored columns, mirroring how the sets view edits names.
 
 **⚠ The one decision that gates P2 (Shingai's call): the state-set representation.** Klir's state set is the set of values a variable can take. Options:

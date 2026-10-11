@@ -29,7 +29,7 @@ The shipped `llm-market` model now takes its workload through two flows, "routed
 The question the pooled model carries (facets#523) is whether the open-weight
 share of routed workload moves. The tether drives that: a forced series on
 each of the Router's two outwires sets the split tick by tick (the engine's
-weighted fanout, `bert-tether/src/forcing.rs`, test
+weighted fanout, `facets-tether/src/forcing.rs`, test
 `forcing_a_splitters_outwires_moves_the_routed_share_and_conserves`). The
 observed series exists since 2026-10-10 (facets#529): the pinned vintage
 `../data/openrouter-routed-share-bundle-vintage-2026-10-10.json`, from which

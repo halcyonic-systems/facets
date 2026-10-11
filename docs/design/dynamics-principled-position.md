@@ -235,7 +235,7 @@ the engine assumes.** The argument, post-critique:
 
 ## 3a. First DTMC increment (2026-07-24) — the `Dist(X)` row, implemented general
 
-`crates/bert-compose/src/markov.rs` (PR #168) is the first implementation of the axis-C **`Dist(X)`** cell (the Markov `#67` row), and it is deliberately built to the *axis*, not to a model.
+`crates/facets-compose/src/markov.rs` (PR #168) is the first implementation of the axis-C **`Dist(X)`** cell (the Markov `#67` row), and it is deliberately built to the *axis*, not to a model.
 
 - **What it is.** `Chain::from_edges(states, weighted_edges)` → a row-stochastic matrix; `trajectory` iterates `vₙ₊₁ = vₙ P`. This is the **distribution-evolution** (Chapman–Kolmogorov / Kleisli-composition) reading of `Dist(X)` that §4's contract names — the master-equation face of the chain, not a sampled path. `H` stays the full distribution trajectory, so there is **no RNG, seed, or reproducibility surface yet** — a deliberate first cut that sidesteps the "H becomes *a* sampled path" semantics change §2's Markov row flags.
 - **General, not model-shaped.** Nothing in it knows about states counts, alphabets, or the parity automaton it is tested against (the parity chain is only the fixture: stochastic rows, one-step mixing at p=½, convergence to [½,½] for every biased coin, dead-ends absorb). Same stepper *shape* as conservation flow — the only difference is the codomain functor (axis C). Conservation-flow (`Id` + additive-invariant), DTMC (`Dist`), and the FSA stepper (`X^Σ`) are one dynamical face parameterized by C, **not parallel engines**. This is the K≅2 discipline at the dynamics layer: one neutral coalgebra `c: X → F(X)`, read through each lens — the P3 `mask` (`f: Ḡ → G`) is that coalgebra read in the register, and it is already lens-neutral (Bunge state-space / Mobus work-process / Klir behavior-function read the same trajectory).
@@ -427,7 +427,7 @@ Phase gates 4.0–4.2 (shipped) are unaffected — they built the seam. The chan
 >   file objections; merging this checklist = adoption. *Adopted 2026-07-18 (#86 closed; ADR 0003).*
 > - [x] **Answer Q1 for #67**: clock-driven `Dist(X)` vs rate-driven CTMC — read the
 >   #67 spec, record the answer there. Also decide Q4 (bare `X^Σ` vs trivial-flow
->   hybrid automaton per `dynamics-research/read-external.md §6`). *Built clock-driven over bare `X^Σ`: `crates/bert-compose/src/markov.rs`, `run_markov`, 2026-07-24; #67 closed.*
+>   hybrid automaton per `dynamics-research/read-external.md §6`). *Built clock-driven over bare `X^Σ`: `crates/facets-compose/src/markov.rs`, `run_markov`, 2026-07-24; #67 closed.*
 > - [x] **Answer Q2 for #54** with the stated test: does porosity ever invalidate the
 >   current flow φ (metasystem swap, Klir) or only rescale a coefficient within one φ
 >   (generative parameter)? Record answer + reasoning on #54; close it. *Decided on #54, 2026-07-18: a coefficient within the active φ, never a metasystem swap; perceptive fuzziness render-only. #54 closed 2026-07-19.*

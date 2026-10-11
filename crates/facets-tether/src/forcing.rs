@@ -1,0 +1,1241 @@
+//! The forcing seam — inject imported CSV data into an executable model, run it,
+//! and read the run back in DOMAIN terms.
+//!
+//! This is the piece the old egui app did inline inside `to_world_model_with`
+//! (main.rs:1874-1968) and `run_model` (main.rs:3311-3399). Here it operates on
+//! an already-parsed executable `WorldModel`, since Phase 1 starts from a model
+//! rather than authoring one. Still truth, not face: all of it runs in wasm.
+//!
+//! Element handles are the element's index in document order (interactions =
+//! flows, level-1 systems = components). The wizard picks those indices via
+//! [`flow_targets`]/[`component_targets`]; `ModelParams` keys by them; and
+//! [`apply_params`] walks the same order — so the three always agree.
+//!
+//! LEGIBILITY (load-bearing): every value read back carries the model's own name
+//! and declared unit. No engine columns ("node 3") ever reach the face.
+//!
+//! TWO SENSES OF "FORCE" — do not conflate:
+//! - **Forcing-function** (this module, the `force`/`forced` fields, the #16
+//!   feature): driving an edge with an *exogenous data series* `u(t)` instead of
+//!   its computed/mean rate — a boundary condition, `F(t)` on the RHS. The
+//!   human-facing word for this is **"drive"** (the wizard checkbox, the blurbs);
+//!   the field stays `force` internally + in the manifest contract.
+//! - **Mobus `InteractionType::Force`** (bert-core): an *ontological* flow type —
+//!   a flow whose rate is a potential gradient (`rate = k·Δ`, needs a
+//!   `conductance`). Nothing to do with the above. Never relabel this one.
+
+use std::collections::HashMap;
+
+use serde::Serialize;
+
+use facets_core::rust_decimal::Decimal;
+use facets_core::{Id, Parameter, System, WorldModel};
+use facets_compose::circuit::NodeKind;
+use facets_compose::{Circuit, RecordedRun};
+
+use crate::tether::{Comparison, ModelParams};
+
+/// The flows a CSV column can be mapped onto: `(handle, name, declared unit)`,
+/// one per interaction in document order.
+pub fn flow_targets(model: &WorldModel) -> Vec<(u64, String, String)> {
+    model
+        .interactions
+        .iter()
+        .enumerate()
+        .map(|(i, ix)| (i as u64, ix.info.name.clone(), ix.unit.clone()))
+        .collect()
+}
+
+/// The components a CSV column can supply a stock / parameter for: level-1
+/// systems (the interior work processes), `(handle, name)` in document order.
+/// Handles are offset past the flows so flow and component handles never collide
+/// in the single `name_of` handle space the wizard/commit use.
+pub fn component_targets(model: &WorldModel) -> Vec<(u64, String)> {
+    let offset = model.interactions.len() as u64;
+    model
+        .systems
+        .iter()
+        .filter(|s| s.info.level == 1)
+        .enumerate()
+        .map(|(i, s)| (offset + i as u64, s.info.name.clone()))
+        .collect()
+}
+
+/// Resolve a handle (from either target list) back to its display name — the
+/// `name_of` the wizard `commit` and manifest resolution need.
+pub fn name_of(model: &WorldModel, handle: u64) -> String {
+    let offset = model.interactions.len() as u64;
+    if handle < offset {
+        model
+            .interactions
+            .get(handle as usize)
+            .map(|ix| ix.info.name.clone())
+            .unwrap_or_default()
+    } else {
+        model
+            .systems
+            .iter()
+            .filter(|s| s.info.level == 1)
+            .nth((handle - offset) as usize)
+            .map(|s| s.info.name.clone())
+            .unwrap_or_default()
+    }
+}
+
+/// Live wizard status for a mapping: the T1/T2/T4 gates, the plain-language
+/// translations, and the inferred Δt. Serialized verbatim at the wasm boundary
+/// (`mapping_status`); the field names are the frozen API.md shape.
+#[derive(Serialize)]
+pub struct MappingStatus {
+    pub t1_ok: bool,
+    pub t2_ok: bool,
+    pub t2_msg: Option<String>,
+    pub t4_ok: bool,
+    pub t4_msg: Option<String>,
+    pub can_finish: bool,
+    pub translations: Vec<String>,
+    pub inferred_dt: Option<f64>,
+    pub apply_error: Option<String>,
+}
+
+/// Reconstruct the `MappingDraft` from the manifest and read the finish gates —
+/// no side effects. Errors only if the CSV text does not parse (the fault the
+/// boundary surfaces); a manifest that fails to resolve is reported in
+/// `apply_error`, not as an error. The boundary just parses inputs, calls this,
+/// and serializes the result.
+pub fn mapping_status(
+    model: &WorldModel,
+    csv_text: &str,
+    manifest: &crate::manifest::RunManifest,
+) -> Result<MappingStatus, String> {
+    let (headers, rows) = crate::tether::parse_csv(csv_text).map_err(|e| format!("{e:?}"))?;
+
+    let flows: Vec<(u64, String)> = flow_targets(model)
+        .into_iter()
+        .map(|(id, name, _)| (id, name))
+        .collect();
+    let components = component_targets(model);
+    let ctx = crate::manifest::ResolveCtx {
+        flows: &flows,
+        components: &components,
+    };
+
+    let mut draft =
+        crate::tether::MappingDraft::new("import.csv".to_string(), headers.clone(), rows);
+    let apply_error = manifest.apply_to_draft(&mut draft, &ctx).err();
+
+    let name_at = |h: u64| name_of(model, h);
+    let translations: Vec<String> = (0..headers.len())
+        .filter_map(|i| draft.translation(i, &name_at))
+        .collect();
+    let units = draft.units_ok();
+    let time = draft.time_unique_ok();
+
+    Ok(MappingStatus {
+        t1_ok: draft.is_total(),
+        t2_ok: units.is_ok(),
+        t2_msg: units.err(),
+        t4_ok: time.is_ok(),
+        t4_msg: time.err(),
+        can_finish: draft.can_finish(),
+        translations,
+        inferred_dt: draft.inferred_dt(),
+        apply_error: apply_error.map(|es| es.join("; ")),
+    })
+}
+
+/// Inject the distilled import (`ModelParams`) onto an existing model: forced
+/// flows gain a comma-joined `series` (+ optional `dt_stride`) parameter and an
+/// `amount` fallback; components gain their initial storage and transfer param.
+/// Ported from old `main.rs:1874-1968`, keyed by element index.
+pub fn apply_params(model: &mut WorldModel, params: &ModelParams) {
+    for (i, ix) in model.interactions.iter_mut().enumerate() {
+        let id = i as u64;
+        if let Some(amt) = params.flow_amount.get(&id) {
+            // The column mean supplies the amount ONLY where it does not
+            // silence a declaration (field report 2026-08-16: slider edits to
+            // declared amounts were clobbered by unforced mapped columns, so
+            // every re-run reproduced the CSV and the params UI read as dead):
+            // - a FORCED flow takes the mean as its data-horizon fallback
+            //   (#34) — the series is the truth and says so in the UI;
+            // - an UNDECLARED amount (the projection default ONE) takes the
+            //   mean — "the default becomes a floor", the original
+            //   tether-as-supply intent (#13), preserved verbatim;
+            // - a DECLARED amount on an unforced flow WINS, and the mapped
+            //   column's job is the comparison — executed-vs-observed
+            //   divergence is what that panel is FOR (#304's M-ladder).
+            // Heuristic edge, stated: an author who declares exactly 1 is
+            // indistinguishable from the default here; the honest fix is an
+            // authored-Option amount on Interaction (the #331 usability
+            // pattern) — tracked as follow-up.
+            let forced = params.flow_series.contains_key(&id);
+            if forced || ix.amount == Decimal::ONE {
+                if let Some(d) = Decimal::from_f64_retain(*amt) {
+                    ix.amount = d;
+                }
+            }
+        }
+        // Re-derive the forcing params we own (idempotent if applied twice).
+        ix.parameters
+            .retain(|p| p.name != "series" && p.name != "dt_stride");
+        if let Some(series) = params.flow_series.get(&id) {
+            ix.parameters.push(Parameter {
+                name: "series".to_string(),
+                value: series
+                    .iter()
+                    .map(|v| v.to_string())
+                    .collect::<Vec<_>>()
+                    .join(","),
+                ..Default::default()
+            });
+        }
+        if let Some(&n) = params.flow_stride.get(&id) {
+            ix.parameters.push(Parameter {
+                name: "dt_stride".to_string(),
+                value: n.to_string(),
+                ..Default::default()
+            });
+        }
+    }
+
+    let offset = model.interactions.len() as u64;
+    for (id, s) in (offset..).zip(model.systems.iter_mut().filter(|s| s.info.level == 1)) {
+        if let Some(v) = params.stock_initial.get(&id) {
+            s.agent
+                .get_or_insert_with(Default::default)
+                .initial_state
+                .insert("storage".to_string(), serde_json::json!(v));
+        }
+        if let Some((name, v)) = params.component_param.get(&id) {
+            s.agent
+                .get_or_insert_with(Default::default)
+                .cognitive_params
+                .insert(name.clone(), *v);
+        }
+    }
+}
+
+/// The whole forced-run pipeline as one testable unit (the wasm `run_forced`
+/// just parses inputs, calls this, and serializes the result). Resolves the
+/// mapping, runs the wizard's finish gates, commits, injects, projects,
+/// simulates, and reads back in domain terms. Returns a legible error string on
+/// any gate/projection failure.
+pub fn force_and_run(
+    model: WorldModel,
+    csv_text: &str,
+    manifest: &crate::manifest::RunManifest,
+    dt: f64,
+    t: f64,
+    today: &str,
+) -> Result<RunReadout, String> {
+    // Check the run's precondition before doing any import work: `(Δt, T)` must
+    // name a run at all. The precondition itself belongs to dynamics, not to
+    // CSV import, so it is stated and enforced once in the engine
+    // (`facets_compose::ticks_over`) and only *asked* here — the wizard can produce
+    // dt=0 from an empty Δt field, and refusing early means a legible verdict
+    // instead of an import that only fails at the last step. Deleting this call
+    // does not open a door: `record_over` below refuses the same inputs.
+    facets_compose::ticks_over(dt, t)?;
+    let (model, imported) = prepare_forced(model, csv_text, manifest, today)?;
+
+    let spec = facets_core::operational::validate_operational(&model)
+        .map_err(|errors| format!("model is not executable ({} reason(s))", errors.len()))?;
+    let mut circuit = facets_compose::from_spec(&spec);
+    let run = facets_compose::RecordedRun::record_over(&mut circuit, &spec, dt, t)?;
+    Ok(summarize(&model, &imported, &spec, &circuit, &run, dt))
+}
+
+/// The import ritual on its own (facets#463): resolve the mapping, run the
+/// wizard's finish gates, commit, and inject the projection params into the
+/// model. What `force_and_run` does before it wires and steps, so the bench
+/// session can open a forced model and hold it instead of running it to T.
+pub fn prepare_forced(
+    mut model: WorldModel,
+    csv_text: &str,
+    manifest: &crate::manifest::RunManifest,
+    today: &str,
+) -> Result<(WorldModel, crate::tether::ImportedData), String> {
+    let (headers, rows) = crate::tether::parse_csv(csv_text).map_err(|e| format!("{e:?}"))?;
+
+    let flows: Vec<(u64, String)> = flow_targets(&model)
+        .into_iter()
+        .map(|(id, name, _)| (id, name))
+        .collect();
+    let components = component_targets(&model);
+    let ctx = crate::manifest::ResolveCtx {
+        flows: &flows,
+        components: &components,
+    };
+
+    let mut draft = crate::tether::MappingDraft::new("import.csv".to_string(), headers, rows);
+    manifest
+        .apply_to_draft(&mut draft, &ctx)
+        .map_err(|es| format!("mapping is invalid: {}", es.join("; ")))?;
+    if !draft.is_total() {
+        return Err("mapping incomplete: every column must be assigned or ignored".to_string());
+    }
+    draft
+        .units_ok()
+        .map_err(|m| format!("mapping incomplete: {m}"))?;
+    draft
+        .time_unique_ok()
+        .map_err(|m| format!("mapping invalid: {m}"))?;
+
+    let model_ref = &model;
+    let name_of = |h: u64| name_of(model_ref, h);
+    let imported = draft.commit(today.to_string(), &name_of);
+    let params = imported.projection_params();
+    apply_params(&mut model, &params);
+    Ok((model, imported))
+}
+
+/// Run the model from its DECLARED amounts alone — no CSV, no forcing — and
+/// read the run back in the same domain terms [`force_and_run`] returns
+/// (levels, trajectories, per-wire flow series, conservation verdict).
+///
+/// This is the rich readout for the CSV-less case (interactive params,
+/// 2026-08-16): a parameter edit re-declares an amount and re-runs, and the
+/// face needs domain-named series either way. Same pipeline minus the import:
+/// precondition → validate → wire → record → summarize over empty
+/// [`ImportedData`] (so `comparisons` is empty by construction — nothing was
+/// observed, and the readout says so rather than inventing a baseline).
+pub fn run_unforced(model: WorldModel, dt: f64, t: f64) -> Result<RunReadout, String> {
+    facets_compose::ticks_over(dt, t)?;
+    let spec = facets_core::operational::validate_operational(&model)
+        .map_err(|errors| format!("model is not executable ({} reason(s))", errors.len()))?;
+    let mut circuit = facets_compose::from_spec(&spec);
+    let run = facets_compose::RecordedRun::record_over(&mut circuit, &spec, dt, t)?;
+    Ok(summarize(&model, &crate::tether::ImportedData::default(), &spec, &circuit, &run, dt))
+}
+
+/// A final level, purpose-ordered and domain-named.
+pub struct Level {
+    pub name: String,
+    pub unit: String,
+    /// True iff `unit` was *derived* from the inflow (an undeclared stock's
+    /// inflow × Δt, bert-lenses#94), not read from an author-declared stock unit —
+    /// the face renders it with a muted provenance mark.
+    pub unit_derived: bool,
+    pub value: f32,
+    /// "product" | "resource" | "internal" — purpose category.
+    pub category: &'static str,
+}
+
+/// One element's recorded trajectory, domain-named.
+pub struct Trajectory {
+    pub name: String,
+    pub unit: String,
+    /// See [`Level::unit_derived`].
+    pub unit_derived: bool,
+    pub series: Vec<f32>,
+}
+
+/// The whole run, read back in domain terms.
+pub struct RunReadout {
+    pub levels: Vec<Level>,
+    pub trajectories: Vec<Trajectory>,
+    pub comparisons: Vec<Comparison>,
+    pub flows: Vec<FlowSeries>,
+    pub residual: f32,
+    pub conserved: bool,
+    pub ticks: usize,
+    pub dt: f64,
+}
+
+/// One flow's executed per-tick delivery (#203), domain-named. The series is
+/// the circuit's own recording (`Circuit::wire_history` — `wire_amount` per
+/// tick, captured inside the step), never a downstream re-derivation of the
+/// fanout rule. Declared metrics read these; so may any future readout.
+pub struct FlowSeries {
+    /// The flow's own label ("dev serving share · N"); may be empty.
+    pub name: String,
+    pub from: String,
+    pub to: String,
+    pub unit: String,
+    pub series: Vec<f32>,
+}
+
+fn category_order(cat: &str) -> u8 {
+    match cat {
+        "product" => 0,
+        "resource" => 1,
+        _ => 2,
+    }
+}
+
+/// Read a finished run (circuit left at its final state + the recorded history)
+/// back into domain-named levels, trajectories, and simulated-vs-actual
+/// comparisons. Mirrors old `run_model` + `comparisons`.
+pub fn summarize(
+    model: &WorldModel,
+    imported: &crate::tether::ImportedData,
+    spec: &facets_core::operational::OperationalSpec,
+    circuit: &Circuit,
+    run: &RecordedRun,
+    dt: f64,
+) -> RunReadout {
+    let ticks = run.history.len();
+
+    // A level/trajectory reads the stock's DECLARED unit when the modeler set one
+    // (bert-lenses#76). Otherwise, for a Buffering stock, it DERIVES a display unit
+    // from the inflow's unit × Δt (bert-lenses#94, THE ruling 2026-07-20: the
+    // inflow's own vocabulary, never SI-canonicalized — `ML/mo` → `ML`, `kW` →
+    // `kW·Δt`). A stock accumulates its inflow over Δt, so the flow-copied
+    // `out_substance.unit` (a rate) is the wrong thing to show on a stock; the
+    // derivation is the right one. The `.1` flags a derived unit so the face can
+    // mark its provenance. Δt itself is a pure number; the model may declare what
+    // it counts via `WorldModel::time_unit` (#94), and that symbol carries into
+    // the integration (`kW` → `kW·h`) — undeclared, an intrinsic rate integrates
+    // to the abstract `·Δt`. Other node kinds and unparseable/absent units keep
+    // the flow-copied fallback verbatim.
+    let time_unit = model.time_unit.as_deref();
+    let unit_of = |node: &facets_compose::circuit::Node| -> (String, bool) {
+        if !node.stock_unit.is_empty() {
+            return (node.stock_unit.clone(), false);
+        }
+        if matches!(
+            node.kind,
+            NodeKind::Process(facets_core::ProcessPrimitive::Buffering)
+        ) {
+            if let Some(derived) =
+                facets_core::units::derived_stock_unit(&node.out_substance.unit, time_unit)
+            {
+                return (derived, true);
+            }
+        }
+        (node.out_substance.unit.clone(), false)
+    };
+
+    // Final levels, one row per node, ordered by purpose.
+    let mut levels: Vec<Level> = circuit
+        .nodes
+        .iter()
+        .enumerate()
+        .map(|(i, node)| {
+            let (category, value) = match node.kind {
+                NodeKind::Sink => ("product", node.total),
+                // #263: a multi-pushed source's rates ride its wires and its
+                // `param` is an orphaned default — the readout must present
+                // the DECLARED emission the dynamics actually honor.
+                NodeKind::Source => ("resource", circuit.source_readout(i)),
+                NodeKind::Process(_) | NodeKind::Agent => ("internal", circuit.level(i)),
+            };
+            let (unit, unit_derived) = unit_of(node);
+            Level {
+                name: node.name.clone(),
+                unit,
+                unit_derived,
+                value,
+                category,
+            }
+        })
+        .collect();
+    levels.sort_by_key(|r| category_order(r.category));
+
+    // Per-node trajectory: a sink's accumulated total, a buffer's stock, else
+    // last-tick activity — the column of the recorded rows that reads as level.
+    let col_of = |kind: &NodeKind| -> usize {
+        match kind {
+            NodeKind::Sink => 2,
+            NodeKind::Process(facets_core::ProcessPrimitive::Buffering) => 1,
+            _ => 0,
+        }
+    };
+    let trajectories: Vec<Trajectory> = circuit
+        .nodes
+        .iter()
+        .enumerate()
+        .map(|(i, node)| {
+            let col = col_of(&node.kind);
+            let series = run.history.iter().map(|row| row[1 + i * 3 + col]).collect();
+            let (unit, unit_derived) = unit_of(node);
+            Trajectory {
+                name: node.name.clone(),
+                unit,
+                unit_derived,
+                series,
+            }
+        })
+        .collect();
+
+    // Executed emission per tick (activity, col 0) for every node — the series a
+    // flow comparison reads for its upstream endpoint (#25).
+    let activities: HashMap<String, Vec<f32>> = circuit
+        .nodes
+        .iter()
+        .enumerate()
+        .map(|(i, node)| {
+            let s = run.history.iter().map(|row| row[1 + i * 3]).collect();
+            (node.name.clone(), s)
+        })
+        .collect();
+
+    // Executed per-wire deliveries (#203), domain-named by zipping the spec's
+    // flows with the circuit's wires — `from_spec` builds one wire per spec
+    // flow in order, and `validate_operational` guarantees every endpoint
+    // resolves, so the zip is an identity pairing. Built before the
+    // comparisons, which read these series (#338).
+    let flows: Vec<FlowSeries> = spec
+        .flows
+        .iter()
+        .zip(&circuit.wires)
+        .enumerate()
+        .map(|(k, (f, w))| FlowSeries {
+            name: f.name.clone(),
+            from: circuit.nodes[w.from].name.clone(),
+            to: circuit.nodes[w.to].name.clone(),
+            unit: f.unit.clone(),
+            series: run
+                .wire_history
+                .iter()
+                .map(|row| row.get(k).copied().unwrap_or(0.0))
+                .collect(),
+        })
+        .collect();
+
+    let comparisons = build_comparisons(model, imported, &trajectories, &activities, &flows, ticks);
+
+    // Conservation: scale-free — residual as a fraction of total emitted.
+    let throughput: f32 = run.ledger_history.iter().map(|l| l[0]).sum();
+    let residual = run.final_balance;
+    let conserved = residual.abs() <= 1e-4 * throughput.max(1e-6);
+
+    RunReadout {
+        levels,
+        trajectories,
+        comparisons,
+        flows,
+        residual,
+        conserved,
+        ticks,
+        dt,
+    }
+}
+
+/// Pair each mapped stock / forced flow's simulated trace with its actual
+/// empirical series and declared baseline. Ported from old `main.rs:3105-3170`,
+/// resolving element handles + upstream endpoints off the WorldModel.
+fn build_comparisons(
+    model: &WorldModel,
+    imported: &crate::tether::ImportedData,
+    trajectories: &[Trajectory],
+    activities: &HashMap<String, Vec<f32>>,
+    wire_series: &[FlowSeries],
+    ticks: usize,
+) -> Vec<Comparison> {
+    let components = component_targets(model); // (handle, name)
+    let id_name = id_name_map(model);
+    let traj_by_name: HashMap<&str, &Vec<f32>> = trajectories
+        .iter()
+        .map(|t| (t.name.as_str(), &t.series))
+        .collect();
+
+    let mut out: Vec<Comparison> = Vec::new();
+
+    // Stocks: the mapped component's recorded trajectory vs the imported series.
+    for (tid, s) in &imported.stock_series {
+        let Some((_, name)) = components.iter().find(|(h, _)| h == tid) else {
+            continue;
+        };
+        let Some(sim) = traj_by_name.get(name.as_str()) else {
+            continue;
+        };
+        let actual: Vec<f32> = s.present().iter().map(|v| *v as f32).collect();
+        if actual.is_empty() {
+            continue;
+        }
+        out.push(Comparison {
+            element_name: name.clone(),
+            kind: "stock",
+            simulated: (*sim).clone(),
+            actual,
+            baseline: None,
+            unit: s.unit.clone(),
+        });
+    }
+
+    // Flows: THIS WIRE's executed delivery vs the imported series. The wire's
+    // own per-tick series is the truth (#338): a sender with several outwires
+    // has one activity but many deliveries, and comparing the observed column
+    // against the sender's total inflated every multi-outwire validation
+    // (Cytosol's 81 read as each flow's "executed" — a fake 305% off on a
+    // perfectly forced 20). The upstream endpoint's activity survives only as
+    // the fallback for a flow the wire zip did not name.
+    for (rid, s) in &imported.flow_series {
+        // A weight (rung 2) is a control input, not an observable — skip.
+        if s.unit.eq_ignore_ascii_case("weight") {
+            continue;
+        }
+        let idx = *rid as usize;
+        let Some(ix) = model.interactions.get(idx) else {
+            continue;
+        };
+        let actual: Vec<f32> = s.present().iter().map(|v| *v as f32).collect();
+        if actual.is_empty() {
+            continue;
+        }
+        let amount = s.mean().unwrap_or(0.0) as f32;
+        let flat = vec![amount; ticks.max(actual.len()).max(2)];
+        let upstream_name = id_name.get(&ix.source).cloned();
+        let executed = wire_series
+            .iter()
+            .find(|fs| {
+                fs.name == ix.info.name
+                    && upstream_name.as_deref().is_none_or(|n| fs.from == n)
+            })
+            .map(|fs| fs.series.clone())
+            .or_else(|| upstream_name.as_deref().and_then(|n| activities.get(n)).cloned());
+        let (sim, baseline) = match executed {
+            Some(series) => (series, Some(flat)),
+            None => (flat, None),
+        };
+        out.push(Comparison {
+            element_name: ix.info.name.clone(),
+            kind: "flow",
+            simulated: sim,
+            actual,
+            baseline,
+            unit: s.unit.clone(),
+        });
+    }
+
+    out.sort_by(|a, b| a.element_name.cmp(&b.element_name));
+    out
+}
+
+/// Every entity's `Id -> display name`, so a flow's `source`/`sink` endpoint can
+/// be named (systems + environment terminals + nested terminals).
+fn id_name_map(model: &WorldModel) -> HashMap<Id, String> {
+    let mut m = HashMap::new();
+    let add = |m: &mut HashMap<Id, String>, s: &System| {
+        m.insert(s.info.id.clone(), s.info.name.clone());
+        for e in s.sources.iter().chain(s.sinks.iter()) {
+            m.insert(e.info.id.clone(), e.info.name.clone());
+        }
+    };
+    for s in &model.systems {
+        add(&mut m, s);
+    }
+    for e in model
+        .environment
+        .sources
+        .iter()
+        .chain(model.environment.sinks.iter())
+    {
+        m.insert(e.info.id.clone(), e.info.name.clone());
+    }
+    m
+}
+
+#[cfg(all(test, not(target_arch = "wasm32")))]
+mod tests {
+    use super::*;
+    use crate::manifest::RunManifest;
+
+    /// bert-lenses#76: when a stock declares its own unit, the run panel reads
+    /// THAT (a quantity like `ML`) instead of copying the feeding flow's unit
+    /// (`ML/mo`, a rate). An undeclared stock still falls back to the flow unit.
+    #[test]
+    fn declared_stock_unit_wins_over_the_flow_copied_one() {
+        let json = include_str!("../../../assets/models/runnable-sample.json");
+        let mut model: WorldModel = serde_json::from_str(json).unwrap();
+        // Declare a stock unit on the Buffering component; leave its inflow's
+        // unit (the flow-copied fallback) alone.
+        let buffer = model
+            .systems
+            .iter_mut()
+            .find(|s| {
+                s.agent.as_ref().and_then(|a| a.primitive)
+                    == Some(facets_core::ProcessPrimitive::Buffering)
+            })
+            .expect("the sample has a Buffering stock");
+        let buffer_name = buffer.info.name.clone();
+        buffer.agent.as_mut().unwrap().stock_unit = "ML".to_string();
+
+        let spec = facets_core::operational::validate_operational(&model).expect("projects");
+        let mut circuit = facets_compose::from_spec(&spec);
+        let run = facets_compose::RecordedRun::record_over(&mut circuit, &spec, 1.0, 4.0)
+            .expect("Δt = 1 over T = 4 names a run");
+        let readout = summarize(
+            &model,
+            &crate::tether::ImportedData::default(),
+            &spec,
+            &circuit,
+            &run,
+            1.0,
+        );
+
+        let stock = readout
+            .levels
+            .iter()
+            .find(|l| l.name == buffer_name)
+            .expect("the stock has a level row");
+        assert_eq!(
+            stock.unit, "ML",
+            "the run reads the declared stock unit, not the flow-copied one"
+        );
+        assert!(!stock.unit_derived, "a declared unit is not marked derived");
+    }
+
+    /// bert-lenses#94 (display slice): an undeclared Buffering stock fed by a
+    /// unit-bearing rate inflow displays the DERIVED unit (inflow × Δt in the
+    /// author's own vocabulary — `ML/mo` → `ML`) instead of the flow-copied rate,
+    /// flagged as derived so the face can mark its provenance.
+    #[test]
+    fn undeclared_stock_displays_the_derived_unit() {
+        let json = include_str!("../../../assets/models/runnable-sample.json");
+        let mut model: WorldModel = serde_json::from_str(json).unwrap();
+
+        // Give the inflow a rate unit, leave the stock's unit UNdeclared.
+        let buffer_name = {
+            let buffer = model
+                .systems
+                .iter()
+                .find(|s| {
+                    s.agent.as_ref().and_then(|a| a.primitive)
+                        == Some(facets_core::ProcessPrimitive::Buffering)
+                })
+                .expect("the sample has a Buffering stock");
+            assert!(
+                buffer.agent.as_ref().unwrap().stock_unit.is_empty(),
+                "precondition: the stock declares no unit"
+            );
+            buffer.info.name.clone()
+        };
+        for ix in &mut model.interactions {
+            ix.unit = "ML/mo".to_string();
+        }
+
+        let spec = facets_core::operational::validate_operational(&model).expect("projects");
+        let mut circuit = facets_compose::from_spec(&spec);
+        let run = facets_compose::RecordedRun::record_over(&mut circuit, &spec, 1.0, 4.0)
+            .expect("Δt = 1 over T = 4 names a run");
+        let readout = summarize(
+            &model,
+            &crate::tether::ImportedData::default(),
+            &spec,
+            &circuit,
+            &run,
+            1.0,
+        );
+
+        let stock = readout
+            .levels
+            .iter()
+            .find(|l| l.name == buffer_name)
+            .expect("the stock has a level row");
+        assert_eq!(
+            stock.unit, "ML",
+            "the undeclared stock displays its inflow's unit integrated over Δt (ML/mo → ML)"
+        );
+        assert!(stock.unit_derived, "a derived unit is flagged for the face");
+    }
+
+    /// bert-lenses#94 acceptance: a kW-fed stock displays ENERGY, not power,
+    /// without the modeler declaring the stock's unit. The model carries no
+    /// time-unit symbol yet, so the display is the abstract step `kW·Δt` (the
+    /// ruling's no-invented-`h` form); `derived_stock_unit("kW", Some("h"))`
+    /// renders `kW·h` the moment a model-level time unit exists to pass.
+    #[test]
+    fn a_kw_fed_stock_displays_energy_not_power() {
+        let json = include_str!("../../../assets/models/runnable-sample.json");
+        let mut model: WorldModel = serde_json::from_str(json).unwrap();
+
+        let buffer_name = model
+            .systems
+            .iter()
+            .find(|s| {
+                s.agent.as_ref().and_then(|a| a.primitive)
+                    == Some(facets_core::ProcessPrimitive::Buffering)
+            })
+            .expect("the sample has a Buffering stock")
+            .info
+            .name
+            .clone();
+        for ix in &mut model.interactions {
+            ix.unit = "kW".to_string();
+        }
+
+        let spec = facets_core::operational::validate_operational(&model).expect("projects");
+        let mut circuit = facets_compose::from_spec(&spec);
+        let run = facets_compose::RecordedRun::record_over(&mut circuit, &spec, 1.0, 4.0)
+            .expect("Δt = 1 over T = 4 names a run");
+        let readout = summarize(
+            &model,
+            &crate::tether::ImportedData::default(),
+            &spec,
+            &circuit,
+            &run,
+            1.0,
+        );
+
+        let stock = readout
+            .levels
+            .iter()
+            .find(|l| l.name == buffer_name)
+            .expect("the stock has a level row");
+        assert_eq!(
+            stock.unit, "kW·Δt",
+            "power integrated over the step displays as energy, not the raw kW"
+        );
+        assert!(stock.unit_derived, "the derivation is flagged for the face");
+    }
+
+    /// bert-lenses#94 tail: the same kW-fed stock, in a model that DECLARES its
+    /// time-unit symbol (`WorldModel::time_unit = "h"`), displays `kW·h` — the
+    /// abstract `·Δt` step upgrades to the author's own vocabulary end to end.
+    #[test]
+    fn a_declared_time_unit_upgrades_kw_dt_to_kwh() {
+        let json = include_str!("../../../assets/models/runnable-sample.json");
+        let mut model: WorldModel = serde_json::from_str(json).unwrap();
+
+        let buffer_name = model
+            .systems
+            .iter()
+            .find(|s| {
+                s.agent.as_ref().and_then(|a| a.primitive)
+                    == Some(facets_core::ProcessPrimitive::Buffering)
+            })
+            .expect("the sample has a Buffering stock")
+            .info
+            .name
+            .clone();
+        for ix in &mut model.interactions {
+            ix.unit = "kW".to_string();
+        }
+        model.time_unit = Some("h".to_string());
+
+        let spec = facets_core::operational::validate_operational(&model).expect("projects");
+        let mut circuit = facets_compose::from_spec(&spec);
+        let run = facets_compose::RecordedRun::record_over(&mut circuit, &spec, 1.0, 4.0)
+            .expect("Δt = 1 over T = 4 names a run");
+        let readout = summarize(
+            &model,
+            &crate::tether::ImportedData::default(),
+            &spec,
+            &circuit,
+            &run,
+            1.0,
+        );
+
+        let stock = readout
+            .levels
+            .iter()
+            .find(|l| l.name == buffer_name)
+            .expect("the stock has a level row");
+        assert_eq!(
+            stock.unit, "kW·h",
+            "the declared time-unit symbol carries into the integrated display"
+        );
+        assert!(stock.unit_derived, "still derived — the stock itself declared nothing");
+    }
+
+    // #338 separating instance: a sender with TWO outwires, each forced to a
+    // different constant. Each flow's comparison must read ITS wire's executed
+    // series — under the sender's-total bug both read the sum, so this test
+    // could not pass: 10 and 30 forced, both "executed" would be 40.
+    #[test]
+    fn each_outwire_compares_against_its_own_delivery_not_the_senders_total() {
+        let json = include_str!("../../../assets/models/runnable-sample.json");
+        let mut model: WorldModel = serde_json::from_str(json).unwrap();
+        // Clone the inflow into a second outwire from the same source, with its
+        // own name and substance so nothing reads as a duplicate edge.
+        let mut second = model.interactions[0].clone();
+        second.info.name = "second inflow".to_string();
+        second.info.id.indices = vec![97]; // its own identity, off the sample's index space
+        second.substance.sub_type = "auxiliary".to_string();
+        model.interactions.push(second);
+        let first_name = model.interactions[0].info.name.clone();
+
+        let csv = "t,a,b\n0,10,30\n1,10,30\n2,10,30\n3,10,30\n";
+        let manifest_json = format!(
+            r#"{{"model":"","data":"","t":4.0,"mapping":[
+                {{"column":"t","as":"time"}},
+                {{"column":"a","as":"flow","element":{first_name:?},"unit":"units/mo","force":true}},
+                {{"column":"b","as":"flow","element":"second inflow","unit":"units/mo","force":true}}
+            ]}}"#
+        );
+        let manifest: RunManifest = serde_json::from_str(&manifest_json).unwrap();
+        let readout = force_and_run(model, csv, &manifest, 1.0, 4.0, "2026-07-14")
+            .expect("forced run should succeed");
+
+        let executed_of = |name: &str| -> Vec<f32> {
+            readout
+                .comparisons
+                .iter()
+                .find(|c| c.element_name == name && c.kind == "flow")
+                .expect("comparison exists")
+                .simulated
+                .clone()
+        };
+        assert_eq!(executed_of(&first_name), vec![10.0; 4], "first wire reads its own 10s");
+        assert_eq!(
+            executed_of("second inflow"),
+            vec![30.0; 4],
+            "second wire reads its own 30s, never the sender's 40"
+        );
+    }
+
+    // Law: a forced run must conserve (residual ~0 against throughput) and every
+    // level/trajectory/comparison it reads back must carry the model's own
+    // domain name, never a bare engine column.
+    // The runnable sample is Source → Buffering → Sink; interaction 0 is the
+    // inflow. Force it with a constant CSV series and confirm the whole pipeline
+    // runs, conserves, and reads back domain-named.
+    #[test]
+    fn forcing_a_flow_runs_conserves_and_reads_back_by_name() {
+        let json = include_str!("../../../assets/models/runnable-sample.json");
+        let model: WorldModel = serde_json::from_str(json).unwrap();
+        let inflow_name = flow_targets(&model)[0].1.clone();
+
+        // A wide panel: a time column + the inflow forced to a constant 10.
+        let csv = "t,inflow\n0,10\n1,10\n2,10\n3,10\n";
+        let manifest_json = format!(
+            r#"{{"model":"","data":"","t":4.0,"mapping":[
+                {{"column":"t","as":"time"}},
+                {{"column":"inflow","as":"flow","element":{inflow_name:?},"unit":"units/mo","force":true}}
+            ]}}"#
+        );
+        let manifest: RunManifest = serde_json::from_str(&manifest_json).unwrap();
+
+        let readout = force_and_run(model, csv, &manifest, 1.0, 4.0, "2026-07-14")
+            .expect("forced run should succeed");
+
+        assert!(readout.conserved, "residual {}", readout.residual);
+        assert!(!readout.trajectories.is_empty());
+        // Levels + trajectories carry the model's own names, not engine columns.
+        assert!(readout.trajectories.iter().all(|t| !t.name.is_empty()));
+        assert!(readout.levels.iter().all(|l| !l.name.is_empty()));
+        // A comparison was built for the forced flow, keyed by its domain name.
+        let cmp = readout
+            .comparisons
+            .iter()
+            .find(|c| c.element_name == inflow_name)
+            .expect("forced flow should have a comparison");
+        assert_eq!(cmp.kind, "flow");
+        assert_eq!(cmp.actual, vec![10.0, 10.0, 10.0, 10.0]);
+        assert_eq!(cmp.unit, "units/mo");
+    }
+
+    // Law (the slider fix, 2026-08-16): a DECLARED amount on an UNFORCED
+    // mapped flow survives the import — the column becomes comparison, not
+    // supply. The undeclared default (ONE) still takes the mean (floor, #13),
+    // and a forced flow still takes mean + series (#34). Separating triple.
+    #[test]
+    fn a_declared_amount_survives_an_unforced_mapped_column() {
+        use crate::tether::ModelParams;
+        let json = include_str!("../../../assets/models/runnable-sample.json");
+        let mut declared: WorldModel = serde_json::from_str(json).unwrap();
+        declared.interactions[0].amount = Decimal::from(20);
+
+        let mut params = ModelParams::default();
+        params.flow_amount.insert(0, 10.0);
+
+        // Unforced + declared → the declaration wins.
+        let mut m = declared.clone();
+        apply_params(&mut m, &params);
+        assert_eq!(m.interactions[0].amount, Decimal::from(20));
+
+        // Unforced + undeclared (the projection default ONE) → the mean supplies.
+        let mut m = declared.clone();
+        m.interactions[0].amount = Decimal::ONE;
+        apply_params(&mut m, &params);
+        assert_eq!(m.interactions[0].amount, Decimal::from(10));
+
+        // Forced → the mean supplies as the data-horizon fallback.
+        params.flow_series.insert(0, vec![10.0, 10.0]);
+        let mut m = declared;
+        apply_params(&mut m, &params);
+        assert_eq!(m.interactions[0].amount, Decimal::from(10));
+    }
+
+    // Law: the CSV-less run reads back with the SAME richness as the forced
+    // one — domain-named trajectories, per-wire flow series, a conservation
+    // verdict — and an EMPTY comparisons (nothing was observed; the readout
+    // must not invent a baseline). The declared amounts alone govern.
+    #[test]
+    fn an_unforced_run_is_rich_conserves_and_observes_nothing() {
+        let json = include_str!("../../../assets/models/runnable-sample.json");
+        let model: WorldModel = serde_json::from_str(json).unwrap();
+        let readout = run_unforced(model, 1.0, 4.0).expect("unforced run should succeed");
+        assert!(readout.conserved, "residual {}", readout.residual);
+        assert!(!readout.trajectories.is_empty());
+        assert!(!readout.flows.is_empty(), "per-wire series populate without a CSV");
+        assert!(readout.trajectories.iter().all(|t| !t.name.is_empty()));
+        assert!(
+            readout.comparisons.is_empty(),
+            "no data attached — nothing to compare against"
+        );
+    }
+
+    // Law: conservation and domain-name legibility hold for every hand-authored
+    // run bundle, not just one hand-picked model.
+    // Each bundle (model + CSV + mapping) must run forced, conserve, and read
+    // back domain-named — proving the exact element-name match (incl. the "→"
+    // char) and the whole one-click path. The three instances retired to
+    // assets/archive/demos/ in the August 2026 curation; they stay HELD here
+    // because they are the only hand-authored bundles (llm-market's model is a
+    // projection minted from SL and pinned by sl_demos.rs; its bundle is
+    // generated from the pinned vintage in assets/data/), so this law has no
+    // shipped instance.
+    #[test]
+    fn every_bundled_demo_runs_forced_and_conserves() {
+        #[derive(serde::Deserialize)]
+        struct Bundle {
+            model: String,
+            csv: String,
+            t: f64,
+            mapping: RunManifest,
+        }
+        let demos = [
+            (
+                include_str!("../../../assets/archive/demos/reservoir.json"),
+                include_str!("../../../assets/archive/demos/reservoir-model.json"),
+            ),
+            (
+                include_str!("../../../assets/archive/demos/allocation.json"),
+                include_str!("../../../assets/archive/demos/allocation-model.json"),
+            ),
+            (
+                include_str!("../../../assets/archive/demos/homeostat.json"),
+                include_str!("../../../assets/archive/demos/homeostat-model.json"),
+            ),
+        ];
+        for (bundle_json, model_json) in demos {
+            let b: Bundle = serde_json::from_str(bundle_json).unwrap();
+            let model: WorldModel = serde_json::from_str(model_json).unwrap();
+            let readout = force_and_run(model, &b.csv, &b.mapping, 1.0, b.t, "2026-07-14")
+                .unwrap_or_else(|e| panic!("{}: {e}", b.model));
+            assert!(readout.conserved, "{}: residual {}", b.model, readout.residual);
+            assert!(!readout.trajectories.is_empty(), "{}: empty run", b.model);
+            assert!(
+                readout.levels.iter().all(|l| !l.name.is_empty()),
+                "{}: unnamed level",
+                b.model
+            );
+        }
+    }
+
+    /// Law (facets#523): a forced series on a SPLITTING process's outwires
+    /// drives the split, not only a source's emission. The shipped llm-market
+    /// Router has two outwires whose amounts are relative weights (35/54); a
+    /// per-tick weight series on each must move the routed open-weight share
+    /// over the run while the ledger still balances, and nothing on the tether
+    /// path (manifest, draft gates, `force_and_run`) may refuse or ignore the
+    /// mapping because the forced flow leaves a process rather than a source.
+    ///
+    /// The model is the stored projection of `assets/examples/llm-market.sl`,
+    /// which `facets-canvas/tests/sl_demos.rs` pins to the `.sl` (re-minted with
+    /// `BLESS_SL_DEMOS=1`), so this reads the shipped model without a canvas
+    /// dependency. One CSV row is one tick here; a monthly series over a
+    /// daily tick would ride `every` (rung 3), which is not what is under test.
+    #[test]
+    fn forcing_a_splitters_outwires_moves_the_routed_share_and_conserves() {
+        let json = include_str!("../../../assets/models/demos/llm-market.json");
+        let model: WorldModel = serde_json::from_str(json).unwrap();
+
+        // Six observations: the open weight rises 55 → 70 against a frontier
+        // weight falling 45 → 30 (weights, not rates — they need not sum to
+        // 100, but do here so the share reads off the open column directly).
+        let frontier = [45.0f32, 42.0, 39.0, 36.0, 33.0, 30.0];
+        let open = [55.0f32, 58.0, 61.0, 64.0, 67.0, 70.0];
+        let mut csv = String::from("month,frontier_weight,open_weight\n");
+        for (i, (f, o)) in frontier.iter().zip(&open).enumerate() {
+            csv.push_str(&format!("{i},{f},{o}\n"));
+        }
+        let manifest: RunManifest = serde_json::from_str(
+            r#"{"model":"","data":"","t":8.0,"mapping":[
+                {"column":"month","as":"time"},
+                {"column":"frontier_weight","as":"flow","element":"routed frontier workload","unit":"weight","force":true},
+                {"column":"open_weight","as":"flow","element":"routed open-weight workload","unit":"weight","force":true}
+            ]}"#,
+        )
+        .unwrap();
+
+        // The wizard's own gates, as the web Run button reads them: a mapping
+        // onto two process outwires must clear T1/T2/T4 and resolve.
+        let status = mapping_status(&model, &csv, &manifest).expect("CSV parses");
+        assert!(
+            status.can_finish && status.apply_error.is_none(),
+            "the wizard must accept process outwires as forcing targets: {:?} / {:?} / {:?}",
+            status.apply_error,
+            status.t2_msg,
+            status.t4_msg
+        );
+
+        // Two ticks past the series' end, so the data-horizon rule is exercised.
+        let ticks = 8usize;
+        let forced = force_and_run(model.clone(), &csv, &manifest, 1.0, ticks as f64, "2026-10-10")
+            .expect("the forced run must not be refused");
+        assert_eq!(forced.ticks, ticks);
+        assert!(forced.conserved, "forced split leaks: residual {}", forced.residual);
+
+        let router = |r: &RunReadout| -> Vec<f32> {
+            r.trajectories
+                .iter()
+                .find(|t| t.name == "Router")
+                .expect("the Router records a trajectory")
+                .series
+                .clone()
+        };
+        let wire = |r: &RunReadout, to: &str| -> Vec<f32> {
+            r.flows
+                .iter()
+                .find(|f| f.from == "Router" && f.to == to)
+                .unwrap_or_else(|| panic!("no recorded flow Router -> {to}"))
+                .series
+                .clone()
+        };
+        let activity = router(&forced);
+        let to_frontier = wire(&forced, "Frontier serving");
+        let to_open = wire(&forced, "Open-weight serving");
+        assert!(
+            activity[1..].iter().all(|a| *a > 0.0),
+            "the Router must carry workload for the split to mean anything: {activity:?}"
+        );
+
+        // Each outwire delivers the Router's activity times its weight's share
+        // of the pair, tick by tick; past the series the last weight holds.
+        let last = frontier.len() - 1;
+        for t in 0..ticks {
+            let k = t.min(last);
+            let total = frontier[k] + open[k];
+            let want_f = activity[t] * frontier[k] / total;
+            let want_o = activity[t] * open[k] / total;
+            let tol = 1e-3 * activity[t].max(1.0);
+            assert!(
+                (to_frontier[t] - want_f).abs() <= tol,
+                "tick {t}: frontier delivery {} != {want_f}",
+                to_frontier[t]
+            );
+            assert!(
+                (to_open[t] - want_o).abs() <= tol,
+                "tick {t}: open delivery {} != {want_o}",
+                to_open[t]
+            );
+        }
+
+        // The metric "Open-weight share, routed" is evaluated by the face from
+        // these per-wire series (web/src/metrics.ts: the wire over everything
+        // leaving the Router), so the same quotient is what moves 0.55 → 0.70.
+        let share: Vec<f32> = to_open
+            .iter()
+            .zip(&to_frontier)
+            .map(|(o, f)| if o + f > 0.0 { o / (o + f) } else { 0.0 })
+            .collect();
+        let first = share
+            .iter()
+            .copied()
+            .find(|s| *s > 0.0)
+            .expect("the share is read on at least one tick");
+        assert!((first - 0.55).abs() < 1e-3, "the share starts at the first weight: {first}");
+        assert!(
+            (share[last] - 0.70).abs() < 1e-3,
+            "the share reaches the last weight: {}",
+            share[last]
+        );
+        assert!(
+            share[last + 1..].iter().all(|s| (s - 0.70).abs() < 1e-3),
+            "past the series the last share holds: {share:?}"
+        );
+
+        // Forcing the split redistributes the Router's throughput, never
+        // changes it, and the unforced run keeps the declared 746/1000 split
+        // (vintage 2026-10-10, month 2026-09; #534).
+        let unforced = run_unforced(model, 1.0, ticks as f64).expect("the shipped model runs");
+        assert_eq!(
+            router(&unforced),
+            activity,
+            "the split does not alter what the Router carries"
+        );
+        let base_o = wire(&unforced, "Open-weight serving");
+        let base_f = wire(&unforced, "Frontier serving");
+        let declared = 746.0 / (254.0 + 746.0);
+        for t in 1..ticks {
+            let s = base_o[t] / (base_o[t] + base_f[t]);
+            assert!(
+                (s - declared).abs() < 1e-3,
+                "unforced tick {t}: share {s} != {declared}"
+            );
+        }
+        assert!(unforced.comparisons.is_empty());
+        assert!(
+            forced.comparisons.is_empty(),
+            "weights are control inputs, not observables — no comparison row (rung 2)"
+        );
+    }
+
+    /// Law: `force_and_run` must refuse an incomplete (T1-failing) mapping with a legible reason rather than running the model.
+    #[test]
+    fn incomplete_mapping_is_refused_with_a_reason() {
+        let json = include_str!("../../../assets/models/runnable-sample.json");
+        let model: WorldModel = serde_json::from_str(json).unwrap();
+        // A column left unspoken-for → T1 fails via apply_to_draft.
+        let csv = "t,inflow\n0,10\n1,10\n";
+        let manifest: RunManifest =
+            serde_json::from_str(r#"{"model":"","data":"","t":2.0,"mapping":[{"column":"t","as":"time"}]}"#)
+                .unwrap();
+        // Pin WHICH gate fired. Four refusals sit on this path (manifest apply,
+        // draft totality, units, time-uniqueness) and `!e.is_empty()` was
+        // satisfied by any of them, so the test could not tell them apart — or
+        // notice if the one it means to witness stopped firing (#231). The gate
+        // that actually fires is manifest resolution: an unmapped CSV column is
+        // caught while applying the manifest, before the draft's own T1.
+        match force_and_run(model, csv, &manifest, 1.0, 2.0, "2026-07-14") {
+            Ok(_) => panic!("incomplete mapping should be refused"),
+            Err(e) => assert_eq!(
+                e,
+                "mapping is invalid: CSV column \"inflow\" is not in the manifest — every \
+                 column must be spoken for (map it, or mark it \"ignore\" explicitly)",
+                "manifest resolution is the gate that must fire here, and it must name the column"
+            ),
+        }
+    }
+
+    /// Law: a model that does not project is refused before any run — the
+    /// forcing seam runs executable models only, and says how many reasons it
+    /// found rather than running a partial one (#231).
+    #[test]
+    fn a_model_that_does_not_project_is_refused_before_running() {
+        let json = include_str!("../../../assets/models/runnable-sample.json");
+        let model: WorldModel = serde_json::from_str(json).unwrap();
+        let (csv, manifest) = trivial_mapping(&model);
+
+        // Separating instance: as authored, this same model + mapping runs.
+        force_and_run(model.clone(), &csv, &manifest, 1.0, 2.0, "2026-07-14")
+            .expect("the sample projects and runs as authored");
+
+        // Strip a work process's Mobus primitive — nothing states which process
+        // it is, so the model no longer projects.
+        let mut broken = model;
+        broken
+            .systems
+            .iter_mut()
+            .find(|s| s.info.level == 1)
+            .expect("the sample has a level-1 work process")
+            .agent
+            .as_mut()
+            .expect("it carries an agent model")
+            .primitive = None;
+
+        let Err(err) = force_and_run(broken, &csv, &manifest, 1.0, 2.0, "2026-07-14") else {
+            panic!("a model that does not project must be refused, not run");
+        };
+        assert!(
+            err.starts_with("model is not executable ("),
+            "the refusal names the projection gate; got: {err}"
+        );
+    }
+
+    /// A one-column time-only CSV and the manifest that maps it — the smallest
+    /// input that clears every mapping gate, so what a run refuses afterwards is
+    /// about the model rather than the import.
+    fn trivial_mapping(_model: &WorldModel) -> (String, RunManifest) {
+        let csv = "t\n0\n1\n2\n".to_string();
+        let manifest: RunManifest = serde_json::from_str(
+            r#"{"model":"","data":"","t":2.0,"mapping":[{"column":"t","as":"time"}]}"#,
+        )
+        .unwrap();
+        (csv, manifest)
+    }
+}

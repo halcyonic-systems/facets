@@ -2,7 +2,11 @@
 # A crate change must never silently serve stale wasm to web/ — `wasm` rebuilds
 # the pkg, and `check` runs the full gate suite the CI enforces.
 
-kernel := "crates/bert-lenses-kernel"
+kernel := "crates/facets-kernel"
+# The pkg keeps its old file names (bert_lenses_kernel.js, bert_lenses_kernel_bg.wasm)
+# until phase 3 of #541 renames the wasm boundary and web/'s imports together;
+# wasm-pack would otherwise derive facets_kernel from the crate name (phase 2).
+out_name := "bert_lenses_kernel"
 
 # List recipes.
 default:
@@ -86,16 +90,16 @@ web-deps:
 # Rebuild the wasm pkg the web app consumes (run after any crate change).
 # Rebuild the wasm pkg the web app consumes (after any crate change).
 wasm:
-    cd {{kernel}} && wasm-pack build --target web --out-dir pkg
+    cd {{kernel}} && wasm-pack build --target web --out-dir pkg --out-name {{out_name}}
 
 # The headless door onto the kernel — compile, verdict, describe, run, layout.
 # Answers on stdout as JSON; the exit code carries the kind of failure (0 ok,
 # 2 usage, 3 the input did not compile, 4 the kernel refused). `cargo run`
 # rather than a built binary so it always matches the tree you are editing;
-# `cargo install --path crates/bert-cli` puts `bert` on PATH for shell work.
+# `cargo install --path crates/facets-cli` puts `bert` on PATH for shell work.
 #   just bert verdict assets/corpus/bunge/coupling-sigma3.sl --lens mobus
 bert *ARGS:
-    @cargo run --quiet -p bert-cli --bin bert -- {{ARGS}}
+    @cargo run --quiet -p facets-cli --bin bert -- {{ARGS}}
 
 # Render the LIVE doc set to _site/docs/ the way publish-site.sh does (#368);
 # `scripts/preview-site.sh` then serves it at /docs/.
@@ -116,17 +120,18 @@ check: web-deps
     python3 scripts/hf_downloads_vintage.py self-test
     python3 scripts/ollama_pulls_vintage.py self-test
     python3 scripts/rename_inventory.py --self-test
+    python3 scripts/rename_apply.py --self-test
     cargo test --workspace
     node scripts/check_tm_grammar.mjs
     node scripts/check_chat_css.mjs
     cargo clippy --workspace --all-targets -- -D warnings
-    # `--exclude bert-cli` is the ONE package outside the browser build: the
+    # `--exclude facets-cli` is the ONE package outside the browser build: the
     # `bert` binary is argv and the filesystem, which wasm32-unknown-unknown has
     # no use for. Everything the gate covered before it existed, it still
-    # covers, and `crates/bert-cli/tests/wasm_gate.rs` fails if this list ever
+    # covers, and `crates/facets-cli/tests/wasm_gate.rs` fails if this list ever
     # grows — the exclusion is checked, not merely commented.
-    cargo build --workspace --exclude bert-cli --target wasm32-unknown-unknown
-    cd {{kernel}} && wasm-pack build --target web --out-dir pkg
+    cargo build --workspace --exclude facets-cli --target wasm32-unknown-unknown
+    cd {{kernel}} && wasm-pack build --target web --out-dir pkg --out-name {{out_name}}
     cd web && npm run check:tokens
     cd web && npx tsc --noEmit
     cd web && npx vitest run
@@ -158,9 +163,9 @@ provenance-head:
 # rather than assumed.
 # Execute the shipped wasm package — the only thing that runs the boundary.
 wasm-exec:
-    cd {{kernel}} && wasm-pack build --target web --out-dir pkg
-    cd {{kernel}} && wasm-pack build --target web --out-dir pkg-probe --features panic-probe
-    node scripts/wasm_exec.mjs --probe crates/bert-lenses-kernel/pkg-probe
+    cd {{kernel}} && wasm-pack build --target web --out-dir pkg --out-name {{out_name}}
+    cd {{kernel}} && wasm-pack build --target web --out-dir pkg-probe --out-name {{out_name}} --features panic-probe
+    node scripts/wasm_exec.mjs --probe crates/facets-kernel/pkg-probe
 
 # Bundle the macOS .app. Builds the same web/dist the served version publishes,
 # then wraps it. NOTE: `cargo tauri dev` is a false positive — it serves over

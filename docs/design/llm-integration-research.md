@@ -95,7 +95,7 @@ Each defined by *what it reads*, *what it may write*, *which seam it attaches to
 
 ## 6. The analysis rung — and the finding that reframes it
 
-The `~/Desktop/bill.json` review (14-state "how a bill becomes law" FSA) caught four real errors by hand. Reading `crates/bert-core/src/validate.rs` (all 1787 lines) and `crates/bert-canvas/src/lenses.rs`, the errors split cleanly:
+The `~/Desktop/bill.json` review (14-state "how a bill becomes law" FSA) caught four real errors by hand. Reading `crates/facets-core/src/validate.rs` (all 1787 lines) and `crates/facets-canvas/src/lenses.rs`, the errors split cleanly:
 
 - **Mechanical — and currently a MISSING KERNEL CHECK, not an LLM job:** the dead-end "Vetoed" state (a non-terminal node with zero outgoing edges) and the duplicate edge (two interactions with identical source/sink/type). `validate.rs` has **no reachability, dead-end, or duplicate-*edge* check** (`check_duplicate_ids` catches duplicate *ids*, not parallel edges). These are pure graph algorithms over `project(model)`; they belong next to `check_bond`/`check_self_loops` in `validate_mode`. **Adding them is the single clearest near-term engineering takeaway** — a graph traversal never misses what a human/LLM eyeballing an FSA will.
 - **Genuinely needs an LLM:** the swapped veto/signature label ("did you mean") and the missing "if identical" path (legislative-process knowledge the kernel cannot have). Domain plausibility, not graph structure.
@@ -113,7 +113,7 @@ So the design principle to bank: **good analysis = kernel facts + domain model +
 | GSR `/extract`, `/generate`, `/generate-from-description` | `general-systems-reasoner/serve.py` | **LIVE**, deployed (`reasoner.halcyonic.systems`); routing centralized in `run_extraction_llm` (Anthropic Haiku ↔ local Ollama gemma4) |
 | `bert-generator-core` (deterministic compiler) | `general-systems-reasoner/core/` | **LIVE**, mature, documented (`bert/docs/generator.md`); 3-way shared (BERT-Tauri, GSR PyO3, `bert-generate` CLI) |
 | BERT desktop chat→generate flow | `bert/src-tauri/src/chat_service.rs`, `bin/bert-generate.rs` | **LIVE** — but targets the OLD Tauri `WorldModel`, not lenses' `CanvasModel`. LLM = *extraction only*; deterministic compiler emits the model. |
-| bert-lenses kernel (validate/project/toCanvas/analyze_canvas) | `web/src/kernel/index.ts`, `crates/bert-lenses-kernel/API.md` | **LIVE**, frozen API, **zero LLM awareness** |
+| bert-lenses kernel (validate/project/toCanvas/analyze_canvas) | `web/src/kernel/index.ts`, `crates/facets-kernel/API.md` | **LIVE**, frozen API, **zero LLM awareness** |
 | GSR/LLM call *inside* bert-lenses web | — | **MISSING** (grepped clean; the "open_model GSR-sniff" from the earlier vision note does **not** exist in-repo) |
 | Resident co-author (#10) | GH issue, no code | **designed-only**; first earmarked capability = "suggest a primitive, author confirms"; gated on agent-constitution (#18) + theory-front-door (#23) — the "consensus by autocomplete" warning |
 | `Thing` state-value field | `web/src/kernel/types.ts` | **MISSING by design** — palette is DLG/FSM-native (state-as-node). Not a bug; a constraint any authoring-LLM must respect. |

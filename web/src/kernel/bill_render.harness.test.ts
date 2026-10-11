@@ -1,5 +1,5 @@
 // WP4 LLM-leg harness — produce the EXACT context string the Analyst panel would
-// send for bill-broken, from the real kernel output (crates/bert-canvas dumped
+// send for bill-broken, from the real kernel output (crates/facets-canvas dumped
 // bill-broken.canvas.json + bill-broken.analysis.json). renderContextForPrompt is
 // pure; ./index is mocked only because the real module pulls the Vite-only wasm
 // url import (same reason as context.test.ts). Writes bill-broken.context.txt.

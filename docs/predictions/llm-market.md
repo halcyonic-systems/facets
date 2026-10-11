@@ -62,7 +62,7 @@ The model is two levels, and a run is per level:
   grounding that says so), so each child run on its own gives every model
   its share of the single-level model's roster split at the parent's level
   (Qwen 4169.9, Opus 1253.8, DeepSeek 5132.1 Gtok/day).
-  `crates/bert-canvas/tests/llm_market.rs` holds the shares within 0.1%
+  `crates/facets-canvas/tests/llm_market.rs` holds the shares within 0.1%
   against `assets/archive/llm-market-flat.sl`, the single-run witness, which
   stays at the digest's level as a record; the residue is the two-decimal
   rounding of the realized flows.

@@ -17,7 +17,7 @@
     "@codemirror/view": "^6.43.9",
     "@lezer/highlight": "^1.2.3",
     "@supabase/supabase-js": "^2.115.0",
-    "bert-lenses-kernel": "file:../crates/bert-lenses-kernel/pkg",
+    "bert-lenses-kernel": "file:../crates/facets-kernel/pkg",
     "katex": "^0.17.0",
     "react": "^19.0.0",
     "react-dom": "^19.0.0",

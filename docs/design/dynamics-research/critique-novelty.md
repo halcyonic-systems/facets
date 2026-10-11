@@ -170,7 +170,7 @@ ground.
 Contrary to the pattern above (conceptual overclaiming), the **textual** citations
 hold up. Directly verified this session, independent of the reader files:
 
-- `crates/bert-compose/src/circuit.rs`: 2,479 lines (matches). Line 5 "Message
+- `crates/facets-compose/src/circuit.rs`: 2,479 lines (matches). Line 5 "Message
   copies" — exact. Line 109 `emits_signal()` — exact. Line 148 `consumes()` — exact.
   Line 174 "the dynamics only ever read `base`" — exact. Line 178
   `pub struct DeclaredSubstance` — exact. Line 424 `pub history: Vec<Vec<f32>>` —

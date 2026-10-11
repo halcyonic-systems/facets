@@ -98,7 +98,7 @@ Three redirect stubs remain at the pre-move paths so old links do not rot. They 
 ## Root-level references
 
 - **[Roadmap board](https://github.com/orgs/halcyonic-systems/projects/12)** — **LIVE** — the forward-looking plan, organized by epic (Reality Interface · Joy Surface · Resident Co-author · Trusted Seam · Legible Foundations · The Language · What Runs · Notation · Teaching Surface). There is no roadmap *file*; the retired one is [`archive/roadmap-pre-web-rebuild.md`](archive/roadmap-pre-web-rebuild.md).
-- [`../crates/bert-lenses-kernel/API.md`](../crates/bert-lenses-kernel/API.md) — **LIVE** — the frozen JS↔wasm surface (append-only). Includes the SL surface (`compile_sl` / `emit_sl`).
+- [`../crates/facets-kernel/API.md`](../crates/facets-kernel/API.md) — **LIVE** — the frozen JS↔wasm surface (append-only). Includes the SL surface (`compile_sl` / `emit_sl`).
 - [`../web/DESIGN.md`](../web/DESIGN.md) — **LIVE** — Halcyonic Frost design tokens for the face, and the **one owner** of the design system. `design/design-system-draft.md`, `design/visual-language.md`, `design/lens-palettes.md`, and the retired `archive/design-system.md` are all subordinate to it.
 - [`spec/LENS_ENTRY_SPEC.md`](spec/LENS_ENTRY_SPEC.md) — **LIVE** — the lens-entry specification; §D is the provenance complement to `lean-provenance.md`.
 - [`running-permanently.md`](running-permanently.md) — **LIVE** — how to keep the app running as a permanent local service rather than a `just dev` session.

@@ -1,6 +1,6 @@
 // A render-phase safety net around the canvas + panels.
 //
-// The kernel (crates/bert-lenses-kernel/API.md, "Error contract") never panics,
+// The kernel (crates/facets-kernel/API.md, "Error contract") never panics,
 // but it DOES throw a `JsError` / `KernelError` on a malformed-but-parseable
 // editing state — exactly what palette authoring produces. Several of those
 // calls happen during render (App's `analyzeCanvas` memo; children reading lens

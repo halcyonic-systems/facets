@@ -16,7 +16,7 @@ Every component is one of Mobus's ten atomic work processes, and the rail
 names them by two-letter chips. Each has one plain word, and the app shows
 the pair wherever a primitive is named (hover a rail chip; the inspector's
 work-process row). The same table lives in the engine's teaching cards
-(`crates/bert-compose/src/docs.rs`) and the web gloss (`web/src/canvas/types.ts`).
+(`crates/facets-compose/src/docs.rs`) and the web gloss (`web/src/canvas/types.ts`).
 
 | Mobus word | Plain word | Everyday instance |
 |---|---|---|
@@ -135,9 +135,9 @@ hand-written**:
    components, `interface` where flows cross the boundary.
 2. **The minted model** in `assets/models/demos/<name>.json` — the machine
    projection of your `.sl`. Mint and re-mint with
-   `BLESS_SL_DEMOS=1 cargo test -p bert-canvas --test sl_demos`
+   `BLESS_SL_DEMOS=1 cargo test -p facets-canvas --test sl_demos`
    after adding your name to the `DEMOS` list in
-   [`../crates/bert-canvas/tests/sl_demos.rs`](../crates/bert-canvas/tests/sl_demos.rs).
+   [`../crates/facets-canvas/tests/sl_demos.rs`](../crates/facets-canvas/tests/sl_demos.rs).
    That gate then holds, forever: the `.sl` parses → projects → runs conserved
    and Δt-invariant, and the stored model equals the current projection (edit
    the `.sl` without re-minting and CI fails, so the diagram and the run can

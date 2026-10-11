@@ -13,7 +13,7 @@
 set -euo pipefail
 
 REPO_ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
-KERNEL_DIR="$REPO_ROOT/crates/bert-lenses-kernel"
+KERNEL_DIR="$REPO_ROOT/crates/facets-kernel"
 WEB_DIR="$REPO_ROOT/web"
 SITE_DIR="$REPO_ROOT/_site"
 DOMAIN="facets.systems"
@@ -30,7 +30,8 @@ done
 
 if [ $WITH_MODEL -eq 1 ]; then
   echo "==> Building wasm kernel"
-  (cd "$KERNEL_DIR" && wasm-pack build --target web --out-dir pkg)
+  # --out-name: the pkg keeps its old file names until phase 3 of #541.
+  (cd "$KERNEL_DIR" && wasm-pack build --target web --out-dir pkg --out-name bert_lenses_kernel)
   echo "==> Building web frontend at base /model/"
   (cd "$WEB_DIR" && npm install && VITE_BASE=/model/ npm run build)
 fi

@@ -28,7 +28,7 @@ successor here and no tracking issue.
 
 - `Id { ty: IdType, indices: Vec<i64> }` — indices encode the path from root;
   `[0]` = root system, `[0,1]` = subsystem 1 of root, `[0,1,2]` = its child, etc.
-  (`crates/bert-core/src/lib.rs:807-885`, `950-998`).
+  (`crates/facets-core/src/lib.rs:807-885`, `950-998`).
 - `IdType::Subsystem` ("C" prefix) — "Nested system component within a parent
   system … enabling hierarchical modeling at multiple levels of detail"
   (`lib.rs:985-998`).
@@ -50,7 +50,7 @@ So the *representation* is arbitrary-depth. Nothing in bert-lenses *produces* or
 
 `validate.rs` checks level/index consistency for whatever tree is present —
 `expected = indices.len() - 1; if level != expected { error }`
-(`crates/bert-core/src/validate.rs:716-722`) — and references "level-1 subsystem"
+(`crates/facets-core/src/validate.rs:716-722`) — and references "level-1 subsystem"
 for root-membrane interface designation (`validate.rs:918-940`). It validates a
 deep tree structurally if one is handed to it, but every authoring path hands it
 a 2-level model.
@@ -58,7 +58,7 @@ a 2-level model.
 ### 1.3 The canvas authoring surface is strictly two-level
 
 `CanvasModel` is flat by type: `{ lens, things: Vec<Thing>, relations:
-Vec<Relation>, boundary, system_type }` (`crates/bert-canvas/src/canvas.rs:163-177`).
+Vec<Relation>, boundary, system_type }` (`crates/facets-canvas/src/canvas.rs:163-177`).
 A `Thing` is a node with `role: Component | Environment` — **no child list, no
 parent pointer, no nesting** (`canvas.rs:72-89`). The boundary props are
 documented "for the ROOT system's membrane (**the canvas is single-root**)"
@@ -94,7 +94,7 @@ if sys.info.level > 1 {
 }
 ```
 
-(`crates/bert-core/src/operational.rs:226-241`; doc contract at `operational.rs:177-178`:
+(`crates/facets-core/src/operational.rs:226-241`; doc contract at `operational.rs:177-178`:
 "every level-1 system carries a primitive, **no hierarchy below level 1**".) The
 dynamical face is two-level *by design decision*, not by omission.
 
@@ -102,9 +102,9 @@ dynamical face is two-level *by design decision*, not by omission.
 
 `bert-compose` export operates on level 0 (root name) and level > 0 (the
 one flat tier of subsystems): `.find(|s| s.info.level == 0)`,
-`.filter(|s| s.info.level > 0)` (`crates/bert-compose/src/export.rs:280, 457`).
+`.filter(|s| s.info.level > 0)` (`crates/facets-compose/src/export.rs:280, 457`).
 The tether's drive-target picker exposes only "components (**level-1 systems**)"
-(`crates/bert-lenses-kernel/src/api.rs:88`, `model_targets`). No composite has an
+(`crates/facets-kernel/src/api.rs:88`, `model_targets`). No composite has an
 interior the simulator descends into.
 
 ### 1.6 The web face has no decomposition affordance
@@ -355,13 +355,13 @@ four-headed change rather than a one-field addition.
 > `Info.level`, `System.parent`, `Complexity::Complex/Atomic` — all inherited from
 > old BERT). But every active path is **flat**:
 > - `CanvasModel` is a single `things`/`relations` list; "the canvas is
->   single-root" (`bert-canvas/src/canvas.rs:115-177`).
+>   single-root" (`facets-canvas/src/canvas.rs:115-177`).
 > - `project()` forces every component to `level 1`, `Complexity::Atomic`, under
 >   one root (`canvas.rs:288-308`); `to_canvas()` **drops everything below level 1**
 >   (`canvas.rs:486`).
 > - `validate_operational()` **explicitly refuses `level > 1`**: "hierarchy below
 >   level 1 has no executable reading in the flat circuit vocabulary — flatten the
->   model first" (`bert-core/src/operational.rs:226-241`).
+>   model first" (`facets-core/src/operational.rs:226-241`).
 > - The web canvas has no enter/expand/drill affordance.
 >
 > So recursive decomposition — old BERT's defining feature (SOI → subsystem

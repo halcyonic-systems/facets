@@ -119,7 +119,7 @@ export function bungeFormalism(relation: Relation): FormalismPart[] {
 // strip for every flow — so its content moved to the formal face, stated once.)
 
 /** The picker offers Mobus's three substances; the model still stores a Kind, so
- *  this mirrors Rust kind_to_substance (crates/bert-canvas/src/canvas.rs:64-68)
+ *  this mirrors Rust kind_to_substance (crates/facets-canvas/src/canvas.rs:64-68)
  *  in both directions. Matter↔material, Informational↔message, Energy↔energy;
  *  Field reads as energy (the many-to-one fold the kernel makes). Unspecified
  *  never reaches this map — the picker shows it as "unspecified" (an unanswered

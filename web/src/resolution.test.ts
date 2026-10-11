@@ -1,7 +1,7 @@
 // #462 item 1: candidates are the models of the SAME system that name their
 // interfaces and carry no `unresolved`; the kernel check is injected here so
 // the matching is pinned without wasm (the check itself is pinned in
-// crates/bert-lenses-kernel/tests/resolution.rs).
+// crates/facets-kernel/tests/resolution.rs).
 import { describe, expect, it } from "vitest";
 import { isStage2Candidate, stage2Report } from "./resolution";
 import type { CanvasModel } from "./kernel/types";

@@ -25,7 +25,7 @@ is the root with its interior hidden, and the corpus entry keeps the figure.
 The hierarchy needs no setup: the root's `decomposes @id` reference resolves
 against the bundled shelf (`web/src/walkthroughs.ts`), so the walk works in a
 fresh browser with an empty library. The seam is held clean in CI by
-`crates/bert-lenses-kernel/tests/steel_walkthrough.rs`.
+`crates/facets-kernel/tests/steel_walkthrough.rs`.
 
 ## The click path
 
