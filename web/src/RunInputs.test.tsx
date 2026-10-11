@@ -57,4 +57,32 @@ describe("engine floor", () => {
     // No duplicate: the barrel's release is the param's row, not an engine row.
     expect(html.match(/aria-label="release"/g)).toBeNull();
   });
+
+  it("shows a knob a command-form agent drives as set by the agent, with no slider (ADR 0008 D1)", () => {
+    const fish = { id: 5, name: "Fish", role: "Component", primitive: "Buffering" } as unknown as Thing;
+    const landing = { id: 6, name: "Landing", role: "Component", passway: true, interface: true } as unknown as Thing;
+    const back = { id: 7, name: "Return", role: "Component", primitive: "Combining" } as unknown as Thing;
+    const quota = {
+      id: 8,
+      name: "Quota",
+      role: "Component",
+      rule: "threshold",
+      manages_param: "landed share",
+      cognitive_params: { above: 0.3, emit: 1, else: 0 },
+    } as unknown as Thing;
+    const split = {
+      name: "m",
+      lens: "Mobus",
+      things: [fish, landing, back, quota],
+      relations: [
+        { id: 20, a: 5, b: 6, name: "landed", is_bond: true, kind: "Matter", amount: "0" },
+        { id: 21, a: 5, b: 7, name: "released", is_bond: true, kind: "Matter", amount: "1" },
+      ],
+      params: [{ name: "landed share", anchor: { Shares: { thing: 5 } } }],
+    } as unknown as CanvasModel;
+    const html = renderToStaticMarkup(<RunInputs model={split} manifest={null} onEdit={() => {}} />);
+    expect(html).toContain("landed share · % of split");
+    expect(html.match(/set by “Quota”/g)?.length).toBe(2);
+    expect(html).not.toContain('aria-label="share of Landing"');
+  });
 });

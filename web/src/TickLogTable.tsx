@@ -17,6 +17,9 @@ export function TickLogTable({ log, tick, timeUnit }: { log: TickLog[]; tick?: n
   if (log.length === 0) return <p className="text-sm" style={{ color: "var(--text-secondary)" }}>Nothing stepped yet.</p>;
   const nodes = log[0].nodes.map((n) => n.name);
   const wires = log[0].wires;
+  // The decisions column (ADR 0008): every agent's reading, what the policy
+  // chose, and where it landed — the engine's own record, like the rest.
+  const decided = log.some((row) => row.decisions.length > 0);
   // The cursor is a scrubber index (0-based); ticks are 1-based.
   const cursorTick = tick === undefined ? null : tick + 1;
   return (
@@ -98,6 +101,44 @@ export function TickLogTable({ log, tick, timeUnit }: { log: TickLog[]; tick?: n
                   ))}
                 </tr>
               ))}
+            </tbody>
+          </table>
+        </div>
+      )}
+      {decided && (
+        <div className="overflow-x-auto" data-testid="tick-log-decisions">
+          <p style={{ color: "var(--text-secondary)" }}>
+            Decisions: what each agent <b>read</b>, what its policy <b>chose</b>, and where it <b>landed</b> — a knob written for the
+            next tick, or a command wire this tick.
+          </p>
+          <table className="min-w-full border-collapse">
+            <thead>
+              <tr>
+                <th className="pr-3 text-left">tick</th>
+                <th className="px-2 text-left">agent</th>
+                <th className="px-2 text-right">read</th>
+                <th className="px-2 text-right">chose</th>
+                <th className="px-2 text-left">landed on</th>
+                <th className="px-2 text-right">written</th>
+              </tr>
+            </thead>
+            <tbody>
+              {log.flatMap((row) =>
+                row.decisions.map((d, i) => (
+                  <tr
+                    key={`${row.tick}-${i}`}
+                    data-tick={row.tick}
+                    style={row.tick === cursorTick ? { background: "var(--bg-surface)", fontWeight: 600 } : undefined}
+                  >
+                    <td className="pr-3">{row.tick}</td>
+                    <td className="px-2">{d.agent}</td>
+                    <td className="px-2 text-right">{num(d.reading)}</td>
+                    <td className="px-2 text-right">{num(d.output)}</td>
+                    <td className="px-2">{d.knob}</td>
+                    <td className="px-2 text-right">{num(d.written)}</td>
+                  </tr>
+                )),
+              )}
             </tbody>
           </table>
         </div>

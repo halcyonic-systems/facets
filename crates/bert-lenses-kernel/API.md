@@ -773,6 +773,13 @@ whole number). Wire fields: `conductance` | `rate`
 conservation ledger (axis D — ADR-0003): identical trajectory, no balance, no
 ledger rows. Tweaks never reset the clock or the stocks; the running system
 responds next tick (`balance` documents the moved baseline; Reset re-baselines).
+A command-form agent (ADR 0008 D1, `manages param "…"`) writes its knob at the
+end of every tick through the same path a bench flow knob takes
+(`Circuit::write_amount`): the bench's `edits()` then carry an author
+(`by: {kind: "human"} | {kind: "agent", name}`), entered for an agent only when
+the written value changes, and each `tick_log_since` row carries `decisions`
+(`agent`, `reading`, `output`, `knob`, `written`) for every agent in either
+form. Both are additive fields on the existing shapes.
 
 ### Epochs (#389): `SandboxHistoryDelta.epochs` · `fork() → SandboxSession`
 A topology edit mid-run opens an **epoch** instead of clearing the trace. Every

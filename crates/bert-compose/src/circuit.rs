@@ -347,6 +347,12 @@ pub struct Node {
     /// declared policy (the goal) and the kernel's `Policy::decide` is the
     /// procedure (Mobus §11.3.4.1).
     pub policy: bert_core::Policy,
+    /// The knob a command-form agent writes at the end of every tick (ADR
+    /// 0008 D1, Mobus §12.2.3.2): `None` is the signal form, whose decision
+    /// rides its message outwire. Only `NodeKind::Agent` reads it. The write
+    /// is the same `write_amount` a bench knob takes, so `bert run`, the
+    /// web run and the bench mean one model.
+    pub knob: Option<AgentKnob>,
     /// A stock's declared unit (bert-lenses#76). A Buffering stock accumulates
     /// its inflow over Δt, so its dimension is not the feeding flow's unit
     /// (`out_substance.unit`) — a `kW` inflow accrues energy, not power. The
@@ -390,6 +396,7 @@ impl Node {
             maintenance: 0.0,     // 0 = no upkeep loss
             back_pressure: false, // false = push model sheds; true = backs up
             policy: bert_core::Policy::default(),
+            knob: None,
             stock_unit: String::new(),
             process: None,
             storage: 0.0,
@@ -636,6 +643,42 @@ pub struct Circuit {
     /// Each buffer holds at most its policy's window and is cleared by
     /// `reset`, so a run starts with nothing remembered.
     pub agent_readings: Vec<std::collections::VecDeque<f32>>,
+    /// Per-tick agent decisions (ADR 0008's decisions column): one row per
+    /// stepped tick, keyed by the tick the row's `history` entry carries. A
+    /// record like `history`, never read by the step. Cleared by `reset`.
+    pub decision_history: Vec<(u64, Vec<Decision>)>,
+}
+
+/// Where a command-form agent's decision lands (ADR 0008 D1): a wire's
+/// declared amount, or one wire's share of its sender's two-way physical
+/// split, the other wire taking the rest. Wire indices follow the circuit's
+/// Vec addressing and are remapped by the topology calls like a wire's
+/// endpoints are. `param` is the declared name, kept so the knob log can
+/// say which knob the policy turned.
+#[derive(Clone, Debug, PartialEq)]
+pub enum AgentKnob {
+    Amount { param: String, wire: usize },
+    Share { param: String, first: usize, second: usize },
+}
+
+impl AgentKnob {
+    pub fn param(&self) -> &str {
+        match self {
+            AgentKnob::Amount { param, .. } | AgentKnob::Share { param, .. } => param,
+        }
+    }
+}
+
+/// One agent's decision on one tick: what it read, what its policy chose,
+/// and, for the command form, the value written onto its knob (`None` when
+/// the decision rode a command wire instead). The node is named by its
+/// stable id, so a row outlives a topology edit without remapping.
+#[derive(Clone, Debug, PartialEq)]
+pub struct Decision {
+    pub node: u32,
+    pub reading: f32,
+    pub output: f32,
+    pub written: Option<f32>,
 }
 
 /// One node's flux over one tick, decoded from `node_flux_history`.
@@ -672,6 +715,7 @@ impl Circuit {
         self.wire_history.clear();
         self.node_flux_history.clear();
         self.agent_readings.clear();
+        self.decision_history.clear();
         self.epochs.clear();
         self.emitted = 0.0;
         self.sunk = 0.0;
@@ -791,6 +835,19 @@ impl Circuit {
         if i < self.agent_readings.len() {
             self.agent_readings.remove(i);
         }
+        // Every agent knob addresses wires by index, so the surviving
+        // wires' new positions are mapped before the touching ones go; a
+        // knob whose wire went is cleared (an agent in control of nothing).
+        let mut new_index: Vec<Option<usize>> = Vec::with_capacity(self.wires.len());
+        let mut kept = 0usize;
+        for w in &self.wires {
+            if w.from == i || w.to == i {
+                new_index.push(None);
+            } else {
+                new_index.push(Some(kept));
+                kept += 1;
+            }
+        }
         self.wires.retain(|w| w.from != i && w.to != i);
         for w in &mut self.wires {
             if w.from > i {
@@ -800,7 +857,62 @@ impl Circuit {
                 w.to -= 1;
             }
         }
+        self.remap_knobs(|k| new_index.get(k).copied().flatten());
         self.open_epoch(event);
+    }
+
+    /// Point every agent knob at its wires' new indices, clearing a knob
+    /// whose wire the map no longer carries.
+    fn remap_knobs(&mut self, map: impl Fn(usize) -> Option<usize>) {
+        for node in &mut self.nodes {
+            node.knob = match node.knob.take() {
+                Some(AgentKnob::Amount { param, wire }) => {
+                    map(wire).map(|wire| AgentKnob::Amount { param, wire })
+                }
+                Some(AgentKnob::Share { param, first, second }) => match (map(first), map(second)) {
+                    (Some(first), Some(second)) => Some(AgentKnob::Share { param, first, second }),
+                    _ => None,
+                },
+                None => None,
+            };
+        }
+    }
+
+    /// Write a flow's declared amount onto the engine field that reads it,
+    /// routed as `from_spec` routes it: a source's lone pushed outflow or
+    /// gradient flow sits on the node, everything else on the wire. The one
+    /// path a bench knob and a command-form agent (ADR 0008 D1) share, so
+    /// a human edit and a policy's write are one kind of event.
+    pub fn write_amount(&mut self, k: usize, v: f32) -> Result<(), String> {
+        let wire = self.wires.get(k).ok_or_else(|| format!("no wire {k}"))?;
+        let from_i = wire.from;
+        match (self.nodes[from_i].kind, wire.mode) {
+            (NodeKind::Source, FlowMode::Gradient) => self.nodes[from_i].param = v,
+            (NodeKind::Source, FlowMode::Pushed) => {
+                if self.wires[k].rate.is_some() {
+                    self.wires[k].rate = Some(v);
+                } else {
+                    self.nodes[from_i].param = v;
+                }
+            }
+            (NodeKind::Process(_), FlowMode::Pushed) => self.wires[k].rate = Some(v),
+            _ => {
+                return Err(
+                    "the flow carries no amount the engine reads (a gradient flow's rate is its conductance)".into(),
+                )
+            }
+        }
+        Ok(())
+    }
+
+    /// The decisions column (ADR 0008): every agent's decision for the
+    /// recorded ticks at or after `from_tick`.
+    pub fn decisions_since(&self, from_tick: u64) -> Vec<(u64, Vec<Decision>)> {
+        self.decision_history
+            .iter()
+            .filter(|(t, _)| *t >= from_tick)
+            .cloned()
+            .collect()
     }
 
     pub fn add_wire(&mut self, mut w: Wire) -> usize {
@@ -825,6 +937,11 @@ impl Circuit {
             to: self.nodes[w.to].id,
         };
         self.wires.remove(k);
+        self.remap_knobs(|j| match j.cmp(&k) {
+            std::cmp::Ordering::Less => Some(j),
+            std::cmp::Ordering::Equal => None,
+            std::cmp::Ordering::Greater => Some(j - 1),
+        });
         self.open_epoch(event);
     }
 
@@ -1434,6 +1551,9 @@ impl Circuit {
         // step. A rule never sees the reading it is deciding on in its own
         // past (ADR 0008 D4's Trace; spec §4.7).
         let mut observed: Vec<(usize, f32)> = Vec::new();
+        // Every agent's reading and output this tick, for the decisions
+        // column and, in the command form, the knob write after the record.
+        let mut decided: Vec<(usize, f32, f32)> = Vec::new();
 
         for &i in &order {
             let node = &self.nodes[i];
@@ -1672,7 +1792,9 @@ impl Circuit {
                     } else {
                         Vec::new()
                     };
-                    node.policy.decide_in(physical as f64, last, &past) as f32
+                    let output = node.policy.decide_in(physical as f64, last, &past) as f32;
+                    decided.push((i, physical, output));
+                    output
                 }
             };
 
@@ -1910,6 +2032,35 @@ impl Circuit {
             self.ledger_history
                 .push([self.emitted, self.sunk, self.stored(), self.dissipated]);
         }
+
+        // The command form's knob write (ADR 0008 D1), last of all: observe,
+        // decide, remember, the stocks move, the record closes, then the
+        // knob is written for the NEXT tick. It must follow the record
+        // because `wire_amount` reads the wire's rate lazily, so a write
+        // before the row would misreport what this tick delivered; and it
+        // is why the command form acts one tick after the signal form,
+        // whose command gates the same tick's release. A share lands as
+        // `(s, 1 − s)` on the split's two weights; a knob whose wire is
+        // gone writes nothing and the row says so.
+        let decisions: Vec<Decision> = decided
+            .into_iter()
+            .map(|(i, reading, output)| {
+                let written = match self.nodes[i].knob.clone() {
+                    Some(AgentKnob::Amount { wire, .. }) => {
+                        let v = output.max(0.0);
+                        self.write_amount(wire, v).ok().map(|_| v)
+                    }
+                    Some(AgentKnob::Share { first, second, .. }) => {
+                        let s = output.clamp(0.0, 1.0);
+                        let both = self.write_amount(first, s).and_then(|_| self.write_amount(second, 1.0 - s));
+                        both.ok().map(|_| s)
+                    }
+                    None => None,
+                };
+                Decision { node: self.nodes[i].id, reading, output, written }
+            })
+            .collect();
+        self.decision_history.push((self.tick, decisions));
     }
 
     /// The tick log (#463): every node's flux for the recorded ticks at or
@@ -3952,6 +4103,93 @@ mod tests {
         fn proportional_decide(level: f64) -> f64 {
             bert_core::Policy::Proportional { target: 2.0, gain: 0.5 }.decide(level)
         }
+    }
+
+    /// Law (ADR 0008 D1, the command form): a command-form agent's decision
+    /// is written onto its knob at the END of the tick, after the record
+    /// closes, so the tick it decided in ran under the knob as it stood and
+    /// the next tick runs under the command. Against the signal form on the
+    /// same split it therefore acts one tick later; the knob write goes
+    /// through `write_amount`, the path a bench knob takes; a share lands as
+    /// `(s, 1 − s)`; the knob survives a wire removal remapped and is cleared
+    /// when its wire goes; and reset keeps the knob as it stands.
+    #[test]
+    fn agent_command_writes_its_knob_after_the_record_for_the_next_tick() {
+        use ProcessPrimitive::*;
+        // A stock fed at 0.05 a tick, draining a tenth of itself a tick over
+        // a two-way split: landed (wire 1) and returned to the stock (wire 2
+        // through a Combining). The agent opens the landing at or above 0.3.
+        fn fishery(command: bool) -> Circuit {
+            let mut c = Circuit::default();
+            c.nodes.push(node(NodeKind::Source)); // 0 feed
+            c.nodes.push(node(NodeKind::Process(Buffering))); // 1 fish
+            c.nodes.push(node(NodeKind::Sink)); // 2 market
+            c.nodes.push(node(NodeKind::Process(Combining))); // 3 return
+            c.nodes.push(node(NodeKind::Agent)); // 4 quota
+            c.nodes[0].param = 0.05;
+            c.nodes[1].time_constant = 10.0;
+            c.nodes[1].initial_storage = 0.21;
+            c.nodes[1].storage = 0.21;
+            c.nodes[4].policy = bert_core::Policy::Threshold { above: 0.3, below: None, emit: 1.0, otherwise: 0.0 };
+            c.wires.push(Wire::new(0, 1)); // 0 feed
+            let mut landed = Wire::new(1, 2); // 1 landed
+            landed.rate = Some(0.0);
+            c.wires.push(landed);
+            let mut released = Wire::new(1, 3); // 2 released
+            released.rate = Some(1.0);
+            c.wires.push(released);
+            c.wires.push(Wire::new(3, 1)); // 3 returned
+            let mut tap = Wire::new(1, 4); // 4 reading
+            tap.substance_override = Some(SubstanceType::Message);
+            c.wires.push(tap);
+            if command {
+                c.nodes[4].knob = Some(AgentKnob::Share { param: "landed share".into(), first: 1, second: 2 });
+            } else {
+                // The signal form gates the release instead; the split stays
+                // all-landed so the gate is the only difference.
+                c.wires[1].rate = Some(1.0);
+                c.wires[2].rate = Some(0.0);
+                c.wires.push(Wire::new(4, 1)); // 5 command
+            }
+            c
+        }
+        let mut cmd = fishery(true);
+        let mut sig = fishery(false);
+        for _ in 0..12 {
+            cmd.step();
+            sig.step();
+        }
+        let landed = |c: &Circuit| -> Vec<f32> { c.wire_history.iter().map(|row| row[1]).collect() };
+        let (cl, sl) = (landed(&cmd), landed(&sig));
+        let first = |s: &[f32]| s.iter().position(|&x| x > 0.0).expect("the fishery opens");
+        assert_eq!(first(&cl), first(&sl) + 1, "the command lands one tick after the signal: {cl:?} vs {sl:?}");
+        // The tick the agent first decided to open ran closed: its decision
+        // row says so, and the knob carries the share only from then on.
+        let opened = cmd.decision_history.iter().position(|(_, ds)| ds[0].output == 1.0).unwrap();
+        assert_eq!(cl[opened], 0.0);
+        assert_eq!(cmd.decision_history[opened].1[0].written, Some(1.0));
+        assert_eq!(cmd.decision_history[opened].1[0].node, cmd.nodes[4].id);
+        assert!(cmd.decision_history[..opened].iter().all(|(_, ds)| ds[0].written == Some(0.0)));
+        assert_eq!((cmd.wires[1].rate, cmd.wires[2].rate), (Some(1.0), Some(0.0)), "a share lands as (s, 1 − s)");
+        // The signal form's decision rode its command wire: nothing written.
+        assert!(sig.decision_history.iter().all(|(_, ds)| ds[0].written.is_none()));
+        assert!(cmd.balance().abs() < 1e-3 && sig.balance().abs() < 1e-3);
+        // Reset keeps the knob as it stands and forgets the decisions.
+        cmd.reset();
+        assert_eq!((cmd.wires[1].rate, cmd.wires[2].rate), (Some(1.0), Some(0.0)));
+        assert!(cmd.decision_history.is_empty());
+        // `write_amount` routes as `from_spec` routes: a source's lone pushed
+        // outflow is the node's param, a process outflow is its wire's rate.
+        cmd.write_amount(0, 0.07).unwrap();
+        assert_eq!(cmd.nodes[0].param, 0.07);
+        cmd.write_amount(2, 0.25).unwrap();
+        assert_eq!(cmd.wires[2].rate, Some(0.25));
+        // Removing an earlier wire shifts the knob's wires; removing one of
+        // the knob's own wires clears the knob.
+        cmd.remove_wire(0);
+        assert_eq!(cmd.nodes[4].knob, Some(AgentKnob::Share { param: "landed share".into(), first: 0, second: 1 }));
+        cmd.remove_wire(1);
+        assert_eq!(cmd.nodes[4].knob, None);
     }
 
     /// Law (facets#269, ADR 0008 D3/D4): a threshold agent produces what no

@@ -596,7 +596,10 @@ fn check_dead_ends(model: &WorldModel, issues: &mut Vec<ValidationIssue>) {
     }
     for (i, system) in model.systems.iter().enumerate() {
         let id_str = serialize_id(&system.info.id);
-        if has_in.contains(&id_str) && !has_out.contains(&id_str) {
+        // A command-form agent (ADR 0008 D1) has no outgoing flow by design:
+        // its decision is a knob write, which the command names.
+        let commands_a_knob = system.agent.as_ref().is_some_and(|a| a.command.is_some());
+        if has_in.contains(&id_str) && !has_out.contains(&id_str) && !commands_a_knob {
             issues.push(
                 ValidationIssue::warning(
                     "dead_end",

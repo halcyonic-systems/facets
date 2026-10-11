@@ -46,7 +46,8 @@
         "to": "Release",
         "delivered": 1.5
       }
-    ]
+    ],
+    "decisions": []
   },
   {
     "tick": 2,
@@ -95,7 +96,8 @@
         "to": "Release",
         "delivered": 1.5
       }
-    ]
+    ],
+    "decisions": []
   },
   {
     "tick": 3,
@@ -144,6 +146,7 @@
         "to": "Release",
         "delivered": 1.5
       }
-    ]
+    ],
+    "decisions": []
   }
 ]

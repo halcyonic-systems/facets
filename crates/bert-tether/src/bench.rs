@@ -19,7 +19,7 @@
 
 use std::collections::HashMap;
 
-use bert_compose::circuit::{FlowMode, NodeFlux, NodeKind};
+use bert_compose::circuit::{NodeFlux, NodeKind};
 use bert_compose::session::Session;
 use bert_compose::RecordedRun;
 use bert_core::operational::OperationalSpec;
@@ -28,6 +28,15 @@ use serde::Serialize;
 
 use crate::forcing::{summarize, RunReadout};
 use crate::tether::ImportedData;
+
+/// Who turned a knob (ADR 0008): a person at the bench, or a command-form
+/// agent's policy at the end of a tick. One record for both, distinguishable.
+#[derive(Serialize, Clone, Debug, PartialEq)]
+#[serde(tag = "kind", rename_all = "lowercase")]
+pub enum KnobAuthor {
+    Human,
+    Agent { name: String },
+}
 
 /// One live knob edit, kept so the readout can say the trace was edited
 /// mid-run (a recorded run is keyed to one spec; an edited one is not).
@@ -38,6 +47,20 @@ pub struct KnobEdit {
     pub target: String,
     pub field: String,
     pub value: f32,
+    pub by: KnobAuthor,
+}
+
+/// One agent's decision on one tick, in the model's own names (ADR 0008's
+/// decisions column): the policy chose `output` from `reading`, and it
+/// landed on `knob` — a declared param in the command form, the managed
+/// process in the signal form — as `written`.
+#[derive(Serialize, Clone, Debug, PartialEq)]
+pub struct DecisionLog {
+    pub agent: String,
+    pub reading: f32,
+    pub output: f32,
+    pub knob: String,
+    pub written: f32,
 }
 
 /// One wire's delivery over one tick, named for the flow it carries.
@@ -56,6 +79,7 @@ pub struct TickLog {
     pub tick: u64,
     pub nodes: Vec<NodeFlux>,
     pub wires: Vec<WireFlux>,
+    pub decisions: Vec<DecisionLog>,
 }
 
 pub struct BenchSession {
@@ -66,6 +90,9 @@ pub struct BenchSession {
     dt: f64,
     edits: Vec<KnobEdit>,
     names: HashMap<Id, String>,
+    /// What each command-form agent last wrote, by node id, so the knob
+    /// log records an agent's write only when the value changes.
+    last_written: HashMap<u32, f32>,
 }
 
 impl BenchSession {
@@ -123,6 +150,7 @@ impl BenchSession {
             dt,
             edits: Vec::new(),
             names,
+            last_written: HashMap::new(),
         })
     }
 
@@ -145,7 +173,9 @@ impl BenchSession {
 
     /// Advance `n` ticks of `dt`. A session never resets: Step is one tick.
     pub fn step(&mut self, n: u32) {
+        let from = self.session.circuit.tick + 1;
         self.session.step(n, self.dt as f32);
+        self.log_agent_edits(from);
     }
 
     /// Step from the current tick to the horizon `t` by the same count the
@@ -155,15 +185,60 @@ impl BenchSession {
         let ticks = bert_compose::ticks_over(self.dt, total_time)?;
         let done = self.session.circuit.tick as usize;
         if ticks > done {
-            self.session.step((ticks - done) as u32, self.dt as f32);
+            self.step((ticks - done) as u32);
         }
         Ok(())
     }
 
     /// Back to tick 0 with the knobs as they stand (not the model's declared
     /// amounts: an edit is a decision, and reset re-runs it from the top).
+    /// A command-form agent's last write is a knob like any other, so a
+    /// reset after its run starts under that command until the agent
+    /// overwrites it at the end of tick 1.
     pub fn reset(&mut self) {
         self.session.reset();
+    }
+
+    /// A command-form agent's knob writes since `from_tick`, entered in the
+    /// knob log as the agent's edits whenever the written value changes (a
+    /// policy that repeats itself turned nothing). The edit's tick is the
+    /// tick whose end wrote it, which the next tick runs under, the same
+    /// reading a human edit at that tick has.
+    fn log_agent_edits(&mut self, from_tick: u64) {
+        let rows = self.session.circuit.decisions_since(from_tick);
+        for (tick, decisions) in rows {
+            for d in decisions {
+                let Some(value) = d.written else { continue };
+                if self.last_written.get(&d.node) == Some(&value) {
+                    continue;
+                }
+                self.last_written.insert(d.node, value);
+                let circuit = &self.session.circuit;
+                let Some(node) = circuit.nodes.iter().find(|n| n.id == d.node) else { continue };
+                let Some(knob) = node.knob.as_ref() else { continue };
+                let (wire, field) = match knob {
+                    bert_compose::circuit::AgentKnob::Amount { wire, .. } => (*wire, "amount"),
+                    bert_compose::circuit::AgentKnob::Share { first, .. } => (*first, "share"),
+                };
+                let target = self.flow_target(wire);
+                self.note_edit(KnobEdit {
+                    tick,
+                    target,
+                    field: field.into(),
+                    value,
+                    by: KnobAuthor::Agent { name: node.name.clone() },
+                });
+            }
+        }
+    }
+
+    /// The knob-log name of wire `k`: the flow as the author wrote it.
+    fn flow_target(&self, k: usize) -> String {
+        self.spec
+            .flows
+            .get(k)
+            .map(|f| format!("{} -> {} : {}", self.name_of(&f.source), self.name_of(&f.sink), f.name))
+            .unwrap_or_default()
     }
 
     fn name_of(&self, id: &Id) -> String {
@@ -229,34 +304,18 @@ impl BenchSession {
         }
         let k = self.flow_index(label, from, to)?;
         let circuit = &mut self.session.circuit;
-        let wire = &circuit.wires[k];
-        if wire.rate_series.is_some() {
+        if circuit.wires[k].rate_series.is_some() {
             return Err(format!(
                 "\"{label}\" is forced by a bound column; unbind it in Data mode to turn this knob"
             ));
         }
-        let from_i = wire.from;
-        match (circuit.nodes[from_i].kind, wire.mode) {
-            (NodeKind::Source, FlowMode::Gradient) => circuit.nodes[from_i].param = v,
-            (NodeKind::Source, FlowMode::Pushed) => {
-                if circuit.wires[k].rate.is_some() {
-                    circuit.wires[k].rate = Some(v);
-                } else {
-                    circuit.nodes[from_i].param = v;
-                }
-            }
-            (NodeKind::Process(_), FlowMode::Pushed) => circuit.wires[k].rate = Some(v),
-            _ => {
-                return Err(format!(
-                    "\"{label}\" carries no amount the engine reads (a gradient flow's rate is its conductance)"
-                ))
-            }
-        }
+        circuit.write_amount(k, v).map_err(|e| format!("\"{label}\" {e}"))?;
         self.note_edit(KnobEdit {
             tick: self.session.circuit.tick,
             target: format!("{from} -> {to} : {label}"),
             field: "amount".into(),
             value: v,
+            by: KnobAuthor::Human,
         });
         Ok(())
     }
@@ -286,6 +345,7 @@ impl BenchSession {
             target: thing.to_string(),
             field: field.to_string(),
             value: v,
+            by: KnobAuthor::Human,
         });
         Ok(())
     }
@@ -326,10 +386,42 @@ impl BenchSession {
             .zip(circuit.wire_history.iter())
             .map(|(h, w)| (h[0] as u64, w))
             .collect();
+        // The decisions column (ADR 0008): the agent by name, what landed
+        // where. The command form names its param; the signal form names the
+        // process its command wire reaches. A departed agent's rows name
+        // nothing and are left out, as a departed node's flux is.
+        let decision_rows = |tick: u64| -> Vec<DecisionLog> {
+            circuit
+                .decisions_since(tick)
+                .into_iter()
+                .filter(|(t, _)| *t == tick)
+                .flat_map(|(_, ds)| ds)
+                .filter_map(|d| {
+                    let (i, node) = circuit.nodes.iter().enumerate().find(|(_, n)| n.id == d.node)?;
+                    let knob = match node.knob.as_ref() {
+                        Some(k) => format!("param \"{}\"", k.param()),
+                        None => circuit
+                            .wires
+                            .iter()
+                            .find(|w| w.from == i && !circuit.is_observation(w))
+                            .map(|w| circuit.nodes[w.to].name.clone())
+                            .unwrap_or_default(),
+                    };
+                    Some(DecisionLog {
+                        agent: node.name.clone(),
+                        reading: d.reading,
+                        output: d.output,
+                        knob,
+                        written: d.written.unwrap_or(d.output),
+                    })
+                })
+                .collect()
+        };
         circuit
             .flux_since(from_tick)
             .into_iter()
             .map(|(tick, nodes)| {
+                let decisions = decision_rows(tick);
                 let wires = wires_at
                     .get(&tick)
                     .map(|row| {
@@ -346,7 +438,7 @@ impl BenchSession {
                             .collect()
                     })
                     .unwrap_or_default();
-                TickLog { tick, nodes, wires }
+                TickLog { tick, nodes, wires, decisions }
             })
             .collect()
     }

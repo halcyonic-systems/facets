@@ -42,7 +42,8 @@
 
 use crate::validate::{validate_mode, Severity};
 use crate::{
-    Id, IdType, InteractionType, Mode, Policy, ProcessPrimitive, SubstanceType, WorldModel,
+    AgentCommand, Id, IdType, InteractionType, Mode, Policy, ProcessPrimitive, SubstanceType,
+    WorldModel,
 };
 use serde::{Deserialize, Serialize};
 use std::collections::{HashMap, HashSet};
@@ -96,6 +97,26 @@ pub struct OperationalAgent {
     pub id: Id,
     pub name: String,
     pub policy: Policy,
+    /// The knob the agent writes instead of a command wire (the command
+    /// form, ADR 0008 D1), resolved to positions in this spec's `flows`.
+    /// `None` is the signal form. `skip` when `None` so a signal-form spec
+    /// serializes and hashes as before.
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub command: Option<OperationalCommand>,
+}
+
+/// [`AgentCommand`] with its target resolved against the spec: the executor
+/// builds one wire per flow in `flows` order, so a flow's position here is
+/// its wire. The seam checks the target exists and, for a share, that the
+/// split is two-way, which is the only share form the command has.
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+#[serde(tag = "form", rename_all = "lowercase")]
+pub enum OperationalCommand {
+    /// The declared amount of `flows[flow]`.
+    Amount { param: String, flow: usize },
+    /// The share of `flows[first]` out of its sender's two-way physical
+    /// split; `flows[second]` takes the rest.
+    Share { param: String, first: usize, second: usize },
 }
 
 /// A boundary terminal: an environment source or sink a flow may cross.
@@ -261,6 +282,9 @@ pub fn validate_operational(model: &WorldModel) -> Result<OperationalSpec, Vec<O
 
     let mut spec = OperationalSpec::default();
     let mut projected: HashSet<Id> = HashSet::new();
+    // Command-form agents, resolved after the flows are placed (below).
+    let mut pending_commands: Vec<(usize, String, AgentCommand)> = Vec::new();
+    let mut flow_index_of: HashMap<Id, usize> = HashMap::new();
 
     // The root system's boundary carries B's P (bert-lenses#54). Its porosity
     // rides the seam so the run can scale boundary crossings — no effect until
@@ -346,10 +370,14 @@ pub fn validate_operational(model: &WorldModel) -> Result<OperationalSpec, Vec<O
                 continue;
             }
             projected.insert(sys.info.id.clone());
+            if let Some(command) = agent.command.as_ref() {
+                pending_commands.push((spec.agents.len(), sys.info.name.clone(), command.clone()));
+            }
             spec.agents.push(OperationalAgent {
                 id: sys.info.id.clone(),
                 name: sys.info.name.clone(),
                 policy: policy.clone(),
+                command: None,
             });
             continue;
         }
@@ -482,6 +510,7 @@ pub fn validate_operational(model: &WorldModel) -> Result<OperationalSpec, Vec<O
             .filter(|n| *n > 1);
         touched.insert(ix.source.clone());
         touched.insert(ix.sink.clone());
+        flow_index_of.insert(ix.info.id.clone(), spec.flows.len());
         spec.flows.push(OperationalFlow {
             name: ix.info.name.clone(),
             source: ix.source.clone(),
@@ -507,6 +536,76 @@ pub fn validate_operational(model: &WorldModel) -> Result<OperationalSpec, Vec<O
                     .to_string(),
                 Some("Wire it into the flow graph or remove it"),
             ));
+        }
+    }
+
+    // The command form's knobs (ADR 0008 D1), resolved once the flows are in
+    // their final order: a knob names a flow that must have projected, or a
+    // two-way physical split whose two wires are the share and its rest. A
+    // knob nothing reads is an agent in control of nothing, so it is refused
+    // here as the language refuses it at parse time (requisite variety).
+    for (slot, agent_name, command) in pending_commands {
+        let loc = format!("agent \"{agent_name}\"");
+        let resolved = match &command {
+            AgentCommand::Amount { param, flow } => match flow_index_of.get(flow) {
+                Some(&k) => Some(OperationalCommand::Amount { param: param.clone(), flow: k }),
+                None => {
+                    errors.push(OperationalError::new(
+                        &loc,
+                        format!(
+                            "manages param \"{param}\", whose flow does not project — a param an \
+                             agent names is required"
+                        ),
+                        Some("Keep the flow the param anchors, or manage another param"),
+                    ));
+                    None
+                }
+            },
+            AgentCommand::Share { param, of, first } => {
+                let split: Vec<usize> = spec
+                    .flows
+                    .iter()
+                    .enumerate()
+                    .filter(|(_, f)| {
+                        f.source == *of && f.conductance.is_none() && f.substance != SubstanceType::Message
+                    })
+                    .map(|(k, _)| k)
+                    .collect();
+                match split.as_slice() {
+                    [a, b] if flow_index_of.get(first) == Some(a) || flow_index_of.get(first) == Some(b) => {
+                        let k = flow_index_of[first];
+                        let rest = if k == *a { *b } else { *a };
+                        Some(OperationalCommand::Share { param: param.clone(), first: k, second: rest })
+                    }
+                    [_, _] => {
+                        errors.push(OperationalError::new(
+                            &loc,
+                            format!(
+                                "manages param \"{param}\" as a share, but the wire it commands is \
+                                 not one of its process's two physical outflows"
+                            ),
+                            Some("Name the first outflow of the split the param presents"),
+                        ));
+                        None
+                    }
+                    _ => {
+                        errors.push(OperationalError::new(
+                            &loc,
+                            format!(
+                                "manages param \"{param}\" as a share, but its process has {} \
+                                 physical outflow(s) — the command form sets one wire of a \
+                                 two-way split and the other takes the rest",
+                                split.len()
+                            ),
+                            Some("Name a two-way split; a multi-way form is not designed"),
+                        ));
+                        None
+                    }
+                }
+            }
+        };
+        if let Some(c) = resolved {
+            spec.agents[slot].command = Some(c);
         }
     }
 
@@ -577,6 +676,7 @@ mod tests {
             agency_capacity: 1.0,
             primitive: Some(primitive),
             policy: None,
+            command: None,
             cognitive_params: HashMap::new(),
             process_configs: vec![],
             initial_state: HashMap::new(),

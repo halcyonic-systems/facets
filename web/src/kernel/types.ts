@@ -192,11 +192,28 @@ export interface WireFlux {
   delivered: number;
 }
 
+/** One agent's decision on one tick (ADR 0008's decisions column): the
+ *  policy chose `output` from `reading`, and it landed on `knob` — a declared
+ *  param in the command form, the managed process in the signal form — as
+ *  `written`. Mirrors `DecisionLog` in bert-tether. */
+export interface DecisionLog {
+  agent: string;
+  reading: number;
+  output: number;
+  knob: string;
+  written: number;
+}
+
 export interface TickLog {
   tick: number;
   nodes: NodeFlux[];
   wires: WireFlux[];
+  decisions: DecisionLog[];
 }
+
+/** Who turned a knob: a person at the bench, or a command-form agent's
+ *  policy at the end of a tick (ADR 0008). Mirrors `KnobAuthor`. */
+export type KnobAuthor = { kind: "human" } | { kind: "agent"; name: string };
 
 /** A knob turned on a live session, and the tick it applied at. */
 export interface KnobEdit {
@@ -204,6 +221,7 @@ export interface KnobEdit {
   target: string;
   field: string;
   value: number;
+  by: KnobAuthor;
 }
 
 export interface RunResultRich {
@@ -300,6 +318,11 @@ export interface Thing {
    *  `cognitive_params`, where the param layer already reads a field's value.
    *  Absent = not an agent; serde skip-if-None on the Rust side. */
   rule?: AgentRule;
+  /** The declared `param` a command-form agent writes each tick instead of
+   *  signalling a process (ADR 0008 D1): `agent … manages param "<name>"`.
+   *  Absent = the signal form; serde skip-if-None on the Rust side. A name
+   *  no param declares is the required-param fault the Review panel names. */
+  manages_param?: string;
   /** Authored interface designation (I ⊆ C). Must carry a boundary-crossing flow —
    *  flowless is refused at Operational (`interfaces_carry_flow`, SSF #31). */
   interface?: boolean;

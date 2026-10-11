@@ -848,7 +848,7 @@ pub fn analyze(model: &CanvasModel, lens: Lens) -> CanvasAnalysis {
             // The ambient-name warning is raised on the canvas model, where the
             // thing may be an orphan the projection dropped, so it carries no
             // kernel subject; its location names the canvas id instead.
-            None if issue.code == AMBIENT_CODE || issue.code == WRAPPER_CODE || issue.code == UNRESOLVED_DUPLICATE_CODE || issue.code == UNRESOLVED_NOT_PASSWAY_CODE || issue.code == INTERFACE_WORK_CODE || issue.code == AGENT_UNWIRED_CODE => IssueTarget {
+            None if issue.code == AMBIENT_CODE || issue.code == WRAPPER_CODE || issue.code == UNRESOLVED_DUPLICATE_CODE || issue.code == UNRESOLVED_NOT_PASSWAY_CODE || issue.code == INTERFACE_WORK_CODE || issue.code == AGENT_UNWIRED_CODE || issue.code == AGENT_PARAM_MISSING_CODE => IssueTarget {
                 thing: ambient_location_id(&issue.location),
                 ..IssueTarget::default()
             },
@@ -1121,6 +1121,8 @@ fn check_unresolved_passway(model: &CanvasModel, issues: &mut Vec<ValidationIssu
 pub const INTERFACE_WORK_CODE: &str = "interface_does_work";
 
 pub const AGENT_UNWIRED_CODE: &str = "agent_unwired";
+/// A command-form agent naming a param no line declares (ADR 0008 D1).
+pub const AGENT_PARAM_MISSING_CODE: &str = "agent_param_missing";
 
 /// Mobus §11.2.1: "The agent is given agency, the power to affect the
 /// necessary response to the environmental conditions, when its output
@@ -1138,14 +1140,39 @@ fn check_agent_is_given_agency(model: &CanvasModel, issues: &mut Vec<ValidationI
                 && r.b == t.id
                 && by_id.get(&r.a).is_some_and(|s| s.primitive == Some(P::Buffering))
         });
-        let commands_a_process = model.relations.iter().any(|r| {
-            r.is_bond
-                && r.a == t.id
-                && by_id.get(&r.b).is_some_and(|p| {
-                    p.rule.is_none()
-                        && matches!(p.primitive, Some(P::Modulating | P::Amplifying | P::Buffering))
-                })
-        });
+        // The command form (ADR 0008 D1) commands a declared param instead
+        // of a process; the param it names is required, so a name no param
+        // line declares is the fault the spec's §4.5 rule promises, named
+        // here for a model built by gesture or from JSON.
+        if let Some(name) = t.manages_param.as_deref() {
+            if !model.params.iter().any(|p| p.name == name) {
+                issues.push(ValidationIssue {
+                    severity: Severity::Error,
+                    code: AGENT_PARAM_MISSING_CODE.to_string(),
+                    location: format!("things[{}]", t.id),
+                    message: format!(
+                        "'{}' manages param \"{name}\", which the model does not declare — a param an \
+                         agent names is required (ADR 0008 D1): it is where the command's span was \
+                         checked against the knob's range.",
+                        t.name
+                    ),
+                    suggestion: Some(format!(
+                        "declare `param \"{name}\"` on a flow amount with a range, or `param shares \"{name}\"` on a two-way split, or point the agent at another param"
+                    )),
+                    doc: None,
+                    subject: None,
+                });
+            }
+        }
+        let commands_a_process = t.manages_param.is_some()
+            || model.relations.iter().any(|r| {
+                r.is_bond
+                    && r.a == t.id
+                    && by_id.get(&r.b).is_some_and(|p| {
+                        p.rule.is_none()
+                            && matches!(p.primitive, Some(P::Modulating | P::Amplifying | P::Buffering))
+                    })
+            });
         let (missing, repair) = match (reads_a_stock, commands_a_process) {
             (true, true) => continue,
             (false, true) => ("reads no stock's level", "draw an informational flow from a Buffering stock into it (the agent line's `watches`)"),
@@ -1741,6 +1768,7 @@ mod tests {
             role,
             primitive: None,
             rule: None,
+            manages_param: None,
             interface: false,
             passway: false,
             protocol: String::new(),
@@ -2246,6 +2274,7 @@ mod tests {
         use crate::canvas::AgentRule;
         let agent = |id: u64| Thing {
             rule: Some(AgentRule::Proportional),
+            manages_param: None,
             cognitive_params: [("target".to_string(), 1.0), ("gain".to_string(), 1.0)].into_iter().collect(),
             ..thing(id, "Thermostat", Role::Component)
         };
@@ -2269,6 +2298,28 @@ mod tests {
         );
         let a = analyze(&m, Lens::Mobus);
         assert!(a.validation.issues.iter().all(|i| i.code != AGENT_UNWIRED_CODE), "{:?}", a.validation.issues);
+        // The command form (ADR 0008 D1): a tap and a named param is agency;
+        // a named param no line declares is the required-param fault, an
+        // Error that points at the agent.
+        let commander = |id: u64| Thing { manages_param: Some("share".into()), ..agent(id) };
+        let mut m = model(
+            vec![stock(1), valve(2), commander(3), thing(4, "Grid", Role::Environment)],
+            vec![relation(10, 4, 2, true), relation(11, 2, 1, true), tap(12, 1, 3)],
+        );
+        let a = analyze(&m, Lens::Mobus);
+        assert!(a.validation.issues.iter().all(|i| i.code != AGENT_UNWIRED_CODE), "{:?}", a.validation.issues);
+        let found: Vec<_> = a.validation.issues.iter().enumerate().filter(|(_, i)| i.code == AGENT_PARAM_MISSING_CODE).collect();
+        assert_eq!(found.len(), 1, "{:?}", a.validation.issues);
+        assert_eq!(found[0].1.severity, Severity::Error);
+        assert!(found[0].1.message.contains("does not declare"));
+        assert_eq!(a.issue_targets[found[0].0].thing, Some(3));
+        m.params.push(crate::canvas::ParamDecl {
+            name: "share".into(),
+            anchor: crate::canvas::ParamAnchor::Shares { thing: 1 },
+            range: None,
+        });
+        let a = analyze(&m, Lens::Mobus);
+        assert!(a.validation.issues.iter().all(|i| i.code != AGENT_PARAM_MISSING_CODE), "{:?}", a.validation.issues);
     }
 
     /// facets#443: `Ambient Air` whose one line is an informational reading

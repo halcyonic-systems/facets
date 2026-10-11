@@ -24,7 +24,7 @@
 import { useState } from "react";
 import type { CanvasModel, EngineField, Manifest, ParamDecl, Relation, Thing } from "./kernel/types";
 import { declaredRelations, forcedByColumn, resolveParamRows } from "./kernel/params";
-import { AmountField, ParamControl, sliderStep, snapToStep, useCommitOnRelease } from "./ParamControl";
+import { AmountField, ParamControl, SetByAgent, sliderStep, snapToStep, useCommitOnRelease } from "./ParamControl";
 import { Card } from "./ui";
 
 
@@ -80,12 +80,15 @@ function ShareRow({
   relation,
   rest,
   forcedBy,
+  setBy,
   onEdit,
 }: {
   label: string;
   relation: Relation;
   rest: number;
   forcedBy?: string;
+  /** The command-form agent writing this split each tick, if one does. */
+  setBy?: string;
   onEdit: (next: Relation) => void;
 }) {
   const [drag, setDrag] = useState<number | null>(null);
@@ -111,6 +114,10 @@ function ShareRow({
       {forcedBy ? (
         <span className="flex-1 font-mono text-[11px]" style={{ color: "var(--text-muted)" }}>
           driven by “{forcedBy}”
+        </span>
+      ) : setBy ? (
+        <span className="flex-1">
+          <SetByAgent agent={setBy} />
         </span>
       ) : (
         <input
@@ -353,6 +360,13 @@ export function RunInputs({
   // resolution itself is shared with the canvas EdgePopover (kernel/params.ts),
   // so a param can never mean different flows on different surfaces.
   const paramRows = resolveParamRows(model);
+  // A knob a command-form agent drives (ADR 0008 D1) is shown locked under
+  // the agent's name, as a data-driven flow is under its column: the
+  // policy's series, not a scalar, is what runs.
+  const setBy = new Map<string, string>();
+  for (const t of model.things) {
+    if (t.rule && t.manages_param) setBy.set(t.manages_param, t.name);
+  }
   const covered = new Set<number>(
     paramRows.flatMap((row) => (row.relation ? [row.relation.id] : row.group ? row.group.map((r) => r.id) : [])),
   );
@@ -402,7 +416,14 @@ export function RunInputs({
       )}
       {paramRows.map(({ param, relation, group, thing: fieldThing, field }) =>
         relation ? (
-          <ParamControl key={param.name} param={param} relation={relation} forcedBy={forcedBy(relation)} onEdit={onEdit} />
+          <ParamControl
+            key={param.name}
+            param={param}
+            relation={relation}
+            forcedBy={forcedBy(relation)}
+            setBy={setBy.get(param.name)}
+            onEdit={onEdit}
+          />
         ) : fieldThing && field ? (
           onEditThing ? (
             <FieldControl key={param.name} param={param} thing={fieldThing} field={field} onEdit={onEditThing} />
@@ -417,6 +438,7 @@ export function RunInputs({
                 relation={r}
                 rest={group!.filter((o) => o.id !== r.id).reduce((s, o) => s + Number(o.amount ?? 0), 0)}
                 forcedBy={forcedBy(r)}
+                setBy={setBy.get(param.name)}
                 onEdit={onEdit}
               />
             ))}

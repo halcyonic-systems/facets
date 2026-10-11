@@ -70,15 +70,34 @@ export function snapToStep(v: number, step: number): number {
 /** A range slider + number field over one flow-anchored param. The slider
  *  commits on release (not per-tick), routing through the same relation-update
  *  path as every other edit. */
+/** The lock a knob an agent drives shows in place of its editor (ADR 0008
+ *  D1): the same styling as a data-driven flow, because the same thing is
+ *  true of it — a series, here the policy's, and not a scalar, is what runs. */
+export function SetByAgent({ agent }: { agent: string }) {
+  return (
+    <span
+      className="shrink-0 font-mono text-[11px]"
+      style={{ color: "var(--text-muted)" }}
+      title={`This knob is written by the agent “${agent}” at the end of every tick — the policy's command, not a scalar, is what runs. Edit the agent's rule instead.`}
+      data-testid="set-by-agent"
+    >
+      set by “{agent}”
+    </span>
+  );
+}
+
 export function ParamControl({
   param,
   relation,
   forcedBy,
+  setBy,
   onEdit,
 }: {
   param: ParamDecl;
   relation: Relation;
   forcedBy?: string;
+  /** The command-form agent writing this knob each tick, if one does. */
+  setBy?: string;
   onEdit: (next: Relation) => void;
 }) {
   const [drag, setDrag] = useState<number | null>(null);
@@ -94,6 +113,7 @@ export function ParamControl({
     setDrag(null);
   };
   useCommitOnRelease(drag !== null, commit);
+  const locked = Boolean(forcedBy || setBy);
   return (
     <div className="py-0.5">
       <div className="flex items-center justify-between gap-2 text-xs">
@@ -108,6 +128,8 @@ export function ParamControl({
           >
             driven by “{forcedBy}”
           </span>
+        ) : setBy ? (
+          <SetByAgent agent={setBy} />
         ) : (
           <AmountField relation={relation} onEdit={onEdit} />
         )}
@@ -115,7 +137,7 @@ export function ParamControl({
           {relation.unit ?? ""}
         </span>
       </div>
-      {!forcedBy && param.range && (
+      {!locked && param.range && (
         <input
           type="range"
           className="mt-0.5 block w-full"

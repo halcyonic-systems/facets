@@ -13,7 +13,7 @@
 
 use crate::circuit::{Circuit, DeclaredSubstance, FlowMode, Node, NodeKind, Wire};
 use bert_core::{
-    AgentKind, AgentModel, Boundary, Complexity, Environment, ExternalEntity, ExternalEntityType,
+    AgentCommand, AgentKind, AgentModel, Boundary, Complexity, Environment, ExternalEntity, ExternalEntityType,
     Id, IdType, Info, Interaction, InteractionType, InteractionUsability, Interface,
     InterfaceType, Parameter, ProcessPrimitive, Substance, System, Transform2d, WorldModel,
 };
@@ -164,6 +164,7 @@ pub fn to_world_model(circuit: &Circuit, name: &str) -> WorldModel {
                         agency_capacity: node.param,
                         primitive: None,
                         policy: Some(node.policy.clone()),
+                        command: None,
                         cognitive_params: HashMap::new(),
                         process_configs: Vec::new(),
                         initial_state: HashMap::new(),
@@ -208,6 +209,7 @@ pub fn to_world_model(circuit: &Circuit, name: &str) -> WorldModel {
                         agency_capacity: node.param,
                         primitive: Some(primitive),
                         policy: None,
+                        command: None,
                         // Compose knobs with no canonical home ride in the
                         // extensible params so the round-trip is lossless.
                         cognitive_params: {
@@ -317,6 +319,31 @@ pub fn to_world_model(circuit: &Circuit, name: &str) -> WorldModel {
             smart_parameters: Vec::new(),
             endpoint_offset: None,
         });
+    }
+
+    // A command-form agent's knob (ADR 0008 D1) rides back as its command,
+    // named by the interactions the wires above became, so the kind and the
+    // knob survive the seam together.
+    for (i, node) in circuit.nodes.iter().enumerate() {
+        let Some(knob) = node.knob.as_ref() else { continue };
+        let flow_id_of = |k: usize| interactions.get(k).map(|ix| ix.info.id.clone());
+        let command = match knob {
+            crate::circuit::AgentKnob::Amount { param, wire } => {
+                flow_id_of(*wire).map(|flow| AgentCommand::Amount { param: param.clone(), flow })
+            }
+            crate::circuit::AgentKnob::Share { param, first, .. } => {
+                match (flow_id_of(*first), circuit.wires.get(*first).and_then(|w| node_id.get(&w.from))) {
+                    (Some(first), Some(of)) => {
+                        Some(AgentCommand::Share { param: param.clone(), of: of.clone(), first })
+                    }
+                    _ => None,
+                }
+            }
+        };
+        let Some(sid) = node_id.get(&i) else { continue };
+        if let Some(agent) = systems.iter_mut().find(|s| s.info.id == *sid).and_then(|s| s.agent.as_mut()) {
+            agent.command = command;
+        }
     }
 
     // Interfaces (#216, A2): every boundary-crossing wire routes through a
@@ -482,6 +509,17 @@ pub fn from_spec(spec: &bert_core::operational::OperationalSpec) -> Circuit {
         let mut node = Node::new(NodeKind::Agent, ids.len() + 1, grid(ids.len()));
         node.name = a.name.clone();
         node.policy = a.policy.clone();
+        // The seam resolved the command to `flows` positions, and one wire
+        // is built per flow below in that order, so the positions are the
+        // wire indices.
+        node.knob = a.command.as_ref().map(|c| match c {
+            bert_core::operational::OperationalCommand::Amount { param, flow } => {
+                crate::circuit::AgentKnob::Amount { param: param.clone(), wire: *flow }
+            }
+            bert_core::operational::OperationalCommand::Share { param, first, second } => {
+                crate::circuit::AgentKnob::Share { param: param.clone(), first: *first, second: *second }
+            }
+        });
         ids.push((a.id.clone(), c.nodes.len()));
         c.nodes.push(node);
     }

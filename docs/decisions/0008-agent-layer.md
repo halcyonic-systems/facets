@@ -68,6 +68,26 @@ Timing: the agent reads the pre-tick level, the same number an observation tap
 delivers, then the ordinary step runs. Synchronous, read-before-write, as the
 gradient phase already is.
 
+Note 2026-10-11 (command form built, spec v1.13): `agent … manages param
+"<name>"`. The knob is written at the END of `Circuit::step_dt`, after the
+wire-row capture, the ledger reads and the history push, because
+`wire_amount` reads a wire's rate lazily and a write before the row would
+misreport the tick; so the command governs the next tick and the command
+form acts one tick after the signal form (the fishery bench's two sawtooths
+differ in phase; pinned closed they agree to one f32 ulp). The write goes
+through `Circuit::write_amount`, factored out of the bench's `set_flow_amount`,
+so a human edit and a policy's write are one event with an author
+(`KnobEdit.by`). What the grammar reaches: a flow param with a `range` (a
+source rate, or a weight on a multi-way split) and the `shares` of a two-way
+split, which lands as `(s, 1 − s)`; a share names the wire it commands
+(`AgentCommand::Share.first`) because a pass-way fusion re-anchors a leg and
+the projected order is not the declared one. The brief's literal first
+witness, an agent on the harvest flow's amount, was declined: that amount is
+a Buffering stock's single physical outflow, a fanout weight the engine never
+reads, so the parser refuses it as inert and the fishery is modelled as a
+two-way split with catch-and-release instead. Not designed: a wider split, a
+component field (a setpoint), another agent's field.
+
 **D2. All agents in a run share one dynamics kind; deterministic at the first
 rung. Rule names mix freely.** The position doc's "unsolved" blocker
 (`design/dynamics-principled-position.md`, Agent trajectories row) is
@@ -219,7 +239,9 @@ figures (buffering is a Fig. 3.18 process), which is why D2 makes
   (separate repo) → command form and llm-market buyers.
 - The tick log gains a decisions column (an agent's observation, the rule's
   output, the wire written) and `KnobEdit` gains an author; a human knob and
-  an agent knob become one record, distinguishable.
+  an agent knob become one record, distinguishable. (Built 2026-10-11 with
+  the command form: `TickLog.decisions`, `KnobEdit.by`, and `bert bench`
+  prints both.)
 - Every surface that shows an agent's decision carries the claim-hygiene line.
 - The spec states, next to the vocabulary table, that the aggregate forms on
   the shelf are the controls, and that every rung beyond the first is named

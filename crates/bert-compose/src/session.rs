@@ -250,6 +250,8 @@ impl Session {
             self.circuit.wire_history.drain(..wcut);
             let fcut = cut.min(self.circuit.node_flux_history.len());
             self.circuit.node_flux_history.drain(..fcut);
+            let dcut = cut.min(self.circuit.decision_history.len());
+            self.circuit.decision_history.drain(..dcut);
             // Epochs whose every row was cut go with them; the first survivor
             // is clamped so it starts where the surviving rows do.
             let first_tick = self.circuit.history[0][0] as u64;
