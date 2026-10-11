@@ -1,0 +1,10 @@
+[package]
+name = "bert-cli"
+version = "0.1.0"
+
+[[bin]]
+name = "bert"
+path = "src/main.rs"
+
+[dependencies]
+bert-lenses-kernel = { path = "../bert-lenses-kernel" }
