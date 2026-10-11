@@ -10,7 +10,9 @@ Four commands, three of which never touch the network:
   aggregate  raw vintage + assets/data/openrouter-model-classification.csv ->
              daily routed-share series, its monthly resample, and a by-lab file.
   bundle     monthly file -> a forcing bundle for the pooled llm-market
-             (the Router's two outwires, unit `weight`, force on, every 30).
+             (the Router's two outwires, unit `weight`, force on, every 30);
+             `--demo` also writes assets/demos/llm-market.json, the bundle the
+             gallery card opens, as a copy of the vintage bundle.
   self-test  the committed fixture through aggregate and bundle; no network.
 
 Stdlib only, bare `python3`. `--dry-run` validates and prints what would be

@@ -10,13 +10,12 @@ is not the examples' test (the smallest witness of a kernel distinction,
 and most are not. Each file's second line names the literature model it is
 after (`# bench · after …`), and the library shows that line on the card.
 
-Decision 2026-10-10: a fourth shelf, not a marker, because a different
-admission test is the one honest reason to make a shelf.
+Decision 2026-10-10: a third shelf (beside the examples and the corpus; the
+field models fold onto their domain shelves since 2026-10-09), not a marker,
+because a different admission test is the one honest reason to make a shelf.
 
 
-Ten models from the "runs now" rows of `docs/shelf-candidates.md`, written in the split form and bench-tested from the terminal. They are staged, not shipped: this directory is outside the shelf glob `assets/examples/*.sl`, so nothing here appears in the app.
-
-Admission to the shelf is Shingai's call, model by model, under the rule in `assets/examples/README.md`.
+Twenty models, the first ten from the "runs now" rows of `docs/shelf-candidates.md` and the rest the agent-layer witnesses (ADR 0008), written in the split form and bench-tested from the terminal. They ship: `web/src/bench.ts` globs this directory and the library renders each file as a card under the **Bench** tag, with its `# bench · after …` line shown.
 
 Every file verdicts with zero Errors and zero `interface_does_work` under the Mobus lens, is in `slfmt` canonical form, and is conserved on `bert bench <file> --t 12 --no-log`. The numbers are round so the ledger reads by eye; nothing here is a claim about any domain.
 

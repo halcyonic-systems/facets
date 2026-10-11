@@ -33,8 +33,8 @@ than smooth over:
 The observatory's first sensor, on the routed interface of
 `assets/examples/llm-market.sl` (the Router's two outwires). Retrieved once per
 pull date, dated in the filename, never refreshed in place: a re-pull is a new
-set of files. The demo bundle `assets/demos/llm-market.json` is untouched; the
-vintage bundle is a separate file the gallery does not load.
+set of files. The demo bundle `assets/demos/llm-market.json` is generated from
+the vintage bundle (`bundle --demo`, below), never written by hand.
 
 **Vintage 2026-10-10.** Pulled 2026-10-10 (local), window 2025-01-01 →
 2026-10-09, 645 days, 428 permaslugs including `other`. Attribution, as

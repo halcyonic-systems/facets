@@ -974,8 +974,10 @@ mod tests {
     // back domain-named — proving the exact element-name match (incl. the "→"
     // char) and the whole one-click path. The three instances retired to
     // assets/archive/demos/ in the August 2026 curation; they stay HELD here
-    // because they are the only hand-authored bundles (llm-market's is minted
-    // from SL and pinned by sl_demos.rs), so this law has no shipped instance.
+    // because they are the only hand-authored bundles (llm-market's model is a
+    // projection minted from SL and pinned by sl_demos.rs; its bundle is
+    // generated from the pinned vintage in assets/data/), so this law has no
+    // shipped instance.
     #[test]
     fn every_bundled_demo_runs_forced_and_conserves() {
         #[derive(serde::Deserialize)]

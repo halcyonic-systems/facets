@@ -73,7 +73,8 @@ here rather than letting them go:
 
 All three are also **HELD** as a set by `bert-tether/src/forcing.rs`
 (`every_bundled_demo_runs_forced_and_conserves` — they are the only
-hand-authored bundles; llm-market's is minted from SL), and by the demo loops
+hand-authored bundles; llm-market's model is a projection minted from SL and
+its bundle is generated from the pinned vintage in `../data/`), and by the demo loops
 in `bert-canvas/tests/dt_invariance.rs` and `canvas_round_trip.rs`. Moving or
 editing any of the six files turns a test red, which is the intended
 arrangement.
