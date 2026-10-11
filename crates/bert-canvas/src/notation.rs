@@ -349,6 +349,7 @@ mod tests {
             role,
             primitive: None,
             rule: None,
+            manages_param: None,
             interface: false,
             passway: false,
             protocol: String::new(),

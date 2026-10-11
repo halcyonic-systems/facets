@@ -1412,6 +1412,14 @@ pub struct AgentModel {
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub policy: Option<Policy>,
 
+    /// Where this agent's decision lands when it is a knob write and not a
+    /// signal on a wire: the command form (ADR 0008 D1, Mobus §12.2.3.2
+    /// "change an operational parameter"). `None` is the signal form, where
+    /// the command rides the agent's outgoing message flow. Read only beside
+    /// a `policy`; `skip` when `None` so every earlier model is byte-identical.
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub command: Option<AgentCommand>,
+
     /// Domain-agnostic cognitive parameters (e.g., "fee_threshold": 50.0)
     #[serde(default, skip_serializing_if = "HashMap::is_empty")]
     pub cognitive_params: HashMap<String, f64>,
@@ -1480,6 +1488,7 @@ impl Default for AgentModel {
             agency_capacity: default_agency_capacity(),
             primitive: None,
             policy: None,
+            command: None,
             cognitive_params: HashMap::new(),
             process_configs: Vec::new(),
             initial_state: HashMap::new(),
@@ -1754,6 +1763,39 @@ impl Default for Policy {
         Policy::Proportional {
             target: 1.0,
             gain: 1.0,
+        }
+    }
+}
+
+/// The knob an agent in the command form writes (ADR 0008 D1; Mobus
+/// §12.2.3.2, the coordination-level agent that changes "an operational
+/// parameter (e.g., the set point)"). The agent reaches a declared `param`
+/// of the authored model, never a raw engine field: the param carries the
+/// range its commands were checked against, and the bench already addresses
+/// the same knob by the same name. Each tick the policy's output is written
+/// here after the stocks move, so the next tick runs under it, and the value
+/// stays written when the agent stops; the signal form's command lasts one
+/// tick. `param` is the declared name, kept so a knob log and a run card can
+/// say which knob and who turned it.
+#[derive(Serialize, Deserialize, Clone, Debug, PartialEq)]
+#[serde(tag = "form", rename_all = "lowercase")]
+pub enum AgentCommand {
+    /// One flow's declared amount: a source flow's emission rate, or a
+    /// process outflow's fanout weight (the flow-anchored `param`).
+    Amount { param: String, flow: Id },
+    /// The share of one outflow (`first`) of `of`'s two-way physical split,
+    /// the other taking the rest (the `shares` param). `first` is named
+    /// rather than taken from flow order because a pass-way fusion re-anchors
+    /// a leg of the split and the projected order need not be the declared
+    /// one. A wider split has no command form yet.
+    Share { param: String, of: Id, first: Id },
+}
+
+impl AgentCommand {
+    /// The declared param this command writes.
+    pub fn param(&self) -> &str {
+        match self {
+            AgentCommand::Amount { param, .. } | AgentCommand::Share { param, .. } => param,
         }
     }
 }

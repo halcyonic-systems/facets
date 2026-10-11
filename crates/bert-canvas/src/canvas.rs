@@ -16,7 +16,7 @@ use serde::{Deserialize, Serialize};
 
 use bert_core::validate::{validate_mode, Severity, ValidationIssue};
 use bert_core::{
-    AgentModel, Boundary, Complexity, Environment, ExternalEntity, ExternalEntityType, Grounding,
+    AgentCommand, AgentModel, Boundary, Complexity, Environment, ExternalEntity, ExternalEntityType, Grounding,
     HcgsArchetype, Id, IdType, Info, Interaction, InteractionType, InteractionUsability, Interface, InterfaceType,
     Mode, ModelRef, ProcessPrimitive, Substance, SubstanceType, System, Transform2d, Vec2, WorldModel,
 };
@@ -179,6 +179,15 @@ pub struct Thing {
     /// `agent` line. `skip` when `None` so every earlier model is byte-identical.
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub rule: Option<AgentRule>,
+    /// The declared `param` this agent writes each tick instead of signalling
+    /// a process over a command wire: the command form (ADR 0008 D1, Mobus
+    /// §12.2.3.2). Read only beside `rule`. The name is the reference, as a
+    /// scenario's would be; a name no `param` line declares is the
+    /// required-param fault (`check_agent_is_given_agency`), because the
+    /// param an agent names is the one place its command span was checked.
+    /// `skip` when `None` so every earlier model is byte-identical.
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub manages_param: Option<String>,
     /// Authored interface designation — this component is a member of the root
     /// membrane's I (I ⊆ C, Boundary.lean / Tuple.lean). A flowless designation
     /// is authorable, and refused at Operational: `Tuple.lean` gained the
@@ -1378,8 +1387,25 @@ pub fn project_with_map(model: &CanvasModel) -> Projection {
                 .flatten(),
             // A declared narrowing: the kernel has no "unauthored" amount, so
             // None becomes the kernel default ONE here — and a model read back
-            // by `to_canvas` therefore returns Some(1), not None (#216).
-            amount: r.amount.unwrap_or(bert_core::rust_decimal::Decimal::ONE),
+            // by `to_canvas` therefore returns Some(1), not None (#216). An
+            // outbound crossing leg that declares none takes the amount its
+            // fused interior leg declared: the interior leg lowers to nothing,
+            // and the weight the author put on `Fish -> Landing` is the weight
+            // of the one wire that survives, `Fish -> Market` (ADR 0008 D1's
+            // share command names that wire by the leg the author wrote).
+            amount: r
+                .amount
+                .or_else(|| {
+                    let processor = *fused_to.get(&r.a)?;
+                    if !env_things.contains(&r.b) {
+                        return None;
+                    }
+                    bonds
+                        .iter()
+                        .find(|x| x.a == processor && x.b == r.a)
+                        .and_then(|x| x.amount)
+                })
+                .unwrap_or(bert_core::rust_decimal::Decimal::ONE),
             unit: r.unit.clone(),
             ample: r.ample,
             parameters: vec![],
@@ -1426,6 +1452,57 @@ pub fn project_with_map(model: &CanvasModel) -> Projection {
             smart_parameters: vec![],
             endpoint_offset: None,
         });
+    }
+
+    // The command form (ADR 0008 D1): an agent that names a param writes
+    // that param's knob, so the param it names is the one declaration that
+    // projects — as the agent's command, resolved to the interaction the
+    // knob sits on. Every other param stays unprojected (spec §4.5). A leg
+    // the author wrote into a fused pass-way lowers to nothing, so the
+    // command names the crossing leg that carries its amount instead.
+    let flow_of_relation = |rel: &Relation| -> Option<Id> {
+        if let Some(id) = interaction_of.get(&rel.id) {
+            return Some(id.clone());
+        }
+        if fused_to.get(&rel.b) != Some(&rel.a) {
+            return None;
+        }
+        bonds
+            .iter()
+            .find(|x| x.a == rel.b && env_things.contains(&x.b))
+            .and_then(|x| interaction_of.get(&x.id).cloned())
+    };
+    for t in model.things.iter().filter(|t| t.rule.is_some()) {
+        let Some(name) = t.manages_param.as_deref() else { continue };
+        let Some(decl) = model.params.iter().find(|p| p.name == name) else { continue };
+        let Some(&sys_idx) = sys_idx_of.get(&t.id) else { continue };
+        let command = match decl.anchor {
+            ParamAnchor::Flow { relation } => model
+                .relations
+                .iter()
+                .find(|r| r.id == relation)
+                .and_then(flow_of_relation)
+                .map(|flow| AgentCommand::Amount { param: name.to_string(), flow }),
+            ParamAnchor::Shares { thing } => {
+                let first = model
+                    .relations
+                    .iter()
+                    .find(|r| r.a == thing && r.is_bond && r.amount.is_some() && r.kind != Kind::Informational)
+                    .and_then(flow_of_relation);
+                match (id_map.get(&thing), first) {
+                    (Some(of), Some(first)) => {
+                        Some(AgentCommand::Share { param: name.to_string(), of: of.clone(), first })
+                    }
+                    _ => None,
+                }
+            }
+            ParamAnchor::Field { .. } => None,
+        };
+        if let Some(command) = command {
+            if let Some(agent) = systems[sys_idx].agent.as_mut() {
+                agent.command = Some(command);
+            }
+        }
     }
 
     let world = WorldModel {
@@ -1528,6 +1605,13 @@ pub fn to_canvas(model: &WorldModel) -> CanvasModel {
                 .as_ref()
                 .and_then(|a| a.policy.as_ref())
                 .map(AgentRule::of),
+            // The command form reads back as the param's name; the param
+            // itself is rebuilt below once the relations have their ids.
+            manages_param: s
+                .agent
+                .as_ref()
+                .and_then(|a| a.command.as_ref())
+                .map(|c| c.param().to_string()),
             // parent_interface is the designation's inverse: a level-1 system
             // attached to a root-membrane interface IS a designated member of I.
             interface: s.boundary.parent_interface.is_some(),
@@ -1630,6 +1714,7 @@ pub fn to_canvas(model: &WorldModel) -> CanvasModel {
             },
             primitive: None,
             rule: None,
+            manages_param: None,
             interface: false,
             passway: false,
             protocol: String::new(),
@@ -1654,6 +1739,7 @@ pub fn to_canvas(model: &WorldModel) -> CanvasModel {
         .map(|s| s.info.id.clone());
     let mut relations: Vec<Relation> = Vec::new();
     let mut crossings: Vec<Crossing> = Vec::new();
+    let mut relation_of_flow: HashMap<Id, u64> = HashMap::new();
     for ix in &model.interactions {
         // A flow with the root at one end and an environment thing at the
         // other is a crossing nobody inside owns yet (facets#384): keep it.
@@ -1682,6 +1768,7 @@ pub fn to_canvas(model: &WorldModel) -> CanvasModel {
         };
         let id = next;
         next += 1;
+        relation_of_flow.insert(ix.info.id.clone(), id);
         relations.push(Relation {
             id,
             a,
@@ -1734,6 +1821,28 @@ pub fn to_canvas(model: &WorldModel) -> CanvasModel {
         .map(|s| s.info.description.clone())
         .unwrap_or_default();
 
+    // The one param a WorldModel does carry is the one an agent commands
+    // (ADR 0008 D1): it rides as the agent's command and is rebuilt here so
+    // the agent line's `manages param` resolves. A flow param's range does
+    // not cross the seam, so an amount command reads back rangeless and the
+    // emitter refuses it as inexpressible rather than emitting a line the
+    // parser would refuse. Every other param stays canvas-resident.
+    let mut params: Vec<ParamDecl> = Vec::new();
+    for command in model.systems.iter().filter_map(|s| s.agent.as_ref()?.command.as_ref()) {
+        if params.iter().any(|p| p.name == command.param()) {
+            continue;
+        }
+        let anchor = match command {
+            AgentCommand::Amount { flow, .. } => {
+                relation_of_flow.get(flow).map(|&relation| ParamAnchor::Flow { relation })
+            }
+            AgentCommand::Share { of, .. } => id_of.get(of).map(|&thing| ParamAnchor::Shares { thing }),
+        };
+        if let Some(anchor) = anchor {
+            params.push(ParamDecl { name: command.param().to_string(), anchor, range: None });
+        }
+    }
+
     CanvasModel {
         lens,
         model_id: model.model_id,
@@ -1747,9 +1856,9 @@ pub fn to_canvas(model: &WorldModel) -> CanvasModel {
         description,
         time_unit: model.time_unit.clone(),
         // Params and metrics are canvas-resident presentation semantics; a
-        // WorldModel never carried them, so a model born from kernel JSON
-        // starts bare.
-        params: vec![],
+        // WorldModel carries none but the commanded ones above, so a model
+        // born from kernel JSON starts otherwise bare.
+        params,
         metrics: vec![],
         klir_level: None,
     }
@@ -1901,6 +2010,7 @@ mod tests {
             role,
             primitive: None,
             rule: None,
+            manages_param: None,
             interface: false,
             passway: false,
             protocol: String::new(),
