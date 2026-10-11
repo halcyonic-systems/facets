@@ -84,7 +84,7 @@ CLASSES = [
 
 SKIP_DIRS = {".git", "node_modules", "target", "_site", "pkg", "pkg-probe", "dist", ".venv", "__pycache__", "runs"}
 SKIP_PREFIXES = (str(RENAME_DIR) + "/", str(SELF_TEST_TREE) + "/", str(SELF_TEST_EXPECTED))
-SKIP_FILES = {"scripts/rename_inventory.py"}
+SKIP_FILES = {"scripts/rename_inventory.py", "scripts/rename_apply.py"}
 BINARY_SUFFIXES = {".png", ".jpg", ".jpeg", ".gif", ".ico", ".icns", ".woff", ".woff2", ".ttf", ".otf", ".pdf", ".wasm", ".zip", ".gz"}
 
 TOKEN = re.compile(
@@ -343,11 +343,17 @@ def cmd_check(root: Path) -> int:
 
 # Hand counts, done by reading each file in full on 2026-10-11 (the phase 1
 # proof asked for in #541). When a later phase changes one of these files the
-# pin moves with it, with the new reading in that PR.
+# pin moves with it, with the new reading in that PR. Phase 2 moved the kernel
+# crate and renamed its identifiers: lib.rs re-read in full, one occurrence
+# left (line 1, the crate's old name in the header comment, phase 6). The same
+# phase moved the crate paths in VENDORING.md (lines 15 and 47; the two
+# revision-pinned show commands on lines 26 and 27 keep their revisions' paths)
+# and the pkg path in web/package.json (line 20; the package names on lines 2
+# and 20 are phase 3): both re-read in full.
 HAND_COUNTS = {
-    "crates/bert-lenses-kernel/src/lib.rs": 8,
-    "docs/VENDORING.md": 25,
-    "web/package.json": 3,
+    "crates/facets-kernel/src/lib.rs": 1,
+    "docs/VENDORING.md": 22,
+    "web/package.json": 2,
 }
 
 
