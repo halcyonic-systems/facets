@@ -29,7 +29,7 @@ With the repo open as the workspace, `⌘⇧B` on a `.sl` file runs
 `bert compile` on it (`.vscode/tasks.json`). Faults appear in the Problems
 panel and as squiggles at their lines, carrying the kernel's own messages.
 There is no rendered preview and none is planned: the app is the preview
-surface, and the ladder's LSP tier (bert-lenses#353) is the as-you-type
+surface, and the LSP tier (facets#353) is the as-you-type
 version of this task.
 
 ## Scopes
