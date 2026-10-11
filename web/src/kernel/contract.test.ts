@@ -142,6 +142,9 @@ function parseThing(v: unknown, where: string): Thing {
     // opaque engine-parameter carriage; #154 Klir source metadata.
     "env_kind", "scale", "states", "variable_kind",
     "cognitive_params", "initial_state", "agency_capacity",
+    // facets#269 / ADR 0008 D1: the agent's rule and, in the command form,
+    // the param it writes.
+    "rule", "manages_param",
   ]);
   return {
     id: num(o.id, `${where}.id`),
@@ -592,9 +595,19 @@ function parseMarkovRunResult(v: unknown): MarkovRunResult {
 }
 
 function parseTickLog(v: unknown, where: string): TickLog {
-  const o = shape(v, where, ["tick", "nodes", "wires"]);
+  const o = shape(v, where, ["tick", "nodes", "wires", "decisions"]);
   return {
     tick: num(o.tick, `${where}.tick`),
+    decisions: arr(o.decisions, `${where}.decisions`).map((d, i) => {
+      const dd = shape(d, `${where}.decisions[${i}]`, ["agent", "reading", "output", "knob", "written"]);
+      return {
+        agent: str(dd.agent, "decision.agent"),
+        reading: num(dd.reading, "decision.reading"),
+        output: num(dd.output, "decision.output"),
+        knob: str(dd.knob, "decision.knob"),
+        written: num(dd.written, "decision.written"),
+      };
+    }),
     nodes: arr(o.nodes, `${where}.nodes`).map((n, i) => {
       const nn = shape(n, `${where}.nodes[${i}]`, ["name", "delivered", "released", "gradient_out", "maintenance", "overflow", "dissipated", "level"]);
       return {

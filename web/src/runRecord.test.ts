@@ -13,7 +13,7 @@ describe("the bench run record", () => {
       dt: 1,
       t: 6,
       event: "knob",
-      edits: [{ tick: 3, target: "Faucet -> Tub : inflow", field: "amount", value: 4 }],
+      edits: [{ tick: 3, target: "Faucet -> Tub : inflow", field: "amount", value: 4, by: { kind: "human" } }],
       readout: { ticks: 6, dt: 1, residual: 0, conserved: true, levels: [], comparisons: [], trajectories: [], flows: [] },
       log: [],
     });
