@@ -215,10 +215,11 @@ new verb for the language, not a formula — see ADR 0006 for the growth rule.
    Amplifying model, an always-on control line — say `ample` instead of
    inventing a huge number (spec §4.4): informational flows only, no unit, the
    gate reads held open and the diagram shows the word.
-4. **Stocks start at zero.** SL's `stock <unit>` declares a unit, not a value —
-   an initial stock value is typed parameter territory, gated on
-   [#112](https://github.com/halcyonic-systems/facets/issues/112) (C2).
-   Until then, author systems that fill from empty, or force them.
+4. **Stocks start at zero unless the line says `initial`.** SL's `stock <unit>`
+   declares a unit, not a value; `stock <unit> initial <n>` sets the basepoint
+   ([#112](https://github.com/halcyonic-systems/facets/issues/112) slice 1,
+   2026-08-15; the update below). Without it, author systems that fill from
+   empty, or force them.
 5. **Feedback loops need memory on the loop.** Wires transmit; stocks remember
    (#259). A loop is well-posed when it passes through a stock's level read; a
    loop of pure relays has no deterministic step and the run **refuses with the

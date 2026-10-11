@@ -46,12 +46,12 @@ just dev      # installs web deps if needed, rebuilds the wasm kernel, starts th
 Open the URL it prints (usually http://localhost:5173 — it moves to the next free
 port if that one is taken, so read the URL rather than assuming it).
 
-You land on a **start screen** with three doors: *Create a model*, *Open a model*,
-*Documentation*.
+You land on a **start screen** with four doors: *Draw your system*, *Build from
+data*, *Open a model*, *Sandbox*.
 
 ## 2. Author a model as text
 
-Click **Create a model**. A start surface offers to draft a model from a
+Click **Draw your system**. A start surface offers to draft a model from a
 plain-language description, which needs a reasoner. Click **skip** for now. (The
 model's name, Bunge's kingdom and genus, and a subject domain are set from the
 model's name in the top bar, or by the `system` line of the text below.)
@@ -163,22 +163,24 @@ and Mobus panels each describe the same model in their own vocabulary.
 
 ## 7. Watch one run
 
-A model you just authored has structure but no data, so the transport strip
-under the diagram states why there is nothing to run yet: *"Run needs data: a
-demo bundle, or a CSV attached and bound in Data mode."* A run here is forced by real numbers rather than invented ones, so it
-needs a model *and* a data series *and* a mapping between them. That bundle is
-what the library's runnable entries carry.
+A model you just authored has structure and declared amounts but no data, and
+the readout says so: *"Nothing has run yet. Press ▶ Run in the header, or set
+the run length in the rail first. No data is needed: the declared amounts
+govern until a column is bound."* A run driven by observed numbers needs a
+model *and* a data series *and* a mapping between them. That bundle is what the
+library's data-fed entries carry.
 
 To see one:
 
 1. **Home** in the top bar → **Open a model**. Leaving unsaved work raises a
    *discard?* confirmation first — accept it; nothing above was worth keeping.
-2. Under **Examples — by genus**, open the **Physical** shelf.
-3. Open **Reservoir**, the entry tagged **RUNS**. (A watershed fills a reservoir, a
-   release drains it: the bathtub you just authored, with a year of monthly
-   rainfall behind it.)
+2. The library is one list, filtered by tags: genus, tradition, and **Bench**
+   (the models that exist to test the instrument).
+3. Open **LLM Serving Market**, the data-fed entry. (It opens on its bundle,
+   the OpenRouter routed-share vintage in `assets/data/`, which the bundle is
+   generated from.)
 
-It runs on open. The run panel reports **Ran clean · 12 ticks**, the
+It runs on open. The run panel reports the run, the
 [conservation invariant](glossary.md#conservation-invariant-declared) the model
 declares holding as **nothing lost or created**, and a
 [run ledger](glossary.md#run-ledger) — the per-step accounting that shows the
@@ -186,14 +188,16 @@ invariant holding, or where it does not. `▶ Run` in the strip under the diagra
 once); `Δt` and `T` sit in the run card beside the diagram and set the step
 and the horizon.
 
-The current engine executes one [dynamics-kind](glossary.md#dynamics-kind): a
-deterministic map over ℝⁿ stocks under a model-declared additive invariant.
-Further kinds are declarable. The ledger is a result shown in the panel, not a
+The engine's run is one [dynamics-kind](glossary.md#dynamics-kind): a
+deterministic map over ℝⁿ stocks under a model-declared additive invariant,
+with the agent layer's rules inside the same step (ADR 0008); a discrete-time
+Markov chain is the second run mode (`run_markov`,
+`crates/bert-compose/src/markov.rs`). Further kinds are declarable. The ledger is a result shown in the panel, not a
 saved tier ([Save ≠ Export](glossary.md#save-vs-export)).
 
-Every entry tagged **RUNS** carries a bundle; the rest of the library opens as
-structure to read and judge. There are three runnable ones today — **Reservoir**
-(Physical), **Allocation** and **Homeostat** (Technical).
+Two entries carry a bundle today, **LLM Serving Market** and **Translation
+Apparatus** (`assets/demos/`); every other entry opens on its declared amounts
+and runs from them.
 
 ## Optional: the co-author
 

@@ -2,7 +2,7 @@
 
 **Status: LIVE.** A single running example built up one concept at a time, each step pairing the [SL](language/spec.md) lines with what the canvas and the three lenses render from them. This document makes no new claims: it curates and demonstrates what the [spec](language/spec.md), the [terminology concordance](language/terminology-concordance.md), the [README](language/README.md), and [`theory-fidelity.md`](theory-fidelity.md) already establish, and cites them rather than restating their arguments. The spec states the norms; this tour teaches by accretion.
 
-The shape is borrowed deliberately. The SysML v2 language specification (formal/2026-03-02) closes with *Annex A — Example Model*, which grows one vehicle model concept by concept, each section introducing exactly one language area through the same running model. That is the shape here, scoped to SL's ~20-word lexicon and its one neutral spec. The running model is [`fixtures/sl/hal-projection.sl`](../fixtures/sl/hal-projection.sl) — a real structural model of the hal sovereign-AI stack, and one of the three round-trip goldens, so nothing shown here can drift from what the implementation proves ([`crates/bert-canvas/tests/sl_roundtrip.rs`](../crates/bert-canvas/tests/sl_roundtrip.rs)).
+The shape is borrowed deliberately. The SysML v2 language specification (formal/2026-03-02) closes with *Annex A — Example Model*, which grows one vehicle model concept by concept, each section introducing exactly one language area through the same running model. That is the shape here, scoped to SL's 78-word lexicon (47 reserved, 31 position-bound) and its one neutral spec. The running model is [`fixtures/sl/hal-projection.sl`](../fixtures/sl/hal-projection.sl) — a real structural model of the hal sovereign-AI stack, and one of the four round-trip goldens, so nothing shown here can drift from what the implementation proves ([`crates/bert-canvas/tests/sl_roundtrip.rs`](../crates/bert-canvas/tests/sl_roundtrip.rs)).
 
 Every SL fragment below is verbatim from the fixture as it grows; every JSON fragment is the actual output of `parse_sl` on that fixture.
 
@@ -24,7 +24,7 @@ The tour is one document, but three readers arrive with different questions. Eac
 
 A file is a sequence of lines, each independently a comment, a structure line, or an annotation ([spec §4](language/spec.md#4-grammar)). We add them in the fixture's order and watch the model accrue.
 
-> **The running model's referent, in thirty seconds.** hal is the author's own local sovereign-AI stack, in daily use: a proxy fronting a fleet of language models, a daily loop that drives routine work through it, and a council that convenes several models to deliberate; its public face is live at [homeostat.systems](https://homeostat.systems). It is the running model because it is real — the instrument turned on the builder's own infrastructure, and one of the round-trip goldens — not because you need to know hal: the eleven lines below are self-contained, and no step depends on the referent.
+> **The running model's referent, in thirty seconds.** hal is the author's own local sovereign-AI stack, in daily use: a proxy fronting a fleet of language models, a daily loop that drives routine work through it, and a council that convenes several models to deliberate; its public face is live at [homeostat.systems](https://homeostat.systems). It is the running model because it is real — the instrument turned on the builder's own infrastructure, and one of the round-trip goldens — not because you need to know hal: the twelve lines below are self-contained, and no step depends on the referent.
 
 ### A comment, then the system itself
 
@@ -124,7 +124,7 @@ The root membrane's properties P ([spec §4.8](language/spec.md#48-boundary)). B
 
 Annotations are `@`-prefixed lines, conventionally last. They carry **view state, never meaning** (commitment C4): a diff of the structure lines shows systems changing, never a lens switch or a node drag ([spec §6](language/spec.md#6-the-annotation-layer)). `@lens bunge` pins which tradition's reading the app opens with; the lens is a *reading* of the model, not a property of it, so every model is a valid Core model regardless of which lens is pinned. The parser reports whether the text pinned a lens, and the reference UI preserves the author's current lens when it did not. Unknown annotations are skipped, not errors — the ignorable contract that lets future view-state vocabulary degrade softly.
 
-The model is now complete: eleven structure lines and one annotation.
+The model is now complete: twelve structure lines and one annotation.
 
 ```json
 "lens": "Bunge"

@@ -1,6 +1,6 @@
 # SL — the bert-lenses system language
 
-**Status: LIVE.** SL v1.0 is specified and shipped (2026-07-18). Write SL in the app's text pane, compile, and the model renders and is judged like any other. Round-trip goldens pass. The language is under active development; §"Known gaps" in the spec lists what v1.1 owes.
+**Status: LIVE.** SL is specified and shipped at v1.13 (v1.0 on 2026-07-18; each additive revision since is marked in the spec and rowed in its §11). Write SL in the app's text pane, compile, and the model renders and is judged like any other. Round-trip goldens pass. The language is under active development; §"Known gaps" in the spec lists what the next revision owes.
 
 The text IS the model. Not a config format that happens to describe one, not a serialization of something else: the words on the page are the source, and everything else (the canvas, the JSON, the run) is a view onto them.
 
@@ -10,7 +10,7 @@ Here is a sentence from George Mobus's *Systems Science* (Ch. 4 §4.3.1):
 
 > "Process M takes in materials A and B from sources 1 and 2 along with energy E from source 3 to make product Z with waste product X going to sinks 5 and 6."
 
-One sentence, one system, in the author's own words. SL turns it into eleven lines, each one earning its place from a clause in the paragraph.
+One sentence, one system, in the author's own words. SL turns it into twelve lines, each one earning its place from a clause in the paragraph.
 
 The system gets a name and a kind:
 
@@ -79,6 +79,8 @@ A file is a flat sequence of lines. Structure lines carry meaning; a blank line,
 |---|---|
 | `system` / `domain` / `time unit` / `level` | the header: what kind of thing this is, in what vocabulary, over what time base |
 | things (`component`, `source`, `sink`, `environment`, `interface`, `interface unresolved`, `milieu`) | what's inside the boundary and what's outside it; `interface unresolved` is the one reserved pass-way, for crossings whose interface is not yet identified (#308) |
+| `agent` | a decision-maker (v1.10–v1.13, ADR 0008): what it `watches`, the `rule` it runs, and what it `manages` (a process, or a declared `param` in the command form); written after the things it names, its tap and command wire never as flows |
+| `description` / `grounding` (indented, directly under a declaration) | the author's prose, and the grade and reference of a number (v1.5, v1.7); continuation lines of the declaration above, never declarations |
 | `flow` | the connections between them, directed |
 | `param` / `metric` | declared names over input knobs and output readouts |
 | `boundary` | the membrane's porosity and fuzziness |
@@ -91,7 +93,7 @@ Every emitted structure line starts with a keyword: `system`, `component`, `flow
 
 Write a model in SL and compile it: `parse(emit(m)) = m`, digit for digit, positions included. Load an arbitrary model built by other means (the canvas, JSON, a decade of authoring history) and canonicalize it: one pass through `emit`/`parse` lands in stable canonical form and stays there. Neither claim is "proven." Both are **golden-tested**, over the same corpus this README quotes from, in [`crates/bert-canvas/tests/sl_roundtrip.rs`](../../crates/bert-canvas/tests/sl_roundtrip.rs). Full statement: spec [§7.2](spec.md#72-the-contract-golden-tested).
 
-The vocabulary itself is under the same discipline. SL's 53 words (39 reserved keywords plus 14 position-bound words like `param` and `range`) are held equal, in both directions, against the EBNF terminals in spec §4 by [`tests/keyword_parity.rs`](../../crates/bert-canvas/tests/keyword_parity.rs): a word can't enter the language without entering the spec, and vice versa. That vocabulary is published machine-readably at [`fixtures/contract/sl_keywords.json`](../../fixtures/contract/sl_keywords.json), so tooling (the VS Code extension, below) reads the same list the compiler enforces rather than a hand-copied guess.
+The vocabulary itself is under the same discipline. SL's 78 words (47 reserved keywords plus 31 position-bound words like `param` and `range`) are held equal, in both directions, against the EBNF terminals in spec §4 by [`tests/keyword_parity.rs`](../../crates/bert-canvas/tests/keyword_parity.rs): a word can't enter the language without entering the spec, and vice versa. That vocabulary is published machine-readably at [`fixtures/contract/sl_keywords.json`](../../fixtures/contract/sl_keywords.json), so tooling (the VS Code extension, below) reads the same list the compiler enforces rather than a hand-copied guess.
 
 This is why the example above is a real fixture and not a hand-typed illustration: the spec's worked examples *are* the test corpus. A documentation change that broke the language would break a test, not just a reader's expectations.
 
@@ -106,7 +108,7 @@ cargo run -p bert-cli -- compile fixtures/sl/process-m.sl
 cargo run -p bert-cli -- verdict fixtures/sl/process-m.sl --lens mobus
 ```
 
-`compile` parses the file and prints the model; `verdict` compiles, projects to a lens, and prints the systemhood judgment. Also available: `describe` (the formal 8-tuple), `run` (step the trajectory), and `layout` (node positions). `just bert <args>` is the repo's shorthand for all of them.
+`compile` parses the file and prints the model; `verdict` compiles, projects to a lens, and prints the systemhood judgment. Also available: `describe` (the formal 8-tuple), `run` (step the trajectory), `bench` (the Model bench from the terminal, #463), and `layout` (node positions). `just bert <args>` is the repo's shorthand for all of them.
 
 ## Editor support
 
@@ -116,13 +118,14 @@ Two more worked examples, the minimal stock-and-flow bathtub and a real infrastr
 
 ## The corpus
 
-Three `.sl` files in [`fixtures/sl/`](../../fixtures/sl/) serve simultaneously as the spec's worked examples, the round-trip goldens, and the teaching set:
+Four `.sl` files in [`fixtures/sl/`](../../fixtures/sl/) are the round-trip goldens (`sl_roundtrip.rs` pins four); the first three serve simultaneously as the spec's worked examples and the teaching set:
 
 - `process-m.sl` — Mobus's system paragraph (above); the canonical multi-input work process
 - `bathtub.sl` — the minimal stock-and-flow system
 - `hal-projection.sl` — a real structural model: hal published as a projection, with a retained-SSOT boundary
+- `decomposition.sl` — the decomposition reference (`decomposes "label" @id`), a golden since #89
 
-**Corpus precedence.** Because the three `.sl` files carry all three roles at once — round-trip golden, spec example, teaching set — the roles are ranked when they conflict: round-trip correctness comes first. Do not modify SL syntax for pedagogical reasons; a teaching improvement that would perturb a golden's round-trip is out of scope for these files.
+**Corpus precedence.** Because the golden `.sl` files carry all three roles at once — round-trip golden, spec example, teaching set — the roles are ranked when they conflict: round-trip correctness comes first. Do not modify SL syntax for pedagogical reasons; a teaching improvement that would perturb a golden's round-trip is out of scope for these files.
 
 **Where pedagogy edits go.** That dedicated home is [`fixtures/sl/teaching/`](../../fixtures/sl/teaching/) — a graded set (a two-thing first model, a copy-adaptation of the bathtub, and two files that fail on purpose so a learner can read the error). Those fixtures carry no round-trip or spec obligation, so teaching-motivated edits land there rather than on the goldens.
 
@@ -134,7 +137,7 @@ SysML v2 (Part 1, formally adopted March 2026) is the obvious question: why writ
 
 **Ontological commitment is the difference.** SysML v2 is agnostic on purpose: an entity with structure and behavior "is represented simply as a part," and meaning arrives through user-defined metadata (§7.1, §7.27). That is correct for a language that must span aerospace, defense, automotive, and enterprise IT. SL takes the opposite bet — every word is licensed by a single kernel distinction with a primary citation ([the concordance](terminology-concordance.md)), legality is the kernel's own systemhood verdict rather than a type-match, and the semantics are machine-checked (`Tuple.lean`) instead of supplied by a model library. General by being precise, not general by being vague.
 
-**Scale is a feature, not immaturity.** SysML v2 is 691 pages over KerML; SL is a lexicon of about twenty words and a spec you read in one sitting and write in minutes. The smallness is guaranteed, not provisional: C3 lets the lexicon grow only when the kernel earns a new distinction, so it cannot sprawl. For the non-modeler audience, that property is the whole product.
+**Scale is a feature, not immaturity.** SysML v2 is 691 pages over KerML; SL is a lexicon of 78 words (47 reserved and 31 position-bound, `fixtures/contract/sl_keywords.json`) and a spec you read in one sitting and write in minutes. The smallness is guaranteed, not provisional: C3 lets the lexicon grow only when the kernel earns a new distinction, so it cannot sprawl. For the non-modeler audience, that property is the whole product.
 
 **What SL takes from SysML v2, credited.** The architecture — one abstract syntax, concrete surfaces as projections of it, the text privileged because it maps losslessly — is SysML v2's shape, scoped to the K≅2 kernel and vastly smaller. The debt is real, and the [design survey](../design/sl2-authoring-language.md) (§4) documents it. Spec [§10](spec.md#10-lineage) records the same foil from the specification side.
 
@@ -144,8 +147,8 @@ SysML v2 (Part 1, formally adopted March 2026) is the obvious question: why writ
 
 | | Document | What it gives you |
 |---|---|---|
-| 1 | **[`spec.md`](spec.md)**, the SL specification (v1.8) | The normative document: five design commitments, lexicon, EBNF grammar, semantics, the annotation layer, the round-trip contract, the structure/dynamics boundary, three worked examples, lineage, known gaps. |
-| 2 | [`../design/sl2-authoring-language.md`](../design/sl2-authoring-language.md) | The research foundation behind the spec: why three syntaxes over one neutral spec, the precedent survey (SysML v2, Modelica, Stella, Quint, gpt-jargon as negative control), the keep/shed analysis against Mobus and BERT SL v0.1, and the staged rung plan. |
+| 1 | **[`spec.md`](spec.md)**, the SL specification (v1.13) | The normative document: five design commitments, lexicon, EBNF grammar, semantics, the annotation layer, the round-trip contract, the structure/dynamics boundary, three worked examples, lineage, known gaps. |
+| 2 | [`../design/sl2-authoring-language.md`](../design/sl2-authoring-language.md) | The research foundation behind the spec: why three syntaxes over one neutral spec, the precedent survey (SysML v2, Modelica, Stella, Quint, gpt-jargon as negative control), the keep/shed analysis against Mobus and BERT SL v0.1, and the staged build plan. |
 | 3 | [`../design/dynamics-principled-position.md`](../design/dynamics-principled-position.md) | Why SL v1 stops at structure. Dynamics as a state-transition family; conservation as an invariant the model *declares* rather than one the engine assumes. |
 | 4 | [`terminology-concordance.md`](terminology-concordance.md) | The homage ledger behind the lexicon: 12 kernel distinctions × {Klir, Bunge, Mobus}, every cell primary-cited. |
 
@@ -163,4 +166,4 @@ SysML v2 (Part 1, formally adopted March 2026) is the obvious question: why writ
 
 SL stands in a line: Mobus's SL proposal (Ch. 4) → BERT SL v0.1 (`bert/docs/system-language-spec.md`, a lexicon and grammar for the data model, with no human-writable syntax) → SL v1.0 here, which adds exactly the missing piece: a notation a person writes, reads, and diffs. What was inherited, what was shed, and why is spec §10.
 
-Tracked on the [roadmap board](https://github.com/orgs/halcyonic-systems/projects/12); the spec's §11 table maps each gap to its issue. The near ones: decomposition syntax (gated on the 8-tuple decomposition math, not on the parser) and the controlled systems-English tier that would make the *verbal* surface real.
+Tracked on the [roadmap board](https://github.com/orgs/halcyonic-systems/projects/12); the spec's §11 table maps each gap to its issue. The near one: the controlled systems-English tier that would make the *verbal* surface real (decomposition syntax shipped: `decomposes "label" @id` on a component line, spec §4.3 and §5.4).
