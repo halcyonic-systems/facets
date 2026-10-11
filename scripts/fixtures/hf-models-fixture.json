@@ -1,0 +1,40 @@
+{
+  "Qwen": [
+    {
+      "body": [
+        {"_id": "q1", "id": "Qwen/Qwen3.5-397B-A17B", "downloads": 2000, "downloadsAllTime": 3000},
+        {"_id": "q2", "id": "Qwen/Qwen3-8B", "downloads": 1000, "downloadsAllTime": 5000},
+        {"_id": "q3", "id": "Qwen/Qwen2.5-7B", "downloads": 9000, "downloadsAllTime": 90000}
+      ]
+    }
+  ],
+  "google": [
+    {
+      "body": [
+        {"_id": "g1", "id": "google/t5-small", "downloads": 50000, "downloadsAllTime": 900000},
+        {"_id": "g2", "id": "google/gemma-4-31B-it", "downloads": 700, "downloadsAllTime": 900}
+      ],
+      "link": "<https://huggingface.co/api/models?author=google&expand=downloads&expand=downloadsAllTime&limit=1000&cursor=1>; rel=\"next\""
+    },
+    {
+      "body": [
+        {"_id": "g3", "id": "google/gemma-3-27b-it", "downloads": 300, "downloadsAllTime": 400},
+        {"_id": "g4", "id": "google/bert-base", "downloads": 80000, "downloadsAllTime": 1000000}
+      ]
+    }
+  ],
+  "zai-org": [
+    {
+      "body": [
+        {"_id": "z1", "id": "zai-org/GLM-5.3", "downloads": 400, "downloadsAllTime": 500},
+        {"_id": "z2", "id": "zai-org/GLM-5", "downloads": 100, "downloadsAllTime": 150},
+        {"_id": "z3", "id": "zai-org/GLM-5-FP8", "downloads": 50, "downloadsAllTime": 60},
+        {"_id": "z4", "id": "zai-org/CogVideoX-5b", "downloads": 10, "downloadsAllTime": 20}
+      ],
+      "link": "<https://huggingface.co/api/models?author=zai-org&expand=downloads&expand=downloadsAllTime&limit=1000&cursor=1>; rel=\"next\""
+    },
+    {
+      "body": []
+    }
+  ]
+}

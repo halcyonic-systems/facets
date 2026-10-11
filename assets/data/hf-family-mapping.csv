@@ -1,0 +1,27 @@
+namespace,repo_prefix,lab,family,source
+deepseek-ai,DeepSeek-V4,DeepSeek,deepseek-v4,openrouter-model-classification.csv: deepseek/deepseek-v4-* and deepseek-v4.1-*
+deepseek-ai,DeepSeek-V3,DeepSeek,deepseek-v3,openrouter-model-classification.csv: deepseek/deepseek-chat-v3* and deepseek-v3.2-*
+deepseek-ai,DeepSeek-R1,DeepSeek,deepseek-r1,openrouter-model-classification.csv: deepseek/deepseek-r1*
+Qwen,Qwen3,Alibaba Qwen,qwen3,openrouter-model-classification.csv: qwen/qwen3-* and qwen3.5-* and qwen3.8-*
+meta-llama,Llama-3,Meta,llama-3,openrouter-model-classification.csv: meta-llama/llama-3.1-* and llama-3.2-* and llama-3.3-*
+meta-llama,Llama-4,Meta,llama-4,openrouter-model-classification.csv: meta-llama/llama-4-*
+google,gemma-3,Google,gemma-3,openrouter-model-classification.csv: google/gemma-3-*
+google,gemma-4,Google,gemma-4,openrouter-model-classification.csv: google/gemma-4-*
+zai-org,GLM-4,Z.ai,glm-4,openrouter-model-classification.csv: z-ai/glm-4.5-* and glm-4.6 and glm-4.7-*
+zai-org,GLM-5,Z.ai,glm-5,openrouter-model-classification.csv: z-ai/glm-5-* and glm-5.1-* to glm-5.3-*
+MiniMaxAI,MiniMax-M2,MiniMax,minimax-m2,openrouter-model-classification.csv: minimax/minimax-m2 and m2.1 and m2.5-* and m2.7-*
+MiniMaxAI,MiniMax-M3,MiniMax,minimax-m3,openrouter-model-classification.csv: minimax/minimax-m3-*
+moonshotai,Kimi-K2,Moonshot AI,kimi-k2,openrouter-model-classification.csv: moonshotai/kimi-k2.5-* and k2.6-* and k2.7-*
+moonshotai,Kimi-K3,Moonshot AI,kimi-k3,openrouter-model-classification.csv: moonshotai/kimi-k3-*
+mistralai,Mistral-Small,Mistral AI,mistral-small,openrouter-model-classification.csv: mistralai/mistral-small-*
+mistralai,Mistral-Nemo,Mistral AI,mistral-nemo,openrouter-model-classification.csv: mistralai/mistral-nemo
+mistralai,Devstral,Mistral AI,devstral,openrouter-model-classification.csv: mistralai/devstral-*
+nvidia,NVIDIA-Nemotron-3,NVIDIA,nemotron-3,openrouter-model-classification.csv: nvidia/nemotron-3-* and nemotron-3.5-*
+nvidia,Nemotron-3-,NVIDIA,nemotron-3,openrouter-model-classification.csv: nvidia/nemotron-3-* (repos named without the NVIDIA- prefix)
+nvidia,Nemotron-3.5-,NVIDIA,nemotron-3,openrouter-model-classification.csv: nvidia/nemotron-3.5-* (repos named without the NVIDIA- prefix)
+XiaomiMiMo,MiMo-V2,Xiaomi,mimo-v2,openrouter-model-classification.csv: xiaomi/mimo-v2-* and v2.5-* and v2.6-*
+tencent,Hy3,Tencent,hunyuan,openrouter-model-classification.csv: tencent/hy3-*
+tencent,Hy4,Tencent,hunyuan,openrouter-model-classification.csv: tencent/hy4-*
+tencent,Hunyuan,Tencent,hunyuan,openrouter-model-classification.csv: tencent/hy3-* and hy4-* (the Hub spells earlier releases Hunyuan-)
+stepfun-ai,Step-3,StepFun,step-3,openrouter-model-classification.csv: stepfun/step-3.5-* and step-3.7-*
+stepfun-ai,Step-5,StepFun,step-5,openrouter-model-classification.csv: stepfun/step-5-*
