@@ -398,3 +398,118 @@ fn the_trace_faults_are_named() {
     let e = errs(&ROOM.replace("param \"sensitivity\" : gain of Thermostat range 0.1..2", "param \"memory\" : window of Thermostat range 1..12"));
     assert!(e.contains("runs a proportional rule — its parameters are its rule's (target, gain)"), "{e}");
 }
+
+/// The command form (ADR 0008 D1): the quota agent of the fishery bench
+/// writes a declared `shares` param instead of gating the stock. The same
+/// stock as the signal form, split two ways at the stock, the second way
+/// returning everything to it.
+const QUOTA: &str = "\
+system \"Fishery\" : Concrete/Biological
+interface Feeder
+interface Landing
+component Fish primitive Buffering stock t initial 0.2 time constant 2
+component Breeding primitive Modulating backpressure
+component Return primitive Combining
+source Feed
+sink Market
+flow Feed -> Feeder : matter \"feed\" substance biomass amount 1 unit \"t/day\"
+flow Feeder -> Breeding : matter \"feed\" substance biomass
+flow Breeding -> Fish : matter \"growth\" substance biomass
+flow Fish -> Landing : matter \"landed\" substance biomass amount 0
+flow Fish -> Return : matter \"released\" substance biomass amount 1
+flow Return -> Fish : matter \"returned\" substance biomass
+flow Landing -> Market : matter \"landed\" substance biomass
+param shares \"landed share\" : from Fish
+agent Quota watches Fish rule threshold above 0.3 emit 1 else 0 manages param \"landed share\"
+param \"closes below\" : above of Quota range 0.05..0.6
+";
+
+#[test]
+fn the_command_form_parses_projects_as_a_share_command_and_emits_back() {
+    use bert_core::operational::OperationalCommand;
+    use bert_core::AgentCommand;
+    let m = parse_sl(QUOTA).unwrap();
+    let q = m.things.iter().find(|t| t.name == "Quota").unwrap();
+    assert_eq!(q.rule, Some(AgentRule::Threshold));
+    assert_eq!(q.manages_param.as_deref(), Some("landed share"));
+    let fish = m.things.iter().find(|t| t.name == "Fish").unwrap();
+    assert!(m.relations.iter().any(|r| r.a == fish.id && r.b == q.id), "the tap is drawn");
+    assert!(m.relations.iter().all(|r| r.a != q.id), "no command wire in the command form");
+
+    // The command names the stock and the wire the author wrote first; the
+    // pass-way fusion re-anchors that wire to the market, and the projected
+    // weight is the one the author put on the interior leg.
+    let world = project(&m);
+    let sys = world.systems.iter().find(|s| s.info.name == "Quota").unwrap();
+    let command = sys.agent.as_ref().unwrap().command.clone().expect("the command projects");
+    let AgentCommand::Share { param, of, first } = command else { panic!("a share command") };
+    assert_eq!(param, "landed share");
+    assert_eq!(of, world.systems.iter().find(|s| s.info.name == "Fish").unwrap().info.id);
+    let landed = world.interactions.iter().find(|ix| ix.info.id == first).unwrap();
+    assert_eq!(landed.info.name, "landed");
+    assert_eq!(landed.amount, bert_core::rust_decimal::Decimal::ZERO, "the interior leg's weight survives the fusion");
+    let spec = bert_core::operational::validate_operational(&world).expect("projects");
+    let agent = &spec.agents[0];
+    let Some(OperationalCommand::Share { first, second, .. }) = agent.command.clone() else { panic!("resolved") };
+    assert_eq!(spec.flows[first].name, "landed");
+    assert_eq!(spec.flows[second].name, "released");
+
+    // Emits as itself, after the param it names and before the param that
+    // names it, and the canonical form is a fixpoint.
+    let text = emit_sl(&m).unwrap();
+    let at = |s: &str| text.find(s).unwrap_or_else(|| panic!("{s} missing in {text}"));
+    assert!(at("param shares \"landed share\"") < at("agent Quota watches Fish rule threshold above 0.3 emit 1 else 0 manages param \"landed share\""));
+    assert!(at("manages param \"landed share\"") < at("param \"closes below\""));
+    let again = parse_sl(&text).unwrap();
+    assert_eq!(emit_sl(&again).unwrap(), text, "canonical form is a fixpoint");
+    assert_eq!(again.things.iter().find(|t| t.name == "Quota").unwrap().manages_param.as_deref(), Some("landed share"));
+
+    // The kernel read-back keeps the command as the agent's param.
+    let back = bert_canvas::canvas::to_canvas(&world);
+    let q = back.things.iter().find(|t| t.name == "Quota").unwrap();
+    assert_eq!(q.manages_param.as_deref(), Some("landed share"));
+    assert!(back.params.iter().any(|p| p.name == "landed share"));
+    assert!(emit_sl(&back).unwrap().contains("manages param \"landed share\""));
+}
+
+#[test]
+fn the_command_form_faults_are_named() {
+    let swap = |from: &str, to: &str| QUOTA.replace(from, to);
+    // a param the file does not declare
+    let e = errs(&swap("manages param \"landed share\"", "manages param \"quota\""));
+    assert!(e.contains("param \"quota\" is not declared"), "{e}");
+    // a share of a split that is not two-way
+    let e = errs(&swap(
+        "flow Return -> Fish : matter \"returned\" substance biomass\n",
+        "flow Return -> Fish : matter \"returned\" substance biomass\nflow Fish -> Breeding : matter \"seed\" substance biomass amount 1\n",
+    ));
+    assert!(e.contains("presents 3 physical outflows"), "{e}");
+    // a command past the share's span
+    let e = errs(&swap("emit 1 else 0", "emit 2 else 0"));
+    assert!(e.contains("commands 0..2, outside param \"landed share\"'s range 0..1"), "{e}");
+    // a field param: coordination, the rung after
+    let e = errs(
+        &swap("param shares \"landed share\" : from Fish", "param \"catch time\" : time constant of Fish range 1..10")
+            .replace("manages param \"landed share\"", "manages param \"catch time\""),
+    );
+    assert!(e.contains("coordination, the rung after"), "{e}");
+    // a flow param on a process's only physical outflow is inert
+    let inert = swap("param shares \"landed share\" : from Fish", "param \"growth\" : flow Breeding -> Fish range 0..2")
+        .replace("manages param \"landed share\"", "manages param \"growth\"")
+        .replace("\"growth\" substance biomass\n", "\"growth\" substance biomass amount 1\n");
+    let e = errs(&inert);
+    assert!(e.contains("only physical outflow of `Breeding`"), "{e}");
+    // a flow param with no range has no span to check
+    let rangeless = swap("param shares \"landed share\" : from Fish", "param \"feed rate\" : flow Feed -> Feeder")
+        .replace("manages param \"landed share\"", "manages param \"feed rate\"");
+    let e = errs(&rangeless);
+    assert!(e.contains("has no range"), "{e}");
+    // a source flow with a range is a command the engine reads
+    let ranged = swap("param shares \"landed share\" : from Fish", "param \"feed rate\" : flow Feed -> Feeder range 0..2")
+        .replace("manages param \"landed share\"", "manages param \"feed rate\"");
+    let m = parse_sl(&ranged).unwrap();
+    let world = project(&m);
+    let sys = world.systems.iter().find(|s| s.info.name == "Quota").unwrap();
+    assert!(matches!(sys.agent.as_ref().unwrap().command, Some(bert_core::AgentCommand::Amount { .. })));
+    assert!(emit_sl(&m).unwrap().contains("manages param \"feed rate\""));
+}

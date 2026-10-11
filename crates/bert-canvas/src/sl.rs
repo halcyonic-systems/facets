@@ -903,6 +903,7 @@ pub fn parse_sl_full(text: &str) -> Result<SlParse, Vec<SlError>> {
                     env_kind: EnvKind::Neutral,
                     primitive: None,
                     rule: None,
+                    manages_param: None,
                     interface: true,
                     passway: true,
                     protocol,
@@ -1905,6 +1906,7 @@ pub fn parse_sl_full(text: &str) -> Result<SlParse, Vec<SlError>> {
                     env_kind,
                     primitive,
                     rule: None,
+                    manages_param: None,
                     interface,
                     passway: false,
                     protocol,
@@ -1936,7 +1938,8 @@ pub fn parse_sl_full(text: &str) -> Result<SlParse, Vec<SlError>> {
                 // signals command an actuator having the necessary power to
                 // affect changes on those conditions."
                 let syntax = "agent syntax: `agent <Name> watches <stock> rule <rule> … manages \
-                              <process>` — rules: `proportional target <n> gain <n>`, \
+                              <process>` or `… manages param \"<name>\"` — rules: \
+                              `proportional target <n> gain <n>`, \
                               `threshold above <n> [below <n>] emit <n> else <n>`, \
                               `table under <n> emit <n> [under <n> emit <n> …] else <n>`, \
                               `trace window <n> target <n> gain <n>`";
@@ -2211,9 +2214,22 @@ pub fn parse_sl_full(text: &str) -> Result<SlParse, Vec<SlError>> {
                     fail(msg, &mut errors);
                     continue;
                 }
-                let (proc_name, tail) = match tail {
+                // Two actuation forms, one word (ADR 0008 D1): `manages
+                // <process>` signals a work process over a command wire;
+                // `manages param "<name>"` writes a declared param's knob
+                // each tick, the coordination form. A line carries one.
+                enum Managed {
+                    Process(String),
+                    Param(String),
+                }
+                let (managed, tail) = match tail {
+                    [Tok::Word(w), Tok::Word(p), Tok::Str(name), tail @ ..]
+                        if w.eq_ignore_ascii_case("manages") && p.eq_ignore_ascii_case("param") =>
+                    {
+                        (Managed::Param(name.clone()), tail)
+                    }
                     [Tok::Word(w), pr, tail @ ..] if w.eq_ignore_ascii_case("manages") && pr.is_name() => {
-                        (pr.name(), tail)
+                        (Managed::Process(pr.name()), tail)
                     }
                     _ => {
                         fail(syntax.into(), &mut errors);
@@ -2248,7 +2264,9 @@ pub fn parse_sl_full(text: &str) -> Result<SlParse, Vec<SlError>> {
                     );
                     continue;
                 }
-                let Some(&pi) = by_name.get(&proc_name) else {
+                let proc_id: Option<u64> = match &managed {
+                    Managed::Process(proc_name) => {
+                let Some(&pi) = by_name.get(proc_name) else {
                     fail(
                         format!("`{proc_name}` is not declared (declare the process before the agent that manages it)"),
                         &mut errors,
@@ -2310,7 +2328,140 @@ pub fn parse_sl_full(text: &str) -> Result<SlParse, Vec<SlError>> {
                     );
                     continue;
                 }
-                let (stock_id, proc_id) = (things[si].id, things[pi].id);
+                Some(things[pi].id)
+                    }
+                    Managed::Param(pname) => {
+                        // The command form (ADR 0008 D1, Mobus §12.2.3.2): the
+                        // agent writes a declared param's knob at the end of
+                        // every tick. The param is the one place the rule's
+                        // command span can be checked against the knob's
+                        // declared span, so it is required (spec §4.5), and a
+                        // span the knob cannot take is refused with both
+                        // printed: requisite variety as a parse fault.
+                        let Some(decl) = params.iter().find(|p: &&crate::canvas::ParamDecl| p.name == *pname) else {
+                            fail(
+                                format!(
+                                    "param \"{pname}\" is not declared — a param an agent names is \
+                                     required (ADR 0008 D1); declare it above this line, after the \
+                                     flows it anchors"
+                                ),
+                                &mut errors,
+                            );
+                            continue;
+                        };
+                        let span = match rule {
+                            crate::canvas::AgentRule::Proportional | crate::canvas::AgentRule::Trace => {
+                                (0.0, num("gain") * num("target"))
+                            }
+                            crate::canvas::AgentRule::Threshold | crate::canvas::AgentRule::Table => {
+                                let cs = numbers
+                                    .iter()
+                                    .filter(|(w, _)| w.starts_with("emit") || w == "else")
+                                    .map(|(_, v)| *v);
+                                (cs.clone().fold(f64::INFINITY, f64::min), cs.fold(f64::NEG_INFINITY, f64::max))
+                            }
+                        };
+                        let thing_name = |id: u64| {
+                            things.iter().find(|t| t.id == id).map(|t| t.name.clone()).unwrap_or_default()
+                        };
+                        let (lo, hi) = match decl.anchor {
+                            crate::canvas::ParamAnchor::Field { thing, field } => {
+                                fail(
+                                    format!(
+                                        "param \"{pname}\" names `{}` of `{}` — the command form sets a \
+                                         flow amount or a two-way split; an agent setting a component's \
+                                         or another agent's field is coordination, the rung after \
+                                         (ADR 0008 D2)",
+                                        field.word(),
+                                        thing_name(thing)
+                                    ),
+                                    &mut errors,
+                                );
+                                continue;
+                            }
+                            crate::canvas::ParamAnchor::Shares { thing } => {
+                                let split = relations
+                                    .iter()
+                                    .filter(|r| {
+                                        r.a == thing && r.is_bond && r.amount.is_some() && r.kind != Kind::Informational
+                                    })
+                                    .count();
+                                if split != 2 {
+                                    fail(
+                                        format!(
+                                            "param \"{pname}\" presents {split} physical outflows of \
+                                             `{}` — the command form sets one wire of a two-way split \
+                                             and the other takes the rest; name a two-way split (a \
+                                             wider form is not designed)",
+                                            thing_name(thing)
+                                        ),
+                                        &mut errors,
+                                    );
+                                    continue;
+                                }
+                                (0.0, 1.0)
+                            }
+                            crate::canvas::ParamAnchor::Flow { relation } => {
+                                let Some(rel) = relations.iter().find(|r| r.id == relation) else {
+                                    fail(format!("param \"{pname}\" anchors a flow that is not declared"), &mut errors);
+                                    continue;
+                                };
+                                // A process's only physical outflow carries a
+                                // fanout weight the engine never reads (spec
+                                // §4.4: the split is scale-free, and a split
+                                // of one is no split), so an agent on it would
+                                // be in control of nothing.
+                                let from_component = things.iter().any(|t| t.id == rel.a && t.role == Role::Component);
+                                let outs = relations
+                                    .iter()
+                                    .filter(|r| r.a == rel.a && r.is_bond && r.kind != Kind::Informational)
+                                    .count();
+                                if from_component && outs == 1 {
+                                    fail(
+                                        format!(
+                                            "param \"{pname}\" names the only physical outflow of `{}` — \
+                                             its amount is a fanout weight the engine never reads (spec \
+                                             §4.4), so an agent on it commands nothing; manage a source \
+                                             flow's rate, or a `shares` param of a two-way split",
+                                            thing_name(rel.a)
+                                        ),
+                                        &mut errors,
+                                    );
+                                    continue;
+                                }
+                                let Some(range) = decl.range.as_ref() else {
+                                    fail(
+                                        format!(
+                                            "param \"{pname}\" has no range — the command form checks \
+                                             the rule's commands against the knob's declared span \
+                                             (requisite variety); add `range <min>..<max>` to the param"
+                                        ),
+                                        &mut errors,
+                                    );
+                                    continue;
+                                };
+                                (range.min.try_into().unwrap_or(f64::NAN), range.max.try_into().unwrap_or(f64::NAN))
+                            }
+                        };
+                        if span.0 < lo || span.1 > hi {
+                            fail(
+                                format!(
+                                    "`{name}`'s {} rule commands {}..{}, outside param \"{pname}\"'s \
+                                     range {lo}..{hi} — a command the knob cannot take is not in \
+                                     control (requisite variety, Mobus §12.3.2.2); narrow the rule \
+                                     or widen the range",
+                                    rule.word(),
+                                    span.0,
+                                    span.1
+                                ),
+                                &mut errors,
+                            );
+                            continue;
+                        }
+                        None
+                    }
+                };
+                let stock_id = things[si].id;
                 by_name.insert(name.clone(), things.len());
                 carrier = Some(Carrier::Thing(things.len()));
                 let cognitive_params: std::collections::HashMap<String, f64> = numbers.into_iter().collect();
@@ -2326,6 +2477,10 @@ pub fn parse_sl_full(text: &str) -> Result<SlParse, Vec<SlError>> {
                     env_kind: EnvKind::Neutral,
                     primitive: None,
                     rule: Some(rule),
+                    manages_param: match &managed {
+                        Managed::Param(p) => Some(p.clone()),
+                        Managed::Process(_) => None,
+                    },
                     interface: false,
                     passway: false,
                     protocol: String::new(),
@@ -2342,7 +2497,12 @@ pub fn parse_sl_full(text: &str) -> Result<SlParse, Vec<SlError>> {
                 // The tap and the command wire, drawn from the line (ADR 0008
                 // D5). Both informational: a tap reads a level without draining
                 // it, and a command is a message the managed process gates on.
-                for (a, b, label) in [(stock_id, agent_id, "reading"), (agent_id, proc_id, "command")] {
+                // The command form draws no wire: its command is a knob write.
+                let mut drawn = vec![(stock_id, agent_id, "reading")];
+                if let Some(proc_id) = proc_id {
+                    drawn.push((agent_id, proc_id, "command"));
+                }
+                for (a, b, label) in drawn {
                     relations.push(Relation {
                         id: next_id,
                         a,
@@ -4030,11 +4190,14 @@ pub fn emit_sl_with(model: &CanvasModel, layout: Option<&SlLayout>) -> Result<St
             .map(|t| t.name.clone())
             .ok_or_else(|| format!("relation endpoint {id} names no thing"))
     };
-    let agent_wires = |t: &Thing| -> Result<(u64, u64), String> {
+    // The command form (ADR 0008 D1) draws no command wire: `manages param`
+    // names the knob, so only the tap is required of it.
+    let agent_wires = |t: &Thing| -> Result<(u64, Option<u64>), String> {
         let tap = model.relations.iter().find(|r| r.is_bond && r.b == t.id);
         let cmd = model.relations.iter().find(|r| r.is_bond && r.a == t.id);
-        match (tap, cmd) {
-            (Some(tap), Some(cmd)) => Ok((tap.a, cmd.b)),
+        match (tap, cmd, t.manages_param.is_some()) {
+            (Some(tap), Some(cmd), false) => Ok((tap.a, Some(cmd.b))),
+            (Some(tap), _, true) => Ok((tap.a, None)),
             _ => Err(format!(
                 "`{}` is an agent with no observation tap or no command wire — the agent \
                  line draws both, so it is not expressible in SL; export the model as kernel \
@@ -4043,14 +4206,21 @@ pub fn emit_sl_with(model: &CanvasModel, layout: Option<&SlLayout>) -> Result<St
             )),
         }
     };
+    // A command-form agent names a param, and a param comes after the flows
+    // it anchors, so the line is emitted after the params block (its own
+    // field params, which name the agent, after it in turn).
+    let commands_a_param = |t: &Thing| t.rule.is_some() && t.manages_param.is_some();
     let order: Vec<&Thing> = {
         let mut emitted: std::collections::HashSet<u64> = std::collections::HashSet::new();
         let mut order: Vec<&Thing> = Vec::with_capacity(model.things.len());
         let mut deferred: Vec<&Thing> = Vec::new();
         for t in &model.things {
+            if commands_a_param(t) {
+                continue;
+            }
             if t.rule.is_some() {
                 let (stock, proc) = agent_wires(t)?;
-                if emitted.contains(&stock) && emitted.contains(&proc) {
+                if emitted.contains(&stock) && proc.is_some_and(|p| emitted.contains(&p)) {
                     order.push(t);
                     emitted.insert(t.id);
                 } else {
@@ -4064,12 +4234,32 @@ pub fn emit_sl_with(model: &CanvasModel, layout: Option<&SlLayout>) -> Result<St
         order.extend(deferred);
         order
     };
-    for t in order.iter().copied() {
-        // An agent line (facets#269, ADR 0008 D5): watch, rule, goal, manage.
-        // Its tap and command wire are its `watches` and `manages`, never flows.
-        if let Some(rule) = t.rule {
-            let anchor = Anchor::Thing(t.id);
-            let (stock, proc) = agent_wires(t)?;
+    // An agent line (facets#269, ADR 0008 D5): watch, rule, goal, manage.
+    // Its tap and command wire are its `watches` and `manages`, never flows;
+    // the command form spells its knob as `manages param "<name>"`. An
+    // amount command read back off the kernel lost its range on the way, and
+    // the parser requires one, so it is refused as inexpressible rather than
+    // emitted as a line that would not re-parse.
+    let emit_agent = |out: &mut String, t: &Thing, rule: crate::canvas::AgentRule| -> Result<(), String> {
+        let anchor = Anchor::Thing(t.id);
+        let (stock, proc) = agent_wires(t)?;
+        if let Some(pname) = t.manages_param.as_deref() {
+            let decl = model.params.iter().find(|p| p.name == pname).ok_or_else(|| {
+                format!(
+                    "`{}` manages param \"{pname}\", which the model does not declare — not \
+                     expressible in SL; declare the param or export the model as kernel JSON",
+                    t.name
+                )
+            })?;
+            if matches!(decl.anchor, crate::canvas::ParamAnchor::Flow { .. }) && decl.range.is_none() {
+                return Err(format!(
+                    "`{}` manages param \"{pname}\", a flow amount with no range — the command \
+                     form needs the range its commands were checked against, so it is not \
+                     expressible in SL; export the model as kernel JSON instead",
+                    t.name
+                ));
+            }
+        }
             // The clauses the bag carries, in the line's order: every
             // required one, an optional one (`below`, facets#517) only when
             // declared, and a table's numbered bins up to the first missing.
@@ -4090,7 +4280,7 @@ pub fn emit_sl_with(model: &CanvasModel, layout: Option<&SlLayout>) -> Result<St
                     }
                 ));
             };
-            lead(&mut out, &anchor);
+            lead(out, &anchor);
             write!(
                 out,
                 "agent {} watches {} rule {}",
@@ -4104,11 +4294,20 @@ pub fn emit_sl_with(model: &CanvasModel, layout: Option<&SlLayout>) -> Result<St
                 let w = w.trim_end_matches(|c: char| c.is_ascii_digit());
                 write!(out, " {w} {v}").unwrap();
             }
-            write!(out, " manages {}", name_token(&name_of(proc)?)?).unwrap();
-            trail(&mut out, &anchor);
+            match (proc, t.manages_param.as_deref()) {
+                (_, Some(pname)) => write!(out, " manages param {}", quote(pname)?).unwrap(),
+                (Some(proc), None) => write!(out, " manages {}", name_token(&name_of(proc)?)?).unwrap(),
+                (None, None) => unreachable!("agent_wires requires a command wire of the signal form"),
+            }
+            trail(out, &anchor);
             out.push('\n');
-            emit_description(&mut out, &t.description, prose_trail(&anchor).as_deref())?;
-            emit_grounding(&mut out, t.grounding.as_ref())?;
+            emit_description(out, &t.description, prose_trail(&anchor).as_deref())?;
+            emit_grounding(out, t.grounding.as_ref())?;
+            Ok(())
+    };
+    for t in order.iter().copied() {
+        if let Some(rule) = t.rule {
+            emit_agent(&mut out, t, rule)?;
             continue;
         }
         // Echo the author's word, do not re-derive it (#216). This used to read the
@@ -4397,9 +4596,9 @@ pub fn emit_sl_with(model: &CanvasModel, layout: Option<&SlLayout>) -> Result<St
     // boundary. The flow's label is always emitted when present, so the
     // canonical form never depends on whether the pair happens to be
     // ambiguous today.
-    for p in &model.params {
+    let emit_param = |out: &mut String, p: &crate::canvas::ParamDecl| -> Result<(), String> {
         let anchor = Anchor::Param(p.name.clone());
-        lead(&mut out, &anchor);
+        lead(out, &anchor);
         match p.anchor {
             crate::canvas::ParamAnchor::Flow { relation } => {
                 let r = model
@@ -4445,8 +4644,26 @@ pub fn emit_sl_with(model: &CanvasModel, layout: Option<&SlLayout>) -> Result<St
                 }
             }
         }
-        trail(&mut out, &anchor);
+        trail(out, &anchor);
         out.push('\n');
+        Ok(())
+    };
+    // A command-form agent (ADR 0008 D1) sits after the params block, since
+    // the param it names must be declared first; a param naming one of its
+    // own fields (`above of Quota`) must in turn follow the agent, so the
+    // block is split around it. Every other param keeps its place.
+    let commanding: Vec<&Thing> = model.things.iter().filter(|t| commands_a_param(t)).collect();
+    let names_a_commander = |p: &crate::canvas::ParamDecl| {
+        matches!(p.anchor, crate::canvas::ParamAnchor::Field { thing, .. } if commanding.iter().any(|t| t.id == thing))
+    };
+    for p in model.params.iter().filter(|p| !names_a_commander(p)) {
+        emit_param(&mut out, p)?;
+    }
+    for t in &commanding {
+        emit_agent(&mut out, t, t.rule.expect("commands_a_param requires a rule"))?;
+    }
+    for p in model.params.iter().filter(|p| names_a_commander(p)) {
+        emit_param(&mut out, p)?;
     }
 
     // metrics (#203) — after params (the input/output twins read together).
@@ -4524,8 +4741,8 @@ pub fn emit_sl_with(model: &CanvasModel, layout: Option<&SlLayout>) -> Result<St
     // as before — no invented pins on a formatted file, #302 ruling 5). In
     // declaration order as written above — things, then agents (facets#269) —
     // so a re-parse lists them the same way and the canonical form is a
-    // fixpoint.
-    for t in order.iter().copied() {
+    // fixpoint. A command-form agent, written after the params, is last.
+    for t in order.iter().copied().chain(commanding.iter().copied()) {
         if layout.map(|l| l.pinned.contains(&t.name)).unwrap_or(true) {
             writeln!(out, "@pos {} {} {}", name_token(&t.name)?, t.x, t.y).unwrap();
         }
