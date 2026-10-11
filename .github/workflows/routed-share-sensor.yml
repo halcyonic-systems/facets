@@ -1,9 +1,12 @@
-# The routed-share sensor's self-test (facets#529), its own file per
+# The observatory sensors' self-tests, one job in its own file per
 # CONTRIBUTING's one-gate-one-file rule. `scripts/openrouter_rankings_vintage.py`
-# turns an OpenRouter rankings-daily vintage into the open-weight share series
-# and the forcing bundle the pooled llm-market reads; this runs its arithmetic
-# against the committed fixture under scripts/fixtures/ and never the network.
-# Locally it is the second line of `just check`.
+# (facets#529) turns an OpenRouter rankings-daily vintage into the open-weight
+# share series and the forcing bundle the pooled llm-market reads;
+# `scripts/hf_downloads_vintage.py` and `scripts/ollama_pulls_vintage.py`
+# (facets#523) are the self-hosted interface's two proxies, the second of
+# which refuses by design. Each runs against the committed fixtures under
+# scripts/fixtures/ and never the network. Locally they are the second to
+# fourth lines of `just check`.
 
 name: routed-share-sensor
 
@@ -17,5 +20,9 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
-      - name: sensor self-test (fixture, no network)
+      - name: routed-share sensor self-test (fixture, no network)
         run: python3 scripts/openrouter_rankings_vintage.py self-test
+      - name: HF download proxy self-test (fixture, no network)
+        run: python3 scripts/hf_downloads_vintage.py self-test
+      - name: Ollama pull proxy self-test (refusal, no network)
+        run: python3 scripts/ollama_pulls_vintage.py self-test
