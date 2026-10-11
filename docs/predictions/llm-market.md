@@ -198,6 +198,15 @@ sensor is not: `assets/data/README.md`, "OpenRouter routed-share vintages".
   over fluency — the rubric here IS the check; selection moves to the
   buyer) and `strategy/post-astra` positioning (generation commoditizes
   where the statement is mature).
+- **Note (2026-10-11):** written against the retired two-channel model
+  (developer and enterprise channels; see "The two-channel model this
+  replaced" above). Against the current model the item reads on the routed
+  interface: the mechanism is price-per-quality moving the open-weight share
+  of routed tokens, which the sensor (facets#529, `assets/data/`) now
+  measures monthly. The "OpenRouter share data for V4.1 Flash moving"
+  hardener is therefore readable from the vintage (by permaslug in the daily
+  file, by lab in the by-lab file) rather than awaited; the enterprise-spend
+  sentence names a channel the model no longer carries.
 
 ## Ledger
 

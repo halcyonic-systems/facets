@@ -6,8 +6,18 @@ Builds the monthly CSV panel defined in the verified deep-research report
 (`operations/sessions/2026-07-11/references/llm-market-data-foundation.md`
 in the vault) for facets#14 target 4 (LLM market, frontier + open).
 
-Six research legs plus one derived tether leg, seven scripts, seven output
-CSVs. Data lives **outside this repo**, in
+Six research legs plus one derived tether leg. Eleven `.py` files:
+`common.py` (shared helpers), the seven `run_all.sh` schedules
+(`fetch_structure.py`, `fetch_prices.py`, `fetch_capability.py`,
+`fetch_usage_openrouter.py`, `target4_dev_wide.py`,
+`build_usage_enterprise.py`, `fetch_financials.py`, one output CSV each), and
+three `run_all.sh` does not schedule (`rung2_allocation.py`,
+`rung3_enterprise.py`, `rung3_staircase.py`: earlier build-stage scripts, run
+by hand if at all). The CSVs are the data channels this pipeline still
+produces; the shipped model has since moved to routed and self-hosted
+interfaces (`assets/examples/llm-market.sl`, `assets/data/README.md`), and
+reads the developer and enterprise channels below as pipeline history, not as
+its interfaces. Data lives **outside this repo**, in
 `/Users/home/Documents/bert-lenses/data/` (override with the
 `BERT_LENSES_DATA_DIR` env var). Nothing under that path is committed.
 
@@ -84,6 +94,9 @@ eci_score, eci_confidence, gpqa_diamond, swe_bench_verified, mmlu,
 is_estimate`. `is_estimate` is `false` — these are measured benchmark runs.
 
 ### 4. Usage (developer channel) — `fetch_usage_openrouter.py` → `usage_openrouter_monthly.csv`
+*A data channel the pipeline still produces; the model's interface is now the
+routed one, whose sensor (`scripts/openrouter_rankings_vintage.py`, facets#529)
+fetches through this leg.*
 Source: OpenRouter `/datasets/rankings-daily` API (top-50 models/day by
 token total, plus one `other` rollup row per day). Requires an OpenRouter
 API key (Bearer auth, same key as inference), rate-limited 30 req/min /
@@ -162,7 +175,8 @@ whichever month is in progress on future refreshes.
 (self-selected OpenRouter routing slice, over-represents open-weights,
 excludes direct-API enterprise traffic). Never average or reconcile this
 series with the Menlo enterprise series (leg 5) — they measure different
-market segments.
+market segments. The channel pair is pipeline history: the model now reads
+a routed interface and a self-hosted one (`assets/data/README.md`).
 
 **Supersedes `usage_openrouter_total_monthly.csv`.** That file in the data
 dir was hand-derived (not scripted) before this leg existed. It's now
@@ -199,10 +213,13 @@ these are sourced estimates rated Confident/Likely, not audited financials
   per-file), even where every row in a given CSV shares the same value —
   keeps the schema uniform for downstream joins.
 - **Two usage channels, never averaged.** `usage_openrouter_monthly.csv`
-  (developer/routing-platform slice, ~1/3 open-weights) and
+  (developer/routing-platform slice; the ~1/3 open-weights figure is dated,
+  from the July 2026 read — the pinned vintage reads an open-weight share of
+  0.74 on the routed interface for 2026-09, `assets/data/README.md`) and
   `usage_enterprise_annual.csv` (enterprise spend, ~11% open-weights)
   measure different market segments and actively disagree. Model them as
-  two coupled series, not one blended "usage share."
+  two coupled series, not one blended "usage share." The shipped model no
+  longer carries either as an interface: it reads routed and self-hosted.
 - **No pre-Sep-2023 prices.** Documented above under leg 1.
 - **Refuted claims excluded from this pipeline** (per the report's
   adversarial verification pass, 0–3 votes): per-author OpenRouter token

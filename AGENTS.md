@@ -100,9 +100,9 @@ exists to keep it true.
   `glam::Vec2` for node geometry (was `egui::Pos2`).
 - `crates/bert-canvas` — the canvas/lens domain, pure Rust (NO wasm-bindgen).
   `canvas` (the serializable `CanvasModel`, `project` / `to_canvas` /
-  `validate_connection`) + `lenses` (`lens_facts` — boundary identity set, edge
-  ladder, ports, aggregate verdict, all canvas-keyed — and `describe`, the formal
-  face). Depends on bert-core.
+  `validate_connection`) + `lenses` (`lens_facts` — boundary identity set,
+  edge ladder, ports, aggregate verdict, all canvas-keyed — and `describe`, the
+  formal face). Depends on bert-core.
 - `crates/bert-tether` — the boundary-interface subsystem, pure Rust (NO
   wasm-bindgen). The CSV import ritual (`tether`), the declarative run manifest
   (`manifest`), and the forced-run pipeline + `mapping_status` (`forcing`).
@@ -125,14 +125,16 @@ exists to keep it true.
   via the in-browser compose engine). They are structural, not executable. No
   model here is precious; all models to date were toy demos.
   **The shipped library is a curated KEEP SET since #318** (2026-08-12):
-  `examples/` holds six entries and nothing else, `corpus/**` holds the 19
+  `examples/` holds eight entries and nothing else, `corpus/**` holds the 19
   author exemplars, and everything the library grew as a by-product of building
   is in `assets/archive/` — out of the gallery, out of the CLI survey, still
   compiling and still read by three gates that need it. Read
   `assets/archive/README.md` before adding to `examples/` or concluding a model
   is gone. An SL-authored runnable demo's bundled model is a machine projection
   of its `.sl` (never hand-edit the JSON; re-mint with `BLESS_SL_DEMOS=1`, gated
-  by `crates/bert-canvas/tests/sl_demos.rs`, one resident: `llm-market`).
+  by `crates/bert-canvas/tests/sl_demos.rs`, two residents: `llm-market` and
+  `translation-apparatus`; llm-market's bundle is generated from the pinned
+  vintage in `assets/data/`, see its README).
   **Authoring a new runnable model? Read `docs/authoring-models.md` FIRST** —
   what actually makes a model run (three gates in order; quantities are not one
   of them) plus the five facts that bite (deaf receivers #261, the matter

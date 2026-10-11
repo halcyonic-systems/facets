@@ -42,7 +42,10 @@ reproduces the per-model split of the single-level version now in
 `../archive/llm-market-flat.sl` at the parent's realized level. Its declared
 amounts are minted from the routed sensor's pinned vintage, latest full
 month, and a vintage refresh re-mints them in the same PR
-(`../data/README.md`, rule 6; #534). The children ship beside the other
+(`../data/README.md`, rule 6; #534). The bundle the gallery card opens
+(`../demos/llm-market.json`) is generated from that same vintage by
+`scripts/openrouter_rankings_vintage.py bundle --demo`, never written by
+hand (`../data/README.md`). The children ship beside the other
 walkthrough levels rather than here because the gallery globs this
 directory and a child is not a library card; the app resolves them by the
 pinned id the parent's `decomposes` line carries
@@ -50,7 +53,7 @@ pinned id the parent's `decomposes` line carries
 `crates/bert-lenses-kernel/tests/llm_market_walkthrough.rs` holds both seams
 clean.
 
-A third shelf with its own test since 2026-10-10: `../bench/` — models that exist to test the instrument, each after a named model in the literature, admitted for what they exercise rather than what they are.
+A third shelf with its own test since 2026-10-10 (the field models having folded onto their domain shelves the day before): `../bench/` — models that exist to test the instrument, each after a named model in the literature, admitted for what they exercise rather than what they are.
 
 Two consequences worth naming:
 

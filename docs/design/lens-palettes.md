@@ -2,15 +2,16 @@
 
 > **Status: LIVE** (implemented 2026-07-15, Phase 3 [#44](https://github.com/halcyonic-systems/facets/issues/44)). The two kernel
 > primitives are `bert-core::{boundary_components, edge_locus}` surfaced
-> canvas-keyed via `bert-lenses-kernel/src/lenses.rs` (`lens_facts`,
-> `describe`); the renderings live in `web/src/canvas/Canvas.tsx` and the
+> canvas-keyed via `crates/bert-canvas/src/lenses.rs` (`lens_facts`,
+> `describe`; the wasm boundary `bert-lenses-kernel/src/api.rs` only marshals); the renderings live in `web/src/canvas/Canvas.tsx` and the
 > formal face in `web/src/FormalPanel.tsx`. **The per-lens authoring palette is
 > DESIGNED AND SHIPPED (§ The authoring palette, 2026-07-15: #50 design → #51
 > implementation, both closed)** — including boundary-property authoring
 > (porosity/fuzziness author via the boundary inspector) and interface
 > designation (authored I; a flowless interface is **refused** at Operational since SSF #31 — see the interface row). Still open from this doc: Δt/H
-> dynamical markers, work-process badges beyond the primitive dot, agent
-> designation (§ Agents — gated on the § Process-type taxonomy source pass),
+> dynamical markers, work-process badges beyond the primitive dot (agent
+> designation as written in § Agents is superseded: the agent shipped
+> 2026-10-10 as a thing kind of its own, ADR 0008, see the note there),
 > and **P's dynamical semantics** (porosity is authored + rendered but does
 > not yet modulate crossing flows in bert-compose — structural-only today).
 
@@ -391,7 +392,7 @@ Decisions of record (`design-system-draft.md` §Decisions): dock = **left rail**
 rail chrome tints via the `--lens-accent` seam (slate/indigo/teal) bound to kernel
 `Mode`; the KIND channel stays reserved. This section settles the rest of #50.
 Ground rule throughout: **the rail offers, the kernel decides** — legality is the
-before/after issue-delta of `validate_connection` (`bert-canvas/src/canvas.rs:425`)
+before/after issue-delta of `validate_connection` (`pub fn validate_connection`, `bert-canvas/src/canvas.rs`)
 at the active Mode, never a UI list (design-system rule 8).
 
 ### What the palette filters on, and what it must not
@@ -496,7 +497,7 @@ which is faithful, not an extension.
 | kind | birth | gesture | kernel verdict path |
 |---|---|---|---|
 | **component** | PLACE | stamp / double-click | member of 𝒞 (Def 1.2 i) |
-| environment thing | PLACE | stamp | in ℰ **only once bonded** — Def 1.2(ii) defines ℰ as the things that act on / are acted on by components, so `project()` dropping orphan terminals (`canvas.rs:241`) is Bunge-faithful; an unbonded env dot renders as *pending* (muted), not silently discarded |
+| environment thing | PLACE | stamp | in ℰ **only once bonded** — Def 1.2(ii) defines ℰ as the things that act on / are acted on by components, so `project()` dropping orphan terminals (`pub fn project`, `canvas.rs`) is Bunge-faithful; an unbonded env dot renders as *pending* (muted), not silently discarded |
 | bond (kind-typed) | CONNECT | drag node→node (also node→empty: births the env thing + bond in one act) | `check_bond` — the aggregate/heap verdict (Def 1.1); kind, bond⇄mere, direction are EDITs |
 | mere relation | CONNECT | drag, then toggle bond⇄mere | contributes nothing to systemhood (𝔹̄, the nonbonding set) |
 
@@ -598,7 +599,7 @@ Porosity and perceptive fuzziness live in the **inspector, Mobus-only**, as
 labelled range rows shown when a boundary/interface is selected — an *edit* on an
 existing element, never a rail verb (the boundary itself stays a Derived row).
 Writes go to the kernel's `B.P`; the face flips `BOUNDARY_PROPS_AUTHORING`
-(`web/src/FormalPanel.tsx:38`) only when the write path exists, per its comment.
+(the constant in `web/src/FormalPanel.tsx`) only when the write path exists, per its comment.
 
 ### Gesture spec
 
@@ -633,6 +634,8 @@ Writes go to the kernel's `B.P`; the face flips `BOUNDARY_PROPS_AUTHORING`
   `lens ===` conditional.
 
 ### Agents and the palette (chs. 10–11) — accounted for, deliberately deferred
+
+> **Superseded 2026-10-10 by [ADR 0008](../decisions/0008-agent-layer.md)** (built `a69f1a6`, #515; SL spec §4.7). The agent shipped as a *distinct thing kind* (`NodeKind::Agent`, an `agent` line), not as a DESIGNATE verb on a component and not as a composition of primitives: it takes no `primitive`, reads one stock's level, runs a closed rule and commands one control-reading work process (or, in the command form, writes a declared `param`). The bullets below are the pre-decision reasoning and stay as the record; where they say how agents *will* enter the palette, the ADR is what happened.
 
 Mobus's paradigm is agent-centric, and the palette must build TOWARD agents
 without conflating them with what it stamps today:
@@ -680,7 +683,11 @@ does it differ by type? The working answers, with status flags:
   adaptive ones** (not ill-formed at Operational mode).
 - Agents are BUILT FROM primitives ("the work processor of an agent is the
   computational engine," ch. 11 — the 2025-08-29 agents-from-primitives
-  principle); Mobus's minimal reactive agent is the thermostat.
+  principle); Mobus's minimal reactive agent is the thermostat. *(Superseded
+  2026-10-10, ADR 0008, and in tension with "Agency ≠ work process" above: the
+  shipped agent takes no `primitive`; its engine is its rule, and the
+  equivalence it owes is that `proportional` at gain 1 traces the Inverting
+  comparator float for float.)*
 
 **Sourced and corrected (ch. 3, 2026-10-10; ADR 0008):**
 1. **The two-family split, as Mobus actually draws it.** The earlier guess

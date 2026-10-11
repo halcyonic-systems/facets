@@ -161,6 +161,8 @@ the kernel (§5), not folded into `Transition`/`kindCodomain`.
 
 ### 3.1 The forcing case, restated concretely
 
+*Pointer (2026-10-11): one instance of the controller → plant coupling this section asks for has shipped as the agent layer ([ADR 0008](../decisions/0008-agent-layer.md); `dynamics-principled-position.md`, addendum 2026-10-10): a deterministic agent is a coordinate added to the carrier, not a second functor (SSF `agent_step_is_product`), and a sampling agent is the Markov functor and cannot share a run with it. The heterogeneous composition below remains open.*
+
 A discrete controller (`nondeterministic`-or-`deterministic` kind, e.g. bert-lenses'
 FSA/DLG element from #67) whose current state determines a **mode**, wired to a
 conservation-flow element (`deterministic` kind, `F = Id`) whose **active equation set**
@@ -332,7 +334,7 @@ Everything above is written so that **adopting it costs the kernel nothing**:
 ## Build order (when scheduled)
 
 1. `composeHomogeneous` (§2.2) — same-kind product/composition-product wiring, joining
-   `check_transition` with a new `check_composable_kind` gate. Unblocks phase 5's
+   the planned `check_transition` (no such symbol in the tree as of 2026-10-11) with a new `check_composable_kind` gate. Unblocks phase 5's
    cross-element canvas wiring for same-kind models.
 2. §3's `Controller`/`Plant`/`compositeStep` Lean instance, as a standalone note-and-proof
    pair, not a kernel PR. Publish with §3.5 as its closing section verbatim.

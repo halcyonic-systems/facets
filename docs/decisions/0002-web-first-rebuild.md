@@ -58,6 +58,7 @@ Concretely, at Phase 0 (`5175835`):
 
 **Clean break, not a fork to maintain.** The egui app is preserved for the record
 on tag `pre-web-rebuild` / branch `archive/egui-app`, and is not carried forward.
+*(2026-10-11: the tag is on `origin`; the `archive/egui-app` branch is not.)*
 
 ## Rationale
 
@@ -103,4 +104,6 @@ no contemporaneous alternatives memo.)*
 Marked **adopted**: the rebuild is in force and load-bearing — it is the only app.
 There is no as-built architecture doc for the React canvas yet; until one exists,
 `archive/canvas-architecture.md`'s *semantic* content (not its UI mechanics) and
-`docs/kernel-architecture.md` are the closest current references.
+`docs/kernel-architecture.md` are the closest current references. *(2026-10-11:
+`web/DESIGN.md` is the as-built owner of the face's design system and layout
+rules; `docs/kernel-architecture.md` remains the seam's reference.)*

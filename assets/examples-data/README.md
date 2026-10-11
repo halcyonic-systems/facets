@@ -24,17 +24,18 @@ Simulated-vs-Actual overlay.
 
 The shipped `llm-market` model now takes its workload through two flows, "routed workload" and "self-hosted workload"; the columns above map onto the small hand-authored model this file describes, not onto it (its own bundle is `../demos/llm-market.json`).
 
-## A routed-share bundle for the pooled llm-market (shape only, no data)
+## The routed-share bundle for the pooled llm-market (observed; lives in `../data/`)
 
 The question the pooled model carries (facets#523) is whether the open-weight
-share of routed workload moves. The tether can drive that: a forced series on
+share of routed workload moves. The tether drives that: a forced series on
 each of the Router's two outwires sets the split tick by tick (the engine's
 weighted fanout, `bert-tether/src/forcing.rs`, test
-`forcing_a_splitters_outwires_moves_the_routed_share_and_conserves`). No
-observed series exists yet; the one calibration point is June–July 2026 from a
-third-party digest of OpenRouter rankings, already written into the model as
-the declared weights 35/54. Do not invent rows. When a monthly series exists,
-the bundle looks like this:
+`forcing_a_splitters_outwires_moves_the_routed_share_and_conserves`). The
+observed series exists since 2026-10-10 (facets#529): the pinned vintage
+`../data/openrouter-routed-share-bundle-vintage-2026-10-10.json`, from which
+the demo bundle `../demos/llm-market.json` is generated (`../data/README.md`,
+"OpenRouter routed-share vintages"). Nothing here is invented, and no row is
+written by hand. The bundle's shape:
 
 | column            | map as          | onto                                        | unit     | force |
 |-------------------|-----------------|---------------------------------------------|----------|-------|

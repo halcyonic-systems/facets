@@ -21,7 +21,7 @@ handle/port connection model.
 Both stacks built a **minimal author-only accretion canvas** to *one sealed
 brief* (seed model, lens toggle → `validate_mode`, connect gesture →
 `validate_connection`, live drag, place+name), in **isolated git worktrees**
-(branches `spike/svg-canvas`, `spike/xyflow-canvas`), then evaluated **blind**
+(branches `spike/svg-canvas`, `spike/xyflow-canvas`; neither is on `origin` as of 2026-10-11, the harvest below being what survives in `web/`), then evaluated **blind**
 (stack labels stripped) against the kill criteria. Protocol: the `blind-pick`
 skill; receipt in `operations/calibration/blind-pick-ledger.md` (2026-07-14 row).
 
@@ -80,7 +80,8 @@ The bet is contained to `web/`'s rendering layer, not the kernel.
   primitive palette, save/export, boundary-ring/ports, harvested Bevy curved-flow
   polish). See the harvest note below.
 - The `spike/xyflow-canvas` branch is kept for reference; its flowier-curve
-  approach is the one thing to graft.
+  approach is the one thing to graft. *(2026-10-11: the branch is gone from
+  `origin`; the curve approach was grafted, see the harvest note.)*
 - The spike UIs are otherwise throwaway (not shipped in `web/`).
 
 ## Harvest (loser as organ donor)

@@ -81,7 +81,8 @@ just dev              # builds the wasm kernel, installs web deps, opens the app
 
 `just preflight` names what a cold machine still needs: Rust stable with the
 `wasm32` target, `wasm-pack`, and Node 22 or newer. The first `just dev` after
-that compiles six crates to wasm and installs the web dependencies, so budget a
+that compiles five crates to wasm (`bert-cli`, the native binary, is the one
+excluded) and installs the web dependencies, so budget a
 few minutes once; every run after it is seconds. The full prerequisite table is
 under [Prerequisites](#prerequisites).
 
@@ -195,17 +196,21 @@ counts-hold invariant is **machine-tested at runtime**, not Lean-proven. The
 canonical scope of what's proven vs tested is
 [`docs/theory-fidelity.md`](docs/theory-fidelity.md).
 
-**One dynamics-kind, and it says so.** Where a model holds, you can run it: a
-deterministic run under a model-declared invariant, driven by your own data. The
-current engine implements exactly one dynamics-kind — an Id-functor over ℝⁿ
-stocks with an additive conservation invariant — and further kinds are
-*declarable*, not implemented. Conservation is a property the model declares, not
+**Two dynamics-kinds, each saying which it is.** Where a model holds, you can
+run it: a deterministic run under a model-declared invariant, driven by your own
+data. The conservation engine implements one dynamics-kind — an Id-functor over
+ℝⁿ stocks with an additive conservation invariant — and a Klir model with
+weighted directed relations runs as a discrete-time Markov chain instead
+(`bert-compose/src/markov.rs`, #67), kept deliberately separate: a distribution
+over states, no conserved quantity. A run has one kind, never a mix (ADR 0008
+D2); further kinds are *declarable*, not implemented. Conservation is a property the model declares, not
 one the engine assumes; the position of record is
 [`docs/design/dynamics-principled-position.md`](docs/design/dynamics-principled-position.md).
 Time is honest too (#258/#259): rates are per unit time, **wires transmit and
 stocks remember** — a memoryless process relays within the step, memory lives
-only in declared stocks, and a loop with neither is refused by name rather than
-silently delayed. A run is therefore Δt-invariant over a fixed horizon
+in declared stocks (and, since v1.12, in an agent's trace window, run state the
+engine owns: spec §8.3, ADR 0008 D6), and a loop with neither is refused by name
+rather than silently delayed. A run is therefore Δt-invariant over a fixed horizon
 (`dt_invariance.rs` holds it; the mutation harness proves the gate can fail),
 and refining a diagram — one relay into two — never changes its behavior.
 
@@ -251,7 +256,7 @@ flowchart TB
     CANVAS --> CORE
     COMPOSE --> CORE
     TETHER --> COMPOSE & CORE
-    UI -.->|analysis rung: narrate, never author| GSR
+    UI -.->|analysis seam: narrate, never author| GSR
     GSR -.-> UI
 ```
 
@@ -281,10 +286,17 @@ scripts/                    # gate + build tooling: doc_lint.py (the first step 
   launchd/                  #   OPTIONAL macOS agent that keeps the app running (docs/running-permanently.md)
 assets/models/              # sample BERT models (demos + blockchain examples)
 assets/demos/               # run bundles: the model + CSV + mapping a runnable example ships
-assets/examples/            # the structural examples (.sl) the library shelves are built from
+                            #   (llm-market's is generated from the pinned vintage in assets/data/
+                            #   by scripts/openrouter_rankings_vintage.py, never by hand)
+assets/examples/            # the structural examples (.sl) the library is built from
+assets/bench/               # the bench shelf: models that exist to test the instrument, each after a named literature model
+assets/field/               # models drawn with someone, for them; folded onto their domain shelves (#472)
 assets/corpus/              # models transcribed from the founding texts, each with its citation
+assets/walkthroughs/        # the decomposition walks (steel plant, digital computer, llm-market children)
+assets/archive/             # models curated out of the gallery, still compiling and still read by gates
+assets/data/                # pinned data vintages (FRED H.4.1, OpenRouter routed share, HF downloads)
 assets/fonts/               # STIX fonts for the formal face
-assets/examples-data/       # sample input data (the LLM-market CSV some demos are shaped around)
+assets/examples-data/       # an invented tether CSV for the CSV import path (not real figures)
 tools/pipeline/             # OPTIONAL Python data-prep — off the product path, not in CI
 ```
 
@@ -506,7 +518,7 @@ This list used to restate a dozen of those entries, and by 2026-07-26 the two ha
 drifted four days apart. There is one index; three pointers live here because they
 are not under `docs/`:
 
-- [`AGENTS.md`](AGENTS.md) — the agent runbook: invariants, the 5-crate layout,
+- [`AGENTS.md`](AGENTS.md) — the agent runbook: invariants, the six-crate layout,
   working rules, and the 8-step palette-extension procedure.
 - [`crates/bert-lenses-kernel/API.md`](crates/bert-lenses-kernel/API.md) — the
   frozen JS↔wasm surface (append-only).
@@ -522,14 +534,20 @@ this tool believes" above.
 
 ## Status
 
-*As of 2026-09-07.* The site serves three faces: the portal at
+*As of 2026-10-11.* The site serves three faces: the portal at
 [facets.systems](https://facets.systems), **Chat** at `/chat/` (in this
 repository since 2026-08-27, when the chat client was merged in and the project
 took the name Facets), and **Model** at `/model/`, whose door opened on
 2026-09-07 with the hosted co-author on and opt-in. The rendered reference layer
-is at `/docs/`. Per-lens authoring (Phase 4) is still in progress; the read-only
-LLM analysis rung shipped 2026-07-17; the prior egui app lives on the
-`pre-web-rebuild` tag / `archive/egui-app` branch.
+is at `/docs/`. Per-lens authoring (Phase 4) is built (`analyze_canvas` and the
+authoring palette, `crates/bert-lenses-kernel/API.md`); the read-only LLM
+analysis seam shipped 2026-07-17. The agent layer landed 2026-10-10/11 (ADR
+0008; spec v1.10–v1.13): an `agent` line in both forms, the signal form
+`manages <process>` and the command form `manages param "<name>"`, with the
+bench shelf (`assets/bench/`) beside it, the pooled llm-market model and the
+routed-share sensor that drives its bundle from a pinned vintage
+(`assets/data/README.md`). The prior egui app lives on the `pre-web-rebuild`
+tag.
 
 **Live status and roadmap → [Facets Roadmap board](https://github.com/orgs/halcyonic-systems/projects/12).**
 

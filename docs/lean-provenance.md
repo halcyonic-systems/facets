@@ -127,11 +127,11 @@ Stated in: [`decisions/0008-agent-layer.md`](decisions/0008-agent-layer.md) D6, 
 
 ## The K ≅ 2 scope fence
 
-"K≅2" appears in forty-odd places in this repo. It is a conjunction, and **this repo depends on one conjunct only**. Saying which is not pedantry: the tool is named for the thesis, the other conjunct was the headline claim in the wider research program, and the repair to it is days old.
+"K≅2" appears in 86 places across 43 files of this repo (counted 2026-10-11). It is a conjunction, and **this repo depends on one conjunct only**. Saying which is not pedantry: the tool is named for the thesis, the other conjunct was the headline claim in the wider research program, and the repair to it is days old.
 
 - **Existence — what this repo rests on, and what the tables above are about.** One kernel object, `(T, R)` under `ActsOn`, generates faithful Klir, Bunge and Mobus views by proved maps; the two gated entries have named preconditions and the one composite has three named hypotheses (`kernel.klir-free`, `kernel.bunge-faithful`, `kernel.mobus-faithful`, `kernel.one-composite`). Every claim this instrument makes about lenses is a claim about *those* generations.
 - **Maximality — not relied on here, and false in its headline form.** The claim that nothing larger than the single arrow is shared across the traditions **is false as stated**, and has a machine-checked counterexample: `free_category_maximality_fails` in SSF's `Systems/Category/SharedPrimitive.lean`. Compared as free categories, a three-object fork embeds into every tradition because every path is a morphism, so it enters through a composite no tradition asserts. The repaired statement is **quiver-level** — the only dependency all the encoded traditions *directly assert* is one. The pigeonhole lemma is not a maximality proof and must not be cited as one.
-- **Why this repo is clean of the refuted claim, and why that is luck rather than hygiene.** The whole `Systems/Category/` machinery — the faithfulness theorems, the maximality repair, and the counterexample — **did not exist at the pin** and appears in no manifest row. This repo never made the maximality claim because it never had the vocabulary to make it. Silence is not neutrality, so: it is not claimed, it is not needed, and if a future doc reaches for it, the quiver-level statement is the only form available.
+- **Why this repo is clean of the refuted claim.** The whole `Systems/Category/` machinery — the faithfulness theorems, the maximality repair, and the counterexample — is at the pin since the 2026-10-10 move (it was not at the earlier pin `71a7883`) and **appears in no manifest row**: nothing here cites it, by the scope fence above. This repo never made the maximality claim, first because it lacked the vocabulary and now by choice. Silence is not neutrality, so: it is not claimed, it is not needed, and if a future doc reaches for it, the quiver-level statement is the only form available.
 
 ## The audit path
 
@@ -149,7 +149,7 @@ python3 scripts/lean_provenance.py resolve --rev origin/main \
 # 1. Fetch SSF at the pin (beside this repo — the default location the tests probe)
 git clone https://github.com/halcyonic-systems/systems-science-foundations.git
 cd systems-science-foundations
-git checkout 71a7883b3bbe15b91ad137b81bb80a77915e0da1
+git checkout 6ab7aba7443f82a1556d53b8b9e87a382e9cc019
 
 # 2. Build every proof. elan reads lean-toolchain (v4.28.0) automatically.
 #    `lake build` compiles the whole Systems library AND the gates-oracle
@@ -170,10 +170,10 @@ echo 'import Systems.Klir.ViewGeneration
 
 # 5. Cross-check the committed fixture is what the pinned Lean emits (spec §D):
 lake env lean --run Systems/Klir/GatesTruthTable.lean \
-  | diff - ../bert-lenses/fixtures/gates_truth_table.json && echo "fixture matches pin"
+  | diff - ../facets/fixtures/gates_truth_table.json && echo "fixture matches pin"
 
-# 6. Run the Rust-side bindings against the pinned checkout (from bert-lenses):
-cd ../bert-lenses
+# 6. Run the Rust-side bindings against the pinned checkout (from facets):
+cd ../facets
 cargo test -p bert-core --test gates_truth_table          # fixture rows
 SSF_DIR=../systems-science-foundations \
   cargo test -p bert-core --test gates_oracle             # the live oracle
@@ -187,7 +187,7 @@ Step 0 needs no Lean toolchain and no SSF build, only an SSF checkout. Steps 1�
 The pin, the manifest, and the fixture move **together**, never separately. Advancing to a new SSF commit is one atomic change:
 
 1. Check out the new SSF commit; `lake build` must pass there.
-2. Regenerate the fixture with the `_generator.command` recorded inside it (spec §D): `lake env lean --run Systems/Klir/GatesTruthTable.lean > ../bert-lenses/fixtures/gates_truth_table.json`. Commit the diff (or its absence).
+2. Regenerate the fixture with the `_generator.command` recorded inside it (spec §D): `lake env lean --run Systems/Klir/GatesTruthTable.lean > ../facets/fixtures/gates_truth_table.json`. Commit the diff (or its absence).
 3. Re-run the audit path steps 3–6 against the new checkout — in particular the oracle test with `SSF_DIR` pointed at it, and `lean_citations_resolve`.
 4. Update `pin` **and** `staleness` in [`lean-manifest.json`](lean-manifest.json): the new commit and date, the replay date, the new commits-ahead count, and the material-delta list rewritten to say what actually changed. An empty delta list is a claim in its own right — write it only after reading the diff.
 5. `python3 scripts/lean_provenance.py render`, then `resolve`. Both must pass before the commit. Nothing else in this repo restates the pin hash.
