@@ -33,9 +33,30 @@ than smooth over:
 The observatory's first sensor, on the routed interface of
 `assets/examples/llm-market.sl` (the Router's two outwires). Retrieved once per
 pull date, dated in the filename, never refreshed in place: a re-pull is a new
-set of files. **No vintage has been pulled yet**; the files below exist once
-the lead runs the three commands. Until then the Router's split stays at the
-declared 35 : 54 and the demo bundle `assets/demos/llm-market.json` is untouched.
+set of files. The demo bundle `assets/demos/llm-market.json` is untouched; the
+vintage bundle is a separate file the gallery does not load.
+
+**Vintage 2026-10-10.** Pulled 2026-10-10 (local), window 2025-01-01 →
+2026-10-09, 645 days, 428 permaslugs including `other`. Attribution, as
+OpenRouter asks: **Source: OpenRouter (openrouter.ai/rankings), as of
+2026-10-11T00:27Z.** Classified with the 149-row table of 2026-10-10:
+
+- Coverage: 91.0% of tokens outside the `other` row carry an `open` or
+  `closed` row (85.0% of all tokens; `other` is 6.6% of all tokens). By
+  calendar month the classified share of non-`other` tokens runs from 80.6%
+  (2026-10, nine days) and 82.3% (2026-03) to 99.2% (2026-07); every month of
+  2025 is above 85%.
+- 222 permaslugs stay `unknown`. Stealth and router pseudo-models are 5.2% of
+  non-`other` tokens and cannot be classified by rule 3, so the ceiling is
+  about 95%, not 100%. The heaviest three unknowns: `stealth/space-bunny-alpha`
+  (2.8%), `stealth/ox-alpha` (1.4%), `openrouter/owl-alpha` (0.8%). The
+  heaviest labelled unknowns are `xiaomi/mimo-v2-pro-20260318` (0.5%, no
+  Xiaomi page found for it; the V2.5 and V2.6 cards exist), `upstage/solar-pro4`
+  (0.4%, Upstage's page lists Console, Playground and on-premises, which is
+  neither public weights nor plainly API-only), `typesafe/jev-1.13` (0.4%, a
+  decision model with no weights page), and Alibaba's Qwen `plus`/`max`/`flash`
+  API models (1.0% together; Model Studio's page does not say they are
+  API-only). The rest is a tail of 200-odd slugs under 0.5% each.
 
 | file | written by | columns |
 |---|---|---|
@@ -86,10 +107,15 @@ source.
    reached through an API only. `match` says how the row applies: `slug` is one
    permaslug (a dated canonical slug also answers for its undated form),
    `prefix` is every model under that author and is used only where the author
-   releases one way. Nothing is classified from memory; the seed of fourteen
-   rows covers what was opened on 2026-10-10 (including the slugs read off the
-   API's 2026-10-01 day, which the lead pulled to test the key) and the first
-   pull's unmatched list is where it grows. This table supersedes the by-author
+   releases one way. A serving variant (`:free`, `:beta`) takes its base slug's
+   row. Nothing is classified from memory: an `open` row's URL is a model card
+   whose files and license were read (a gated card such as Llama's or Gemma's
+   counts as public, since the weights are downloadable on accepting the
+   license); a `closed` row's URL is the lab's own model page, which lists API
+   endpoints and no download, the caveat being that such a page rarely says
+   "weights not released" in so many words. Rows for 149 slugs were made on
+   2026-10-10, heaviest first, and the next pull's unmatched list is where the
+   table grows. This table supersedes the by-author
    `AUTHOR_BUCKET` in `tools/pipeline/target4_dev_wide.py` (leg 7 of the July
    2026 pipeline) for any open-weight share: that map decides per author from
    memory, this one per model from a page; leg 7 is left as it is for the

@@ -1,0 +1,35 @@
+{
+  "title": "LLM Serving Market, routed share observed",
+  "blurb": "The pooled llm-market with the Router's split forced by the routed-share series: OpenRouter rankings-daily, vintage 2026-10-10, monthly sums 2025-01 to 2026-10 of tokens routed to frontier (closed-weight) and to open-weight models, per the classification table in assets/data. The two columns are relative weights, so only their ratio reaches the run; models classified unknown and the API's aggregated other row are left out of both, which is the high end of the share's range. Rankings data by OpenRouter (CC BY 4.0). Self-hosted serving stays at its placeholder.",
+  "model": "llm-market",
+  "genus": "Social",
+  "t": 660,
+  "csv": "month,frontier_weight,open_weight\n0,1501044287786,337516413796\n1,2412044067573,480960309485\n2,4353903386528,1162337439618\n3,5347515902155,1571485873377\n4,7244955991928,1553695524610\n5,6407471001876,1904272278838\n6,7186593134215,2984938680298\n7,8270977773364,4558854994151\n8,14645213674332,4193874430335\n9,15574920643289,4411473873214\n10,18195826959616,4842128633891\n11,15589312128824,6650701807798\n12,18820443583050,9445329783767\n13,22452035605032,22986959952744\n14,32283377723519,31769692034459\n15,37019189296413,35833783706184\n16,41694724940009,62657358315166\n17,50911555566178,112274534820057\n18,57194570933919,173273019995578\n19,84059210152332,239825650927041\n20,125749606273948,368934563196653\n21,38170301331537,125188869366506\n",
+  "mapping": {
+    "model": "",
+    "data": "",
+    "t": 660,
+    "mapping": [
+      {
+        "column": "month",
+        "as": "time"
+      },
+      {
+        "column": "frontier_weight",
+        "as": "flow",
+        "element": "routed frontier workload",
+        "unit": "weight",
+        "force": true,
+        "every": 30
+      },
+      {
+        "column": "open_weight",
+        "as": "flow",
+        "element": "routed open-weight workload",
+        "unit": "weight",
+        "force": true,
+        "every": 30
+      }
+    ]
+  }
+}

@@ -191,6 +191,9 @@ def classify(slug, by_slug, by_prefix):
     no row names is `unknown`, which is what ruling 3 of #529 asks for."""
     if slug == OTHER:
         return OTHER, OTHER
+    # `:free`, `:beta` and the like are OpenRouter serving variants of the
+    # same weights, so they take the base slug's row.
+    slug = slug.split(":", 1)[0]
     for key in (slug, undated(slug)):
         if key in by_slug:
             r = by_slug[key]
@@ -427,6 +430,7 @@ def cmd_self_test(args):
     check(classify("anthropic/claude-opus-5-20260723", by_slug, by_prefix) == ("Anthropic", "closed"), "prefix match")
     check(classify("deepseek/deepseek-v4.1-flash-20260910", by_slug, by_prefix) == ("DeepSeek", "open"), "dated slug match")
     check(classify("deepseek/deepseek-v4.1-flash", by_slug, by_prefix) == ("DeepSeek", "open"), "undated slug match")
+    check(classify("deepseek/deepseek-v4.1-flash-20260910:free", by_slug, by_prefix) == ("DeepSeek", "open"), "variant suffix takes the base row")
     check(classify("openrouter/space-bunny-alpha", by_slug, by_prefix)[1] == "unknown", "stealth is unknown")
     check(classify("nobody/mystery-9b", by_slug, by_prefix) == ("nobody", "unknown"), "unlisted author is unknown")
     check(classify(OTHER, by_slug, by_prefix) == (OTHER, OTHER), "other row")
