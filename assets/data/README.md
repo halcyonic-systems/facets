@@ -155,7 +155,137 @@ source.
 
 **What this sensor is not.** It sees the routed interface only. Self-hosted
 serving has no public sensor and stays `unknown` at its placeholder (facets#523
-item 2). A finding reads "observed on the routed interface (OpenRouter
+item 2); the two proxies below are evidence beside that row, not a value for
+it. A finding reads "observed on the routed interface (OpenRouter
 rankings-daily, vintage YYYY-MM-DD), estimated on the self-hosted one." It is
 also OpenRouter's routed traffic, not all routed traffic; the share is what one
 router sees.
+
+## Open-weight download proxy (HF, 30-day) (facets#523)
+
+A proxy on the self-hosted interface of `assets/examples/llm-market.sl`: how
+often the open-weight families' repositories on the Hugging Face Hub were
+downloaded in the last 30 days, per family, as a pinned vintage. It is
+attached to the self-hosted row as **evidence**, grade `third-party`, never as
+its value: the flow's 3000 Gtok/day stays a placeholder grounded `unknown`,
+and nothing here converts to tokens. One download is one fetch of a repo's
+config file by anyone (a person, a CI job, a mirror, a serving provider
+warming a cache), and says nothing about whether the weights were then run,
+how often, or on whose hardware.
+
+**Vintage 2026-10-11.** Pulled 2026-10-11 (local), 1,162 repos across 12
+namespaces, 512 of them claimed by the 26-row mapping into 21 (lab, family)
+rows. Top five families by 30-day downloads: `qwen3` 196.9M (198 repos),
+`gemma-4` 36.8M (38), `llama-3` 17.0M (21), `nemotron-3` 10.7M (32), `glm-5`
+10.3M (10); then `deepseek-v4` 8.4M, `deepseek-v3` 8.0M, `gemma-3` 5.3M,
+`deepseek-r1` 4.3M. The 650 unclaimed repos are mostly earlier generations
+and non-LLM work the classification table has no slug for (`Qwen2.5-*` alone
+is 61.8M in the window, `DeepSeek-OCR`, `GLM-OCR`, `Prompt-Guard`,
+Voxtral); `aggregate` prints the heaviest fifteen so the mapping can grow
+when the classification table does, never ahead of it. `step-5` has no Hub
+repo, consistent with its `unknown` row in the classification table.
+
+| file | written by | columns |
+|---|---|---|
+| `hf-downloads-vintage-<pulldate>.csv` | `pull` | `pulldate,namespace,repo_id,downloads_30d,downloads_all_time`, one row per repo, ordered by namespace then repo; the API's two integers untouched |
+| `hf-downloads-by-family-vintage-<pulldate>.csv` | `aggregate` | `pulldate,lab,family,downloads_30d,downloads_all_time,repo_count`, one row per (lab, family), ordered by lab then family |
+| `hf-family-mapping.csv` | by hand | `namespace,repo_prefix,lab,family,source` |
+
+```bash
+python3 scripts/hf_downloads_vintage.py pull --pulldate 2026-10-11      # no token; ~15 requests
+python3 scripts/hf_downloads_vintage.py aggregate --vintage 2026-10-11
+```
+
+`--dry-run` on either validates and writes nothing; an existing vintage is
+refused, never overwritten. `self-test` (third line of `just check`) pins the
+paging, the prefix rule and the sums on `scripts/fixtures/` without the
+network.
+
+**The source.** `GET https://huggingface.co/api/models?author=<namespace>&expand[]=downloads&expand[]=downloadsAllTime&limit=1000`,
+paged by the `Link: <…>; rel="next"` header (the Hub's OpenAPI description
+of `cursor`: "Pagination cursor from Link header"), no token. `downloads` is
+the figure the model page labels "Downloads last month"; `downloadsAllTime`
+is the lifetime count, returned only when asked for by `expand`. Anonymous
+API quota, read 2026-10-11 at
+[docs/hub/rate-limits](https://huggingface.co/docs/hub/rate-limits): 500
+requests per 5-minute fixed window per IP, "subject to change over time
+depending on platform health"; a vintage is about fifteen requests with a
+pause between pages, and a 429 is honoured by sleeping out the window the
+`RateLimit` header names. No history is published: the 30-day window is what
+the API returns today, so this becomes a series only by repeated pulls.
+**Cadence: monthly, a new dated file each time**, the windows then abutting
+rather than overlapping.
+
+**How the Hub counts**, read 2026-10-11 at
+[docs/hub/models-download-stats](https://huggingface.co/docs/hub/models-download-stats):
+"Every HTTP request to these files, including `GET` and `HEAD`, will be
+counted as a download", where the files are a repo's query files
+(`config.json` by default, or the library's own), so a count is requests,
+not people and not machines. "GGUF files are self-contained and are not tied
+to a single library, so all of them are counted for downloads. This will
+double count downloads in the case a user performs cloning of a whole
+repository." The page offers Publisher Analytics to publishers who need to
+"exclude downloads from CI/CD pipelines, or deduplicate users (i.e. count
+unique downloaders)", which is to say the public count does neither. The
+#523 comment of 2026-10-11 also quotes a Hub report saying downloads "do not
+capture API usage, private deployments, or models distributed through other
+channels"; that page was not relocated when this section was written, so the
+sentence travels as the comment's reading, not as a page read here.
+
+**The mapping.** `hf-family-mapping.csv` claims a repo by its namespace and a
+case-sensitive prefix of the repo name, the longest matching prefix winning
+(`GLM-5.3` is `glm-5` under the real table, since 5.3 is a point release of
+the family the classification table calls `z-ai/glm-5*`; the fixture table
+has a longer prefix to pin the rule). A family is a major version of a lab's
+line, named from the slugs in `openrouter-model-classification.csv`, and
+every row's `source` names those slugs so the mapping is checkable against
+the table it came from. Google, NVIDIA and Tencent share their namespaces
+with much else, so the raw file keeps only the claimed repos there; every
+other namespace is kept whole, so the unclaimed tail is visible. `THUDM`
+returns no repos (the Hub answers for Z.ai under `zai-org` now) and is not
+queried.
+
+**Mirrors and quantizers are out.** `unsloth`, `bartowski`, `TheBloke`,
+`lmstudio-community`, `mlx-community` and the like redistribute these
+weights in formats local runtimes load directly, and carry much of the
+local-inference traffic the proxy would most like to see; they are under
+other namespaces, so the per-family roll-up does not count them. A second
+roll-up that includes the top mirror namespaces is a possible later addition,
+clearly labelled as such; it is not in this vintage. Counts are therefore a
+floor on Hub-served downloads of each family and nothing more.
+
+**What this proxy is not.** Not tokens, not machines, not self-hosted share.
+It cannot be divided by anything on the routed side to give a share. Its
+honest use is a ranking of families and a direction of travel between
+vintages, with the first difference available from the second pull.
+
+## Local-runtime pull proxy (Ollama): refused (facets#523)
+
+The second proxy, "local-runtime pull proxy (Ollama, cumulative)", was to be
+a dated read of `https://ollama.com/library?sort=popular`, one request per
+pull date, parsed into per-model cumulative pull counts (one pull per machine
+per version, forever: the closest public proxy to own-hardware use). The
+owner's go on #523 was conditional on the site's terms allowing a dated
+snapshot. Read 2026-10-11:
+
+- `https://ollama.com/robots.txt` allows `/library` (the Disallow list is
+  auth, dashboard, settings, and the `/api/`, `/v1/`, `/v2/` endpoints).
+- `https://ollama.com/terms` ("Last updated: May 2026"), section 4 "Use of
+  Services", lists among the things you may not do: **"Use automated means
+  to access our services without permission."**
+
+A script reading the page is automated means, and no permission has been
+asked for or given; robots.txt is a convention for crawlers, not a grant
+that overrides the terms. So the half is not built. `scripts/ollama_pulls_vintage.py`
+exists so that the decision is executable: its `pull` refuses with the
+clause quoted and makes no request, `--dry-run` or not, and its `self-test`
+(fourth line of `just check`) pins that it refuses and that no
+`ollama-pulls-vintage-*.csv` exists. The vintage shape is fixed in the
+script's docstring (`pulldate,model,pulls_cumulative`, plus a by-family
+roll-up through `hf-family-mapping.csv` with an Ollama name column added
+then) so nothing downstream has to be re-decided if permission is granted
+(the terms name `support@ollama.com`) or Ollama publishes the counts under a
+stated license. The numbers the #523 comment quotes (llama3.1 120M,
+deepseek-r1 94M, qwen3 40M pulls on 2026-10-11) were read by hand and are
+not a vintage. Grade when built: `third-party`; cumulative, so a series only
+by repeated pulls and a first difference; never tokens.
