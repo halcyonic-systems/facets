@@ -94,6 +94,24 @@ The model is two levels, and a run is per level:
   series replaces them; the flow is in the model so that the boundary is not
   cut to what the router sees, which would bias the open-weight share low on
   exactly the flow the commoditization question is about.
+- **Self-hosted interface — evidence attached (2026-10-11, facets#523).** The
+  value stays `unknown`. Two proxies were scoped from sources; one is built,
+  one refused. The open-weight download proxy (HF, 30-day), vintage
+  2026-10-11, reads `qwen3` 196.9M, `gemma-4` 36.8M and `llama-3` 17.0M
+  downloads in the window, per family across the classified labs, grade
+  `third-party`; the local-runtime pull proxy (Ollama, cumulative) is refused
+  because ollama.com's terms forbid "automated means to access our services
+  without permission" (the hand-read figures in the #523 comment, llama3.1
+  120M, deepseek-r1 94M, qwen3 40M pulls, are not a vintage). Neither counts
+  tokens, machines or share; both are a ranking and, from the second monthly
+  pull, a direction. The bracket on the self-hosted share of all serving comes
+  from the two denominators the comment names, and both are weak: Tunguz's
+  1–3% is "from thin air" by his own words, and OpenRouter's study puts about
+  a third of inference through routers while saying it "excludes locally
+  hosted deployments", so the self-hosted flow is unmeasured at both ends.
+  Files, counting rules and what each proxy is not: `assets/data/README.md`,
+  "Open-weight download proxy (HF, 30-day)" and "Local-runtime pull proxy
+  (Ollama): refused".
 - **Price — absent.** The model draws no money counter-flow, so price cannot
   be a readout of the run. It enters through the observatory's data until the
   money plane is a word of the language (see `assets/examples/federal-reserve.sl`).

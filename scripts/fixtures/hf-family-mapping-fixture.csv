@@ -1,0 +1,6 @@
+namespace,repo_prefix,lab,family,source
+Qwen,Qwen3,Alibaba Qwen,qwen3,fixture: qwen/qwen3-* and qwen3.5-*
+google,gemma-3,Google,gemma-3,fixture: google/gemma-3-*
+google,gemma-4,Google,gemma-4,fixture: google/gemma-4-*
+zai-org,GLM-5,Z.ai,glm-5,fixture: z-ai/glm-5-*
+zai-org,GLM-5.3,Z.ai,glm-5.3,fixture: z-ai/glm-5.3-* (a longer prefix than GLM-5)
