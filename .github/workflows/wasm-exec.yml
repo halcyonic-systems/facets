@@ -68,15 +68,13 @@ jobs:
           version: 'v0.13.1'
 
       # The package the app ships.
-      # The pkg keeps its old file names until phase 3 of #541 renames the wasm
-      # boundary and web/'s imports together (phase 2 renamed the crate).
       - name: Build wasm pkg
-        run: wasm-pack build --target web --out-dir pkg --out-name bert_lenses_kernel
+        run: wasm-pack build --target web --out-dir pkg
         working-directory: crates/facets-kernel
 
       # The probe package — same kernel plus one deliberate panic export.
       - name: Build wasm pkg (panic probe)
-        run: wasm-pack build --target web --out-dir pkg-probe --out-name bert_lenses_kernel -- --features panic-probe
+        run: wasm-pack build --target web --out-dir pkg-probe -- --features panic-probe
         working-directory: crates/facets-kernel
 
       - name: Setup Node

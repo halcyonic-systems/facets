@@ -74,10 +74,8 @@ jobs:
       # The same three steps as `just desktop`, in the same order: the bundle
       # wraps web/dist, and web/dist consumes the freshly built wasm pkg. A
       # stale pkg here would ship a stale brain inside the desktop app.
-      # The pkg keeps its old file names until phase 3 of #541 renames the wasm
-      # boundary and web/'s imports together (phase 2 renamed the crate).
       - name: Build wasm pkg
-        run: wasm-pack build --target web --out-dir pkg --out-name bert_lenses_kernel
+        run: wasm-pack build --target web --out-dir pkg
         working-directory: crates/facets-kernel
 
       - name: npm ci
