@@ -9,7 +9,7 @@
 import { describe, it, expect, vi } from "vitest";
 
 // The wasm exports the boundary forwards to. Only the ones under test throw.
-vi.mock("bert-lenses-kernel", () => ({
+vi.mock("facets-kernel", () => ({
   default: () => Promise.resolve(),
   validate: () => {
     throw new WebAssembly.RuntimeError("unreachable");
@@ -44,7 +44,7 @@ vi.mock("bert-lenses-kernel", () => ({
   ),
 }));
 
-vi.mock("bert-lenses-kernel/bert_lenses_kernel_bg.wasm?url", () => ({ default: "test.wasm" }));
+vi.mock("facets-kernel/facets_kernel_bg.wasm?url", () => ({ default: "test.wasm" }));
 
 import { validate, openModel, isKernelError, isKernelTrap, KernelError, KernelTrap } from "./index";
 

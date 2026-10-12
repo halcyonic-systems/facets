@@ -40,7 +40,7 @@ const BOUNDARY_PROPS_AUTHORING = true;
 
 export function FormalPanel({ desc }: { desc: LensDescription }) {
   return (
-    <Card title="The formal object" source="bert-lenses-kernel · describe(model, lens) · wasm">
+    <Card title="The formal object" source="facets-kernel · describe(model, lens) · wasm">
       {desc.lens === "Klir" && <KlirFace d={desc} />}
       {desc.lens === "Bunge" && <BungeFace d={desc} />}
       {desc.lens === "Mobus" && <MobusFace d={desc} />}

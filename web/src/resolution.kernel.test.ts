@@ -5,12 +5,12 @@
 import { describe, expect, it } from "vitest";
 import fs from "node:fs";
 import path from "node:path";
-import { initSync } from "bert-lenses-kernel";
+import { initSync } from "facets-kernel";
 import { compileSl } from "./kernel";
 import { stage2Report } from "./resolution";
 
 initSync({
-  module: fs.readFileSync(path.resolve(__dirname, "../../crates/facets-kernel/pkg/bert_lenses_kernel_bg.wasm")),
+  module: fs.readFileSync(path.resolve(__dirname, "../../crates/facets-kernel/pkg/facets_kernel_bg.wasm")),
 });
 
 const GARDEN = fs.readFileSync(path.resolve(__dirname, "../../assets/examples/rain-barrel-garden.sl"), "utf8");

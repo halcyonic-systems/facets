@@ -9,11 +9,11 @@
 import { describe, expect, it } from "vitest";
 import fs from "node:fs";
 import path from "node:path";
-import { initSync } from "bert-lenses-kernel";
+import { initSync } from "facets-kernel";
 import { modelIdentity, openModel, writeArchive } from "./kernel";
 
 initSync({
-  module: fs.readFileSync(path.resolve(__dirname, "../../crates/facets-kernel/pkg/bert_lenses_kernel_bg.wasm")),
+  module: fs.readFileSync(path.resolve(__dirname, "../../crates/facets-kernel/pkg/facets_kernel_bg.wasm")),
 });
 
 const OLD_TAG = "bert-lenses/canvas@1";
