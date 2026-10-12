@@ -26,7 +26,16 @@ use facets_canvas::canvas::{to_canvas, CanvasModel};
 /// old `WorldModel` file already dropped cannot be recovered — so the marker's
 /// job is not to enable upgrade-in-place; it is to let a future reader tell
 /// generations apart without guessing from shape alone.
-pub const FORMAT: &str = "bert-lenses/canvas@1";
+pub const FORMAT: &str = "facets/canvas@1";
+
+/// The marker every archive carried before the rename (#541): the same
+/// generation as `FORMAT` under the project's old name, so nothing about the
+/// content differs. The reader has always opened it, since shape decides and
+/// the marker only corroborates; the constant exists so the tests and the
+/// shipped walkthrough archives (re-minted in phase 5 of #541) can name it.
+/// It retires on 2027-01-11: after that date nothing writes or names it, and a
+/// file carrying it still opens, by shape, like any marker-less archive.
+pub const FORMAT_RETIRING: &str = "bert-lenses/canvas@1";
 
 /// A written archive: the neutral model, plus the marker that names it.
 /// `flatten` keeps the model's own fields at the top level, so an archive is a
@@ -310,6 +319,29 @@ mod tests {
         value.as_object_mut().unwrap().remove("format");
         let opened = read(&serde_json::to_string(&value).unwrap()).unwrap();
         assert_eq!(opened.relations.len(), 2);
+    }
+
+    /// The writer emits the new marker and only the new one (#541).
+    #[test]
+    fn the_writer_emits_the_facets_tag() {
+        let text = write(&lossy_model()).unwrap();
+        let value: Value = serde_json::from_str(&text).unwrap();
+        assert_eq!(value["format"], "facets/canvas@1");
+        assert!(!text.contains(FORMAT_RETIRING), "the old tag is read, never written");
+    }
+
+    /// Both markers open, to the same model: the tag names the generation and
+    /// carries no content, so swapping it changes nothing the reader returns.
+    #[test]
+    fn both_tags_open_to_the_same_model() {
+        let text = write(&lossy_model()).unwrap();
+        let old = text.replacen(FORMAT, FORMAT_RETIRING, 1);
+        assert!(old.contains(FORMAT_RETIRING) && !old.contains(FORMAT));
+
+        let read_new = serde_json::to_value(read(&text).unwrap()).unwrap();
+        let read_old = serde_json::to_value(read(&old).unwrap()).unwrap();
+        assert_eq!(read_old, read_new);
+        assert_eq!(identity(&old), identity(&text));
     }
 
     #[test]

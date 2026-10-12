@@ -109,8 +109,12 @@ fn child_archives_are_current() {
         }
         let stored = fs::read_to_string(&path)
             .unwrap_or_else(|_| panic!("{json}: not minted — run once with BLESS_LLM_MARKET_WALKTHROUGH=1"));
-        assert_eq!(
-            stored, minted,
+        // Until phase 5 of #541 re-mints them, a stored archive may differ from
+        // the mint in its format tag alone: written as bert-lenses/canvas@1, it
+        // is the same projection under the old name, and the reader opens both.
+        let minted_old_tag = minted.replacen(archive::FORMAT, archive::FORMAT_RETIRING, 1);
+        assert!(
+            stored == minted || stored == minted_old_tag,
             "{json} is not the projection of {sl} — re-mint with BLESS_LLM_MARKET_WALKTHROUGH=1"
         );
         assert_eq!(
