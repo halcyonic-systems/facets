@@ -47,7 +47,7 @@ const gitSha = (() => {
 const wasmSha256 = (() => {
   try {
     const bytes = readFileSync(
-      resolve(ROOT, "crates/facets-kernel/pkg/bert_lenses_kernel_bg.wasm"),
+      resolve(ROOT, "crates/facets-kernel/pkg/facets_kernel_bg.wasm"),
     );
     return createHash("sha256").update(bytes).digest("hex");
   } catch {

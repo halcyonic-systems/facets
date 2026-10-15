@@ -24,7 +24,7 @@ const define = (read: () => string): string => {
 export interface BuildInfo {
   /** The app version, from src-tauri/tauri.conf.json. */
   version: string;
-  /** The wasm kernel crate's version, and bert-core's under it. */
+  /** The wasm kernel crate's version, and facets-core's under it. */
   kernelVersion: string;
   coreVersion: string;
   /** The commit this artifact was built from; `-dirty` if the tree was not clean. */
@@ -62,7 +62,7 @@ export function provenanceLines(info: BuildInfo = buildInfo): { label: string; v
     { label: "Version", value: info.version, note: "the app" },
     {
       label: "Kernel",
-      value: `bert-lenses-kernel ${info.kernelVersion} · bert-core ${info.coreVersion}`,
+      value: `facets-kernel ${info.kernelVersion} · facets-core ${info.coreVersion}`,
       note: "every verdict on this canvas comes from here",
     },
     { label: "Built from", value: info.gitSha, note: "commit in halcyonic-systems/bert-lenses" },

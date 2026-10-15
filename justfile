@@ -3,10 +3,6 @@
 # the pkg, and `check` runs the full gate suite the CI enforces.
 
 kernel := "crates/facets-kernel"
-# The pkg keeps its old file names (bert_lenses_kernel.js, bert_lenses_kernel_bg.wasm)
-# until phase 3 of #541 renames the wasm boundary and web/'s imports together;
-# wasm-pack would otherwise derive facets_kernel from the crate name (phase 2).
-out_name := "bert_lenses_kernel"
 
 # List recipes.
 default:
@@ -90,7 +86,7 @@ web-deps:
 # Rebuild the wasm pkg the web app consumes (run after any crate change).
 # Rebuild the wasm pkg the web app consumes (after any crate change).
 wasm:
-    cd {{kernel}} && wasm-pack build --target web --out-dir pkg --out-name {{out_name}}
+    cd {{kernel}} && wasm-pack build --target web --out-dir pkg
 
 # The headless door onto the kernel — compile, verdict, describe, run, layout.
 # Answers on stdout as JSON; the exit code carries the kind of failure (0 ok,
@@ -131,7 +127,7 @@ check: web-deps
     # covers, and `crates/facets-cli/tests/wasm_gate.rs` fails if this list ever
     # grows — the exclusion is checked, not merely commented.
     cargo build --workspace --exclude facets-cli --target wasm32-unknown-unknown
-    cd {{kernel}} && wasm-pack build --target web --out-dir pkg --out-name {{out_name}}
+    cd {{kernel}} && wasm-pack build --target web --out-dir pkg
     cd web && npm run check:tokens
     cd web && npx tsc --noEmit
     cd web && npx vitest run
@@ -163,8 +159,8 @@ provenance-head:
 # rather than assumed.
 # Execute the shipped wasm package — the only thing that runs the boundary.
 wasm-exec:
-    cd {{kernel}} && wasm-pack build --target web --out-dir pkg --out-name {{out_name}}
-    cd {{kernel}} && wasm-pack build --target web --out-dir pkg-probe --out-name {{out_name}} --features panic-probe
+    cd {{kernel}} && wasm-pack build --target web --out-dir pkg
+    cd {{kernel}} && wasm-pack build --target web --out-dir pkg-probe --features panic-probe
     node scripts/wasm_exec.mjs --probe crates/facets-kernel/pkg-probe
 
 # Bundle the macOS .app. Builds the same web/dist the served version publishes,

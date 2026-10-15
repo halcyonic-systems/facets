@@ -349,11 +349,12 @@ def cmd_check(root: Path) -> int:
 # phase moved the crate paths in VENDORING.md (lines 15 and 47; the two
 # revision-pinned show commands on lines 26 and 27 keep their revisions' paths)
 # and the pkg path in web/package.json (line 20; the package names on lines 2
-# and 20 are phase 3): both re-read in full.
+# and 20 are phase 3): both re-read in full. Phase 3 renamed those two
+# package names; web/package.json re-read in full, none left.
 HAND_COUNTS = {
     "crates/facets-kernel/src/lib.rs": 1,
     "docs/VENDORING.md": 22,
-    "web/package.json": 2,
+    "web/package.json": 0,
 }
 
 

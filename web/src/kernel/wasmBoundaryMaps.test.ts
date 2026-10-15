@@ -7,10 +7,10 @@
 import { describe, expect, it } from "vitest";
 import fs from "node:fs";
 import path from "node:path";
-import { initSync, compile_sl, project as wasmProject, run_rich } from "bert-lenses-kernel";
+import { initSync, compile_sl, project as wasmProject, run_rich } from "facets-kernel";
 
 const wasmBytes = fs.readFileSync(
-  path.resolve(__dirname, "../../../crates/facets-kernel/pkg/bert_lenses_kernel_bg.wasm"),
+  path.resolve(__dirname, "../../../crates/facets-kernel/pkg/facets_kernel_bg.wasm"),
 );
 initSync({ module: wasmBytes });
 

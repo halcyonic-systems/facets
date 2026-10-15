@@ -67,10 +67,8 @@ jobs:
         with:
           version: 'v0.13.1'
 
-      # The pkg keeps its old file names until phase 3 of #541 renames the wasm
-      # boundary and web/'s imports together (phase 2 renamed the crate).
       - name: Build wasm pkg
-        run: wasm-pack build --target web --out-dir pkg --out-name bert_lenses_kernel
+        run: wasm-pack build --target web --out-dir pkg
         working-directory: crates/facets-kernel
 
       # --- Web gates (the face) — depend on the freshly built pkg ---

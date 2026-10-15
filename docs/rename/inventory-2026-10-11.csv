@@ -2,10 +2,6 @@ path,line,class,text
 .github/ISSUE_TEMPLATE/bug.yml,13,workflow,"description: facets.systems/model, /chat, the `bert` CLI, the macOS app, or a local `just dev`."
 .github/ISSUE_TEMPLATE/model-refusal.yml,13,workflow,description: Paste the SL text (the SL pane shows it; `bert compile` accepts it). Keep it as small as still shows the pr
 .github/workflows/ci.yml,57,workflow,"# `bert` binary is argv and the filesystem, which wasm32-unknown-unknown"
-.github/workflows/ci.yml,73,workflow,run: wasm-pack build --target web --out-dir pkg --out-name bert_lenses_kernel
-.github/workflows/desktop.yml,80,workflow,run: wasm-pack build --target web --out-dir pkg --out-name bert_lenses_kernel
-.github/workflows/wasm-exec.yml,74,workflow,run: wasm-pack build --target web --out-dir pkg --out-name bert_lenses_kernel
-.github/workflows/wasm-exec.yml,79,workflow,run: wasm-pack build --target web --out-dir pkg-probe --out-name bert_lenses_kernel -- --features panic-probe
 .vscode/tasks.json,5,issue-ref,"// messages, no paraphrase. (The LSP tier of bert-lenses#353 supersedes"
 .vscode/tasks.json,10,cli-word,"""label"": ""bert: compile SL (current file)"","
 .vscode/tasks.json,12,cli-word,"""command"": ""cargo run --quiet -p facets-cli --bin bert -- compile ${file}"","
@@ -465,6 +461,7 @@ crates/facets-kernel/API.md,559,doc-prose,"(`bert-canvas`, `bert-tether`) are au
 crates/facets-kernel/API.md,599,format-tag,"The text to persist: the neutral model plus `""format"": ""bert-lenses/canvas@1""`."
 crates/facets-kernel/API.md,827,doc-prose,`web/src/kernel/types.ts`. Kept this way so `bert-core` carries no wasm/tsify
 crates/facets-kernel/API.md,872,cli-word,"- `set_flow_amount(label: string, from: string, to: string, v: number)` · `set_component_param(thing: string, field: str"
+crates/facets-kernel/API.md,912,format-tag,"`""bert-lenses/canvas@1""` named under ""The archive seam"" above is the tag every"
 crates/facets-kernel/Cargo.toml,5,doc-prose,"description = ""The JS-facing wasm boundary: thin wasm-bindgen wrappers over bert-core + bert-compose + bert-canvas + ber"
 crates/facets-kernel/Cargo.toml,5,doc-prose,"description = ""The JS-facing wasm boundary: thin wasm-bindgen wrappers over bert-core + bert-compose + bert-canvas + ber"
 crates/facets-kernel/Cargo.toml,5,doc-prose,"description = ""The JS-facing wasm boundary: thin wasm-bindgen wrappers over bert-core + bert-compose + bert-canvas + ber"
@@ -479,8 +476,12 @@ crates/facets-kernel/src/api.rs,795,doc-prose,// The canvas-family shapes are fi
 crates/facets-kernel/src/api.rs,805,doc-prose,/// Write-or-assert a committed contract fixture (shared with bert-canvas's
 crates/facets-kernel/src/api.rs,1107,doc-prose,"// demo, by round-tripping a bert-compose ladder circuit (built runnable) out"
 crates/facets-kernel/src/archive.rs,1,issue-ref,"//! The archive seam (bert-lenses#140, ADR 0004): what a saved model IS on disk."
-crates/facets-kernel/src/archive.rs,29,format-tag,"pub const FORMAT: &str = ""bert-lenses/canvas@1"";"
+crates/facets-kernel/src/archive.rs,38,format-tag,"pub const FORMAT_RETIRING: &str = ""bert-lenses/canvas@1"";"
 crates/facets-kernel/src/lib.rs,1,doc-prose,//! bert-lenses-kernel — the JS-facing wasm boundary. Marshaling only.
+crates/facets-kernel/tests/digital_computer_walkthrough.rs,88,format-tag,"// mint in its format tag alone: written as bert-lenses/canvas@1, it is the"
+crates/facets-kernel/tests/format_tag.rs,4,format-tag,"//! rename carries `bert-lenses/canvas@1`, and that includes the four"
+crates/facets-kernel/tests/llm_market_walkthrough.rs,113,format-tag,"// the mint in its format tag alone: written as bert-lenses/canvas@1, it"
+crates/facets-kernel/tests/steel_walkthrough.rs,93,format-tag,"// the mint in its format tag alone: written as bert-lenses/canvas@1, it"
 crates/facets-tether/src/forcing.rs,23,doc-prose,//! - **Mobus `InteractionType::Force`** (bert-core): an *ontological* flow type —
 crates/facets-tether/src/forcing.rs,316,issue-ref,"/// inflow × Δt, bert-lenses#94), not read from an author-declared stock unit —"
 crates/facets-tether/src/forcing.rs,380,issue-ref,"// (bert-lenses#76). Otherwise, for a Buffering stock, it DERIVES a display unit"
@@ -1057,15 +1058,12 @@ fixtures/sl/drafted-ambient/atom.annotation.json,22,fixture,"""notes"": ""Stray 
 fixtures/sl/drafted-ambient/hydrogen-molecule.annotation.json,21,fixture,"""notes"": ""Compiles clean under `bert verdict --lens mobus` (0 issues). No environment thing is a condition in disguise; "
 fixtures/sl/teaching/README.md,41,doc-prose,"All four were checked against the real parser (`bert_canvas::sl::parse_sl`),"
 justfile,1,doc-prose,"# bert-lenses tasks. Rust is the brain (wasm), web/ is the face."
-justfile,6,package-name,"# The pkg keeps its old file names (bert_lenses_kernel.js, bert_lenses_kernel_bg.wasm)"
-justfile,6,package-name,"# The pkg keeps its old file names (bert_lenses_kernel.js, bert_lenses_kernel_bg.wasm)"
-justfile,9,package-name,"out_name := ""bert_lenses_kernel"""
-justfile,27,doc-prose,"echo ""bert-lenses preflight"""
-justfile,99,cli-word,# `cargo install --path crates/facets-cli` puts `bert` on PATH for shell work.
-justfile,100,cli-word,#   just bert verdict assets/corpus/bunge/coupling-sigma3.sl --lens mobus
-justfile,101,cli-word,bert *ARGS:
-justfile,102,cli-word,@cargo run --quiet -p facets-cli --bin bert -- {{ARGS}}
-justfile,129,cli-word,"# `bert` binary is argv and the filesystem, which wasm32-unknown-unknown has"
+justfile,23,doc-prose,"echo ""bert-lenses preflight"""
+justfile,95,cli-word,# `cargo install --path crates/facets-cli` puts `bert` on PATH for shell work.
+justfile,96,cli-word,#   just bert verdict assets/corpus/bunge/coupling-sigma3.sl --lens mobus
+justfile,97,cli-word,bert *ARGS:
+justfile,98,cli-word,@cargo run --quiet -p facets-cli --bin bert -- {{ARGS}}
+justfile,125,cli-word,"# `bert` binary is argv and the filesystem, which wasm32-unknown-unknown has"
 scripts/author_audit.py,6,cli-word,mechanically off the compiled model. Nothing here judges: `bert compile` says
 scripts/author_audit.py,7,cli-word,"whether the text is a model, `bert verdict --lens mobus` says whether the"
 scripts/author_audit.py,33,cli-word,defaults to 7. Requires the `bert` binary (`cargo build -p facets-cli`).
@@ -1127,12 +1125,9 @@ scripts/mutation_check.py,131,doc-prose,"[""-p"", ""bert-canvas"", ""--test"", "
 scripts/publish-app.sh,3,deploy,"# ~/halcyonic-apps/bert-lenses/dist, outside ~/Desktop's TCC sandbox so"
 scripts/publish-app.sh,4,deploy,# launchd (com.halcyonic.bert-lenses) can serve it. Repo stays put; only
 scripts/publish-app.sh,11,deploy,"PUBLISH_DIR=""$HOME/halcyonic-apps/bert-lenses"""
-scripts/publish-app.sh,16,package-name,"local pkg_js=""$KERNEL_DIR/pkg/bert_lenses_kernel.js"""
-scripts/publish-app.sh,27,package-name,"(cd ""$KERNEL_DIR"" && wasm-pack build --target web --out-dir pkg --out-name bert_lenses_kernel)"
-scripts/publish-app.sh,51,deploy,"""name"": ""bert-lenses-serve"","
-scripts/publish-app.sh,54,doc-prose,"""description"": ""Standalone vite install (outside ~/Desktop's TCC sandbox) used only to run `vite preview` against the pu"
-scripts/publish-app.sh,64,deploy,"echo ""==> Published. Serve permanently via scripts/launchd/com.halcyonic.bert-lenses.plist,"""
-scripts/publish-site.sh,34,package-name,"(cd ""$KERNEL_DIR"" && wasm-pack build --target web --out-dir pkg --out-name bert_lenses_kernel)"
+scripts/publish-app.sh,50,deploy,"""name"": ""bert-lenses-serve"","
+scripts/publish-app.sh,53,doc-prose,"""description"": ""Standalone vite install (outside ~/Desktop's TCC sandbox) used only to run `vite preview` against the pu"
+scripts/publish-app.sh,63,deploy,"echo ""==> Published. Serve permanently via scripts/launchd/com.halcyonic.bert-lenses.plist,"""
 scripts/seam_audit.py,14,cli-word,"`.sl` with the real kernel (`bert compile`, the headless door in"
 scripts/seam_audit.py,43,cli-word,python3 scripts/seam_audit.py [--bert PATH] [--out PATH] [--json]
 scripts/seam_audit.py,45,cli-word,Requires the `bert` binary. Build it with `cargo build -p facets-cli --bin bert`
@@ -1158,9 +1153,6 @@ scripts/seam_audit.py,459,cli-word,bert = find_bert(args.bert)
 scripts/seam_audit.py,459,cli-word,bert = find_bert(args.bert)
 scripts/seam_audit.py,459,cli-word,bert = find_bert(args.bert)
 scripts/seam_audit.py,460,cli-word,"reports = [audit(bert, s) for s in shipped_models()]"
-scripts/wasm_exec.mjs,129,package-name,"const glue = join(ROOT, dir, ""bert_lenses_kernel.js"");"
-scripts/wasm_exec.mjs,130,package-name,"const wasm = join(ROOT, dir, ""bert_lenses_kernel_bg.wasm"");"
-scripts/wasm_exec.mjs,137,package-name,"`  cd crates/facets-kernel && wasm-pack build --target web --out-dir ${dir.split(""/"").pop()} --out-name bert_lenses_kern"
 tools/pipeline/README.md,21,deploy,`/Users/home/Documents/bert-lenses/data/` (override with the
 tools/pipeline/README.md,22,deploy,`BERT_LENSES_DATA_DIR` env var). Nothing under that path is committed.
 tools/pipeline/README.md,130,upstream-bert,"Derived leg — no external source, reshapes leg 4's output. The BERT import"
@@ -1189,18 +1181,10 @@ web/DESIGN.md,42,doc-prose,attribute and the stored choice (`bert-lenses.theme`)
 web/DESIGN.md,67,upstream-bert,"(Phase 2+) will harvest old BERT's curved-flow polish, but the token system stays."
 web/fixtures/bill-broken.analysis.json,305,doc-prose,"""t_note"": ""T: transforms — parametric by intent; bert-compose fills the slot"","
 web/fixtures/bill-broken.context.txt,11,doc-prose,T: transforms — parametric by intent; bert-compose fills the slot
-web/package-lock.json,2,package-name,"""name"": ""bert-lenses-web"","
-web/package-lock.json,8,package-name,"""name"": ""bert-lenses-web"","
-web/package-lock.json,17,package-name,"""bert-lenses-kernel"": ""file:../crates/facets-kernel/pkg"","
-web/package-lock.json,41,package-name,"""name"": ""bert-lenses-kernel"","
-web/package-lock.json,1951,package-name,"""node_modules/bert-lenses-kernel"": {"
-web/package.json,2,package-name,"""name"": ""bert-lenses-web"","
-web/package.json,20,package-name,"""bert-lenses-kernel"": ""file:../crates/facets-kernel/pkg"","
 web/src/AnalystPanel.tsx,26,doc-prose,"const COVERAGE_KEY = ""bert-lenses.analysis-coverage"";"
 web/src/App.tsx,1613,doc-prose,// File → Save / Export: project the canvas editing model back to a bert-core
 web/src/App.tsx,1770,doc-prose,// Save-as-copy discipline (bert-core model_id contract): saving under a NEW
 web/src/App.tsx,2544,doc-prose,"// the contract to the crossings themselves (bert-core decomposition.rs,"
-web/src/FormalPanel.tsx,43,doc-prose,"<Card title=""The formal object"" source=""bert-lenses-kernel · describe(model, lens) · wasm"">"
 web/src/InspectorDock.tsx,449,doc-prose,"<Card title=""Kernel rejected this state"" source=""bert-core · wasm"">"
 web/src/KernelErrorBoundary.tsx,63,doc-prose,"source=""bert-core · wasm"""
 web/src/Readouts.tsx,125,doc-prose,"<Card title=""Result"" source=""bert-compose · wasm"">"
@@ -1208,9 +1192,8 @@ web/src/ReviewPanel.tsx,373,doc-prose,"<BlockHeader label=""Review"" count=""ber
 web/src/RunPanel.tsx,854,doc-prose,"<Card title=""Result"" source=""bert-compose · wasm"">"
 web/src/RunPanel.tsx,866,doc-prose,"<Card title=""State occupancy"" source=""bert-compose · wasm"">"
 web/src/RunPanel.tsx,904,doc-prose,"<Card title={at === steps - 1 ? ""Final distribution"" : `Distribution at step ${at}`} source=""bert-compose · wasm"">"
-web/src/buildInfo.ts,27,doc-prose,"/** The wasm kernel crate's version, and bert-core's under it. */"
-web/src/buildInfo.ts,65,doc-prose,"value: `bert-lenses-kernel ${info.kernelVersion} · bert-core ${info.coreVersion}`,"
-web/src/buildInfo.ts,65,doc-prose,"value: `bert-lenses-kernel ${info.kernelVersion} · bert-core ${info.coreVersion}`,"
+web/src/archiveTag.kernel.test.ts,2,format-tag,// saved before the rename carry `bert-lenses/canvas@1`; the kernel now writes
+web/src/archiveTag.kernel.test.ts,19,format-tag,"const OLD_TAG = ""bert-lenses/canvas@1"";"
 web/src/buildInfo.ts,68,doc-prose,"{ label: ""Built from"", value: info.gitSha, note: ""commit in halcyonic-systems/bert-lenses"" },"
 web/src/canvas/NodeEditor.tsx,111,upstream-bert,"{/* #326: prose about this thing, restored from the original BERT. It sits"
 web/src/canvas/ProcessReference.tsx,8,upstream-bert,// BERT's extensions in the same register. Descriptors are terse by design — this is a
@@ -1225,15 +1208,11 @@ web/src/canvas/lenses/registry.ts,314,doc-prose,// run (bert-compose circuit.rs)
 web/src/coauthor.test.ts,74,doc-prose,"""bert-lenses.coauthor-turns"","
 web/src/coauthor.test.ts,193,cli-word,"// draft, copied from `bert verdict --lens mobus` on 2026-09-08 — the mock"
 web/src/coauthor.ts,101,doc-prose,"const TURNS_KEY = ""bert-lenses.coauthor-turns"";"
-web/src/coauthorRepair.kernel.test.ts,10,import,"import { initSync, compile_sl, emit_sl, project, validate_mode } from ""bert-lenses-kernel"";"
-web/src/coauthorRepair.kernel.test.ts,13,package-name,"module: fs.readFileSync(path.resolve(__dirname, ""../../crates/facets-kernel/pkg/bert_lenses_kernel_bg.wasm"")),"
 web/src/draftEffort.test.ts,42,doc-prose,"localStorage.setItem(""bert-lenses.coauthor-effort"", ""turbo"");"
 web/src/draftEffort.ts,43,doc-prose,"const KEY = ""bert-lenses.coauthor-effort"";"
 web/src/drafterModel.ts,59,doc-prose,"const KEY = ""bert-lenses.coauthor-model"";"
 web/src/index.css,5,doc-prose,* bert-lenses — Halcyonic Frost design tokens.
 web/src/index.css,9,doc-prose,* bert-lenses takes TEAL as its accent to distinguish the instrument within the
-web/src/kernel/bench.kernel.test.ts,8,import,"import { initSync, BenchHandle } from ""bert-lenses-kernel"";"
-web/src/kernel/bench.kernel.test.ts,11,package-name,"module: fs.readFileSync(path.resolve(__dirname, ""../../../crates/facets-kernel/pkg/bert_lenses_kernel_bg.wasm"")),"
 web/src/kernel/bill_render.harness.test.ts,32,doc-prose,"provenance: { generated_at: ""1970-01-01T00:00:00.000Z"", source: ""bert-lenses"" },"
 web/src/kernel/context.test.ts,50,doc-prose,"t_note: ""T: transforms — parametric by intent; bert-compose fills the slot"","
 web/src/kernel/context.test.ts,98,doc-prose,"provenance: { generated_at: ""2026-07-17T00:00:00.000Z"", source: ""bert-lenses"" },"
@@ -1242,36 +1221,21 @@ web/src/kernel/context.test.ts,280,doc-prose,"provenance: { generated_at: ""1999
 web/src/kernel/context.test.ts,305,doc-prose,"expect(ctx.provenance.source).toBe(""bert-lenses"");"
 web/src/kernel/context.ts,21,doc-prose,"provenance: { generated_at: string; source: ""bert-lenses"" };"
 web/src/kernel/context.ts,39,doc-prose,"provenance: { generated_at: new Date().toISOString(), source: ""bert-lenses"" },"
-web/src/kernel/contract.test.ts,5,doc-prose,// tests/contract.rs and the bert-lenses-kernel api.rs test module) and validate
-web/src/kernel/index.ts,43,import,"} from ""bert-lenses-kernel"";"
-web/src/kernel/index.ts,44,import,"import wasmUrl from ""bert-lenses-kernel/bert_lenses_kernel_bg.wasm?url"";"
-web/src/kernel/index.ts,44,package-name,"import wasmUrl from ""bert-lenses-kernel/bert_lenses_kernel_bg.wasm?url"";"
-web/src/kernel/index.ts,202,doc-prose,/** 4-layer systemhood report — computed by bert-core in wasm. */
-web/src/kernel/index.ts,207,doc-prose,/** Executable-projection gate — computed by bert-core in wasm. */
-web/src/kernel/index.ts,212,doc-prose,/** Simulate an authored model — computed by bert-compose in wasm. */
-web/src/kernel/index.ts,218,doc-prose,"*  distribution `vₙ₊₁ = vₙ P` evolution, computed by bert-compose in wasm."
-web/src/kernel/index.ts,299,doc-prose,/** Project the canvas editing model into a bert-core WorldModel (JSON) — the
-web/src/kernel/runNoData.test.ts,10,import,"import { initSync, compile_sl, project, run_rich } from ""bert-lenses-kernel"";"
-web/src/kernel/runNoData.test.ts,13,package-name,"module: fs.readFileSync(path.resolve(__dirname, ""../../../crates/facets-kernel/pkg/bert_lenses_kernel_bg.wasm"")),"
-web/src/kernel/trap.test.ts,12,doc-prose,"vi.mock(""bert-lenses-kernel"", () => ({"
-web/src/kernel/trap.test.ts,47,doc-prose,"vi.mock(""bert-lenses-kernel/bert_lenses_kernel_bg.wasm?url"", () => ({ default: ""test.wasm"" }));"
-web/src/kernel/trap.test.ts,47,package-name,"vi.mock(""bert-lenses-kernel/bert_lenses_kernel_bg.wasm?url"", () => ({ default: ""test.wasm"" }));"
+web/src/kernel/index.ts,203,doc-prose,/** 4-layer systemhood report — computed by bert-core in wasm. */
+web/src/kernel/index.ts,208,doc-prose,/** Executable-projection gate — computed by bert-core in wasm. */
+web/src/kernel/index.ts,213,doc-prose,/** Simulate an authored model — computed by bert-compose in wasm. */
+web/src/kernel/index.ts,219,doc-prose,"*  distribution `vₙ₊₁ = vₙ P` evolution, computed by bert-compose in wasm."
+web/src/kernel/index.ts,300,doc-prose,/** Project the canvas editing model into a bert-core WorldModel (JSON) — the
 web/src/kernel/types.ts,30,doc-prose,"*  (`bert_core::validate::ValidationIssue::code`, #319). Two issues share a"
 web/src/kernel/types.ts,39,doc-prose,*  (`bert_core::validate::doc`). The face only turns it into a link. */
 web/src/kernel/types.ts,198,doc-prose,*  `written`. Mirrors `DecisionLog` in bert-tether. */
 web/src/kernel/types.ts,434,doc-prose,*  text compile. Mirrors `bert_canvas::canvas::Crossing`. */
 web/src/kernel/types.ts,493,cli-word,"*  (#343): keyed as the engine, the session knob and `bert bench --set` read"
 web/src/kernel/types.ts,701,doc-prose,*  Kernel-computed in `bert_canvas::lenses::analyze` off the same predicate
-web/src/kernel/wasmBoundaryMaps.test.ts,10,import,"import { initSync, compile_sl, project as wasmProject, run_rich } from ""bert-lenses-kernel"";"
-web/src/kernel/wasmBoundaryMaps.test.ts,13,package-name,"path.resolve(__dirname, ""../../../crates/facets-kernel/pkg/bert_lenses_kernel_bg.wasm""),"
 web/src/library.ts,4,doc-prose,"// (modelStore.ts), because the app runs in a browser tab. bert-lenses is"
-web/src/libraryExport.kernel.test.ts,18,import,"} from ""bert-lenses-kernel"";"
-web/src/libraryExport.kernel.test.ts,24,package-name,"module: fs.readFileSync(path.resolve(__dirname, ""../../crates/facets-kernel/pkg/bert_lenses_kernel_bg.wasm"")),"
-web/src/libraryTree.test.ts,17,format-tag,"format: ""bert-lenses/canvas@1"","
+web/src/libraryTree.test.ts,60,format-tag,"rec(""old-tag-parent"", 2, archiveJson(""OP"", [""NC""], ""bert-lenses/canvas@1"")),"
 web/src/modelStore.ts,15,doc-prose,"const DB_NAME = ""bert-lenses"";"
 web/src/reasoner.ts,31,doc-prose,"const KEY = ""bert-lenses.reasoner"";"
-web/src/resolution.kernel.test.ts,8,import,"import { initSync } from ""bert-lenses-kernel"";"
-web/src/resolution.kernel.test.ts,13,package-name,"module: fs.readFileSync(path.resolve(__dirname, ""../../crates/facets-kernel/pkg/bert_lenses_kernel_bg.wasm"")),"
 web/src/review.ts,7,doc-prose,"/** The kernel's own lens→mode gate (bert-canvas `Lens::mode`, canvas.rs). A"
 web/src/review.ts,106,doc-prose,"// names the defect kind (`bert_core::validate`, required at every construction"
 web/src/sandbox/SandboxInspector.tsx,132,issue-ref,"title=""rate is an edge attribute in Mobus's formalism (Eq. 4.5) — a source with several outflows carries one rate PER FL"
@@ -1279,5 +1243,4 @@ web/src/theme.test.ts,117,doc-prose,"localStorage.setItem(""bert-lenses.theme"",
 web/src/theme.test.ts,156,doc-prose,"expect(localStorage.getItem(""bert-lenses.theme"")).toBeNull();"
 web/src/theme.ts,29,doc-prose,"const KEY = ""bert-lenses.theme"";"
 web/src/workbench.ts,34,doc-prose,"const STORAGE_KEY = ""bert-lenses.workbench.pins"";"
-web/vite.config.ts,50,package-name,"resolve(ROOT, ""crates/facets-kernel/pkg/bert_lenses_kernel_bg.wasm""),"
 web/vite.config.ts,66,cli-word,// was run. `bert bench` takes the same model and knobs when a variation is

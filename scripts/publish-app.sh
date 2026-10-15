@@ -13,7 +13,7 @@ SERVER_DIR="$PUBLISH_DIR/server"
 PORT=5190
 
 needs_wasm_build() {
-  local pkg_js="$KERNEL_DIR/pkg/bert_lenses_kernel.js"
+  local pkg_js="$KERNEL_DIR/pkg/facets_kernel.js"
   [ ! -f "$pkg_js" ] && return 0
   find "$KERNEL_DIR/src" "$REPO_ROOT/crates/facets-core/src" \
        "$REPO_ROOT/crates/facets-compose/src" "$REPO_ROOT/crates/facets-canvas/src" \
@@ -23,8 +23,7 @@ needs_wasm_build() {
 
 if needs_wasm_build; then
   echo "==> Building wasm kernel"
-  # --out-name: the pkg keeps its old file names until phase 3 of #541.
-  (cd "$KERNEL_DIR" && wasm-pack build --target web --out-dir pkg --out-name bert_lenses_kernel)
+  (cd "$KERNEL_DIR" && wasm-pack build --target web --out-dir pkg)
 else
   echo "==> wasm kernel pkg is up to date, skipping"
 fi

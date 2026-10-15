@@ -11,10 +11,11 @@ function modelJson(id: string | null, refs: string[] = []): string {
 }
 
 // The #140 neutral archive: elements keyed `things`, the child reference an
-// object (label + id) rather than a bare string.
-function archiveJson(id: string | null, refs: string[] = []): string {
+// object (label + id) rather than a bare string. Records saved before #541
+// carry the old tag; the listing reads by shape, so both nest alike.
+function archiveJson(id: string | null, refs: string[] = [], format = "facets/canvas@1"): string {
   return JSON.stringify({
-    format: "bert-lenses/canvas@1",
+    format,
     ...(id === null ? {} : { model_id: id }),
     things: refs.map((r) => ({ child_model: { name: "child", id: r } })),
   });
@@ -52,6 +53,15 @@ describe("buildLibraryTree across storage generations (#140)", () => {
     expect(mixed.map((n) => n.name)).toEqual(["archive-parent", "legacy-parent"]);
     expect(mixed[0].children.map((n) => n.name)).toEqual(["legacy-child"]);
     expect(mixed[1].children.map((n) => n.name)).toEqual(["archive-child"]);
+  });
+
+  it("nests across the two format tags (#541)", () => {
+    const tree = buildLibraryTree([
+      rec("old-tag-parent", 2, archiveJson("OP", ["NC"], "bert-lenses/canvas@1")),
+      rec("new-tag-child", 1, archiveJson("NC"), "NC"),
+    ]);
+    expect(tree.map((n) => n.name)).toEqual(["old-tag-parent"]);
+    expect(tree[0].children.map((n) => n.name)).toEqual(["new-tag-child"]);
   });
 
   it("counts a missing referent the same whichever generation names it", () => {

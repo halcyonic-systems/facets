@@ -905,3 +905,17 @@ optional and serde-skipped when absent: `env_kind`, `rule`, `manages_param`,
 `milieu`, `boundary`, `system_type`, `name`, `description`, `params`, `metrics`
 and `klir_level`. Each arrived additively under its own issue; none changed a
 signature.
+
+## The archive's format tag is `facets/canvas@1` (appended 2026-10-11, #541)
+
+`write_archive` now writes `"format": "facets/canvas@1"`; the
+`"bert-lenses/canvas@1"` named under "The archive seam" above is the tag every
+archive written before the rename carries. The two name the same generation:
+the content is identical and only the project's name moved. `open_model` and
+`model_identity` accept both, as they always accepted any marker or none,
+since shape decides and the marker only corroborates. No signature changed.
+The old tag retires on 2027-01-11: after that date nothing in the repository
+writes or names it, and a file carrying it still opens, by shape, like a
+marker-less archive. The shipped walkthrough archives keep the old tag until
+phase 5 of #541 re-mints them; `crates/facets-kernel/tests/format_tag.rs` and
+`web/src/archiveTag.kernel.test.ts` open each of them through the reader.

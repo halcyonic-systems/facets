@@ -126,15 +126,15 @@ function same(a, b) {
  *  browser does minus the fetch: the same glue JS, the same `.wasm` bytes, the
  *  same generated bindings the app imports. Nothing is stubbed. */
 async function load(dir) {
-  const glue = join(ROOT, dir, "bert_lenses_kernel.js");
-  const wasm = join(ROOT, dir, "bert_lenses_kernel_bg.wasm");
+  const glue = join(ROOT, dir, "facets_kernel.js");
+  const wasm = join(ROOT, dir, "facets_kernel_bg.wasm");
   for (const p of [glue, wasm]) {
     try {
       statSync(p);
     } catch {
       console.error(
         `wasm-exec: missing ${relative(ROOT, p)} — build it first:\n` +
-          `  cd crates/facets-kernel && wasm-pack build --target web --out-dir ${dir.split("/").pop()} --out-name bert_lenses_kernel`,
+          `  cd crates/facets-kernel && wasm-pack build --target web --out-dir ${dir.split("/").pop()}`,
       );
       process.exit(2);
     }
