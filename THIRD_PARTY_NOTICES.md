@@ -176,6 +176,13 @@ Tailwind's compiler) builds the artifact but ships no code in it.
 | `@codemirror/view` | 6.43.9 | MIT |
 | `@lezer/common` | 1.5.2 | MIT |
 | `@lezer/highlight` | 1.2.3 | MIT |
+| `@supabase/auth-js` | 2.115.0 | MIT |
+| `@supabase/functions-js` | 2.115.0 | MIT |
+| `@supabase/phoenix` | 0.4.5 | MIT |
+| `@supabase/postgrest-js` | 2.115.0 | MIT |
+| `@supabase/realtime-js` | 2.115.0 | MIT |
+| `@supabase/storage-js` | 2.115.0 | MIT |
+| `@supabase/supabase-js` | 2.115.0 | MIT |
 | `@types/d3-array` | 3.2.2 | MIT |
 | `@types/d3-color` | 3.1.3 | MIT |
 | `@types/d3-ease` | 3.0.2 | MIT |
@@ -185,7 +192,6 @@ Tailwind's compiler) builds the artifact but ships no code in it.
 | `@types/d3-shape` | 3.1.8 | MIT |
 | `@types/d3-time` | 3.0.4 | MIT |
 | `@types/d3-timer` | 3.0.2 | MIT |
-| `bert-lenses-kernel` | 0.1.0 | MIT |
 | `clsx` | 2.1.1 | MIT |
 | `commander` | 8.3.0 | MIT |
 | `csstype` | 3.2.3 | MIT |
@@ -203,7 +209,9 @@ Tailwind's compiler) builds the artifact but ships no code in it.
 | `decimal.js-light` | 2.5.1 | MIT |
 | `dom-helpers` | 5.2.1 | MIT |
 | `eventemitter3` | 4.0.7 | MIT |
+| `facets-kernel` | 0.1.0 | MIT |
 | `fast-equals` | 5.4.1 | MIT |
+| `iceberg-js` | 0.8.1 | MIT |
 | `internmap` | 2.0.3 | ISC |
 | `js-tokens` | 4.0.0 | MIT |
 | `katex` | 0.17.0 | MIT |
@@ -219,7 +227,9 @@ Tailwind's compiler) builds the artifact but ships no code in it.
 | `recharts` | 2.15.4 | MIT |
 | `recharts-scale` | 0.4.5 | MIT |
 | `scheduler` | 0.27.0 | MIT |
+| `three` | 0.186.1 | MIT |
 | `tiny-invariant` | 1.3.3 | MIT |
+| `tslib` | 2.8.1 | 0BSD |
 | `victory-vendor` | 36.9.2 | MIT AND ISC |
 
 ---
@@ -245,9 +255,9 @@ covered by `LICENSE`.
 | `bytes` | 1.12.1 | MIT |
 | `cfg-if` | 1.0.4 | MIT OR Apache-2.0 |
 | `cfg_aliases` | 0.2.1 | MIT |
-| `clap` | 4.6.6 | MIT OR Apache-2.0 |
-| `clap_builder` | 4.6.6 | MIT OR Apache-2.0 |
-| `clap_derive` | 4.6.4 | MIT OR Apache-2.0 |
+| `clap` | 4.6.7 | MIT OR Apache-2.0 |
+| `clap_builder` | 4.6.7 | MIT OR Apache-2.0 |
+| `clap_derive` | 4.6.7 | MIT OR Apache-2.0 |
 | `clap_lex` | 1.1.0 | MIT OR Apache-2.0 |
 | `console_error_panic_hook` | 0.1.7 | Apache-2.0/MIT |
 | `enum-iterator` | 2.3.0 | 0BSD |
@@ -258,7 +268,7 @@ covered by `LICENSE`.
 | `futures-task` | 0.3.32 | MIT OR Apache-2.0 |
 | `futures-util` | 0.3.32 | MIT OR Apache-2.0 |
 | `getrandom` | 0.2.17 | MIT OR Apache-2.0 |
-| `glam` | 0.33.2 | MIT OR Apache-2.0 |
+| `glam` | 0.33.9 | MIT OR Apache-2.0 |
 | `hashbrown` | 0.12.3 | MIT OR Apache-2.0 |
 | `hashbrown` | 0.17.1 | MIT OR Apache-2.0 |
 | `heck` | 0.5.0 | MIT OR Apache-2.0 |
@@ -302,7 +312,7 @@ covered by `LICENSE`.
 | `toml_edit` | 0.25.13+spec-1.1.0 | MIT OR Apache-2.0 |
 | `toml_parser` | 1.1.2+spec-1.1.0 | MIT OR Apache-2.0 |
 | `unicode-ident` | 1.0.24 | (MIT OR Apache-2.0) AND Unicode-3.0 |
-| `uuid` | 1.24.0 | Apache-2.0 OR MIT |
+| `uuid` | 1.26.1 | Apache-2.0 OR MIT |
 | `version_check` | 0.9.5 | MIT/Apache-2.0 |
 | `wasm-bindgen` | 0.2.126 | MIT OR Apache-2.0 |
 | `wasm-bindgen-macro` | 0.2.126 | MIT OR Apache-2.0 |
