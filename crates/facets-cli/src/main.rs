@@ -1,4 +1,4 @@
-//! `bert` — the headless door onto the kernel.
+//! `facets` — the headless door onto the kernel.
 //!
 //! Every question this answers was already a library call before this binary
 //! existed (`sl::parse_sl_full`, `lenses::analyze`, `lenses::describe`,
@@ -14,7 +14,7 @@
 //! Two rules make it usable from a script:
 //!
 //! - **stdout is the machine answer, stderr is for people.** stdout carries
-//!   JSON and only JSON, so `bert verdict m.sl | jq` never has to skip a banner
+//!   JSON and only JSON, so `facets verdict m.sl | jq` never has to skip a banner
 //!   line. Human-readable diagnostics — the line-anchored parse faults, the
 //!   refusal summary — go to stderr, where a pipeline ignores them.
 //! - **the exit code carries the kind of failure**, so a check can branch
@@ -35,12 +35,12 @@ mod input;
 
 use input::LoadError;
 
-/// What a `bert` exit status means. A shell check branches on these; nothing
+/// What a `facets` exit status means. A shell check branches on these; nothing
 /// downstream should have to read a message to find out what went wrong.
 ///
 /// The split that matters is 3 against 4: a file that did not compile is the
 /// author's typo, and a file that compiled into something the kernel refuses is
-/// a claim about the system. Collapsing them would make `bert verdict` unable
+/// a claim about the system. Collapsing them would make `facets verdict` unable
 /// to tell "you mistyped `flwo`" from "this model is not a system", which is
 /// the distinction the whole instrument exists to draw.
 mod exit {
@@ -62,7 +62,11 @@ mod exit {
 
 #[derive(Parser)]
 #[command(
-    name = "bert",
+    name = "facets",
+    // Pinned rather than read from argv[0], so `--help` and the usage line on
+    // stdout are the same bytes whether the program was started as `facets` or
+    // through the `bert` alias (`src/bert_alias.rs`).
+    bin_name = "facets",
     version,
     about = "Ask the bert-lenses kernel about a model, from a shell.",
     long_about = "Compile SL, read the verdict under any lens, typeset the formal object, \
@@ -86,7 +90,7 @@ enum Command {
     },
     /// What the kernel says about the model, under a lens.
     ///
-    /// Exits 4 when the verdict carries an error, so `bert verdict m.sl` is a
+    /// Exits 4 when the verdict carries an error, so `facets verdict m.sl` is a
     /// check. `--lens` reads the model under a lens it is not pinned to:
     /// `lenses::analyze` takes the lens explicitly and ignores `model.lens`,
     /// which is the cross-lens door this subcommand exists to open.
@@ -217,7 +221,7 @@ struct RunRefused<'a> {
     refused: &'a str,
 }
 
-fn main() -> ExitCode {
+pub fn main() -> ExitCode {
     let cli = Cli::parse();
     ExitCode::from(run(cli.command))
 }
@@ -231,7 +235,7 @@ fn emit<T: Serialize>(value: &T) -> u8 {
     let json = match serde_json::to_string(value) {
         Ok(j) => j,
         Err(e) => {
-            eprintln!("bert: could not serialize the answer: {e}");
+            eprintln!("facets: could not serialize the answer: {e}");
             return exit::INTERNAL;
         }
     };
@@ -240,7 +244,7 @@ fn emit<T: Serialize>(value: &T) -> u8 {
         Ok(()) => exit::OK,
         Err(e) if e.kind() == std::io::ErrorKind::BrokenPipe => exit::OK,
         Err(e) => {
-            eprintln!("bert: could not write the answer: {e}");
+            eprintln!("facets: could not write the answer: {e}");
             exit::INTERNAL
         }
     }
@@ -252,11 +256,11 @@ fn emit<T: Serialize>(value: &T) -> u8 {
 fn report_load(path: &Path, err: &LoadError) -> u8 {
     match err {
         LoadError::Io(msg) => {
-            eprintln!("bert: {msg}");
+            eprintln!("facets: {msg}");
             exit::FAULT
         }
         LoadError::NotAModel(msg) => {
-            eprintln!("bert: {}: {msg}", path.display());
+            eprintln!("facets: {}: {msg}", path.display());
             exit::FAULT
         }
         LoadError::Faults(faults) => {
@@ -336,7 +340,7 @@ fn verdict(file: PathBuf, lens: Option<LensArg>) -> u8 {
         return exit::OK;
     }
     eprintln!(
-        "bert: {} refused {} ({} error{})",
+        "facets: {} refused {} ({} error{})",
         file.display(),
         // The lens is on stdout too, at `.description.lens`; naming it here
         // keeps the stderr line self-contained for a human reading a log.
@@ -376,7 +380,7 @@ fn run_cmd(file: PathBuf, t: f64, dt: f64) -> u8 {
         Ok(spec) => spec,
         Err(errors) => {
             eprintln!(
-                "bert: {} does not project to an executable model ({} error{})",
+                "facets: {} does not project to an executable model ({} error{})",
                 file.display(),
                 errors.len(),
                 if errors.len() == 1 { "" } else { "s" }
@@ -389,7 +393,7 @@ fn run_cmd(file: PathBuf, t: f64, dt: f64) -> u8 {
     match facets_compose::RecordedRun::record_over(&mut circuit, &spec, dt, t) {
         Ok(recorded) => emit(&recorded.report()),
         Err(reason) => {
-            eprintln!("bert: {}: {reason}", file.display());
+            eprintln!("facets: {}: {reason}", file.display());
             let code = emit(&RunRefused { refused: &reason });
             if code == exit::OK {
                 exit::REFUSED
@@ -485,7 +489,7 @@ fn bench_cmd(file: PathBuf, t: f64, dt: f64, sets: Vec<String>, no_log: bool) ->
         match parse_knob(s) {
             Ok(k) => knobs.push(k),
             Err(reason) => {
-                eprintln!("bert: {reason}");
+                eprintln!("facets: {reason}");
                 return exit::_USAGE;
             }
         }
@@ -495,7 +499,7 @@ fn bench_cmd(file: PathBuf, t: f64, dt: f64, sets: Vec<String>, no_log: bool) ->
     let mut bench = match facets_tether::bench::BenchSession::open_unforced(world, dt) {
         Ok(b) => b,
         Err(reason) => {
-            eprintln!("bert: {}: {reason}", file.display());
+            eprintln!("facets: {}: {reason}", file.display());
             let code = emit(&RunRefused { refused: &reason });
             return if code == exit::OK { exit::REFUSED } else { code };
         }
@@ -503,7 +507,7 @@ fn bench_cmd(file: PathBuf, t: f64, dt: f64, sets: Vec<String>, no_log: bool) ->
     let total = match facets_compose::ticks_over(dt, t) {
         Ok(n) => n as u64,
         Err(reason) => {
-            eprintln!("bert: {reason}");
+            eprintln!("facets: {reason}");
             let code = emit(&RunRefused { refused: &reason });
             return if code == exit::OK { exit::REFUSED } else { code };
         }
@@ -518,13 +522,13 @@ fn bench_cmd(file: PathBuf, t: f64, dt: f64, sets: Vec<String>, no_log: bool) ->
             KnobTarget::Component { thing, field } => bench.set_component_param(thing, field, k.value),
         };
         if let Err(reason) = turned {
-            eprintln!("bert: knob refused: {reason}");
+            eprintln!("facets: knob refused: {reason}");
             let code = emit(&RunRefused { refused: &reason });
             return if code == exit::OK { exit::REFUSED } else { code };
         }
     }
     if let Err(reason) = bench.step_over(t) {
-        eprintln!("bert: {reason}");
+        eprintln!("facets: {reason}");
         let code = emit(&RunRefused { refused: &reason });
         return if code == exit::OK { exit::REFUSED } else { code };
     }

@@ -2,19 +2,26 @@
 name = "facets-cli"
 version = "0.1.0"
 edition = "2021"
-description = "The `bert` binary: a headless door onto the kernel. Compile SL, ask for a verdict under any lens, typeset the formal object, run the trajectory, read the layout — all from a shell, all as JSON. A consumer of the crates, never a second implementation of them."
+description = "The `facets` binary: a headless door onto the kernel. Compile SL, ask for a verdict under any lens, typeset the formal object, run the trajectory, read the layout — all from a shell, all as JSON. A consumer of the crates, never a second implementation of them."
 license = "MIT"
 # Not on crates.io. See the sibling crates' manifests — the whole vendored set
 # is distributed only as the wasm kernel inside the app. This one is not
 # distributed at all: it is a developer and CI door, built natively.
 publish = false
+default-run = "facets"
 
-# The binary is `bert`, not `bert-cli`. The crate name carries the -cli suffix
-# because `--exclude facets-cli` in the wasm build has to name a PACKAGE, and a
-# package called `bert` would read as the kernel rather than the door.
+# The binary is `facets`, not `facets-cli`. The crate name carries the -cli
+# suffix because `--exclude facets-cli` in the wasm build has to name a PACKAGE,
+# and a package called `facets` would read as the kernel rather than the door.
+[[bin]]
+name = "facets"
+path = "src/main.rs"
+
+# The old name, for one release (#541 phase 4): the same program, plus one line
+# on stderr saying it moved. Retires on 2027-01-11 (`RETIRES` in the file).
 [[bin]]
 name = "bert"
-path = "src/main.rs"
+path = "src/bert_alias.rs"
 
 [dependencies]
 facets-core = { path = "../facets-core" }

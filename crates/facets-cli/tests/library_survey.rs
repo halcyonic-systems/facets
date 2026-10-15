@@ -20,7 +20,7 @@ mod support;
 
 use std::io::Write;
 
-use support::{bert, library, repo_root, stdout_json};
+use support::{facets, library, repo_root, stdout_json};
 
 /// Which exit codes each subcommand is allowed to answer with.
 ///
@@ -44,14 +44,14 @@ fn allowed(command: &str) -> &'static [i32] {
 fn within_contract(command: &str, code: Option<i32>, stdout: &str) -> Result<(), String> {
     let Some(code) = code else {
         return Err(format!(
-            "`bert {command}` was signalled rather than exiting; a door that \
+            "`facets {command}` was signalled rather than exiting; a door that \
              dies on a bundled model has no exit code to branch on"
         ));
     };
     let allowed = allowed(command);
     if !allowed.contains(&code) {
         return Err(format!(
-            "`bert {command}` exited {code}; a bundled model may only produce \
+            "`facets {command}` exited {code}; a bundled model may only produce \
              {allowed:?} (1 is internal, 2 is bad arguments, 3 means the file \
              stopped compiling)"
         ));
@@ -59,7 +59,7 @@ fn within_contract(command: &str, code: Option<i32>, stdout: &str) -> Result<(),
     match serde_json::from_str::<serde_json::Value>(stdout) {
         Ok(_) => Ok(()),
         Err(e) => Err(format!(
-            "`bert {command}` did not put JSON on stdout ({e}); stdout carries \
+            "`facets {command}` did not put JSON on stdout ({e}); stdout carries \
              the machine answer and nothing else. Got:\n{stdout}"
         )),
     }
@@ -67,7 +67,7 @@ fn within_contract(command: &str, code: Option<i32>, stdout: &str) -> Result<(),
 
 /// Run one subcommand against one model and check only its shape.
 fn probe(command: &str, args: &[&str]) -> Result<(i32, serde_json::Value), String> {
-    let out = bert(args);
+    let out = facets(args);
     let stdout = String::from_utf8_lossy(&out.stdout).into_owned();
     within_contract(command, out.status.code(), &stdout)?;
     let code = out.status.code().expect("checked above");
@@ -184,7 +184,7 @@ fn the_weak_check_catches_a_crash_and_a_broken_answer() {
 
     // Through the real binary, so the contract is checked against the process
     // and not only against my idea of it.
-    let bad_args = bert(&[
+    let bad_args = facets(&[
         "verdict",
         "assets/examples/predator-prey.sl",
         "--lens",
@@ -210,7 +210,7 @@ fn the_weak_check_catches_a_crash_and_a_broken_answer() {
     let broken = dir.join("not-a-model.sl");
     std::fs::write(&broken, "component A\nflwo A -> B\n").expect("write scratch SL");
     let path = broken.to_str().expect("utf-8 path");
-    let out = bert(&["compile", path]);
+    let out = facets(&["compile", path]);
     assert_eq!(
         out.status.code(),
         Some(3),
@@ -228,7 +228,7 @@ fn the_weak_check_catches_a_crash_and_a_broken_answer() {
     );
 
     // And the passing half, so the two halves are the same check.
-    let clean = bert(&["compile", "assets/examples/predator-prey.sl"]);
+    let clean = facets(&["compile", "assets/examples/predator-prey.sl"]);
     assert!(
         within_contract(
             "compile",

@@ -1,5 +1,5 @@
 //! Running the real binary. Every test in this crate goes through
-//! `CARGO_BIN_EXE_bert` rather than calling the library directly — a door that
+//! `CARGO_BIN_EXE_facets` rather than calling the library directly — a door that
 //! is only ever tested by opening the wall behind it is not tested.
 
 #![allow(dead_code)]
@@ -15,19 +15,19 @@ pub fn repo_root() -> PathBuf {
         .expect("the repo root resolves")
 }
 
-/// Run `bert` with `args`, from the repo root so relative paths in a failure
+/// Run `facets` with `args`, from the repo root so relative paths in a failure
 /// message read the way a person would type them.
-pub fn bert(args: &[&str]) -> Output {
-    Command::new(env!("CARGO_BIN_EXE_bert"))
+pub fn facets(args: &[&str]) -> Output {
+    Command::new(env!("CARGO_BIN_EXE_facets"))
         .args(args)
         .current_dir(repo_root())
         .output()
-        .expect("the bert binary runs")
+        .expect("the facets binary runs")
 }
 
 /// The exit code, refusing to guess when the process was signalled.
 pub fn code(out: &Output) -> i32 {
-    out.status.code().expect("bert exits rather than signalling")
+    out.status.code().expect("facets exits rather than signalling")
 }
 
 /// stdout parsed as JSON. Fails loudly with the raw text, because "stdout is

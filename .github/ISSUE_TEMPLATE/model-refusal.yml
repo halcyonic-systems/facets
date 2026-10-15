@@ -10,7 +10,7 @@ body:
     id: sl
     attributes:
       label: The model, as SL
-      description: Paste the SL text (the SL pane shows it; `bert compile` accepts it). Keep it as small as still shows the problem.
+      description: Paste the SL text (the SL pane shows it; `facets compile` accepts it). Keep it as small as still shows the problem.
       render: text
     validations:
       required: true

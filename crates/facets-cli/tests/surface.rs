@@ -8,7 +8,7 @@
 
 mod support;
 
-use support::{bert, code, stderr, stdout_json};
+use support::{code, facets, stderr, stdout_json};
 
 const CLEAN: &str = "assets/examples/predator-prey.sl";
 /// σ₃ is the corpus's one documented divergence: legal Bunge structure, refused
@@ -24,12 +24,12 @@ fn every_subcommand_answers_in_json_on_stdout() {
         vec!["run", CLEAN, "--t", "4"],
         vec!["layout", CLEAN],
     ] {
-        let out = bert(&args);
-        assert_eq!(code(&out), 0, "`bert {}` succeeds", args.join(" "));
+        let out = facets(&args);
+        assert_eq!(code(&out), 0, "`facets {}` succeeds", args.join(" "));
         stdout_json(&out);
         assert!(
             stderr(&out).is_empty(),
-            "`bert {}` said something on stderr on a clean run; stderr is for \
+            "`facets {}` said something on stderr on a clean run; stderr is for \
              problems, so a quiet success is what lets a script treat any stderr \
              output as a signal. Got: {}",
             args.join(" "),
@@ -51,7 +51,7 @@ fn a_parse_fault_and_a_kernel_refusal_have_different_codes() {
     let bad = dir.join("typo.sl");
     std::fs::write(&bad, "component A\nflwo A -> B\n").expect("write scratch SL");
 
-    let fault = bert(&["compile", bad.to_str().expect("utf-8 path")]);
+    let fault = facets(&["compile", bad.to_str().expect("utf-8 path")]);
     assert_eq!(
         code(&fault),
         3,
@@ -72,7 +72,7 @@ fn a_parse_fault_and_a_kernel_refusal_have_different_codes() {
 
     // The separating instance: this file compiles perfectly. Only the kernel
     // objects, and it objects at a different code.
-    let refusal = bert(&["verdict", SIGMA3, "--lens", "mobus"]);
+    let refusal = facets(&["verdict", SIGMA3, "--lens", "mobus"]);
     assert_eq!(
         code(&refusal),
         4,
@@ -95,7 +95,7 @@ fn a_parse_fault_and_a_kernel_refusal_have_different_codes() {
 /// cannot be silently ignored without this going red.
 #[test]
 fn the_lens_flag_reaches_past_the_models_own_pin() {
-    let pinned = bert(&["verdict", SIGMA3]);
+    let pinned = facets(&["verdict", SIGMA3]);
     assert_eq!(
         code(&pinned),
         0,
@@ -103,10 +103,10 @@ fn the_lens_flag_reaches_past_the_models_own_pin() {
         stderr(&pinned)
     );
 
-    let bunge = bert(&["verdict", SIGMA3, "--lens", "bunge"]);
+    let bunge = facets(&["verdict", SIGMA3, "--lens", "bunge"]);
     assert_eq!(code(&bunge), 0, "and asking for that lens explicitly agrees");
 
-    let mobus = bert(&["verdict", SIGMA3, "--lens", "mobus"]);
+    let mobus = facets(&["verdict", SIGMA3, "--lens", "mobus"]);
     assert_eq!(
         code(&mobus),
         4,
@@ -134,7 +134,7 @@ fn describe_typesets_the_asked_for_tradition() {
         ("bunge", "Bunge", "endo_bonds"),
         ("mobus", "Mobus", "b_interfaces"),
     ] {
-        let out = bert(&["describe", CLEAN, "--lens", flag]);
+        let out = facets(&["describe", CLEAN, "--lens", flag]);
         assert_eq!(code(&out), 0);
         let d = stdout_json(&out);
         assert_eq!(d["lens"], tag);
@@ -150,7 +150,7 @@ fn describe_typesets_the_asked_for_tradition() {
 /// and the two are told apart by the exit code rather than by reading prose.
 #[test]
 fn a_run_is_a_trajectory_or_a_stated_refusal() {
-    let ran = bert(&["run", CLEAN, "--t", "6", "--dt", "1"]);
+    let ran = facets(&["run", CLEAN, "--t", "6", "--dt", "1"]);
     assert_eq!(code(&ran), 0, "stderr: {}", stderr(&ran));
     let trace = stdout_json(&ran);
     assert_eq!(
@@ -162,7 +162,7 @@ fn a_run_is_a_trajectory_or_a_stated_refusal() {
 
     // Separating instance: a model that compiles and validates but does not
     // project to anything executable. Same subcommand, different code.
-    let refused = bert(&["run", "assets/archive/fsm-traffic.sl"]);
+    let refused = facets(&["run", "assets/archive/fsm-traffic.sl"]);
     assert_eq!(
         code(&refused),
         4,
@@ -178,7 +178,7 @@ fn a_run_is_a_trajectory_or_a_stated_refusal() {
 
     // A Δt that is not a step names no run — the engine's own precondition,
     // reached through the door.
-    let no_step = bert(&["run", CLEAN, "--dt", "0"]);
+    let no_step = facets(&["run", CLEAN, "--dt", "0"]);
     assert_eq!(code(&no_step), 4);
     assert!(
         stdout_json(&no_step)["refused"]
@@ -192,12 +192,12 @@ fn a_run_is_a_trajectory_or_a_stated_refusal() {
 /// Law: bad arguments exit 2, distinct from every input or kernel failure.
 #[test]
 fn a_usage_error_is_its_own_code() {
-    assert_eq!(code(&bert(&["verdict", CLEAN, "--lens", "nope"])), 2);
-    assert_eq!(code(&bert(&["verdict"])), 2);
-    assert_eq!(code(&bert(&["nonesuch", CLEAN])), 2);
+    assert_eq!(code(&facets(&["verdict", CLEAN, "--lens", "nope"])), 2);
+    assert_eq!(code(&facets(&["verdict"])), 2);
+    assert_eq!(code(&facets(&["nonesuch", CLEAN])), 2);
     // Separating instance: a well-formed invocation of a file that is not there
     // is NOT a usage error — the arguments were fine, the file was not.
-    assert_eq!(code(&bert(&["verdict", "assets/examples/no-such-file.sl"])), 3);
+    assert_eq!(code(&facets(&["verdict", "assets/examples/no-such-file.sl"])), 3);
 }
 
 /// Law: `layout` reports where the nodes are, and reports it for every node.
@@ -208,12 +208,12 @@ fn a_usage_error_is_its_own_code() {
 /// measurement, without the browser.
 #[test]
 fn layout_reports_every_node_with_its_role() {
-    let out = bert(&["layout", CLEAN]);
+    let out = facets(&["layout", CLEAN]);
     assert_eq!(code(&out), 0);
     let nodes = stdout_json(&out);
     let nodes = nodes["nodes"].as_array().expect("nodes is an array");
 
-    let compiled = bert(&["compile", CLEAN]);
+    let compiled = facets(&["compile", CLEAN]);
     let things = stdout_json(&compiled);
     let things = things["things"].as_array().expect("things is an array");
     assert_eq!(
@@ -259,21 +259,21 @@ fn stdin_carries_both_surfaces() {
 
     let root = support::repo_root();
     let feed = |text: String, args: &[&str]| {
-        let mut child = Command::new(env!("CARGO_BIN_EXE_bert"))
+        let mut child = Command::new(env!("CARGO_BIN_EXE_facets"))
             .args(args)
             .current_dir(&root)
             .stdin(Stdio::piped())
             .stdout(Stdio::piped())
             .stderr(Stdio::piped())
             .spawn()
-            .expect("bert runs");
+            .expect("facets runs");
         child
             .stdin
             .as_mut()
             .expect("stdin is piped")
             .write_all(text.as_bytes())
             .expect("write to stdin");
-        child.wait_with_output().expect("bert finishes")
+        child.wait_with_output().expect("facets finishes")
     };
 
     let sl = std::fs::read_to_string(root.join(CLEAN)).expect("read the example");
@@ -281,7 +281,7 @@ fn stdin_carries_both_surfaces() {
     assert_eq!(code(&from_sl), 0, "stderr: {}", stderr(&from_sl));
 
     // The same model as stored JSON, through the same door.
-    let json = String::from_utf8_lossy(&bert(&["compile", CLEAN]).stdout).into_owned();
+    let json = String::from_utf8_lossy(&facets(&["compile", CLEAN]).stdout).into_owned();
     let from_json = feed(json, &["describe", "-", "--lens", "klir"]);
     assert_eq!(code(&from_json), 0, "stderr: {}", stderr(&from_json));
     assert_eq!(

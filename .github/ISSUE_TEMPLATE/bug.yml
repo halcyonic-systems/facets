@@ -10,7 +10,7 @@ body:
     id: where
     attributes:
       label: Where
-      description: facets.systems/model, /chat, the `bert` CLI, the macOS app, or a local `just dev`.
+      description: facets.systems/model, /chat, the `facets` CLI, the macOS app, or a local `just dev`.
       placeholder: facets.systems/model/, Safari 18
     validations:
       required: true
