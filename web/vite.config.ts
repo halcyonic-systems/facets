@@ -63,7 +63,7 @@ const wasmSha256 = (() => {
 // its record here, and it lands in `runs/bench/` (gitignored): `latest.json`
 // plus a dated copy. The point is the loop between a person in the tool and
 // an agent in the terminal: the agent reads the file, nobody re-types what
-// was run. `bert bench` takes the same model and knobs when a variation is
+// was run. `facets bench` takes the same model and knobs when a variation is
 // wanted. Nothing here ships; the live site has the Export run button.
 function benchRecorder(): Plugin {
   return {

@@ -108,7 +108,7 @@ cargo run -p facets-cli -- compile fixtures/sl/process-m.sl
 cargo run -p facets-cli -- verdict fixtures/sl/process-m.sl --lens mobus
 ```
 
-`compile` parses the file and prints the model; `verdict` compiles, projects to a lens, and prints the systemhood judgment. Also available: `describe` (the formal 8-tuple), `run` (step the trajectory), `bench` (the Model bench from the terminal, #463), and `layout` (node positions). `just bert <args>` is the repo's shorthand for all of them.
+`compile` parses the file and prints the model; `verdict` compiles, projects to a lens, and prints the systemhood judgment. Also available: `describe` (the formal 8-tuple), `run` (step the trajectory), `bench` (the Model bench from the terminal, #463), and `layout` (node positions). `just facets <args>` is the repo's shorthand for all of them.
 
 ## Editor support
 

@@ -1,14 +1,14 @@
-//! `bert bench` (#463): the terminal's seat at the bench. The same engine and
+//! `facets bench` (#463): the terminal's seat at the bench. The same engine and
 //! the same knobs by the same names the app shows, with the readout, the
 //! knob log and the tick log on stdout — so a run can be driven and read
 //! without a browser in the loop.
 mod support;
 
-use support::{bert, code, stderr, stdout_json};
+use support::{code, facets, stderr, stdout_json};
 
 #[test]
 fn a_knob_at_a_tick_turns_the_flow_from_the_next_tick_on() {
-    let out = bert(&["bench", "fixtures/sl/bathtub.sl", "--t", "6", "--set", "inflow|Faucet|Tub=4@3"]);
+    let out = facets(&["bench", "fixtures/sl/bathtub.sl", "--t", "6", "--set", "inflow|Faucet|Tub=4@3"]);
     assert_eq!(code(&out), 0, "{}", stderr(&out));
     let v = stdout_json(&out);
     assert_eq!(v["ticks"], 6);
@@ -25,13 +25,13 @@ fn a_knob_at_a_tick_turns_the_flow_from_the_next_tick_on() {
 
 #[test]
 fn no_log_leaves_the_log_out_and_a_bad_knob_is_a_usage_error() {
-    let out = bert(&["bench", "fixtures/sl/bathtub.sl", "--t", "3", "--no-log"]);
+    let out = facets(&["bench", "fixtures/sl/bathtub.sl", "--t", "3", "--no-log"]);
     assert_eq!(code(&out), 0, "{}", stderr(&out));
     assert!(stdout_json(&out).get("log").is_none());
-    let out = bert(&["bench", "fixtures/sl/bathtub.sl", "--set", "nonsense"]);
+    let out = facets(&["bench", "fixtures/sl/bathtub.sl", "--set", "nonsense"]);
     assert_eq!(code(&out), 2, "{}", stderr(&out));
     assert!(stderr(&out).contains("target=value"), "{}", stderr(&out));
-    let out = bert(&["bench", "fixtures/sl/bathtub.sl", "--t", "3", "--set", "nope|Faucet|Tub=2"]);
+    let out = facets(&["bench", "fixtures/sl/bathtub.sl", "--t", "3", "--set", "nope|Faucet|Tub=2"]);
     assert_eq!(code(&out), 4, "{}", stderr(&out));
     assert!(stderr(&out).contains("no flow"), "{}", stderr(&out));
 }
@@ -40,7 +40,7 @@ fn no_log_leaves_the_log_out_and_a_bad_knob_is_a_usage_error() {
 fn a_finite_source_runs_dry_from_the_terminal() {
     // #260 via the bench knob: the faucet holds 2 units in all; the inflow
     // is 1, 1, 0, 0 and the tub stops filling (the old engine filled on).
-    let out = bert(&["bench", "fixtures/sl/bathtub.sl", "--t", "4", "--set", "Faucet.reservoir=2"]);
+    let out = facets(&["bench", "fixtures/sl/bathtub.sl", "--t", "4", "--set", "Faucet.reservoir=2"]);
     assert_eq!(code(&out), 0, "{}", stderr(&out));
     let v = stdout_json(&out);
     let inflow = v["flows"].as_array().unwrap().iter().find(|f| f["name"] == "inflow").unwrap();
@@ -53,7 +53,7 @@ fn a_knob_names_the_pass_way_the_author_wrote() {
     // Split form (#226): "flow Rain -> Gutter" lands on a pass-way the
     // projection fuses into "Rain Barrel". The author addresses the flow by
     // the name on the page, Gutter, and the edit still lands.
-    let out = bert(&[
+    let out = facets(&[
         "bench",
         "assets/examples/rain-barrel-garden.sl",
         "--t",
@@ -77,7 +77,7 @@ fn the_sl_words_reach_the_engine() {
     // `limiting`: the oven is bounded by its scarcest input (heat 3) rather
     // than the sum (8); `reservoir 12`: flour gives 5, 5, 2 and runs dry, and
     // the oven then starves on flour. Both read straight off the SL line.
-    let out = bert(&["bench", "fixtures/sl/bakery.sl", "--t", "5", "--no-log"]);
+    let out = facets(&["bench", "fixtures/sl/bakery.sl", "--t", "5", "--no-log"]);
     assert_eq!(code(&out), 0, "{}", stderr(&out));
     let v = stdout_json(&out);
     assert_eq!(v["conserved"], true);
@@ -95,7 +95,7 @@ fn a_pass_way_serving_two_residents_runs_as_an_identity_door() {
     // drains) is lowered to an identity Impeding node, so the model runs and
     // conserves. Routing through the door follows the interior legs' declared
     // amounts (4 to A, 6 to B); the door itself alters nothing.
-    let out = bert(&["bench", "fixtures/sl/shared-door.sl", "--t", "5", "--no-log"]);
+    let out = facets(&["bench", "fixtures/sl/shared-door.sl", "--t", "5", "--no-log"]);
     assert_eq!(code(&out), 0, "{}", stderr(&out));
     let v = stdout_json(&out);
     assert_eq!(v["conserved"], true);
@@ -113,7 +113,7 @@ fn the_thermostat_traced_two_ways_is_one_system() {
     // probe-plus-comparator form hold the same room heat on every tick, and
     // the agent's goal turns from the terminal like any setpoint.
     let room = |file: &str| {
-        let out = bert(&["bench", file, "--t", "12", "--no-log"]);
+        let out = facets(&["bench", file, "--t", "12", "--no-log"]);
         assert_eq!(code(&out), 0, "{}", stderr(&out));
         let v = stdout_json(&out);
         assert_eq!(v["conserved"], true, "{file}");
@@ -130,7 +130,7 @@ fn the_thermostat_traced_two_ways_is_one_system() {
         room("assets/bench/thermostat-agent.sl"),
         "the agent form and the comparator form diverge"
     );
-    let out = bert(&["bench", "assets/bench/thermostat-agent.sl", "--t", "24", "--no-log", "--set", "Thermostat.target=3@12"]);
+    let out = facets(&["bench", "assets/bench/thermostat-agent.sl", "--t", "24", "--no-log", "--set", "Thermostat.target=3@12"]);
     assert_eq!(code(&out), 0, "{}", stderr(&out));
     let v = stdout_json(&out);
     assert_eq!(v["edits"][0]["field"], "target");
@@ -145,7 +145,7 @@ fn the_relay_thermostat_switches_and_overshoots_from_the_terminal() {
     // ADR 0008 D3: the threshold rule's witness on the bench shelf — the
     // command is a square wave and the room swings across the level; the
     // level turns from the terminal like any setpoint.
-    let out = bert(&["bench", "assets/bench/thermostat-relay.sl", "--t", "24", "--no-log"]);
+    let out = facets(&["bench", "assets/bench/thermostat-relay.sl", "--t", "24", "--no-log"]);
     assert_eq!(code(&out), 0, "{}", stderr(&out));
     let v = stdout_json(&out);
     assert_eq!(v["conserved"], true);
@@ -158,7 +158,7 @@ fn the_relay_thermostat_switches_and_overshoots_from_the_terminal() {
     assert!(cmd.windows(2).filter(|w| w[0] != w[1]).count() >= 4, "{cmd:?}");
     let room = series("Room");
     assert!(room.iter().any(|&r| r > 2.0) && room[1..].iter().any(|&r| r < 2.0), "{room:?}");
-    let out = bert(&["bench", "assets/bench/thermostat-relay.sl", "--t", "24", "--no-log", "--set", "Thermostat.above=3@12"]);
+    let out = facets(&["bench", "assets/bench/thermostat-relay.sl", "--t", "24", "--no-log", "--set", "Thermostat.above=3@12"]);
     assert_eq!(code(&out), 0, "{}", stderr(&out));
     let v = stdout_json(&out);
     assert_eq!(v["edits"][0]["field"], "above");
@@ -179,7 +179,7 @@ fn the_banded_relay_switches_less_than_the_bare_one_and_less_again_as_the_band_w
             args.push("--set");
             args.push(s);
         }
-        let out = bert(&args);
+        let out = facets(&args);
         assert_eq!(code(&out), 0, "{}", stderr(&out));
         let v = stdout_json(&out);
         assert_eq!(v["conserved"], true, "{file}");
@@ -229,7 +229,7 @@ fn the_trace_and_table_forms_differ_from_their_controls_as_the_readme_says() {
             args.push("--set");
             args.push(s);
         }
-        let out = bert(&args);
+        let out = facets(&args);
         assert_eq!(code(&out), 0, "{}", stderr(&out));
         let v = stdout_json(&out);
         assert_eq!(v["conserved"], true, "{file}");
@@ -272,7 +272,7 @@ fn the_trace_and_table_forms_differ_from_their_controls_as_the_readme_says() {
     let q = series(&quarter, "Ward");
     assert!(low(&q[12..]) > 18.7 && low(&q[12..]) < 18.9 && peak(&q[12..]) > 23.7 && peak(&q[12..]) < 23.9, "{q:?}");
     // A bin the table lacks is refused by name.
-    let out = bert(&["bench", "assets/bench/hospital-beds-table.sl", "--t", "3", "--no-log", "--set", "Gatekeeper.under3=50"]);
+    let out = facets(&["bench", "assets/bench/hospital-beds-table.sl", "--t", "3", "--no-log", "--set", "Gatekeeper.under3=50"]);
     assert_eq!(code(&out), 4, "{}", stderr(&out));
     assert!(stderr(&out).contains("`under3` is not a table rule's word"), "{}", stderr(&out));
 }
@@ -288,7 +288,7 @@ fn the_agent_forms_differ_from_their_aggregate_controls_as_the_readme_says() {
             args.push("--set");
             args.push(s);
         }
-        let out = bert(&args);
+        let out = facets(&args);
         assert_eq!(code(&out), 0, "{}", stderr(&out));
         let v = stdout_json(&out);
         assert_eq!(v["conserved"], true, "{file}");
@@ -347,7 +347,7 @@ fn the_command_form_acts_one_day_after_the_signal_form_and_pins_to_its_controls(
             args.push("--set");
             args.push(s);
         }
-        let out = bert(&args);
+        let out = facets(&args);
         assert_eq!(code(&out), 0, "{}", stderr(&out));
         let v = stdout_json(&out);
         assert_eq!(v["conserved"], true, "{file}");

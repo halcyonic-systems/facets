@@ -10,7 +10,7 @@ The consequence is blunt. A component joined to its neighbours by untyped arrows
 
 ## Method
 
-`scripts/seam_audit.py` is read-only. It enumerates the shipped set exactly as `web/src/home.ts` does, compiles each `.sl` with the real kernel through the headless `bert compile` door, and reads the compiled canvas model. It decides nothing the kernel does not already carry: role, primitive, interface flag, bond kind, substance name, counterparty, and the `decomposes` reference are all fields of the compiled model.
+`scripts/seam_audit.py` is read-only. It enumerates the shipped set exactly as `web/src/home.ts` does, compiles each `.sl` with the real kernel through the headless `facets compile` door, and reads the compiled canvas model. It decides nothing the kernel does not already carry: role, primitive, interface flag, bond kind, substance name, counterparty, and the `decomposes` reference are all fields of the compiled model.
 
 Per component:
 
@@ -94,7 +94,7 @@ Nothing is marked REBUILD and nothing is marked REMOVE. That is the honest readi
 ## Regenerating
 
 ```bash
-cargo build -p facets-cli --bin bert
+cargo build -p facets-cli --bin facets
 python3 scripts/seam_audit.py                 # Markdown to stdout
 python3 scripts/seam_audit.py --json          # machine-readable
 ```

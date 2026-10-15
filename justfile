@@ -92,10 +92,14 @@ wasm:
 # Answers on stdout as JSON; the exit code carries the kind of failure (0 ok,
 # 2 usage, 3 the input did not compile, 4 the kernel refused). `cargo run`
 # rather than a built binary so it always matches the tree you are editing;
-# `cargo install --path crates/facets-cli` puts `bert` on PATH for shell work.
-#   just bert verdict assets/corpus/bunge/coupling-sigma3.sl --lens mobus
-bert *ARGS:
-    @cargo run --quiet -p facets-cli --bin bert -- {{ARGS}}
+# `cargo install --path crates/facets-cli` puts `facets` on PATH for shell work.
+#   just facets verdict assets/corpus/bunge/coupling-sigma3.sl --lens mobus
+facets *ARGS:
+    @cargo run --quiet -p facets-cli --bin facets -- {{ARGS}}
+
+# The old recipe name, kept with the `bert` binary alias (#541 phase 4); both
+# retire on 2027-01-11. It runs `facets`, so it prints no rename note.
+alias bert := facets
 
 # Render the LIVE doc set to _site/docs/ the way publish-site.sh does (#368);
 # `scripts/preview-site.sh` then serves it at /docs/.
@@ -122,7 +126,7 @@ check: web-deps
     node scripts/check_chat_css.mjs
     cargo clippy --workspace --all-targets -- -D warnings
     # `--exclude facets-cli` is the ONE package outside the browser build: the
-    # `bert` binary is argv and the filesystem, which wasm32-unknown-unknown has
+    # `facets` binary is argv and the filesystem, which wasm32-unknown-unknown has
     # no use for. Everything the gate covered before it existed, it still
     # covers, and `crates/facets-cli/tests/wasm_gate.rs` fails if this list ever
     # grows — the exclusion is checked, not merely commented.

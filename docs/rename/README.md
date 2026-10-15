@@ -1,6 +1,6 @@
 # The rename ledger: bert → facets
 
-**Status: PROPOSED.** The ledger of the rename epic ([#541](https://github.com/halcyonic-systems/facets/issues/541)): the inventory of every occurrence of the old names, filed by class, the map the phases apply, and one dated entry per phase. Phase 1 renamed nothing; phase 2 renamed the crates; phase 3 renamed the wasm package, the web package and the saved-file format tag (entries below). Each phase regenerates the inventory and shows its classes at zero; `python3 scripts/rename_inventory.py --check` fails whenever the tree and the inventory on disk disagree, so a phase cannot claim a count it did not produce.
+**Status: PROPOSED.** The ledger of the rename epic ([#541](https://github.com/halcyonic-systems/facets/issues/541)): the inventory of every occurrence of the old names, filed by class, the map the phases apply, and one dated entry per phase. Phase 1 renamed nothing; phase 2 renamed the crates; phase 3 renamed the wasm package, the web package and the saved-file format tag; phase 4 renamed the command-line program (entries below). Each phase regenerates the inventory and shows its classes at zero; `python3 scripts/rename_inventory.py --check` fails whenever the tree and the inventory on disk disagree, so a phase cannot claim a count it did not produce.
 
 ## Files
 
@@ -27,7 +27,7 @@ The first rule that applies wins; the order is the order below.
 | `upstream-bert` | the BERT desktop app the crates were vendored from: `BERT`, `halcyonic-systems/bert`, `old-bert`, the `../bert` sibling checkout, `bert::` in stale rustdoc examples | keep (not this project) |
 | `issue-ref` | `bert-lenses#N` (this repo under its old name) and `bert#N` (upstream) | keep; phase 6 may rewrite `bert-lenses#N` to `#N` |
 | `deploy` | labels and paths outside the repo: the launchd label and plist, `~/halcyonic-apps/bert-lenses`, `~/Documents/bert-lenses`, `BERT_LENSES_*` env vars, the pipeline user agent, and the stale bundle and process names in two docs | 7 (6 for the stale doc lines; `src-tauri` already says Facets) |
-| `workflow` | anything under `.github/` | 2 (crate paths), 4 (the CLI word in issue templates) |
+| `workflow` | anything under `.github/` | 2 (crate paths), 3 (the `--out-name` pins), 4 (the CLI word in issue templates) |
 | `crate-dir` | a path component `crates/bert-*`, `../bert-*`, `bert-*/src` — in Cargo, scripts, workflows, docs and the Lean manifest alike | 2 (a relative link in a doc breaks `doc_lint` the moment the directory moves, so the docs' paths move in the same PR, not in phase 6) |
 | `import` | `use bert_…` in Rust; `from "bert-lenses-kernel"` in TS/JS | 2 (Rust), 3 (TS/JS) |
 | `wasm-export` | a wasm-bindgen export carrying the name | none today |
@@ -36,7 +36,7 @@ The first rule that applies wins; the order is the order below.
 | `fixture` | any other non-prose file under `fixtures/` or `assets/`; a CLI word inside one (`bert verdict` in two annotation notes) is filed here, not under `cli-word` | 5 (the two CLI words: 4) |
 | `cargo-name` | `name = "bert-…"`, a `[dependencies]` key, `-p bert-cli`, `--exclude bert-cli`, `Cargo.lock` | 2 |
 | `rust-ident` | `bert_core` … `bert_cli` in a `.rs` file, and the `bert()` test helper | 2 (helper: 4) |
-| `cli-word` | the `bert` binary: `bert run`, `just bert`, the `[[bin]]` name, `--bin bert`, `CARGO_BIN_EXE_bert`, bare `` `bert` `` in prose, the audit scripts' `--bert` flag | 4 |
+| `cli-word` | the `bert` binary: `bert run`, `just bert`, the `[[bin]]` name, `--bin bert`, `CARGO_BIN_EXE_bert`, bare `` `bert` `` in prose, the audit scripts' `--bert` flag | 4 (the alias binary and `just bert` stay until 2027-01-11; the bare word that means upstream or this project stays for phase 6) |
 | `doc-prose` | everything else: docs, READMEs, `AGENTS.md`, comments, SL comments, strings that are prose | 6 |
 
 ## Hand count (the phase 1 proof)
@@ -158,13 +158,61 @@ just wasm-exec                                         # 209 checks passed
 
 `grep -rn "bert_lenses_kernel\|bert-lenses-kernel\|bert-lenses-web" web/ justfile scripts/ .github/` finds only the rename machinery (`scripts/rename_inventory.py` and its fixture tree) and, in the gitignored `web/dist/`, the stale notices file above.
 
+## Phase 4 (2026-10-15): the command-line program
+
+The binary is `facets`: `[[bin]] name`, `CARGO_BIN_EXE_facets`, the `facets()` test helper, `just facets`, the `facets:` prefix on stderr, `--bin facets` in the VS Code task, the two issue templates and the `ci.yml` comment, and the audit scripts' `--facets` flag and `find_facets`. Classes emptied: `rust-ident` (48 → 0), `workflow` (3 → 0); `cli-word` 182 → 33, every remaining row accounted for below. No golden embeds the binary name, so no golden moved and no `BLESS_*` ran.
+
+| class | before | after | what remains |
+|---|---|---|---|
+| `cli-word` | 182 | 33 | **the alias, until 2027-01-11 (12):** `crates/facets-cli/Cargo.toml:23-24`, `src/bert_alias.rs` (3), the `bin_name` comment in `src/main.rs:68` (2), `tests/alias.rs` (3), `justfile:100,102`. **The bare word meaning upstream BERT or this project, not the CLI (15):** `crates/facets-canvas/tests/projection_ledger.rs:85` (upstream `save.rs`/`load.rs`), `docs/design/dynamics-research/read-klir.md` (7) and `read-mobus.md:190` (the project), `docs/design/lifecycle-prior-art.md:53`, `docs/design/mobus-lifecycle-formalization.md:249` (3) and `:266`, `docs/parked.md:835` (the upstream repo and its docs); phase 6 readings. **Records (6):** `docs/audits/docs-staleness-2026-10-11.md:34` (HISTORICAL), `docs/shelf-fidelity.md:9,11,18` (stderr captured verbatim on main at a named commit; the next re-measure replaces them), `web/src/coauthor.test.ts:193` (a draft "copied from `bert verdict` on 2026-09-08"), and `docs/README.md:82`, where `bert → facets` names this epic |
+| `rust-ident` | 48 | 0 | — |
+| `workflow` | 3 | 0 | — |
+| `fixture` | 8 | 6 | −2: the CLI word in the two `drafted-ambient` annotation notes (hand edits) |
+| `doc-prose` | 481 | 477 | −1 the `bert-lenses-kernel` row of `THIRD_PARTY_NOTICES.md` (regenerated), −1 `bert-cli` in the `Cargo.toml` comment the shim rewrote, −2 the two header lines of `gen_notices.py`, one of which is now the lineage line (+1 `lineage`); the rest is phase 6 |
+| `lineage` | 146 | 147 | +1: the generator's lineage line, which the committed notices already carried |
+| every other class | unchanged | unchanged | `golden` 8, `format-tag` 14, `crate-dir` 6, `deploy` 49, `issue-ref` 160, `upstream-bert` 138, `external-url` 2 |
+| **total** | **1245** | **1040** | |
+
+**The alias.** A second `[[bin]]`, `bert`, at `crates/facets-cli/src/bert_alias.rs`: it includes `main.rs` as a module (`#[path = "main.rs"] mod facets;`), prints `bert: renamed to facets; this alias retires 2027-01-11` on stderr, then calls the same `main`. stdout and the exit code are therefore the same program's; clap's `bin_name` is pinned to `facets` so `--help` and usage text on stdout do not change with argv[0]. `RETIRES` sits in the file the way `FORMAT_RETIRING` sits in `archive.rs`, on the same date. `default-run = "facets"` keeps a bare `cargo run -p facets-cli` working with two binaries. `just bert` stays as `alias bert := facets`, one line in the justfile; it runs `facets`, so it prints no note. Callers outside the repository (the vault's skills that call `bert compile` or `just bert`, shell history) keep working through the alias until phase 7 moves them; that is what the alias is for.
+
+Proof: `crates/facets-cli/tests/alias.rs` runs both binaries on the same inputs and asserts equal exit codes, byte-equal stdout, and the alias's stderr equal to the note followed by exactly what `facets` wrote, with the note absent from `facets`. The inputs cover every exit code: `compile`, `verdict --lens mobus`, `describe --lens klir`, `run`, `layout` on `assets/examples/llm-market.sl`, `--version`, `--help` (0); a stdin compile (0); σ₃ under Mobus (4); a missing file and a stdin typo (3); a bad `--lens` and an unknown subcommand (2). Made to fail on purpose, then restored: the note printed on stdout, the note removed, and the alias forcing exit 0 each turn the test red.
+
+**Hand edits** (everything the script did not do, each read before and after):
+
+- `crates/facets-cli/src/bert_alias.rs` and `tests/alias.rs` (new); the second `[[bin]]`, `default-run` and the rewritten comment in `Cargo.toml`; `bin_name` and `pub fn main` in `src/main.rs`; the `alias` line and its comment in the `justfile`; the `use support::{…}` lists in three tests re-sorted after the helper's rename.
+- `docs/README.md:69-70`, `docs/shelf-fidelity.md:5` (command lines in files that also hold rows kept above), the CLI word in `fixtures/sl/drafted-ambient/atom.annotation.json` and `hydrogen-molecule.annotation.json` (class `fixture`, assigned to phase 4 by the class table), and two comment columns in `README.md` realigned after the word grew.
+- `THIRD_PARTY_NOTICES.md` regenerated: `gen_notices.py --check` had failed since phase 2. `scripts/gen_notices.py`'s header still said `bert-lenses itself is MIT` while the committed file had been edited by hand to the Facets wording and lineage line, so a regeneration reverted it; the header now carries the committed text. An unmet optional dependency (`@opentelemetry/api`, optional for `@supabase/supabase-js`) has no version in `npm ls --json` and is skipped rather than listed `UNRESOLVED`. The regeneration also adds what landed after the file was last written (`@supabase/*` with `iceberg-js` and `tslib`, `three`, and the `clap`, `glam`, `uuid` versions in `Cargo.lock`).
+- `map.csv`: the `cli-word` row's note described an alias that exits 2; it now describes the one built.
+
+**Found, not fixed (out of scope):** `python3 scripts/seam_audit.py` finds the `facets` binary and runs it, then stops at `assets/walkthroughs/steel-plant/level-0.sl`, which `caf4c92` (#308) deleted; the audit has not run end to end since.
+
+**Not touched, by design:** callers outside the repository: the vault's `.claude` skills, launchd, `~/halcyonic-apps/bert-lenses`, `BERT_LENSES_DATA_DIR` (phase 7; the alias carries them until then); the goldens and walkthrough archives (phase 5); the lens note `"bert-compose fills the slot"` and its goldens (phases 5 and 6); the crate names in prose, including `about = "Ask the bert-lenses kernel …"`, which `facets --help` prints, and the stale `bert-cli/` in the README tree and `docs/kernel-architecture.md:33` (phase 6); `docs/VENDORING.md`, read in full: every bare `bert` there is the upstream app or its checkout (`git -C bert`, "Upstream `bert`"), none is the CLI; archives, ADR text and lineage.
+
+**Commands run**, in order, from the repo root:
+
+```
+python3 scripts/rename_inventory.py --self-test && python3 scripts/rename_apply.py --self-test && python3 scripts/rename_inventory.py --check
+python3 scripts/rename_apply.py --phase 4 --classes cli-word,rust-ident,workflow --dry-run                     # 233 in 43 files; every line read
+python3 scripts/rename_apply.py --phase 4 --classes cli-word,rust-ident,workflow --include crates/facets-cli/ --include justfile --include .vscode/ --include .github/   # 99 in 12 files
+cargo test -p facets-cli --test alias                  # 3 passed; red under each of the three mutations above
+python3 scripts/rename_apply.py --phase 4 --classes cli-word --include scripts/author_audit.py --include scripts/seam_audit.py      # 54 in 2 files
+python3 scripts/rename_apply.py --phase 4 --classes cli-word --include AGENTS.md --include README.md --include assets/bench/README.md --include crates/facets-compose/src/circuit.rs --include crates/facets-compose/src/run.rs --include crates/facets-kernel/API.md --include docs/authoring-models.md --include docs/kernel-architecture.md --include docs/language/README.md --include docs/language/spec.md --include docs/proposals/112-transition-functor.md --include docs/reference/3d-arms/README.md --include docs/shelf-candidates.md --include docs/wellformedness-mapping.md --include docs/audits/seam-readiness-2026-09-04.md --include editors/vscode/README.md --include fixtures/sl/drafted-ambient/README.md --include web/src/kernel/types.ts --include web/vite.config.ts   # 56 in 19 files
+just wasm && (cd web && npm ci)
+python3 scripts/gen_notices.py && python3 scripts/gen_notices.py --check
+python3 scripts/rename_inventory.py && python3 scripts/rename_inventory.py --check
+just check                                             # green: cargo 752 passed, 0 failed, 28 ignored; vitest 836 passed in 111 files
+python3 scripts/lean_provenance.py resolve             # Gate A (pin) OK — 74 symbols
+```
+
+`just check` runs `doc_lint.py` and `just wasm-exec` (209 checks passed). `git grep -n 'CARGO_BIN_EXE_bert\|--bin bert'` finds only `crates/facets-cli/tests/alias.rs` and the rename machinery.
+
 ## Phase ordering
 
 Phase 5 moves with phase 2: the Lean manifest's `stated_in` paths name `crates/bert-*` files and Gate A reads them, and the contract goldens embed a crate name in a lens note. The lists below are generated.
 
 <!-- rename-inventory:begin (generated by scripts/rename_inventory.py; do not edit) -->
 
-Occurrences: **1245** in **206** files (inventory of 2026-10-11, one row per occurrence).
+Occurrences: **1040** in **190** files (inventory of 2026-10-11, one row per occurrence).
 
 ### By class
 
@@ -172,58 +220,55 @@ Occurrences: **1245** in **206** files (inventory of 2026-10-11, one row per occ
 |---|---|---|
 | external-url | 2 | 1 |
 | format-tag | 14 | 12 |
-| lineage | 146 | 21 |
+| lineage | 147 | 22 |
 | upstream-bert | 138 | 39 |
 | issue-ref | 160 | 47 |
 | deploy | 49 | 12 |
-| workflow | 3 | 3 |
 | crate-dir | 6 | 5 |
 | golden | 8 | 3 |
-| fixture | 8 | 6 |
-| rust-ident | 48 | 5 |
-| cli-word | 182 | 40 |
-| doc-prose | 481 | 116 |
+| fixture | 6 | 4 |
+| cli-word | 33 | 15 |
+| doc-prose | 477 | 113 |
 
 ### By top-level directory
 
 | directory | occurrences |
 |---|---|
-| docs/ | 540 |
-| crates/ | 360 |
-| (root) | 96 |
-| scripts/ | 89 |
-| web/ | 71 |
-| assets/ | 43 |
+| docs/ | 519 |
+| crates/ | 277 |
+| web/ | 69 |
+| (root) | 62 |
+| assets/ | 42 |
+| scripts/ | 34 |
 | tools/ | 20 |
-| fixtures/ | 18 |
-| .github/ | 3 |
-| .vscode/ | 3 |
-| editors/ | 2 |
+| fixtures/ | 15 |
+| .vscode/ | 1 |
+| editors/ | 1 |
 
 ### Files with the most occurrences
 
 | file | occurrences |
 |---|---|
-| AGENTS.md | 45 |
 | crates/facets-core/src/lib.rs | 43 |
-| README.md | 38 |
+| AGENTS.md | 29 |
 | docs/design/hierarchical-decomposition-investigation.md | 29 |
-| scripts/author_audit.py | 29 |
 | docs/design/dynamics-research/read-external.md | 27 |
-| crates/facets-compose/src/circuit.rs | 26 |
 | docs/archive/roadmap-pre-web-rebuild.md | 26 |
 | docs/design/dynamics-research/read-category-theory.md | 26 |
+| crates/facets-compose/src/circuit.rs | 25 |
 | docs/design/dynamics-research/read-klir.md | 25 |
 | docs/design/shape-vocabulary-research.md | 25 |
-| scripts/seam_audit.py | 25 |
-| crates/facets-cli/tests/surface.rs | 24 |
+| README.md | 24 |
 | docs/archive/canvas-architecture.md | 24 |
 | crates/facets-core/src/validate.rs | 23 |
-| docs/language/spec.md | 23 |
 | crates/facets-canvas/src/canvas.rs | 22 |
 | docs/VENDORING.md | 22 |
 | assets/archive/README.md | 20 |
 | docs/archive/arc2-authoring-design.md | 20 |
+| crates/facets-core/src/operational.rs | 18 |
+| docs/language/spec.md | 18 |
+| docs/design/sl2-authoring-language.md | 17 |
+| docs/parked.md | 16 |
 
 ### Phase 5: goldens and fixtures to re-bless
 
@@ -238,10 +283,8 @@ Every `golden` and `fixture` row, by file. A golden is re-minted by its BLESS_* 
 | fixtures/contract/canvas_analysis.json | golden | 1 |
 | fixtures/contract/lens_description_mobus.json | golden | 1 |
 | fixtures/gates_truth_table.json | fixture | 1 |
-| fixtures/sl/drafted-ambient/atom.annotation.json | fixture | 1 |
-| fixtures/sl/drafted-ambient/hydrogen-molecule.annotation.json | fixture | 1 |
 
-9 files, 16 occurrences.
+7 files, 14 occurrences.
 
 ### Phase 5 moves with phase 2: `docs/lean-manifest.json` `stated_in` paths naming a crate
 

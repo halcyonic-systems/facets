@@ -11,7 +11,7 @@ therefore cannot be decomposed no matter what the surface offers.
 
 This script asks, of every model on the gallery's "Ships with the app" shelf,
 which components could carry a seam today. It is READ-ONLY: it compiles each
-`.sl` with the real kernel (`bert compile`, the headless door in
+`.sl` with the real kernel (`facets compile`, the headless door in
 `crates/facets-cli`) and reads the CanvasModel that comes back. It decides
 nothing the kernel does not already carry — role, primitive, interface flag,
 bond kind, substance, `decomposes` reference are all fields of the compiled
@@ -40,10 +40,10 @@ Per model:
                    citation — the source stopped at one level on purpose
 
 Usage:
-    python3 scripts/seam_audit.py [--bert PATH] [--out PATH] [--json]
+    python3 scripts/seam_audit.py [--facets PATH] [--out PATH] [--json]
 
-Requires the `bert` binary. Build it with `cargo build -p facets-cli --bin bert`
-(or pass `--bert target/debug/bert`); the script finds it in `target/debug`,
+Requires the `facets` binary. Build it with `cargo build -p facets-cli --bin facets`
+(or pass `--facets target/debug/facets`); the script finds it in `target/debug`,
 `target/release`, or `$PATH`.
 """
 
@@ -190,31 +190,31 @@ def shipped_models() -> list[Shipped]:
 # --- the kernel -------------------------------------------------------------
 
 
-def find_bert(explicit: str | None) -> Path:
+def find_facets(explicit: str | None) -> Path:
     if explicit:
         p = Path(explicit)
         if p.is_file():
             return p
-        sys.exit(f"seam_audit: no bert binary at {p}")
-    for candidate in (REPO / "target" / "release" / "bert", REPO / "target" / "debug" / "bert"):
+        sys.exit(f"seam_audit: no facets binary at {p}")
+    for candidate in (REPO / "target" / "release" / "facets", REPO / "target" / "debug" / "facets"):
         if candidate.is_file():
             return candidate
-    found = shutil.which("bert")
+    found = shutil.which("facets")
     if found:
         return Path(found)
     sys.exit(
-        "seam_audit: no bert binary found. Build it:\n"
-        "  cargo build -p facets-cli --bin bert\n"
-        "or pass --bert PATH."
+        "seam_audit: no facets binary found. Build it:\n"
+        "  cargo build -p facets-cli --bin facets\n"
+        "or pass --facets PATH."
     )
 
 
-def compile_model(bert: Path, path: Path) -> dict:
+def compile_model(facets: Path, path: Path) -> dict:
     proc = subprocess.run(
-        [str(bert), "compile", str(path)], capture_output=True, text=True, check=False
+        [str(facets), "compile", str(path)], capture_output=True, text=True, check=False
     )
     if proc.returncode != 0:
-        raise RuntimeError(f"{path.name}: bert compile exited {proc.returncode}\n{proc.stderr}")
+        raise RuntimeError(f"{path.name}: facets compile exited {proc.returncode}\n{proc.stderr}")
     return json.loads(proc.stdout)
 
 
@@ -295,8 +295,8 @@ class ModelReport:
         return sum(1 for c in self.components if c.verdict == verdict)
 
 
-def audit(bert: Path, s: Shipped) -> ModelReport:
-    model = compile_model(bert, s.path)
+def audit(facets: Path, s: Shipped) -> ModelReport:
+    model = compile_model(facets, s.path)
     things = {t["id"]: t for t in model.get("things", [])}
     relations = model.get("relations", [])
 
@@ -451,13 +451,13 @@ def write_out(path: Path, body: str) -> None:
 
 def main() -> int:
     ap = argparse.ArgumentParser(description=__doc__)
-    ap.add_argument("--bert", help="path to the bert binary")
+    ap.add_argument("--facets", help="path to the facets binary")
     ap.add_argument("--out", help="also write the Markdown report here")
     ap.add_argument("--json", action="store_true", help="emit machine-readable JSON instead")
     args = ap.parse_args()
 
-    bert = find_bert(args.bert)
-    reports = [audit(bert, s) for s in shipped_models()]
+    facets = find_facets(args.facets)
+    reports = [audit(facets, s) for s in shipped_models()]
 
     if args.json:
         print(

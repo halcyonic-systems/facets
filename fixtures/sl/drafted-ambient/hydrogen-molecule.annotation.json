@@ -18,5 +18,5 @@
   ],
   "disguised_count": 0,
   "absent_count": 2,
-  "notes": "Compiles clean under `bert verdict --lens mobus` (0 issues). No environment thing is a condition in disguise; the drafter drew every neighbour correctly and wrote no milieu at all."
+  "notes": "Compiles clean under `facets verdict --lens mobus` (0 issues). No environment thing is a condition in disguise; the drafter drew every neighbour correctly and wrote no milieu at all."
 }

@@ -3,8 +3,8 @@
 
 Runs a fixed set of one-sentence descriptions through the live `/author-sl`
 route on one or more models, several draws each, and scores every draft
-mechanically off the compiled model. Nothing here judges: `bert compile` says
-whether the text is a model, `bert verdict --lens mobus` says whether the
+mechanically off the compiled model. Nothing here judges: `facets compile` says
+whether the text is a model, `facets verdict --lens mobus` says whether the
 kernel accepts it at Operational mode, and every other number is a count over
 fields the compiled model already carries (`primitive`, `interface`,
 `description`, relation `kind`, thing `role`).
@@ -30,7 +30,7 @@ Drafts are cached under runs/author-audit/<label>/<model>/<id>-<n>/ (the
 first SL, the final SL, and every intermediate); delete a folder to redraft.
 `--report` reads cached result.json files only. The local reasoner limits
 `/author-sl` to 10 calls a minute, so `--pace` (seconds between calls)
-defaults to 7. Requires the `bert` binary (`cargo build -p facets-cli`).
+defaults to 7. Requires the `facets` binary (`cargo build -p facets-cli`).
 
 The milieu rows (facets#443): `milieu lines` counts `milieu` declarations in
 the compiled model, and `env things reading as conditions` counts the kernel's
@@ -76,16 +76,16 @@ FIXTURES = [
 ]
 
 
-def find_bert(explicit: str | None) -> Path:
+def find_facets(explicit: str | None) -> Path:
     if explicit:
         return Path(explicit)
-    for candidate in (REPO / "target/debug/bert", REPO / "target/release/bert"):
+    for candidate in (REPO / "target/debug/facets", REPO / "target/release/facets"):
         if candidate.exists():
             return candidate
-    found = shutil.which("bert")
+    found = shutil.which("facets")
     if found:
         return Path(found)
-    sys.exit("bert binary not found; build with `cargo build -p facets-cli --bin bert` or pass --bert")
+    sys.exit("facets binary not found; build with `cargo build -p facets-cli --bin facets` or pass --facets")
 
 
 # --- the reasoner -----------------------------------------------------------
@@ -120,24 +120,24 @@ def ask(base: str, description: str, model: str, timeout: int,
 # --- the kernel -------------------------------------------------------------
 
 
-def bert_json(bert: Path, args: list[str], sl: str) -> tuple[dict | None, int]:
-    p = subprocess.run([str(bert), *args, "-"], input=sl, capture_output=True, text=True)
+def facets_json(facets: Path, args: list[str], sl: str) -> tuple[dict | None, int]:
+    p = subprocess.run([str(facets), *args, "-"], input=sl, capture_output=True, text=True)
     try:
         return json.loads(p.stdout), p.returncode
     except json.JSONDecodeError:
         return None, p.returncode
 
 
-def compile_sl(bert: Path, sl: str) -> tuple[dict | None, list[dict]]:
+def compile_sl(facets: Path, sl: str) -> tuple[dict | None, list[dict]]:
     """(model, []) on success; (None, faults) when the text is not a model."""
-    out, code = bert_json(bert, ["compile"], sl)
+    out, code = facets_json(facets, ["compile"], sl)
     if code == 0 and out is not None:
         return out, []
     return None, (out or {}).get("errors", [{"line": 0, "message": "compile failed"}])
 
 
-def verdict(bert: Path, sl: str) -> list[dict]:
-    out, _ = bert_json(bert, ["verdict", "--lens", LENS], sl)
+def verdict(facets: Path, sl: str) -> list[dict]:
+    out, _ = facets_json(facets, ["verdict", "--lens", LENS], sl)
     return ((out or {}).get("validation") or {}).get("issues", [])
 
 
@@ -213,7 +213,7 @@ def score(model: dict | None, issues: list[dict]) -> dict:
 # --- one draw ---------------------------------------------------------------
 
 
-def draw(bert: Path, base: str, model: str, fixture_id: str, text: str, n: int,
+def draw(facets: Path, base: str, model: str, fixture_id: str, text: str, n: int,
          out: Path, timeout: int, pace: float) -> dict:
     folder = out / f"{fixture_id}-{n}"
     result_path = folder / "draw.json"
@@ -239,7 +239,7 @@ def draw(bert: Path, base: str, model: str, fixture_id: str, text: str, n: int,
     kernel_heals = 0
     first_score: dict | None = None
     while True:
-        compiled, faults = compile_sl(bert, sl)
+        compiled, faults = compile_sl(facets, sl)
         if compiled is None:
             if first_score is None:
                 first_score = {"compiled": False}
@@ -248,7 +248,7 @@ def draw(bert: Path, base: str, model: str, fixture_id: str, text: str, n: int,
             parse_heals += 1
             sl = one(sl, parse_faults_text(faults), f"parse-heal-{parse_heals}")
             continue
-        issues = verdict(bert, sl)
+        issues = verdict(facets, sl)
         s = score(compiled, issues)
         if first_score is None:
             first_score = s
@@ -259,8 +259,8 @@ def draw(bert: Path, base: str, model: str, fixture_id: str, text: str, n: int,
             continue
         break
 
-    compiled, _ = compile_sl(bert, sl)
-    final_score = score(compiled, verdict(bert, sl)) if compiled is not None else {"compiled": False}
+    compiled, _ = compile_sl(facets, sl)
+    final_score = score(compiled, verdict(facets, sl)) if compiled is not None else {"compiled": False}
     row = {
         "id": fixture_id, "draw": n, "model": answered, "requested": model,
         "asks": asks, "parse_heals": parse_heals, "kernel_heals": kernel_heals,
@@ -271,7 +271,7 @@ def draw(bert: Path, base: str, model: str, fixture_id: str, text: str, n: int,
     return row
 
 
-def run(label: str, model: str, draws: int, bert: Path, base: str, timeout: int, pace: float,
+def run(label: str, model: str, draws: int, facets: Path, base: str, timeout: int, pace: float,
         fixtures: list[tuple[str, str]], annotations: dict[str, dict] | None = None) -> None:
     out = RUNS / label / model.replace("/", "_").replace(":", "_")
     out.mkdir(parents=True, exist_ok=True)
@@ -279,7 +279,7 @@ def run(label: str, model: str, draws: int, bert: Path, base: str, timeout: int,
     for fixture_id, text in fixtures:
         for n in range(1, draws + 1):
             try:
-                row = draw(bert, base, model, fixture_id, text, n, out, timeout, pace)
+                row = draw(facets, base, model, fixture_id, text, n, out, timeout, pace)
             except (urllib.error.URLError, TimeoutError, OSError, ValueError) as e:
                 print(f"  {fixture_id} #{n}: draft failed ({e})", flush=True)
                 continue
@@ -417,7 +417,7 @@ def main(argv=None) -> int:
     ap.add_argument("--draws", type=int, default=3)
     ap.add_argument("--only", help="comma-separated fixture ids")
     ap.add_argument("--gsr", default=GSR)
-    ap.add_argument("--bert")
+    ap.add_argument("--facets")
     ap.add_argument("--timeout", type=int, default=600)
     ap.add_argument("--pace", type=float, default=7.0, help="seconds between reasoner calls")
     ap.add_argument("--report", nargs="*", help="summarize cached runs and exit")
@@ -438,7 +438,7 @@ def main(argv=None) -> int:
     if a.only:
         keep = set(a.only.split(","))
         fixtures = [f for f in fixtures if f[0] in keep]
-    run(a.label, a.model, a.draws, find_bert(a.bert), a.gsr, a.timeout, a.pace, fixtures, annotations)
+    run(a.label, a.model, a.draws, find_facets(a.facets), a.gsr, a.timeout, a.pace, fixtures, annotations)
     return 0
 
 

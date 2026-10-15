@@ -17,7 +17,7 @@ because a different admission test is the one honest reason to make a shelf.
 
 Twenty models, the first ten from the "runs now" rows of `docs/shelf-candidates.md` and the rest the agent-layer witnesses (ADR 0008), written in the split form and bench-tested from the terminal. They ship: `web/src/bench.ts` globs this directory and the library renders each file as a card under the **Bench** tag, with its `# bench · after …` line shown.
 
-Every file verdicts with zero Errors and zero `interface_does_work` under the Mobus lens, is in `slfmt` canonical form, and is conserved on `bert bench <file> --t 12 --no-log`. The numbers are round so the ledger reads by eye; nothing here is a claim about any domain.
+Every file verdicts with zero Errors and zero `interface_does_work` under the Mobus lens, is in `slfmt` canonical form, and is conserved on `facets bench <file> --t 12 --no-log`. The numbers are round so the ledger reads by eye; nothing here is a claim about any domain.
 
 | File | Teaches | Thing to watch | Knob tried, and what happened | Warnings left |
 |---|---|---|---|---|

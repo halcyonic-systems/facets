@@ -22,7 +22,7 @@ mod support;
 use std::collections::BTreeMap;
 
 use serde_json::{json, Map, Value};
-use support::{bert, code, repo_root, stdout_json};
+use support::{code, facets, repo_root, stdout_json};
 
 const GOLDEN: &str = "fixtures/cli/canonical.json";
 
@@ -93,13 +93,13 @@ fn round_floats(value: &mut Value, places: i32) {
 
 /// Everything the door says about one model.
 fn reading(path: &str) -> Value {
-    let compiled = bert(&["compile", path]);
+    let compiled = facets(&["compile", path]);
     assert_eq!(code(&compiled), 0, "{path} compiles");
     let model = stdout_json(&compiled);
 
     let mut verdicts = Map::new();
     for lens in LENSES {
-        let out = bert(&["verdict", path, "--lens", lens]);
+        let out = facets(&["verdict", path, "--lens", lens]);
         let analysis = stdout_json(&out);
         let errors = analysis["validation"]["issues"]
             .as_array()
@@ -110,7 +110,7 @@ fn reading(path: &str) -> Value {
         assert_eq!(
             code(&out) == 4,
             errors > 0,
-            "`bert verdict {path} --lens {lens}` must exit 4 exactly when it \
+            "`facets verdict {path} --lens {lens}` must exit 4 exactly when it \
              reports an error — the exit code IS the machine-readable verdict, \
              and a code that disagrees with the payload makes every shell check \
              a lie"
@@ -120,20 +120,20 @@ fn reading(path: &str) -> Value {
         // analysis carries the same formal object the `describe` subcommand
         // prints, so asserting they agree covers `describe` exactly and keeps
         // the file from holding the tradition's text twice.
-        let described = bert(&["describe", path, "--lens", lens]);
-        assert_eq!(code(&described), 0, "`bert describe {path} --lens {lens}`");
+        let described = facets(&["describe", path, "--lens", lens]);
+        assert_eq!(code(&described), 0, "`facets describe {path} --lens {lens}`");
         assert_eq!(
             stdout_json(&described),
             analysis["description"],
-            "`bert describe {path} --lens {lens}` and the `description` inside \
-             `bert verdict` are the same formal object, read through two doors. \
+            "`facets describe {path} --lens {lens}` and the `description` inside \
+             `facets verdict` are the same formal object, read through two doors. \
              If they diverge, one of the two doors is lying about the tradition."
         );
 
         verdicts.insert(lens.to_string(), analysis);
     }
 
-    let layout = bert(&["layout", path]);
+    let layout = facets(&["layout", path]);
     assert_eq!(code(&layout), 0);
     let nodes: Vec<Value> = stdout_json(&layout)["nodes"]
         .as_array()
@@ -153,7 +153,7 @@ fn reading(path: &str) -> Value {
     // The whole trajectory, not just whether one happened. `dt_invariance.rs`
     // owns the physics; what this catches is the engine quietly answering a
     // different number for a model we speak for.
-    let run = bert(&["run", path, "--t", "4"]);
+    let run = facets(&["run", path, "--t", "4"]);
     let mut answer = stdout_json(&run);
     round_floats(&mut answer, 6);
     let outcome = match code(&run) {
@@ -165,7 +165,7 @@ fn reading(path: &str) -> Value {
                 "not-executable"
             }
         }
-        other => panic!("`bert run {path}` exited {other}, which is neither a run nor a refusal"),
+        other => panic!("`facets run {path}` exited {other}, which is neither a run nor a refusal"),
     };
 
     json!({

@@ -350,7 +350,7 @@ pub struct Node {
     /// The knob a command-form agent writes at the end of every tick (ADR
     /// 0008 D1, Mobus §12.2.3.2): `None` is the signal form, whose decision
     /// rides its message outwire. Only `NodeKind::Agent` reads it. The write
-    /// is the same `write_amount` a bench knob takes, so `bert run`, the
+    /// is the same `write_amount` a bench knob takes, so `facets run`, the
     /// web run and the bench mean one model.
     pub knob: Option<AgentKnob>,
     /// A stock's declared unit (bert-lenses#76). A Buffering stock accumulates
