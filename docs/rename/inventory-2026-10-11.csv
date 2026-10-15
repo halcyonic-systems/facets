@@ -1,12 +1,6 @@
 path,line,class,text
-.github/ISSUE_TEMPLATE/bug.yml,13,workflow,"description: facets.systems/model, /chat, the `bert` CLI, the macOS app, or a local `just dev`."
-.github/ISSUE_TEMPLATE/model-refusal.yml,13,workflow,description: Paste the SL text (the SL pane shows it; `bert compile` accepts it). Keep it as small as still shows the pr
-.github/workflows/ci.yml,57,workflow,"# `bert` binary is argv and the filesystem, which wasm32-unknown-unknown"
 .vscode/tasks.json,5,issue-ref,"// messages, no paraphrase. (The LSP tier of bert-lenses#353 supersedes"
-.vscode/tasks.json,10,cli-word,"""label"": ""bert: compile SL (current file)"","
-.vscode/tasks.json,12,cli-word,"""command"": ""cargo run --quiet -p facets-cli --bin bert -- compile ${file}"","
 AGENTS.md,3,lineage,The agent runbook for the `facets` repository (named `bert-lenses` until
-AGENTS.md,22,cli-word,just bert verdict assets/examples/predator-prey.sl --lens bunge   # ask the kernel from a shell
 AGENTS.md,64,doc-prose,The kernel (`bert-core` + `bert-compose` engine → wasm) owns every systemhood
 AGENTS.md,64,doc-prose,The kernel (`bert-core` + `bert-compose` engine → wasm) owns every systemhood
 AGENTS.md,69,doc-prose,"systems semantics go in a crate (default: `bert-core`, the semantic authority),"
@@ -21,26 +15,11 @@ AGENTS.md,112,doc-prose,(`api.rs`): deserialize JS input → call bert-core / be
 AGENTS.md,112,doc-prose,(`api.rs`): deserialize JS input → call bert-core / bert-compose / bert-canvas /
 AGENTS.md,112,doc-prose,(`api.rs`): deserialize JS input → call bert-core / bert-compose / bert-canvas /
 AGENTS.md,113,doc-prose,bert-tether (the truth) → serialize. Zero domain logic. Built to `pkg/` via
-AGENTS.md,115,cli-word,"- `crates/facets-cli` — the `bert` binary, the workspace's only `[[bin]]`. A"
 AGENTS.md,122,upstream-bert,**canonical epitome of old-bert's STRUCTURAL/diagramming peak** — kept for
 AGENTS.md,123,upstream-bert,reference and future revamp (old bert peaked as a structure visual tool; its
-AGENTS.md,204,cli-word,"### Headless — START HERE. `bert`, the CLI, is the first door for any model question"
-AGENTS.md,207,cli-word,"reasoning about what a model probably does.** `bert` (`crates/facets-cli`, the"
-AGENTS.md,212,cli-word,just bert verdict assets/corpus/bunge/coupling-sigma3.sl --lens bunge   # 0
-AGENTS.md,213,cli-word,just bert verdict assets/corpus/bunge/coupling-sigma3.sl --lens mobus   # 4 — §4.3
-AGENTS.md,214,cli-word,"just bert compile <f> | jq '.things[] | {id,name,role,interface}'      # what it became"
-AGENTS.md,215,cli-word,just bert layout  <f>                                                  # node positions
-AGENTS.md,216,cli-word,just bert run     <f> --t 30                                           # or why it cannot
-AGENTS.md,228,cli-word,"in one command. If a question is about what a model IS, run `bert` rather than"
 AGENTS.md,233,doc-prose,"When you are already writing Rust, `bert_canvas::lenses::analyze(&CanvasModel, Lens)`"
 AGENTS.md,238,doc-prose,let parsed = bert_canvas::sl::parse_sl_full(&text)?;           // compile
 AGENTS.md,239,doc-prose,"let verdict = bert_canvas::lenses::analyze(&parsed.model, Lens::Mobus);"
-AGENTS.md,250,cli-word,bert compile  <file.sl>                 the canvas model the text becomes
-AGENTS.md,251,cli-word,bert verdict  <file> [--lens L]         CanvasAnalysis; exits 4 on a refusal
-AGENTS.md,252,cli-word,bert describe <file> [--lens L]         the tradition's formal object
-AGENTS.md,253,cli-word,"bert run      <file> [--t T] [--dt D]   the trajectory, or why there is none"
-AGENTS.md,254,cli-word,bert layout   <file>                    node positions (id/name/role/env_kind/x/y)
-AGENTS.md,262,cli-word,"Full treatment: README, ""The `bert` CLI""."
 AGENTS.md,264,doc-prose,`bert-cli` is the ONE package excluded from `cargo build --workspace --target
 AGENTS.md,300,deploy,cargo tauri build     # → src-tauri/target/release/bundle/macos/bert-lenses.app
 AGENTS.md,301,deploy,open src-tauri/target/release/bundle/macos/bert-lenses.app
@@ -64,36 +43,21 @@ README.md,268,doc-prose,bert-compose/             #   executable dynamical engin
 README.md,269,doc-prose,"bert-canvas/              #   canvas/lens domain: CanvasModel, lens_facts, describe"
 README.md,270,doc-prose,"bert-tether/              #   boundary interface: CSV import, run manifest, forcing"
 README.md,271,doc-prose,bert-lenses-kernel/       #   JS-facing wasm-bindgen boundary (marshaling only)
-README.md,272,doc-prose,"bert-cli/                 #   the `bert` binary: the same truth, from a shell (native only)"
-README.md,272,cli-word,"bert-cli/                 #   the `bert` binary: the same truth, from a shell (native only)"
+README.md,272,doc-prose,"bert-cli/                 #   the `facets` binary: the same truth, from a shell (native only)"
 README.md,287,upstream-bert,assets/models/              # sample BERT models (demos + blockchain examples)
 README.md,303,doc-prose,"`bert-core`, `bert-compose`, `bert-canvas`, and `bert-tether` are **vendored**"
 README.md,303,doc-prose,"`bert-core`, `bert-compose`, `bert-canvas`, and `bert-tether` are **vendored**"
 README.md,303,doc-prose,"`bert-core`, `bert-compose`, `bert-canvas`, and `bert-tether` are **vendored**"
 README.md,303,doc-prose,"`bert-core`, `bert-compose`, `bert-canvas`, and `bert-tether` are **vendored**"
 README.md,304,doc-prose,"(self-contained, no cross-repo path deps). The `bert-compose` copy is engine-only:"
-README.md,383,cli-word,just bert ARGS  # the headless CLI — ask the kernel about a model without a browser
-README.md,420,cli-word,"## The `bert` CLI — the same kernel, from a shell"
-README.md,423,cli-word,those calls was a browser. `bert` is the door. It decides nothing: it parses
 README.md,424,doc-prose,"arguments, calls `bert-canvas` / `bert-core` / `bert-compose`, and prints what"
 README.md,424,doc-prose,"arguments, calls `bert-canvas` / `bert-core` / `bert-compose`, and prints what"
 README.md,424,doc-prose,"arguments, calls `bert-canvas` / `bert-core` / `bert-compose`, and prints what"
-README.md,429,cli-word,"just bert verdict assets/examples/predator-prey.sl        # via cargo, no install"
-README.md,430,cli-word,cargo install --path crates/facets-cli                  # or put `bert` on PATH
-README.md,434,cli-word,bert compile  <file.sl>                 the canvas model the text becomes
-README.md,435,cli-word,bert verdict  <file> [--lens L]         what the kernel says; exits 4 on a refusal
-README.md,436,cli-word,bert describe <file> [--lens L]         the formal object the tradition writes
-README.md,437,cli-word,"bert run      <file> [--t T] [--dt D]   the trajectory, or why there is none"
-README.md,438,cli-word,bert layout   <file>                    where the nodes sit
-README.md,474,cli-word,bert verdict assets/corpus/bunge/coupling-sigma3.sl --lens bunge   # 0 — legal Bunge structure
-README.md,475,cli-word,bert verdict assets/corpus/bunge/coupling-sigma3.sl --lens mobus   # 4 — Mobus §4.3 forbids the diagonal
-README.md,482,cli-word,bert layout assets/examples/predator-prey.sl \
 README.md,504,doc-prose,`bert-cli` is the one package excluded from the workspace `wasm32-unknown-unknown`
 README.md,555,doc-prose,"(author/validate) and the *dynamical* face (`bert-compose`, run), united here in"
 THIRD_PARTY_NOTICES.md,18,lineage,"*Lineage, not an obligation: Facets (bert-lenses until 2026-08-27) grew out of the BERT project"
 THIRD_PARTY_NOTICES.md,18,upstream-bert,"*Lineage, not an obligation: Facets (bert-lenses until 2026-08-27) grew out of the BERT project"
 THIRD_PARTY_NOTICES.md,19,upstream-bert,(`halcyonic-systems/bert`). The kernel crates here were written for this
-THIRD_PARTY_NOTICES.md,188,doc-prose,| `bert-lenses-kernel` | 0.1.0 | MIT |
 assets/archive/README.md,14,lineage,- **out of the CLI survey** — `crates/bert-cli/tests/support/mod.rs::library()`
 assets/archive/README.md,18,lineage,`bert run assets/archive/watershed.sl --t 12` works exactly as it did.
 assets/archive/README.md,21,lineage,"no shipped model carries — `bank-run` and `respiring-cell` (`bert-canvas/tests/environment_kind.rs`), `fsm-traffic`"
@@ -125,7 +89,6 @@ assets/archive/demos/homeostat-model.json,60,lineage,"""description"": ""Built i
 assets/archive/demos/reservoir-model.json,17,lineage,"""description"": ""bert-compose source"""
 assets/archive/demos/reservoir-model.json,38,lineage,"""description"": ""bert-compose sink"""
 assets/archive/demos/reservoir-model.json,60,lineage,"""description"": ""Built in bert-compose: process primitives wired into a working circuit (composition is unconditional — S"
-assets/bench/README.md,20,cli-word,"Every file verdicts with zero Errors and zero `interface_does_work` under the Mobus lens, is in `slfmt` canonical form, "
 assets/corpus/README.md,73,issue-ref,The corpus is the **empirical arm** of the formalization. You cannot find that `Tuple.lean` under-constrains `I` by read
 assets/examples/translation-apparatus.sl,140,issue-ref,# Mobus ch. 4 (bert-lenses#260): environmental entities are unmodeled
 assets/models/runnable-sample.json,17,fixture,"""description"": ""bert-compose source"""
@@ -188,103 +151,22 @@ crates/facets-canvas/tests/sl_roundtrip.rs,215,issue-ref,/// Law (bert-lenses#15
 crates/facets-canvas/tests/sl_roundtrip.rs,252,issue-ref,/// Law (bert-lenses#154 revision): the source-system metadata rides ENVIRONMENT
 crates/facets-canvas/tests/sl_roundtrip.rs,277,issue-ref,"/// Law (bert-lenses#154): `kind Basic|Support` round-trips, and the default"
 crates/facets-canvas/tests/source_signal_rate.rs,2,issue-ref,"//! WIRE (bert#111, the Message sibling of the physical rule). Replication"
-crates/facets-cli/Cargo.toml,5,cli-word,"description = ""The `bert` binary: a headless door onto the kernel. Compile SL, ask for a verdict under any lens, typeset"
-crates/facets-cli/Cargo.toml,12,cli-word,"# The binary is `bert`, not `bert-cli`. The crate name carries the -cli suffix"
-crates/facets-cli/Cargo.toml,12,doc-prose,"# The binary is `bert`, not `bert-cli`. The crate name carries the -cli suffix"
-crates/facets-cli/Cargo.toml,14,cli-word,# package called `bert` would read as the kernel rather than the door.
-crates/facets-cli/Cargo.toml,16,cli-word,"name = ""bert"""
-crates/facets-cli/src/main.rs,1,cli-word,//! `bert` — the headless door onto the kernel.
-crates/facets-cli/src/main.rs,17,cli-word,"//!   JSON and only JSON, so `bert verdict m.sl | jq` never has to skip a banner"
-crates/facets-cli/src/main.rs,38,cli-word,/// What a `bert` exit status means. A shell check branches on these; nothing
-crates/facets-cli/src/main.rs,43,cli-word,/// a claim about the system. Collapsing them would make `bert verdict` unable
-crates/facets-cli/src/main.rs,65,cli-word,"name = ""bert"","
-crates/facets-cli/src/main.rs,67,doc-prose,"about = ""Ask the bert-lenses kernel about a model, from a shell."","
-crates/facets-cli/src/main.rs,89,cli-word,"/// Exits 4 when the verdict carries an error, so `bert verdict m.sl` is a"
-crates/facets-cli/src/main.rs,234,cli-word,"eprintln!(""bert: could not serialize the answer: {e}"");"
-crates/facets-cli/src/main.rs,243,cli-word,"eprintln!(""bert: could not write the answer: {e}"");"
-crates/facets-cli/src/main.rs,255,cli-word,"eprintln!(""bert: {msg}"");"
-crates/facets-cli/src/main.rs,259,cli-word,"eprintln!(""bert: {}: {msg}"", path.display());"
-crates/facets-cli/src/main.rs,339,cli-word,"""bert: {} refused {} ({} error{})"","
-crates/facets-cli/src/main.rs,379,cli-word,"""bert: {} does not project to an executable model ({} error{})"","
-crates/facets-cli/src/main.rs,392,cli-word,"eprintln!(""bert: {}: {reason}"", file.display());"
-crates/facets-cli/src/main.rs,488,cli-word,"eprintln!(""bert: {reason}"");"
-crates/facets-cli/src/main.rs,498,cli-word,"eprintln!(""bert: {}: {reason}"", file.display());"
-crates/facets-cli/src/main.rs,506,cli-word,"eprintln!(""bert: {reason}"");"
-crates/facets-cli/src/main.rs,521,cli-word,"eprintln!(""bert: knob refused: {reason}"");"
-crates/facets-cli/src/main.rs,527,cli-word,"eprintln!(""bert: {reason}"");"
-crates/facets-cli/tests/bench.rs,1,cli-word,//! `bert bench` (#463): the terminal's seat at the bench. The same engine and
-crates/facets-cli/tests/bench.rs,7,rust-ident,"use support::{bert, code, stderr, stdout_json};"
-crates/facets-cli/tests/bench.rs,11,rust-ident,"let out = bert(&[""bench"", ""fixtures/sl/bathtub.sl"", ""--t"", ""6"", ""--set"", ""inflow|Faucet|Tub=4@3""]);"
-crates/facets-cli/tests/bench.rs,28,rust-ident,"let out = bert(&[""bench"", ""fixtures/sl/bathtub.sl"", ""--t"", ""3"", ""--no-log""]);"
-crates/facets-cli/tests/bench.rs,31,rust-ident,"let out = bert(&[""bench"", ""fixtures/sl/bathtub.sl"", ""--set"", ""nonsense""]);"
-crates/facets-cli/tests/bench.rs,34,rust-ident,"let out = bert(&[""bench"", ""fixtures/sl/bathtub.sl"", ""--t"", ""3"", ""--set"", ""nope|Faucet|Tub=2""]);"
-crates/facets-cli/tests/bench.rs,43,rust-ident,"let out = bert(&[""bench"", ""fixtures/sl/bathtub.sl"", ""--t"", ""4"", ""--set"", ""Faucet.reservoir=2""]);"
-crates/facets-cli/tests/bench.rs,56,rust-ident,let out = bert(&[
-crates/facets-cli/tests/bench.rs,80,rust-ident,"let out = bert(&[""bench"", ""fixtures/sl/bakery.sl"", ""--t"", ""5"", ""--no-log""]);"
-crates/facets-cli/tests/bench.rs,98,rust-ident,"let out = bert(&[""bench"", ""fixtures/sl/shared-door.sl"", ""--t"", ""5"", ""--no-log""]);"
-crates/facets-cli/tests/bench.rs,116,rust-ident,"let out = bert(&[""bench"", file, ""--t"", ""12"", ""--no-log""]);"
-crates/facets-cli/tests/bench.rs,133,rust-ident,"let out = bert(&[""bench"", ""assets/bench/thermostat-agent.sl"", ""--t"", ""24"", ""--no-log"", ""--set"", ""Thermostat.target=3@12"""
-crates/facets-cli/tests/bench.rs,148,rust-ident,"let out = bert(&[""bench"", ""assets/bench/thermostat-relay.sl"", ""--t"", ""24"", ""--no-log""]);"
-crates/facets-cli/tests/bench.rs,161,rust-ident,"let out = bert(&[""bench"", ""assets/bench/thermostat-relay.sl"", ""--t"", ""24"", ""--no-log"", ""--set"", ""Thermostat.above=3@12""]"
-crates/facets-cli/tests/bench.rs,182,rust-ident,let out = bert(&args);
-crates/facets-cli/tests/bench.rs,232,rust-ident,let out = bert(&args);
-crates/facets-cli/tests/bench.rs,275,rust-ident,"let out = bert(&[""bench"", ""assets/bench/hospital-beds-table.sl"", ""--t"", ""3"", ""--no-log"", ""--set"", ""Gatekeeper.under3=50"""
-crates/facets-cli/tests/bench.rs,291,rust-ident,let out = bert(&args);
-crates/facets-cli/tests/bench.rs,350,rust-ident,let out = bert(&args);
-crates/facets-cli/tests/canonical_golden.rs,25,rust-ident,"use support::{bert, code, repo_root, stdout_json};"
-crates/facets-cli/tests/canonical_golden.rs,96,rust-ident,"let compiled = bert(&[""compile"", path]);"
-crates/facets-cli/tests/canonical_golden.rs,102,rust-ident,"let out = bert(&[""verdict"", path, ""--lens"", lens]);"
-crates/facets-cli/tests/canonical_golden.rs,113,cli-word,"""`bert verdict {path} --lens {lens}` must exit 4 exactly when it \"
-crates/facets-cli/tests/canonical_golden.rs,123,rust-ident,"let described = bert(&[""describe"", path, ""--lens"", lens]);"
-crates/facets-cli/tests/canonical_golden.rs,124,cli-word,"assert_eq!(code(&described), 0, ""`bert describe {path} --lens {lens}`"");"
-crates/facets-cli/tests/canonical_golden.rs,128,cli-word,"""`bert describe {path} --lens {lens}` and the `description` inside \"
-crates/facets-cli/tests/canonical_golden.rs,129,cli-word,"`bert verdict` are the same formal object, read through two doors. \"
-crates/facets-cli/tests/canonical_golden.rs,136,rust-ident,"let layout = bert(&[""layout"", path]);"
-crates/facets-cli/tests/canonical_golden.rs,156,rust-ident,"let run = bert(&[""run"", path, ""--t"", ""4""]);"
-crates/facets-cli/tests/canonical_golden.rs,168,cli-word,"other => panic!(""`bert run {path}` exited {other}, which is neither a run nor a refusal""),"
-crates/facets-cli/tests/library_survey.rs,23,rust-ident,"use support::{bert, library, repo_root, stdout_json};"
-crates/facets-cli/tests/library_survey.rs,47,cli-word,"""`bert {command}` was signalled rather than exiting; a door that \"
-crates/facets-cli/tests/library_survey.rs,54,cli-word,"""`bert {command}` exited {code}; a bundled model may only produce \"
-crates/facets-cli/tests/library_survey.rs,62,cli-word,"""`bert {command}` did not put JSON on stdout ({e}); stdout carries \"
-crates/facets-cli/tests/library_survey.rs,70,rust-ident,let out = bert(args);
-crates/facets-cli/tests/library_survey.rs,187,rust-ident,let bad_args = bert(&[
+crates/facets-cli/Cargo.toml,23,cli-word,"name = ""bert"""
+crates/facets-cli/Cargo.toml,24,cli-word,"path = ""src/bert_alias.rs"""
+crates/facets-cli/src/bert_alias.rs,1,cli-word,"//! `bert` — the old name of `facets`, kept for one release (#541 phase 4)."
+crates/facets-cli/src/bert_alias.rs,19,cli-word,/// and `bert` is no longer built. The same date the old archive format tag
+crates/facets-cli/src/bert_alias.rs,24,cli-word,"eprintln!(""bert: renamed to facets; this alias retires {RETIRES}"");"
+crates/facets-cli/src/main.rs,68,cli-word,// through the `bert` alias (`src/bert_alias.rs`).
+crates/facets-cli/src/main.rs,68,cli-word,// through the `bert` alias (`src/bert_alias.rs`).
+crates/facets-cli/src/main.rs,71,doc-prose,"about = ""Ask the bert-lenses kernel about a model, from a shell."","
+crates/facets-cli/tests/alias.rs,1,cli-word,//! The `bert` alias (#541 phase 4): the old name runs the same program.
+crates/facets-cli/tests/alias.rs,19,cli-word,"const NOTE: &str = ""bert: renamed to facets; this alias retires 2027-01-11\n"";"
+crates/facets-cli/tests/alias.rs,47,cli-word,"let old = run(env!(""CARGO_BIN_EXE_bert""), args, stdin);"
 crates/facets-cli/tests/library_survey.rs,208,doc-prose,"let dir = std::env::temp_dir().join(""bert-cli-survey"");"
-crates/facets-cli/tests/library_survey.rs,213,rust-ident,"let out = bert(&[""compile"", path]);"
-crates/facets-cli/tests/library_survey.rs,231,rust-ident,"let clean = bert(&[""compile"", ""assets/examples/predator-prey.sl""]);"
-crates/facets-cli/tests/support/mod.rs,2,cli-word,//! `CARGO_BIN_EXE_bert` rather than calling the library directly — a door that
-crates/facets-cli/tests/support/mod.rs,18,cli-word,"/// Run `bert` with `args`, from the repo root so relative paths in a failure"
-crates/facets-cli/tests/support/mod.rs,20,rust-ident,pub fn bert(args: &[&str]) -> Output {
-crates/facets-cli/tests/support/mod.rs,21,cli-word,"Command::new(env!(""CARGO_BIN_EXE_bert""))"
-crates/facets-cli/tests/support/mod.rs,25,cli-word,".expect(""the bert binary runs"")"
-crates/facets-cli/tests/support/mod.rs,30,cli-word,"out.status.code().expect(""bert exits rather than signalling"")"
-crates/facets-cli/tests/surface.rs,11,rust-ident,"use support::{bert, code, stderr, stdout_json};"
-crates/facets-cli/tests/surface.rs,27,rust-ident,let out = bert(&args);
-crates/facets-cli/tests/surface.rs,28,cli-word,"assert_eq!(code(&out), 0, ""`bert {}` succeeds"", args.join("" ""));"
-crates/facets-cli/tests/surface.rs,32,cli-word,"""`bert {}` said something on stderr on a clean run; stderr is for \"
 crates/facets-cli/tests/surface.rs,49,doc-prose,"let dir = std::env::temp_dir().join(""bert-cli-surface"");"
-crates/facets-cli/tests/surface.rs,54,rust-ident,"let fault = bert(&[""compile"", bad.to_str().expect(""utf-8 path"")]);"
-crates/facets-cli/tests/surface.rs,75,rust-ident,"let refusal = bert(&[""verdict"", SIGMA3, ""--lens"", ""mobus""]);"
-crates/facets-cli/tests/surface.rs,98,rust-ident,"let pinned = bert(&[""verdict"", SIGMA3]);"
-crates/facets-cli/tests/surface.rs,106,rust-ident,"let bunge = bert(&[""verdict"", SIGMA3, ""--lens"", ""bunge""]);"
-crates/facets-cli/tests/surface.rs,109,rust-ident,"let mobus = bert(&[""verdict"", SIGMA3, ""--lens"", ""mobus""]);"
-crates/facets-cli/tests/surface.rs,137,rust-ident,"let out = bert(&[""describe"", CLEAN, ""--lens"", flag]);"
-crates/facets-cli/tests/surface.rs,153,rust-ident,"let ran = bert(&[""run"", CLEAN, ""--t"", ""6"", ""--dt"", ""1""]);"
-crates/facets-cli/tests/surface.rs,165,rust-ident,"let refused = bert(&[""run"", ""assets/archive/fsm-traffic.sl""]);"
-crates/facets-cli/tests/surface.rs,181,rust-ident,"let no_step = bert(&[""run"", CLEAN, ""--dt"", ""0""]);"
-crates/facets-cli/tests/surface.rs,195,rust-ident,"assert_eq!(code(&bert(&[""verdict"", CLEAN, ""--lens"", ""nope""])), 2);"
-crates/facets-cli/tests/surface.rs,196,rust-ident,"assert_eq!(code(&bert(&[""verdict""])), 2);"
-crates/facets-cli/tests/surface.rs,197,rust-ident,"assert_eq!(code(&bert(&[""nonesuch"", CLEAN])), 2);"
-crates/facets-cli/tests/surface.rs,200,rust-ident,"assert_eq!(code(&bert(&[""verdict"", ""assets/examples/no-such-file.sl""])), 3);"
-crates/facets-cli/tests/surface.rs,211,rust-ident,"let out = bert(&[""layout"", CLEAN]);"
-crates/facets-cli/tests/surface.rs,216,rust-ident,"let compiled = bert(&[""compile"", CLEAN]);"
-crates/facets-cli/tests/surface.rs,262,cli-word,"let mut child = Command::new(env!(""CARGO_BIN_EXE_bert""))"
-crates/facets-cli/tests/surface.rs,269,cli-word,".expect(""bert runs"");"
-crates/facets-cli/tests/surface.rs,276,cli-word,"child.wait_with_output().expect(""bert finishes"")"
-crates/facets-cli/tests/surface.rs,284,rust-ident,"let json = String::from_utf8_lossy(&bert(&[""compile"", CLEAN]).stdout).into_owned();"
 crates/facets-cli/tests/wasm_gate.rs,11,doc-prose,"//! workspace wasm build must exclude `bert-cli` and NOTHING else, and every"
 crates/facets-compose/src/circuit.rs,3,upstream-bert,//! Transfer functions are ports of BERT's verified implementations
 crates/facets-compose/src/circuit.rs,200,upstream-bert,"/// along into the BERT JSON (`Substance.sub_type`, `Interaction.unit`)."
-crates/facets-compose/src/circuit.rs,353,cli-word,"/// is the same `write_amount` a bench knob takes, so `bert run`, the"
 crates/facets-compose/src/circuit.rs,356,issue-ref,/// A stock's declared unit (bert-lenses#76). A Buffering stock accumulates
 crates/facets-compose/src/circuit.rs,414,doc-prose,"/// Potential Fields enter bert-compose: a field is a flow MODE, not a node."
 crates/facets-compose/src/circuit.rs,437,issue-ref,/// them onto the node loses all but one (bert#111). `None` falls back to
@@ -327,7 +209,6 @@ crates/facets-compose/src/ladder.rs,127,issue-ref,"provenance: ""predator-prey; 
 crates/facets-compose/src/ladder.rs,138,issue-ref,"provenance: ""predator-prey, resolved — first-order drain (τ) lifted bert#85"","
 crates/facets-compose/src/ladder.rs,240,issue-ref,/// (proportional) death isn't expressible here — bert#85.
 crates/facets-compose/src/lib.rs,1,doc-prose,"//! bert-compose — the executable dynamical face, vendored engine-only."
-crates/facets-compose/src/run.rs,33,cli-word,/// a second reader (the `bert` CLI) would have made that two parallel copies of
 crates/facets-compose/src/run.rs,234,issue-ref,/// bert#108 4.2. The interface is attached so it resolves (a dangling id
 crates/facets-compose/src/run.rs,267,issue-ref,/// THE bert#108 4.2 acceptance test (this IS the contract): a model that
 crates/facets-compose/src/run.rs,279,issue-ref,".expect(""bert#108 4.2: an interface-routed model is runnable input, unedited"");"
@@ -460,7 +341,6 @@ crates/facets-kernel/API.md,559,doc-prose,"(`bert-canvas`, `bert-tether`) are au
 crates/facets-kernel/API.md,559,doc-prose,"(`bert-canvas`, `bert-tether`) are audited to contain no panic sites on"
 crates/facets-kernel/API.md,599,format-tag,"The text to persist: the neutral model plus `""format"": ""bert-lenses/canvas@1""`."
 crates/facets-kernel/API.md,827,doc-prose,`web/src/kernel/types.ts`. Kept this way so `bert-core` carries no wasm/tsify
-crates/facets-kernel/API.md,872,cli-word,"- `set_flow_amount(label: string, from: string, to: string, v: number)` · `set_component_param(thing: string, field: str"
 crates/facets-kernel/API.md,912,format-tag,"`""bert-lenses/canvas@1""` named under ""The archive seam"" above is the tag every"
 crates/facets-kernel/Cargo.toml,5,doc-prose,"description = ""The JS-facing wasm boundary: thin wasm-bindgen wrappers over bert-core + bert-compose + bert-canvas + ber"
 crates/facets-kernel/Cargo.toml,5,doc-prose,"description = ""The JS-facing wasm boundary: thin wasm-bindgen wrappers over bert-core + bert-compose + bert-canvas + ber"
@@ -500,8 +380,6 @@ crates/facets-tether/tests/adversarial.rs,164,issue-ref,// rather than the float
 docs/README.md,31,doc-prose,- [`VENDORING.md`](VENDORING.md) — **LIVE** — where `bert-core` and `bert-compose` came from: the branch point (`40de7a7
 docs/README.md,31,doc-prose,- [`VENDORING.md`](VENDORING.md) — **LIVE** — where `bert-core` and `bert-compose` came from: the branch point (`40de7a7
 docs/README.md,58,upstream-bert,- [`design/sl2-authoring-language.md`](design/sl2-authoring-language.md) — **RESEARCH** — the foundation behind `languag
-docs/README.md,69,cli-word,"- `bert bench <model.sl> --t N [--set ""label|from|to=value@tick""] [--set ""thing.field=value@tick""] [--no-log]` — **LIVE*"
-docs/README.md,70,cli-word,- [`translation-apparatus-walkthrough.md`](translation-apparatus-walkthrough.md) — **RESEARCH** — the translation appara
 docs/README.md,82,cli-word,- [`rename/README.md`](rename/README.md) — **PROPOSED** ([#541](https://github.com/halcyonic-systems/facets/issues/541))
 docs/VENDORING.md,1,doc-prose,# Vendoring — where `bert-core` and `bert-compose` came from
 docs/VENDORING.md,1,doc-prose,# Vendoring — where `bert-core` and `bert-compose` came from
@@ -622,9 +500,6 @@ docs/audits/docs-staleness-2026-10-11.md,59,doc-prose,| `crates/facets-kernel/Ca
 docs/audits/docs-staleness-2026-10-11.md,59,doc-prose,| `crates/facets-kernel/Cargo.toml:5` | wrappers over bert-core + bert-compose + the CSV tether | + bert-canvas + bert-t
 docs/audits/docs-staleness-2026-10-11.md,97,crate-dir,"| `docs/lean-provenance.md:173-176`, `:190` | `../bert-lenses/…` paths | `../facets/…` | fixed (C5) |"
 docs/audits/docs-staleness-2026-10-11.md,119,issue-ref,"| `docs/lean-provenance.md:99` ""bert-lenses#89"" | inside `<!-- BEGIN GENERATED: table-decomposition -->`; the string is "
-docs/audits/seam-readiness-2026-09-04.md,13,cli-word,"`scripts/seam_audit.py` is read-only. It enumerates the shipped set exactly as `web/src/home.ts` does, compiles each `.s"
-docs/audits/seam-readiness-2026-09-04.md,97,cli-word,cargo build -p facets-cli --bin bert
-docs/authoring-models.md,54,cli-word,"through `bert run` and sorting the answers. Eighteen examples, eight of which"
 docs/decisions/0001-canvas-rendering-svg.md,30,lineage,bert-core's own error string surfaced verbatim. Zero systems logic in either JS.
 docs/decisions/0002-web-first-rebuild.md,16,lineage,bert-lenses began on 2026-06-15 as a single native egui crate — a
 docs/decisions/0002-web-first-rebuild.md,22,lineage,systemhood verdict through bert-core.
@@ -935,10 +810,8 @@ docs/kernel-architecture.md,29,doc-prose,"| `bert-canvas` | The lens/authoring d
 docs/kernel-architecture.md,30,doc-prose,"| `bert-tether` | Boundary interface: CSV import, run manifest, forcing |"
 docs/kernel-architecture.md,31,doc-prose,| `bert-compose` | The dynamical engine: a dynamics run under the model's declared invariant (current engine: one suppor
 docs/kernel-architecture.md,32,doc-prose,| `bert-lenses-kernel` | The JS↔wasm boundary — marshaling only; frozen append-only surface (`API.md`) |
-docs/kernel-architecture.md,33,doc-prose,"| `bert-cli` | The `bert` binary: a headless door onto the same library calls the wasm boundary marshals (compile, verdi"
-docs/kernel-architecture.md,33,cli-word,"| `bert-cli` | The `bert` binary: a headless door onto the same library calls the wasm boundary marshals (compile, verdi"
+docs/kernel-architecture.md,33,doc-prose,"| `bert-cli` | The `facets` binary: a headless door onto the same library calls the wasm boundary marshals (compile, ver"
 docs/language/README.md,1,doc-prose,# SL — the bert-lenses system language
-docs/language/README.md,111,cli-word,"`compile` parses the file and prints the model; `verdict` compiles, projects to a lens, and prints the systemhood judgme"
 docs/language/README.md,144,upstream-bert,"**Interoperability: a hint, not a promise.** The posture is export-not-import, already practiced in `bert/sysml-interop/"
 docs/language/README.md,151,upstream-bert,| 2 | [`../design/sl2-authoring-language.md`](../design/sl2-authoring-language.md) | The research foundation behind the 
 docs/language/README.md,167,upstream-bert,"SL stands in a line: Mobus's SL proposal (Ch. 4) → BERT SL v0.1 (`bert/docs/system-language-spec.md`, a lexicon and gram"
@@ -949,14 +822,10 @@ docs/language/spec.md,67,upstream-bert,"| `description` | prose about a thing or
 docs/language/spec.md,67,doc-prose,"| `description` | prose about a thing or a flow, in the author's own words — restored in v1.4 (#326) after the rebuild d"
 docs/language/spec.md,67,upstream-bert,"| `description` | prose about a thing or a flow, in the author's own words — restored in v1.4 (#326) after the rebuild d"
 docs/language/spec.md,67,doc-prose,"| `description` | prose about a thing or a flow, in the author's own words — restored in v1.4 (#326) after the rebuild d"
-docs/language/spec.md,99,cli-word,"| `under`, `emit`, `else` (table clauses) | one `under <b> emit <o>` pair per bin, in reading order, then `else <o>`. Th"
 docs/language/spec.md,237,doc-prose,"`component Furnace primitive Combining decomposes ""furnace-interior"" @Hrs6K91KnZZsiPcWzftv8U` designates the component a"
 docs/language/spec.md,239,upstream-bert,"`component Battery description ""the pack that rides out a cloudy week""` declares what the thing IS, in the author's own "
 docs/language/spec.md,239,doc-prose,"`component Battery description ""the pack that rides out a cloudy week""` declares what the thing IS, in the author's own "
 docs/language/spec.md,270,doc-prose,**`ample` (#9)** takes the amount slot and asserts *availability* instead of a magnitude: the signal is present and neve
-docs/language/spec.md,280,cli-word,"`param ""drain"" : release of ""Rain Barrel"" range 0..40` (v1.9, facets#343, #463 move 3) names one of a component line's o"
-docs/language/spec.md,308,cli-word,"`table under <b1> emit <o1> [under <b2> emit <o2> …] else <oN>` (v1.12) is the graded rule, Mobus's purely reactive agen"
-docs/language/spec.md,316,cli-word,"**Two actuation forms, both built (v1.13).** The signal form above is the operational agent (§12.2.3.1): `manages <proce"
 docs/language/spec.md,481,doc-prose,"- **A bypass exists, and it is a defect rather than a second path (#216).** `bert-compose`'s exporter writes `AgentModel"
 docs/language/spec.md,490,doc-prose,"| The Mobus system | the structure inside the boundary: components, flows, interfaces, the recursive decomposition | `be"
 docs/language/spec.md,491,doc-prose,"| The coalgebra | the behaviour read on the boundary: a state and a rule for what comes next, `X → F(X)`, with `F` the d"
@@ -965,7 +834,6 @@ docs/language/spec.md,492,doc-prose,"| The ledger | the conservation bookkeeping
 docs/language/spec.md,565,upstream-bert,**BERT SL v0.1 (`bert/docs/system-language-spec.md`).** The prior spec in this lineage: a publication-grade lexicon and 
 docs/language/spec.md,565,upstream-bert,**BERT SL v0.1 (`bert/docs/system-language-spec.md`).** The prior spec in this lineage: a publication-grade lexicon and 
 docs/language/spec.md,567,doc-prose,**SL v2.0 addendum (`system-language-spec-v2-addendum.md`).** Contributed the kernel re-founding (the 8-tuple as a gener
-docs/language/spec.md,591,cli-word,"| ~~Comments and blank lines were not preserved on emit~~ stage 1 shipped as v1.6 | #302 (stage 1 landed 2026-09-17, epi"
 docs/lean-manifest.json,229,issue-ref,"""title"": ""The decomposition seam (bert-lenses#89)"","
 docs/lean-provenance.md,99,issue-ref,### The decomposition seam (bert-lenses#89)
 docs/parked.md,58,doc-prose,**What it is.** An R&D investigation into whether bert-lenses could go
@@ -990,7 +858,6 @@ docs/proposals/112-transition-functor.md,43,doc-prose,"- `bert-cli`'s `run` subc
 docs/proposals/112-transition-functor.md,44,doc-prose,"`bert_compose::from_spec`, then"
 docs/proposals/112-transition-functor.md,45,doc-prose,"`bert_compose::RecordedRun::record_over(&mut circuit, &spec, dt, t)`"
 docs/proposals/112-transition-functor.md,50,doc-prose,- `bert-tether`'s forcing path writes the same two fields by a second route:
-docs/proposals/112-transition-functor.md,233,cli-word,"Repro, in this worktree: `cargo build -p facets-cli && target/debug/bert run"
 docs/proposals/112-transition-functor.md,562,upstream-bert,"the general existence result at BERT's concrete state type — is future work,"
 docs/proposals/trace-separation.md,12,doc-prose,# State/trace separation for `Circuit` — design for bert-lenses #112 (§1.6)
 docs/proposals/trace-separation.md,15,doc-prose,"`~/Desktop/halcyonic-projects/active/bert-lenses`, read in full). All line"
@@ -999,8 +866,6 @@ docs/proposals/trace-separation.md,35,doc-prose,"`bert-cli/{src/main.rs,tests/su
 docs/proposals/trace-separation.md,37,doc-prose,"`bert-core/{src/{decomposition.rs,lib.rs,operational.rs,transition.rs,validate.rs},tests/*}`,"
 docs/proposals/trace-separation.md,43,doc-prose,already correctly kept out of `bert-compose` per `run.rs:1-19`'s module doc
 docs/proposals/trace-separation.md,89,doc-prose,called from `bert-cli` or the wasm boundary — CLI/wasm both go through
-docs/reference/3d-arms/README.md,12,cli-word,All three 2026-09-29 arms read the same [`fixture.json`](fixture.json): four models as `CanvasModel` plus Mobus `lens_fa
-docs/reference/3d-arms/README.md,12,cli-word,All three 2026-09-29 arms read the same [`fixture.json`](fixture.json): four models as `CanvasModel` plus Mobus `lens_fa
 docs/running-permanently.md,1,doc-prose,# Running bert-lenses permanently
 docs/running-permanently.md,4,deploy,the `~/halcyonic-apps/bert-lenses` paths below are one machine's and predate the
 docs/running-permanently.md,8,doc-prose,Runs bert-lenses as a background service on `http://127.0.0.1:5190` instead of
@@ -1016,8 +881,6 @@ docs/running-permanently.md,56,deploy,The published copy (`~/halcyonic-apps/bert
 docs/running-permanently.md,72,deploy,src-tauri/target/release/bundle/macos/bert-lenses.app
 docs/running-permanently.md,120,deploy,`xattr -p com.apple.quarantine bert-lenses.app` reports the flag if a copy ever
 docs/running-permanently.md,121,deploy,picks one up; `xattr -dr com.apple.quarantine bert-lenses.app` clears it.
-docs/shelf-candidates.md,77,cli-word,"Verdict clean under Mobus (no `interface_does_work`), split form where the boundary is not the processor, declared amoun"
-docs/shelf-fidelity.md,5,cli-word,"Input to #472. Every shipped example and the field model, measured against the standard the newest models set (`rain-bar"
 docs/shelf-fidelity.md,9,cli-word,"| bitcoin.sl | 0 | flow_not_consumed×2, interface_does_work×3 | 3 → 0 | 0/3 | 0/0 | 0 | 8 | yes | no:bert: assets/exampl"
 docs/shelf-fidelity.md,11,cli-word,"| hal-harness.sl | 0 | flow_not_consumed×8, interface_does_work | 3 → 0 | 0/3 | 0/0 | 0 | 2 | yes | no:bert: assets/exam"
 docs/shelf-fidelity.md,18,cli-word,"| organic-universal-health-cover.sl | 0 | flow_not_consumed×2, interface_does_work×3 | 7 → 0 | 0/10 | 0/0 | 0 | 18 | yes"
@@ -1033,11 +896,6 @@ docs/theory-fidelity.md,87,doc-prose,"GitHub issue #5 (bert-lenses) decided how 
 docs/theory-fidelity.md,87,doc-prose,"GitHub issue #5 (bert-lenses) decided how a component carries a Mobus work-process primitive, shipped 2026-07-11 (bert-c"
 docs/theory-fidelity.md,109,doc-prose,The model carries an author-asserted `system_type` (`CanvasModel.system_type` in `bert-canvas`): a **kingdom** (Conceptu
 docs/wellformedness-mapping.md,41,doc-prose,"**1 — `internal_lawful`, edges land on vertices.** The Lean requires an internal edge's endpoints to be members of `N.no"
-docs/wellformedness-mapping.md,47,cli-word,Demonstrated: `fixtures/wellformedness/self-loop.sl` carries a genuine `A → A` flow. `bert verdict … --lens klir` exits 
-docs/wellformedness-mapping.md,65,cli-word,"Demonstrated, and the strongest gap in this audit: `fixtures/wellformedness/env-to-env-flow.sl` adds `flow Src -> Snk` a"
-docs/wellformedness-mapping.md,65,cli-word,"Demonstrated, and the strongest gap in this audit: `fixtures/wellformedness/env-to-env-flow.sl` adds `flow Src -> Snk` a"
-docs/wellformedness-mapping.md,156,cli-word,"| `fixtures/wellformedness/env-to-env-flow.sl` | a `Source → Sink` edge is admitted clean, counted in `G`, and runs — ro"
-editors/vscode/README.md,29,cli-word,`bert compile` on it (`.vscode/tasks.json`). Faults appear in the Problems
 editors/vscode/package.json,4,doc-prose,"""description"": ""Syntax highlighting for SL, the bert-lenses systems language."","
 fixtures/cli/canonical.json,356,golden,"""t_note"": ""T: transforms — parametric by intent; bert-compose fills the slot"""
 fixtures/cli/canonical.json,1061,golden,"""t_note"": ""T: transforms — parametric by intent; bert-compose fills the slot"""
@@ -1053,53 +911,17 @@ fixtures/quint/README.md,1,issue-ref,# Quint mode-ladder trace fixtures (bert-le
 fixtures/quint/README.md,4,doc-prose,against the real bert-core mode machine by `crates/facets-core/tests/quint_replay.rs`.
 fixtures/quint/README.md,43,doc-prose,header for the concretization mapping (spec knob → bert-core structural lever).
 fixtures/sl/decomposition.sl,1,issue-ref,# Decomposition by reference (bert-lenses#89 step 4): a component carries a
-fixtures/sl/drafted-ambient/README.md,62,cli-word,"Admission: the `.sl` must compile (`bert verdict --lens mobus <file>`), and the"
-fixtures/sl/drafted-ambient/atom.annotation.json,22,fixture,"""notes"": ""Stray `component T7` and the `mere` relation are hand-edit leftovers, kept as exported. Compiles clean under `"
-fixtures/sl/drafted-ambient/hydrogen-molecule.annotation.json,21,fixture,"""notes"": ""Compiles clean under `bert verdict --lens mobus` (0 issues). No environment thing is a condition in disguise; "
 fixtures/sl/teaching/README.md,41,doc-prose,"All four were checked against the real parser (`bert_canvas::sl::parse_sl`),"
 justfile,1,doc-prose,"# bert-lenses tasks. Rust is the brain (wasm), web/ is the face."
 justfile,23,doc-prose,"echo ""bert-lenses preflight"""
-justfile,95,cli-word,# `cargo install --path crates/facets-cli` puts `bert` on PATH for shell work.
-justfile,96,cli-word,#   just bert verdict assets/corpus/bunge/coupling-sigma3.sl --lens mobus
-justfile,97,cli-word,bert *ARGS:
-justfile,98,cli-word,@cargo run --quiet -p facets-cli --bin bert -- {{ARGS}}
-justfile,125,cli-word,"# `bert` binary is argv and the filesystem, which wasm32-unknown-unknown has"
-scripts/author_audit.py,6,cli-word,mechanically off the compiled model. Nothing here judges: `bert compile` says
-scripts/author_audit.py,7,cli-word,"whether the text is a model, `bert verdict --lens mobus` says whether the"
-scripts/author_audit.py,33,cli-word,defaults to 7. Requires the `bert` binary (`cargo build -p facets-cli`).
-scripts/author_audit.py,79,cli-word,def find_bert(explicit: str | None) -> Path:
-scripts/author_audit.py,82,cli-word,"for candidate in (REPO / ""target/debug/bert"", REPO / ""target/release/bert""):"
-scripts/author_audit.py,82,cli-word,"for candidate in (REPO / ""target/debug/bert"", REPO / ""target/release/bert""):"
-scripts/author_audit.py,85,cli-word,"found = shutil.which(""bert"")"
-scripts/author_audit.py,88,cli-word,"sys.exit(""bert binary not found; build with `cargo build -p facets-cli --bin bert` or pass --bert"")"
-scripts/author_audit.py,88,cli-word,"sys.exit(""bert binary not found; build with `cargo build -p facets-cli --bin bert` or pass --bert"")"
-scripts/author_audit.py,88,cli-word,"sys.exit(""bert binary not found; build with `cargo build -p facets-cli --bin bert` or pass --bert"")"
-scripts/author_audit.py,123,cli-word,"def bert_json(bert: Path, args: list[str], sl: str) -> tuple[dict | None, int]:"
-scripts/author_audit.py,123,cli-word,"def bert_json(bert: Path, args: list[str], sl: str) -> tuple[dict | None, int]:"
-scripts/author_audit.py,124,cli-word,"p = subprocess.run([str(bert), *args, ""-""], input=sl, capture_output=True, text=True)"
-scripts/author_audit.py,131,cli-word,"def compile_sl(bert: Path, sl: str) -> tuple[dict | None, list[dict]]:"
-scripts/author_audit.py,133,cli-word,"out, code = bert_json(bert, [""compile""], sl)"
-scripts/author_audit.py,133,cli-word,"out, code = bert_json(bert, [""compile""], sl)"
-scripts/author_audit.py,139,cli-word,"def verdict(bert: Path, sl: str) -> list[dict]:"
-scripts/author_audit.py,140,cli-word,"out, _ = bert_json(bert, [""verdict"", ""--lens"", LENS], sl)"
-scripts/author_audit.py,140,cli-word,"out, _ = bert_json(bert, [""verdict"", ""--lens"", LENS], sl)"
-scripts/author_audit.py,216,cli-word,"def draw(bert: Path, base: str, model: str, fixture_id: str, text: str, n: int,"
-scripts/author_audit.py,242,cli-word,"compiled, faults = compile_sl(bert, sl)"
-scripts/author_audit.py,251,cli-word,"issues = verdict(bert, sl)"
-scripts/author_audit.py,262,cli-word,"compiled, _ = compile_sl(bert, sl)"
-scripts/author_audit.py,263,cli-word,"final_score = score(compiled, verdict(bert, sl)) if compiled is not None else {""compiled"": False}"
-scripts/author_audit.py,274,cli-word,"def run(label: str, model: str, draws: int, bert: Path, base: str, timeout: int, pace: float,"
-scripts/author_audit.py,282,cli-word,"row = draw(bert, base, model, fixture_id, text, n, out, timeout, pace)"
-scripts/author_audit.py,420,cli-word,"ap.add_argument(""--bert"")"
-scripts/author_audit.py,441,cli-word,"run(a.label, a.model, a.draws, find_bert(a.bert), a.gsr, a.timeout, a.pace, fixtures, annotations)"
-scripts/author_audit.py,441,cli-word,"run(a.label, a.model, a.draws, find_bert(a.bert), a.gsr, a.timeout, a.pace, fixtures, annotations)"
+justfile,100,cli-word,"# The old recipe name, kept with the `bert` binary alias (#541 phase 4); both"
+justfile,102,cli-word,alias bert := facets
 scripts/doc_lint.py,132,doc-prose,"#   - the compose ""dependency ladder"" (bert-compose) and per-edge ""edge ladder"""
 scripts/doc_lint.py,133,doc-prose,"#     classification (bert-canvas) — real orderings, correctly named;"
 scripts/doc_lint.py,152,doc-prose,"r""|examples/ladder/lens""          # the bert-compose module path, printed bare"
-scripts/gen_notices.py,97,doc-prose,bert-lenses itself is MIT; see `LICENSE`. Every crate under `crates/` was
-scripts/gen_notices.py,101,doc-prose,"*Lineage, not an obligation: bert-lenses grew out of the BERT project"
-scripts/gen_notices.py,101,upstream-bert,"*Lineage, not an obligation: bert-lenses grew out of the BERT project"
-scripts/gen_notices.py,102,upstream-bert,(`halcyonic-systems/bert`). The kernel crates here were written for this
+scripts/gen_notices.py,103,lineage,"*Lineage, not an obligation: Facets (bert-lenses until 2026-08-27) grew out of the BERT project"
+scripts/gen_notices.py,103,upstream-bert,"*Lineage, not an obligation: Facets (bert-lenses until 2026-08-27) grew out of the BERT project"
+scripts/gen_notices.py,104,upstream-bert,(`halcyonic-systems/bert`). The kernel crates here were written for this
 scripts/launchd/com.halcyonic.bert-lenses.plist,6,deploy,<string>com.halcyonic.bert-lenses</string>
 scripts/launchd/com.halcyonic.bert-lenses.plist,8,deploy,<!-- Serves the published static build (~/halcyonic-apps/bert-lenses/dist) at
 scripts/launchd/com.halcyonic.bert-lenses.plist,12,deploy,"at ~/halcyonic-apps/bert-lenses/server/node_modules (outside ~/Desktop,"
@@ -1128,31 +950,6 @@ scripts/publish-app.sh,11,deploy,"PUBLISH_DIR=""$HOME/halcyonic-apps/bert-lenses
 scripts/publish-app.sh,50,deploy,"""name"": ""bert-lenses-serve"","
 scripts/publish-app.sh,53,doc-prose,"""description"": ""Standalone vite install (outside ~/Desktop's TCC sandbox) used only to run `vite preview` against the pu"
 scripts/publish-app.sh,63,deploy,"echo ""==> Published. Serve permanently via scripts/launchd/com.halcyonic.bert-lenses.plist,"""
-scripts/seam_audit.py,14,cli-word,"`.sl` with the real kernel (`bert compile`, the headless door in"
-scripts/seam_audit.py,43,cli-word,python3 scripts/seam_audit.py [--bert PATH] [--out PATH] [--json]
-scripts/seam_audit.py,45,cli-word,Requires the `bert` binary. Build it with `cargo build -p facets-cli --bin bert`
-scripts/seam_audit.py,45,cli-word,Requires the `bert` binary. Build it with `cargo build -p facets-cli --bin bert`
-scripts/seam_audit.py,46,cli-word,"(or pass `--bert target/debug/bert`); the script finds it in `target/debug`,"
-scripts/seam_audit.py,46,cli-word,"(or pass `--bert target/debug/bert`); the script finds it in `target/debug`,"
-scripts/seam_audit.py,193,cli-word,def find_bert(explicit: str | None) -> Path:
-scripts/seam_audit.py,198,cli-word,"sys.exit(f""seam_audit: no bert binary at {p}"")"
-scripts/seam_audit.py,199,cli-word,"for candidate in (REPO / ""target"" / ""release"" / ""bert"", REPO / ""target"" / ""debug"" / ""bert""):"
-scripts/seam_audit.py,199,cli-word,"for candidate in (REPO / ""target"" / ""release"" / ""bert"", REPO / ""target"" / ""debug"" / ""bert""):"
-scripts/seam_audit.py,202,cli-word,"found = shutil.which(""bert"")"
-scripts/seam_audit.py,206,cli-word,"""seam_audit: no bert binary found. Build it:\n"""
-scripts/seam_audit.py,207,cli-word,"""  cargo build -p facets-cli --bin bert\n"""
-scripts/seam_audit.py,208,cli-word,"""or pass --bert PATH."""
-scripts/seam_audit.py,212,cli-word,"def compile_model(bert: Path, path: Path) -> dict:"
-scripts/seam_audit.py,214,cli-word,"[str(bert), ""compile"", str(path)], capture_output=True, text=True, check=False"
-scripts/seam_audit.py,217,cli-word,"raise RuntimeError(f""{path.name}: bert compile exited {proc.returncode}\n{proc.stderr}"")"
-scripts/seam_audit.py,298,cli-word,"def audit(bert: Path, s: Shipped) -> ModelReport:"
-scripts/seam_audit.py,299,cli-word,"model = compile_model(bert, s.path)"
-scripts/seam_audit.py,454,cli-word,"ap.add_argument(""--bert"", help=""path to the bert binary"")"
-scripts/seam_audit.py,454,cli-word,"ap.add_argument(""--bert"", help=""path to the bert binary"")"
-scripts/seam_audit.py,459,cli-word,bert = find_bert(args.bert)
-scripts/seam_audit.py,459,cli-word,bert = find_bert(args.bert)
-scripts/seam_audit.py,459,cli-word,bert = find_bert(args.bert)
-scripts/seam_audit.py,460,cli-word,"reports = [audit(bert, s) for s in shipped_models()]"
 tools/pipeline/README.md,21,deploy,`/Users/home/Documents/bert-lenses/data/` (override with the
 tools/pipeline/README.md,22,deploy,`BERT_LENSES_DATA_DIR` env var). Nothing under that path is committed.
 tools/pipeline/README.md,130,upstream-bert,"Derived leg — no external source, reshapes leg 4's output. The BERT import"
@@ -1230,7 +1027,6 @@ web/src/kernel/types.ts,30,doc-prose,"*  (`bert_core::validate::ValidationIssue:
 web/src/kernel/types.ts,39,doc-prose,*  (`bert_core::validate::doc`). The face only turns it into a link. */
 web/src/kernel/types.ts,198,doc-prose,*  `written`. Mirrors `DecisionLog` in bert-tether. */
 web/src/kernel/types.ts,434,doc-prose,*  text compile. Mirrors `bert_canvas::canvas::Crossing`. */
-web/src/kernel/types.ts,493,cli-word,"*  (#343): keyed as the engine, the session knob and `bert bench --set` read"
 web/src/kernel/types.ts,701,doc-prose,*  Kernel-computed in `bert_canvas::lenses::analyze` off the same predicate
 web/src/library.ts,4,doc-prose,"// (modelStore.ts), because the app runs in a browser tab. bert-lenses is"
 web/src/libraryTree.test.ts,60,format-tag,"rec(""old-tag-parent"", 2, archiveJson(""OP"", [""NC""], ""bert-lenses/canvas@1"")),"
@@ -1243,4 +1039,3 @@ web/src/theme.test.ts,117,doc-prose,"localStorage.setItem(""bert-lenses.theme"",
 web/src/theme.test.ts,156,doc-prose,"expect(localStorage.getItem(""bert-lenses.theme"")).toBeNull();"
 web/src/theme.ts,29,doc-prose,"const KEY = ""bert-lenses.theme"";"
 web/src/workbench.ts,34,doc-prose,"const STORAGE_KEY = ""bert-lenses.workbench.pins"";"
-web/vite.config.ts,66,cli-word,// was run. `bert bench` takes the same model and knobs when a variation is

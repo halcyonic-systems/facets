@@ -28,7 +28,7 @@ bert-lenses-kernel,facets-kernel,package-name,3,npm dependency name in web/packa
 bert-lenses-kernel,facets-kernel,import,3,TS and JS imports of the wasm package
 bert_lenses_kernel,facets_kernel,package-name,3,wasm-pack output facets_kernel.js and facets_kernel_bg.wasm; vite.config.ts and the kernel tests and wasm_exec.mjs and publish-app.sh name the files
 bert-lenses-web,facets-web,package-name,3,web/package.json and package-lock.json
-bert,facets,cli-word,4,the binary: [[bin]] name and CARGO_BIN_EXE_bert and the eprintln prefix and every doc line and shelf README and the audit scripts' --bert flag and find_bert; a one-release shim prints the new name and exits 2
+bert,facets,cli-word,4,the binary: [[bin]] name and CARGO_BIN_EXE_bert and the eprintln prefix and every doc line and shelf README and the audit scripts' --bert flag and find_bert; a one-release alias binary bert runs the same program with identical stdout and exit codes and one stderr line naming facets (decided 2026-10-15 in place of exit 2); retires 2027-01-11
 bert,facets,workflow,4,the CLI word in the two issue templates
 bert,facets,rust-ident,4,the bert() test helper in crates/bert-cli/tests/support/mod.rs; renamed with the binary
 *,*,golden,5,re-minted by BLESS_FIXTURES and BLESS_CLI_GOLDEN after the string in bert-canvas lenses.rs changes (phase 6); read the diff
