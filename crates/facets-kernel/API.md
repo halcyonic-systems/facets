@@ -869,7 +869,7 @@ reopens it from the document.
 - `BenchHandle.open_unforced(model_json: string, dt: number) → BenchHandle` — open a model from its declared amounts alone, at tick 0.
 - `BenchHandle.open_forced(model_json: string, csv_text: string, manifest_json: string, dt: number, today: string) → BenchHandle` — open with a CSV bound through its manifest, at tick 0.
 - `step(n: number)` · `step_over(t: number)` (to the horizon `t` by the batch run's own tick count) · `reset()` · `tick() → number`.
-- `set_flow_amount(label: string, from: string, to: string, v: number)` · `set_component_param(thing: string, field: string, v: number)` — the knobs, by the same names the app shows and `bert bench --set` takes.
+- `set_flow_amount(label: string, from: string, to: string, v: number)` · `set_component_param(thing: string, field: string, v: number)` — the knobs, by the same names the app shows and `facets bench --set` takes.
 - `readout() → RunResultRich` — the run as it stands, the same shape the batch run returns.
 - `tick_log_since(from_tick: number) → TickLog[]` — every node's and wire's flux for the ticks at or after `from_tick`, and (since v1.13) the `decisions` an agent took.
 - `edits() → KnobEdit[]` — the knobs turned on this session, with the tick each applied at; since v1.13 a `KnobEdit` carries `by: KnobAuthor` (`{ kind: "human" }` or `{ kind: "agent", name }`).

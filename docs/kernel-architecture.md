@@ -30,7 +30,7 @@ Six crates:
 | `bert-tether` | Boundary interface: CSV import, run manifest, forcing |
 | `bert-compose` | The dynamical engine: a dynamics run under the model's declared invariant (current engine: one supported dynamics-kind — Id-functor over ℝⁿ stocks with an additive conservation invariant; engine-only, wasm-clean) |
 | `bert-lenses-kernel` | The JS↔wasm boundary — marshaling only; frozen append-only surface (`API.md`) |
-| `bert-cli` | The `bert` binary: a headless door onto the same library calls the wasm boundary marshals (compile, verdict, describe, run, bench, layout); native only, the one package excluded from the wasm build |
+| `bert-cli` | The `facets` binary: a headless door onto the same library calls the wasm boundary marshals (compile, verdict, describe, run, bench, layout); native only, the one package excluded from the wasm build |
 
 ---
 

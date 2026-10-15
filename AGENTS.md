@@ -19,7 +19,7 @@ owns every verdict, all validation, and the run; `web/` (React) renders it;
 ```bash
 just preflight   # names any missing prerequisite and its install line
 just check       # the full gate, in CI's order; green before every commit
-just bert verdict assets/examples/predator-prey.sl --lens bunge   # ask the kernel from a shell
+just facets verdict assets/examples/predator-prey.sl --lens bunge   # ask the kernel from a shell
 ```
 
 `just check` skips one gate locally: Lean citation resolution (Gate A) needs a
@@ -112,7 +112,7 @@ exists to keep it true.
   (`api.rs`): deserialize JS input → call bert-core / bert-compose / bert-canvas /
   bert-tether (the truth) → serialize. Zero domain logic. Built to `pkg/` via
   wasm-pack (gitignored). Frozen surface: `API.md` (append-only).
-- `crates/facets-cli` — the `bert` binary, the workspace's only `[[bin]]`. A
+- `crates/facets-cli` — the `facets` binary, the workspace's only `[[bin]]`. A
   headless door onto the same library calls the wasm boundary marshals: compile,
   verdict (under any lens), describe, run, layout. Native only — the ONE package
   excluded from the wasm build, and the exclusion is gated by its own test.
@@ -201,19 +201,19 @@ desktop one for what genuinely needs eyes. Choosing wrong is the common failure:
 driving the GUI to answer a kernel question produces a one-shot artifact that
 rots the next time the kernel moves.
 
-### Headless — START HERE. `bert`, the CLI, is the first door for any model question
+### Headless — START HERE. `facets`, the CLI, is the first door for any model question
 
 **Reach for the CLI before the browser, before a throwaway test, and before
-reasoning about what a model probably does.** `bert` (`crates/facets-cli`, the
+reasoning about what a model probably does.** `facets` (`crates/facets-cli`, the
 workspace's only `[[bin]]`) answers compile / verdict / describe / run / layout
 from a shell, in JSON, with an exit code that means something.
 
 ```bash
-just bert verdict assets/corpus/bunge/coupling-sigma3.sl --lens bunge   # 0
-just bert verdict assets/corpus/bunge/coupling-sigma3.sl --lens mobus   # 4 — §4.3
-just bert compile <f> | jq '.things[] | {id,name,role,interface}'      # what it became
-just bert layout  <f>                                                  # node positions
-just bert run     <f> --t 30                                           # or why it cannot
+just facets verdict assets/corpus/bunge/coupling-sigma3.sl --lens bunge   # 0
+just facets verdict assets/corpus/bunge/coupling-sigma3.sl --lens mobus   # 4 — §4.3
+just facets compile <f> | jq '.things[] | {id,name,role,interface}'      # what it became
+just facets layout  <f>                                                  # node positions
+just facets run     <f> --t 30                                           # or why it cannot
 ```
 
 Exit 0 = the answer is on stdout · 3 = did not compile · 4 = the kernel refused.
@@ -225,7 +225,7 @@ verdict, and the same bug, as one computed anywhere else.
 day by describing a model instead of opening it — a verdict declared correct from
 a meeting transcript, a canvas measured by arithmetic that was a fifth off, a
 service blamed for an error whose cause was in its own log. Every one was settled
-in one command. If a question is about what a model IS, run `bert` rather than
+in one command. If a question is about what a model IS, run `facets` rather than
 argue.
 
 ### The same truth from inside Rust
@@ -247,11 +247,11 @@ type** — it is a `ValidationIssue` with `Severity::Error` at the lens's mode
 `code` naming the defect kind (#319) that groups instances without regex.
 
 ```
-bert compile  <file.sl>                 the canvas model the text becomes
-bert verdict  <file> [--lens L]         CanvasAnalysis; exits 4 on a refusal
-bert describe <file> [--lens L]         the tradition's formal object
-bert run      <file> [--t T] [--dt D]   the trajectory, or why there is none
-bert layout   <file>                    node positions (id/name/role/env_kind/x/y)
+facets compile  <file.sl>                 the canvas model the text becomes
+facets verdict  <file> [--lens L]         CanvasAnalysis; exits 4 on a refusal
+facets describe <file> [--lens L]         the tradition's formal object
+facets run      <file> [--t T] [--dt D]   the trajectory, or why there is none
+facets layout   <file>                    node positions (id/name/role/env_kind/x/y)
 ```
 
 stdout is JSON and only JSON; diagnostics go to stderr. Exit codes: `0` ok ·
@@ -259,7 +259,7 @@ stdout is JSON and only JSON; diagnostics go to stderr. Exit codes: `0` ok ·
 refused. **3 against 4 is the split that matters** — a mistyped keyword and a
 model that is not a system are different findings. A file argument is a path or
 `-` for stdin; `.sl` compiles, anything else opens through `archive::read`.
-Full treatment: README, "The `bert` CLI".
+Full treatment: README, "The `facets` CLI".
 
 `bert-cli` is the ONE package excluded from `cargo build --workspace --target
 wasm32-unknown-unknown` (argv + filesystem have no browser meaning). The

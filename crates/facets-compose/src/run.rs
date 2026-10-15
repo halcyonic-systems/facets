@@ -30,7 +30,7 @@ use facets_core::operational::OperationalSpec;
 ///
 /// This exists so the trace has ONE serialized shape with one owner. It was
 /// previously re-declared, field for field, inside the wasm boundary's `api.rs`;
-/// a second reader (the `bert` CLI) would have made that two parallel copies of
+/// a second reader (the `facets` CLI) would have made that two parallel copies of
 /// a shape nobody owns. The engine records the run, so the engine names it.
 /// `API.md`'s `RunResult` documents this shape and the field names are its.
 #[derive(Serialize, Clone, Debug)]

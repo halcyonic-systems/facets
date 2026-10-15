@@ -59,5 +59,5 @@ Redraft each description (`descriptions.json`) and compare with the record:
   flows; this is the built-in negative control, so no separate negative fixture
   is needed to catch the prompt pushing real neighbours into M.
 
-Admission: the `.sl` must compile (`bert verdict --lens mobus <file>`), and the
+Admission: the `.sl` must compile (`facets verdict --lens mobus <file>`), and the
 annotation must name every environment thing the file declares.

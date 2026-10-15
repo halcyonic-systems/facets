@@ -269,7 +269,7 @@ crates/                     # TRUTH — the kernel, self-contained + wasm-ready
   bert-canvas/              #   canvas/lens domain: CanvasModel, lens_facts, describe
   bert-tether/              #   boundary interface: CSV import, run manifest, forcing
   bert-lenses-kernel/       #   JS-facing wasm-bindgen boundary (marshaling only)
-  bert-cli/                 #   the `bert` binary: the same truth, from a shell (native only)
+  bert-cli/                 #   the `facets` binary: the same truth, from a shell (native only)
 web/                        # FACE — React 19 + TS + Vite 6 + Tailwind 4 (Halcyonic Frost)
 src-tauri/                  # the macOS host: the same web/dist in a window (own workspace)
 fixtures/                   # serde↔TS contract goldens (fixtures/contract/)
@@ -380,7 +380,7 @@ window, no second code path.
 just preflight  # check the prerequisites above, and name what is missing
 just wasm       # rebuild the wasm pkg the web app consumes (run after any crate change)
 just dev        # install web deps if needed, rebuild wasm, start the vite dev server
-just bert ARGS  # the headless CLI — ask the kernel about a model without a browser
+just facets ARGS # the headless CLI — ask the kernel about a model without a browser
 just check      # the full gate suite — CI parity
 just desktop    # bundle the macOS .app (docs/running-permanently.md)
 ```
@@ -417,25 +417,25 @@ python3 scripts/doc_lint.py
 ```
 </details>
 
-## The `bert` CLI — the same kernel, from a shell
+## The `facets` CLI — the same kernel, from a shell
 
 Every verdict the app shows is a library call, and until #315 the only door onto
-those calls was a browser. `bert` is the door. It decides nothing: it parses
+those calls was a browser. `facets` is the door. It decides nothing: it parses
 arguments, calls `bert-canvas` / `bert-core` / `bert-compose`, and prints what
 comes back. A verdict computed in the CLI would be the same bug as a verdict
 computed in JS.
 
 ```bash
-just bert verdict assets/examples/predator-prey.sl        # via cargo, no install
-cargo install --path crates/facets-cli                  # or put `bert` on PATH
+just facets verdict assets/examples/predator-prey.sl    # via cargo, no install
+cargo install --path crates/facets-cli                  # or put `facets` on PATH
 ```
 
 ```
-bert compile  <file.sl>                 the canvas model the text becomes
-bert verdict  <file> [--lens L]         what the kernel says; exits 4 on a refusal
-bert describe <file> [--lens L]         the formal object the tradition writes
-bert run      <file> [--t T] [--dt D]   the trajectory, or why there is none
-bert layout   <file>                    where the nodes sit
+facets compile  <file.sl>                 the canvas model the text becomes
+facets verdict  <file> [--lens L]         what the kernel says; exits 4 on a refusal
+facets describe <file> [--lens L]         the formal object the tradition writes
+facets run      <file> [--t T] [--dt D]   the trajectory, or why there is none
+facets layout   <file>                    where the nodes sit
 ```
 
 A file argument is a path or `-` for stdin. `.sl` compiles; anything else opens
@@ -471,15 +471,15 @@ tradition it was never pinned to. The corpus's one documented divergence is a
 two-line shell check:
 
 ```bash
-bert verdict assets/corpus/bunge/coupling-sigma3.sl --lens bunge   # 0 — legal Bunge structure
-bert verdict assets/corpus/bunge/coupling-sigma3.sl --lens mobus   # 4 — Mobus §4.3 forbids the diagonal
+facets verdict assets/corpus/bunge/coupling-sigma3.sl --lens bunge   # 0 — legal Bunge structure
+facets verdict assets/corpus/bunge/coupling-sigma3.sl --lens mobus   # 4 — Mobus §4.3 forbids the diagonal
 ```
 
 And the layout regression that cost a browser-JavaScript measurement session on
 2026-08-12 is one line:
 
 ```bash
-bert layout assets/examples/predator-prey.sl \
+facets layout assets/examples/predator-prey.sl \
   | jq '[.nodes[] | select(.env_kind=="Source") | .x] | max
         < ([.nodes[] | select(.env_kind=="Sink") | .x] | min)'
 ```

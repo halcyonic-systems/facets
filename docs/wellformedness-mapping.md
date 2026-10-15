@@ -44,7 +44,7 @@ The exception is demonstrated. An interaction whose `source` and `sink` are both
 
 **2 and 4 — no self-loops.** `self_loop_flow` is an exact statement of `PreNetwork.Lawful`'s second conjunct, and it applies to every interaction regardless of locus, so it covers `N` and `G` at once. Covers: any `source == sink` interaction, as an Error. Does not cover: Core and Structural mode, where the check does not run at all.
 
-Demonstrated: `fixtures/wellformedness/self-loop.sl` carries a genuine `A → A` flow. `bert verdict … --lens klir` exits **0** with zero issues; `--lens bunge` exits **0** with zero issues; `--lens mobus` exits **4** on `self_loop_flow`. The `lens_facts` payload names the edge `"self_loop": true, "mobus_ok": false` under all three lenses, so the kernel *sees* it and declines to rate it at two of them.
+Demonstrated: `fixtures/wellformedness/self-loop.sl` carries a genuine `A → A` flow. `facets verdict … --lens klir` exits **0** with zero issues; `--lens bunge` exits **0** with zero issues; `--lens mobus` exits **4** on `self_loop_flow`. The `lens_facts` payload names the edge `"self_loop": true, "mobus_ok": false` under all three lenses, so the kernel *sees* it and declines to rate it at two of them.
 
 This gap is arguable rather than plain. The Lean `WellFormed` is a predicate on a Mobus 8-tuple (attribution per the [concordance](language/terminology-concordance.md)), and a model authored at Klir's or Bunge's lens is not claiming to be one — the parallel-lens architecture ([`theory-fidelity.md`](theory-fidelity.md)) says a Klir model owes no Mobus constraint. The honest statement is therefore: **the Lean predicate is unconditional and the kernel's enforcement is not**, and whether that is a defect depends on a scope question the repo has already answered for the interface checks ("Klir and Bunge carry no interface concept") but has never stated for self-loops.
 
@@ -62,7 +62,7 @@ On the canvas path alone, `I ⊆ C` does hold by construction: `Thing.interface`
 
 It does **not** cover the case where *both* ends are environment objects. The check skips those deliberately — its comment says env→env flows "are the direction checks' subject, not this one's" — and the direction checks it defers to do not do this job. `check_flow_direction`, named in two source comments (`lib.rs:1540`, `canvas.rs:644`), **does not exist anywhere in the workspace**; the direction rules that do exist live inline in `validate_operational` (`operational.rs:344-367`) and only reject a flow *leaving a sink* or *entering a source*. A `Source → Sink` edge violates neither.
 
-Demonstrated, and the strongest gap in this audit: `fixtures/wellformedness/env-to-env-flow.sl` adds `flow Src -> Snk` alongside a normal in/out pair. Under the Mobus lens `bert verdict` exits **0** with `"issues": []`, and the edge is counted in `G` (`"g": 3`, `"locus": "Exo"`). Under the Klir lens it is likewise clean. `bert run --t 3` produces a trajectory. So the edge passes `validate`, passes `validate_mode` at Operational, and passes the executability seam — while the Lean's `bipartite` forbids it outright.
+Demonstrated, and the strongest gap in this audit: `fixtures/wellformedness/env-to-env-flow.sl` adds `flow Src -> Snk` alongside a normal in/out pair. Under the Mobus lens `facets verdict` exits **0** with `"issues": []`, and the edge is counted in `G` (`"g": 3`, `"locus": "Exo"`). Under the Klir lens it is likewise clean. `facets run --t 3` produces a trajectory. So the edge passes `validate`, passes `validate_mode` at Operational, and passes the executability seam — while the Lean's `bipartite` forbids it outright.
 
 Also not covered at Core and Structural, which is a decided non-goal rather than a gap ([#213](https://github.com/halcyonic-systems/facets/issues/213), [#219](https://github.com/halcyonic-systems/facets/issues/219): Klir and Bunge carry no interface concept).
 
@@ -153,7 +153,7 @@ Every gap above that is stated as demonstrated has a file. The `.sl` probes are 
 
 | probe | what it shows | how to run |
 |---|---|---|
-| `fixtures/wellformedness/env-to-env-flow.sl` | a `Source → Sink` edge is admitted clean, counted in `G`, and runs — row 8's gap | `just bert verdict fixtures/wellformedness/env-to-env-flow.sl --lens mobus` → exit 0, `"issues": []` |
+| `fixtures/wellformedness/env-to-env-flow.sl` | a `Source → Sink` edge is admitted clean, counted in `G`, and runs — row 8's gap | `just facets verdict fixtures/wellformedness/env-to-env-flow.sl --lens mobus` → exit 0, `"issues": []` |
 | `fixtures/wellformedness/crossing-flow-no-interface.sl` | the control: the half of row 8 the kernel *does* enforce | same command → exit 4, `crossing_flow_without_interface` |
 | `fixtures/wellformedness/self-loop.sl` | `self_loop_flow` is mode-gated where the Lean is unconditional — row 2 | `--lens klir` → exit 0 · `--lens bunge` → exit 0 · `--lens mobus` → exit 4 |
 | `crates/facets-core/tests/wellformedness_probes.rs` | rows 7, 9, and the row-1 UNKNOWN, on hand-authored `WorldModel`s | `cargo test -p facets-core --test wellformedness_probes` |

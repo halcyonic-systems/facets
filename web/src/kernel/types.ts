@@ -490,7 +490,7 @@ export interface CanvasModel {
  *  process's whole out-fanout presented as % shares. Externally-tagged serde
  *  enum. Anchors are by id so renames cannot orphan a param. */
 /** A component line's engine parameter a `param … of <component>` may name
- *  (#343): keyed as the engine, the session knob and `bert bench --set` read
+ *  (#343): keyed as the engine, the session knob and `facets bench --set` read
  *  it, and as the thing's `cognitive_params` stores it. */
 export type EngineField =
   | "release_rate"

@@ -51,7 +51,7 @@ quota fishery in both forms (`assets/bench/README.md`).
 ## What actually makes a model run
 
 Excavated in the #318 library consolidation by putting every bundled model
-through `bert run` and sorting the answers. Eighteen examples, eight of which
+through `facets run` and sorting the answers. Eighteen examples, eight of which
 ran; the ten that did not stopped at one of exactly **three** gates, in this
 order. Nothing else stops a model, and one thing widely assumed to stop one does
 not.

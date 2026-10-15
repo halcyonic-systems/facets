@@ -19,5 +19,5 @@
   ],
   "disguised_count": 0,
   "absent_count": 3,
-  "notes": "Stray `component T7` and the `mere` relation are hand-edit leftovers, kept as exported. Compiles clean under `bert verdict --lens mobus` (0 issues), so the kernel does not object to an empty M. No value is written on a missing line because the prose gives none; a value would be an invention."
+  "notes": "Stray `component T7` and the `mere` relation are hand-edit leftovers, kept as exported. Compiles clean under `facets verdict --lens mobus` (0 issues), so the kernel does not object to an empty M. No value is written on a missing line because the prose gives none; a value would be an invention."
 }

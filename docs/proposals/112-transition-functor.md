@@ -230,7 +230,7 @@ Lean-side gloss.
 
 ### 1.7 A measured pathology: the tRNA recycle loop mints mass
 
-Repro, in this worktree: `cargo build -p facets-cli && target/debug/bert run
+Repro, in this worktree: `cargo build -p facets-cli && target/debug/facets run
 assets/examples/translation-apparatus.sl --t 15`. By `t=15` `stored` has
 grown from 45 to 4935.9 while `emitted` has grown only from 101 to 1515;
 `dissipated` crosses from positive to negative at tick 6 and reaches
