@@ -1644,7 +1644,7 @@ fn describe_from_facts(model: &CanvasModel, lens: Lens, facts: &LensFacts) -> Le
             },
             porosity: facts.boundary_props.porosity,
             perceptive_fuzziness: facts.boundary_props.perceptive_fuzziness,
-            t_note: "T: transforms — parametric by intent; bert-compose fills the slot".to_string(),
+            t_note: "T: transforms — parametric by intent; facets-compose fills the slot".to_string(),
             h_note: "H: history (accumulated state conditioning T) — NOT hierarchy".to_string(),
             dt_note: "Δt: time scale — a parametric field on the system".to_string(),
             self_loop_conflicts: facts

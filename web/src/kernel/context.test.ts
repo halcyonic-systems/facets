@@ -47,7 +47,7 @@ const mobusDescription: LensDescription = {
   b_interfaces: ["Pump", "Tank (flowless)"],
   porosity: 0.35,
   perceptive_fuzziness: 0.2,
-  t_note: "T: transforms — parametric by intent; bert-compose fills the slot",
+  t_note: "T: transforms — parametric by intent; facets-compose fills the slot",
   h_note: "H: history (accumulated state conditioning T) — NOT hierarchy",
   dt_note: "Δt: time scale — a parametric field on the system",
   self_loop_conflicts: ["recycle"],
@@ -199,7 +199,7 @@ describe("renderContextForPrompt", () => {
       μ (milieu) is parametric/opaque — the one element with no cross-lens preimage
       G=1
       B interfaces=[Pump, Tank (flowless)], porosity=0.35, perceptive_fuzziness=0.2
-      T: transforms — parametric by intent; bert-compose fills the slot
+      T: transforms — parametric by intent; facets-compose fills the slot
       H: history (accumulated state conditioning T) — NOT hierarchy
       Δt: time scale — a parametric field on the system
       self_loop_conflicts=[recycle]
