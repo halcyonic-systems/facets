@@ -1,0 +1,81 @@
+path,line,class,text
+.github/workflows/ci.yml,4,workflow,- run: cargo build --workspace --exclude bert-cli --target wasm32-unknown-unknown
+.github/workflows/ci.yml,5,workflow,- working-directory: crates/bert-lenses-kernel
+Cargo.lock,2,cargo-name,"name = ""bert-core"""
+Cargo.lock,6,cargo-name,"name = ""bert-lenses-kernel"""
+Cargo.lock,9,cargo-name,"""bert-core"","
+Cargo.toml,1,doc-prose,"# bert-lenses workspace: Rust is the brain, web/ is the face."
+README.md,3,lineage,"This codebase was `bert-lenses`, and the kernel crates still carry that name."
+README.md,4,upstream-bert,The crates were vendored from BERT (`halcyonic-systems/bert`); see [bert#99](https://github.com/halcyonic-systems/bert/i
+README.md,4,upstream-bert,The crates were vendored from BERT (`halcyonic-systems/bert`); see [bert#99](https://github.com/halcyonic-systems/bert/i
+README.md,4,issue-ref,The crates were vendored from BERT (`halcyonic-systems/bert`); see [bert#99](https://github.com/halcyonic-systems/bert/i
+README.md,4,external-url,The crates were vendored from BERT (`halcyonic-systems/bert`); see [bert#99](https://github.com/halcyonic-systems/bert/i
+README.md,5,cli-word,"Run `bert verdict model.sl --lens bunge`, or `just bert run model.sl`; the `bert` binary lives in `crates/bert-cli`."
+README.md,5,cli-word,"Run `bert verdict model.sl --lens bunge`, or `just bert run model.sl`; the `bert` binary lives in `crates/bert-cli`."
+README.md,5,cli-word,"Run `bert verdict model.sl --lens bunge`, or `just bert run model.sl`; the `bert` binary lives in `crates/bert-cli`."
+README.md,5,crate-dir,"Run `bert verdict model.sl --lens bunge`, or `just bert run model.sl`; the `bert` binary lives in `crates/bert-cli`."
+README.md,6,issue-ref,"The archive seam (bert-lenses#140) saves `""format"": ""bert-lenses/canvas@1""`."
+README.md,6,format-tag,"The archive seam (bert-lenses#140) saves `""format"": ""bert-lenses/canvas@1""`."
+README.md,7,deploy,Serve it with launchd as `com.halcyonic.bert-lenses`; the bundle is `bert-lenses.app`.
+README.md,7,deploy,Serve it with launchd as `com.halcyonic.bert-lenses`; the bundle is `bert-lenses.app`.
+README.md,8,doc-prose,`bert-core` is the semantic authority; `bert_canvas::lenses::analyze` is the same door from Rust.
+README.md,8,doc-prose,`bert-core` is the semantic authority; `bert_canvas::lenses::analyze` is the same door from Rust.
+README.md,9,upstream-bert,Upstream `bert` has not moved; old-bert peaked as a diagramming tool.
+README.md,9,upstream-bert,Upstream `bert` has not moved; old-bert peaked as a diagramming tool.
+assets/examples/model.sl,1,fixture,# boundary contract (bert-core::decomposition) holds; compiles clean under `bert verdict`.
+assets/examples/model.sl,1,fixture,# boundary contract (bert-core::decomposition) holds; compiles clean under `bert verdict`.
+assets/models/sample.json,2,fixture,"""description"": ""bert-compose source"""
+assets/walkthroughs/demo.json,2,format-tag,"""format"": ""bert-lenses/canvas@1"","
+crates/bert-cli/Cargo.toml,2,cargo-name,"name = ""bert-cli"""
+crates/bert-cli/Cargo.toml,6,cli-word,"name = ""bert"""
+crates/bert-cli/Cargo.toml,10,cargo-name,"bert-lenses-kernel = { path = ""../bert-lenses-kernel"" }"
+crates/bert-cli/Cargo.toml,10,crate-dir,"bert-lenses-kernel = { path = ""../bert-lenses-kernel"" }"
+crates/bert-core/Cargo.toml,2,cargo-name,"name = ""bert-core"""
+crates/bert-core/Cargo.toml,4,upstream-bert,"description = ""BERT's System Language kernel, vendored."""
+crates/bert-core/src/lib.rs,1,doc-prose,//! bert-core — the kernel. Ports of BERT's validators; `use bert::Parameter` is the upstream path.
+crates/bert-core/src/lib.rs,1,upstream-bert,//! bert-core — the kernel. Ports of BERT's validators; `use bert::Parameter` is the upstream path.
+crates/bert-core/src/lib.rs,1,upstream-bert,//! bert-core — the kernel. Ports of BERT's validators; `use bert::Parameter` is the upstream path.
+crates/bert-core/src/lib.rs,3,rust-ident,/// The lens door from Rust: `bert_canvas::lenses::analyze` ignores `model.lens`.
+crates/bert-core/src/lib.rs,5,rust-ident,let bert = model.trim();
+crates/bert-core/src/lib.rs,6,cli-word,"eprintln!(""bert: checked {} bytes"", bert.len());"
+crates/bert-core/src/lib.rs,6,rust-ident,"eprintln!(""bert: checked {} bytes"", bert.len());"
+crates/bert-core/src/lib.rs,7,rust-ident,!bert.is_empty()
+crates/bert-lenses-kernel/Cargo.toml,2,cargo-name,"name = ""bert-lenses-kernel"""
+crates/bert-lenses-kernel/Cargo.toml,6,cargo-name,"bert-core = { path = ""../bert-core"" }"
+crates/bert-lenses-kernel/Cargo.toml,6,crate-dir,"bert-core = { path = ""../bert-core"" }"
+crates/bert-lenses-kernel/src/api.rs,1,rust-ident,//! The wasm boundary over [`bert_core`]; see `crates/bert-lenses-kernel/API.md`.
+crates/bert-lenses-kernel/src/api.rs,1,crate-dir,//! The wasm boundary over [`bert_core`]; see `crates/bert-lenses-kernel/API.md`.
+crates/bert-lenses-kernel/src/api.rs,2,import,use bert_core::WorldModel;
+crates/bert-lenses-kernel/src/api.rs,4,format-tag,"pub const FORMAT: &str = ""bert-lenses/canvas@1"";"
+crates/bert-lenses-kernel/src/api.rs,6,wasm-export,"#[wasm_bindgen(js_name = ""bert_validate"")]"
+crates/bert-lenses-kernel/src/api.rs,8,rust-ident,let model: bert_canvas::canvas::CanvasModel = serde_json::from_str(canvas_json).unwrap();
+crates/bert-lenses-kernel/src/api.rs,9,rust-ident,"let out = bert(&[""verdict""]);"
+docs/archive/old.md,3,lineage,"The egui app was bert-lenses; its kernel was `crates/bert-core`, driven by `bert run`."
+docs/archive/old.md,3,lineage,"The egui app was bert-lenses; its kernel was `crates/bert-core`, driven by `bert run`."
+docs/archive/old.md,3,lineage,"The egui app was bert-lenses; its kernel was `crates/bert-core`, driven by `bert run`."
+docs/decisions/0001-vendoring.md,5,lineage,`bert-core` and `bert-compose` are vendored; the wasm package is `bert-lenses-kernel`.
+docs/decisions/0001-vendoring.md,5,lineage,`bert-core` and `bert-compose` are vendored; the wasm package is `bert-lenses-kernel`.
+docs/decisions/0001-vendoring.md,5,lineage,`bert-core` and `bert-compose` are vendored; the wasm package is `bert-lenses-kernel`.
+docs/lean-manifest.json,5,crate-dir,"""stated_in"": ""`README.md`, `crates/bert-core/src/transition.rs` header table."""
+fixtures/contract/lens_description.json,2,golden,"""t_note"": ""T: transforms — parametric by intent; bert-compose fills the slot"""
+justfile,2,cli-word,bert *ARGS:
+justfile,3,cargo-name,@cargo run --quiet -p bert-cli --bin bert -- {{ARGS}}
+justfile,3,cli-word,@cargo run --quiet -p bert-cli --bin bert -- {{ARGS}}
+scripts/launchd/com.halcyonic.bert-lenses.plist,5,deploy,<string>com.halcyonic.bert-lenses</string>
+scripts/launchd/com.halcyonic.bert-lenses.plist,7,deploy,<string>/Users/home/halcyonic-apps/bert-lenses</string>
+tools/pipeline/common.py,3,deploy,"DATA_DIR = os.environ.get(""BERT_LENSES_DATA_DIR"", ""/Users/home/Documents/bert-lenses/data"")"
+tools/pipeline/common.py,3,deploy,"DATA_DIR = os.environ.get(""BERT_LENSES_DATA_DIR"", ""/Users/home/Documents/bert-lenses/data"")"
+tools/pipeline/common.py,4,deploy,"USER_AGENT = ""bert-lenses-pipeline/0.1"""
+tools/pipeline/common.py,7,cli-word,def find_bert(explicit):
+tools/pipeline/common.py,8,cli-word,"return explicit or ""target/debug/bert"""
+web/package.json,2,package-name,"""name"": ""bert-lenses-web"","
+web/package.json,5,package-name,"""bert-lenses-kernel"": ""file:../crates/bert-lenses-kernel/pkg"""
+web/package.json,5,crate-dir,"""bert-lenses-kernel"": ""file:../crates/bert-lenses-kernel/pkg"""
+web/src/kernel/index.ts,1,import,"import { initSync, compile_sl } from ""bert-lenses-kernel"";"
+web/src/kernel/index.ts,2,import,"import wasmUrl from ""bert-lenses-kernel/bert_lenses_kernel_bg.wasm?url"";"
+web/src/kernel/index.ts,2,package-name,"import wasmUrl from ""bert-lenses-kernel/bert_lenses_kernel_bg.wasm?url"";"
+web/src/kernel/index.ts,4,format-tag,"export const format = ""bert-lenses/canvas@1"";"
+web/vite.config.ts,1,cli-word,// `bert bench` takes the same model and knobs when a variation is wanted.
+web/vite.config.ts,2,crate-dir,"const wasm = resolve(ROOT, ""crates/bert-lenses-kernel/pkg/bert_lenses_kernel_bg.wasm"");"
+web/vite.config.ts,2,package-name,"const wasm = resolve(ROOT, ""crates/bert-lenses-kernel/pkg/bert_lenses_kernel_bg.wasm"");"
+web/vite.config.ts,3,package-name,"const version = crateVersion(""bert-lenses-kernel"");"

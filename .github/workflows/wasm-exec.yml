@@ -10,7 +10,7 @@
 # CI, and zero `wasm_bindgen_test`s in the repo.
 #
 # WHAT THIS RUNS. `scripts/wasm_exec.mjs` loads
-# `crates/bert-lenses-kernel/pkg` under node exactly as the browser loads it —
+# `crates/facets-kernel/pkg` under node exactly as the browser loads it —
 # same glue JS, same `.wasm` bytes, nothing stubbed — and drives real exports:
 # `analyze_canvas` / `lens_facts` / `describe` recomputed from the committed
 # canvas fixture and compared against the committed results; every shipped `.sl`
@@ -62,20 +62,26 @@ jobs:
           key: ${{ runner.os }}-wasmexec-${{ hashFiles('**/Cargo.lock') }}
           restore-keys: ${{ runner.os }}-wasmexec-
 
+      # The release binary, installed directly: jetli/wasm-pack-action@v0.4.0
+      # renames it across filesystems, which the runner image refuses (EXDEV)
+      # by 2026-10-21 (green on 2026-10-18).
       - name: Install wasm-pack
-        uses: jetli/wasm-pack-action@v0.4.0
-        with:
-          version: 'v0.13.1'
+        env:
+          WASM_PACK: wasm-pack-v0.13.1-x86_64-unknown-linux-musl
+        run: |
+          curl -sSfL "https://github.com/rustwasm/wasm-pack/releases/download/v0.13.1/$WASM_PACK.tar.gz" | tar xz -C "$RUNNER_TEMP"
+          install -m 755 "$RUNNER_TEMP/$WASM_PACK/wasm-pack" "$HOME/.cargo/bin/wasm-pack"
+          wasm-pack --version
 
       # The package the app ships.
       - name: Build wasm pkg
         run: wasm-pack build --target web --out-dir pkg
-        working-directory: crates/bert-lenses-kernel
+        working-directory: crates/facets-kernel
 
       # The probe package — same kernel plus one deliberate panic export.
       - name: Build wasm pkg (panic probe)
         run: wasm-pack build --target web --out-dir pkg-probe -- --features panic-probe
-        working-directory: crates/bert-lenses-kernel
+        working-directory: crates/facets-kernel
 
       - name: Setup Node
         uses: actions/setup-node@v4
@@ -86,4 +92,4 @@ jobs:
       # the web app's node_modules would make a face-side change able to break
       # a boundary gate.
       - name: Execute the boundary
-        run: node scripts/wasm_exec.mjs --probe crates/bert-lenses-kernel/pkg-probe
+        run: node scripts/wasm_exec.mjs --probe crates/facets-kernel/pkg-probe

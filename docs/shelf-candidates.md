@@ -74,4 +74,4 @@ Legend: **runs now** — expressible in SL v1.9 and bench-tested from the termin
 
 ## How an entry graduates to the shelf
 
-Verdict clean under Mobus (no `interface_does_work`), split form where the boundary is not the processor, declared amounts on every driver, at least one `param` with a range, one `metric`, and a `bert bench` run in the PR showing the thing to watch. The examples rule in `assets/examples/README.md` still governs admission.
+Verdict clean under Mobus (no `interface_does_work`), split form where the boundary is not the processor, declared amounts on every driver, at least one `param` with a range, one `metric`, and a `facets bench` run in the PR showing the thing to watch. The examples rule in `assets/examples/README.md` still governs admission.

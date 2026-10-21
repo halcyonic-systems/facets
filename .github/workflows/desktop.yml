@@ -76,7 +76,7 @@ jobs:
       # stale pkg here would ship a stale brain inside the desktop app.
       - name: Build wasm pkg
         run: wasm-pack build --target web --out-dir pkg
-        working-directory: crates/bert-lenses-kernel
+        working-directory: crates/facets-kernel
 
       - name: npm ci
         run: npm ci

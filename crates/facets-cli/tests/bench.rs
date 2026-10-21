@@ -1,0 +1,409 @@
+//! `facets bench` (#463): the terminal's seat at the bench. The same engine and
+//! the same knobs by the same names the app shows, with the readout, the
+//! knob log and the tick log on stdout — so a run can be driven and read
+//! without a browser in the loop.
+mod support;
+
+use support::{code, facets, stderr, stdout_json};
+
+#[test]
+fn a_knob_at_a_tick_turns_the_flow_from_the_next_tick_on() {
+    let out = facets(&["bench", "fixtures/sl/bathtub.sl", "--t", "6", "--set", "inflow|Faucet|Tub=4@3"]);
+    assert_eq!(code(&out), 0, "{}", stderr(&out));
+    let v = stdout_json(&out);
+    assert_eq!(v["ticks"], 6);
+    assert_eq!(v["conserved"], true);
+    let inflow = v["flows"].as_array().unwrap().iter().find(|f| f["name"] == "inflow").unwrap();
+    assert_eq!(inflow["series"], serde_json::json!([1.0, 1.0, 1.0, 4.0, 4.0, 4.0]));
+    assert_eq!(v["edits"][0]["tick"], 3);
+    assert_eq!(v["edits"][0]["target"], "Faucet -> Tub : inflow");
+    let log = v["log"].as_array().unwrap();
+    assert_eq!(log.len(), 6);
+    let tub = log[3]["nodes"].as_array().unwrap().iter().find(|n| n["name"] == "Tub").unwrap();
+    assert_eq!(tub["delivered"], 4.0);
+}
+
+#[test]
+fn no_log_leaves_the_log_out_and_a_bad_knob_is_a_usage_error() {
+    let out = facets(&["bench", "fixtures/sl/bathtub.sl", "--t", "3", "--no-log"]);
+    assert_eq!(code(&out), 0, "{}", stderr(&out));
+    assert!(stdout_json(&out).get("log").is_none());
+    let out = facets(&["bench", "fixtures/sl/bathtub.sl", "--set", "nonsense"]);
+    assert_eq!(code(&out), 2, "{}", stderr(&out));
+    assert!(stderr(&out).contains("target=value"), "{}", stderr(&out));
+    let out = facets(&["bench", "fixtures/sl/bathtub.sl", "--t", "3", "--set", "nope|Faucet|Tub=2"]);
+    assert_eq!(code(&out), 4, "{}", stderr(&out));
+    assert!(stderr(&out).contains("no flow"), "{}", stderr(&out));
+}
+
+#[test]
+fn a_finite_source_runs_dry_from_the_terminal() {
+    // #260 via the bench knob: the faucet holds 2 units in all; the inflow
+    // is 1, 1, 0, 0 and the tub stops filling (the old engine filled on).
+    let out = facets(&["bench", "fixtures/sl/bathtub.sl", "--t", "4", "--set", "Faucet.reservoir=2"]);
+    assert_eq!(code(&out), 0, "{}", stderr(&out));
+    let v = stdout_json(&out);
+    let inflow = v["flows"].as_array().unwrap().iter().find(|f| f["name"] == "inflow").unwrap();
+    assert_eq!(inflow["series"], serde_json::json!([1.0, 1.0, 0.0, 0.0]));
+    assert_eq!(v["conserved"], true);
+}
+
+#[test]
+fn a_knob_names_the_pass_way_the_author_wrote() {
+    // Split form (#226): "flow Rain -> Gutter" lands on a pass-way the
+    // projection fuses into "Rain Barrel". The author addresses the flow by
+    // the name on the page, Gutter, and the edit still lands.
+    let out = facets(&[
+        "bench",
+        "assets/examples/rain-barrel-garden.sl",
+        "--t",
+        "8",
+        "--no-log",
+        "--set",
+        "rainfall|Rain|Gutter=0@5",
+    ]);
+    assert_eq!(code(&out), 0, "{}", stderr(&out));
+    let v = stdout_json(&out);
+    assert_eq!(v["conserved"], true);
+    assert_eq!(v["edits"][0]["target"], "Rain -> Gutter : rainfall");
+    let rain = v["flows"].as_array().unwrap().iter().find(|f| f["name"] == "rainfall").unwrap();
+    assert_eq!(rain["series"], serde_json::json!([15.0, 15.0, 15.0, 15.0, 15.0, 0.0, 0.0, 0.0]));
+    let barrel = v["trajectories"].as_array().unwrap().iter().find(|s| s["name"] == "Rain Barrel").unwrap();
+    assert_eq!(barrel["series"][7], 39.0);
+}
+
+#[test]
+fn the_sl_words_reach_the_engine() {
+    // `limiting`: the oven is bounded by its scarcest input (heat 3) rather
+    // than the sum (8); `reservoir 12`: flour gives 5, 5, 2 and runs dry, and
+    // the oven then starves on flour. Both read straight off the SL line.
+    let out = facets(&["bench", "fixtures/sl/bakery.sl", "--t", "5", "--no-log"]);
+    assert_eq!(code(&out), 0, "{}", stderr(&out));
+    let v = stdout_json(&out);
+    assert_eq!(v["conserved"], true);
+    let flour = v["flows"].as_array().unwrap().iter().find(|f| f["name"] == "flour" && f["from"] == "Flour").unwrap();
+    assert_eq!(flour["series"], serde_json::json!([5.0, 5.0, 2.0, 0.0, 0.0]));
+    let bread = v["flows"].as_array().unwrap().iter().find(|f| f["name"] == "bread").unwrap();
+    let series: Vec<f64> = bread["series"].as_array().unwrap().iter().map(|x| x.as_f64().unwrap()).collect();
+    assert!(series[0] <= 3.0 + 1e-6, "limiting bounds the oven by heat 3, got {series:?}");
+    assert!(series[4] < series[0], "the oven starves once the flour runs dry: {series:?}");
+}
+
+#[test]
+fn a_pass_way_serving_two_residents_runs_as_an_identity_door() {
+    // #493: an unfused pure pass-way (one inlet, two tanks; one outlet, two
+    // drains) is lowered to an identity Impeding node, so the model runs and
+    // conserves. Routing through the door follows the interior legs' declared
+    // amounts (4 to A, 6 to B); the door itself alters nothing.
+    let out = facets(&["bench", "fixtures/sl/shared-door.sl", "--t", "5", "--no-log"]);
+    assert_eq!(code(&out), 0, "{}", stderr(&out));
+    let v = stdout_json(&out);
+    assert_eq!(v["conserved"], true);
+    let flows = v["flows"].as_array().unwrap();
+    let fill = |n: &str| flows.iter().find(|f| f["name"] == n).unwrap()["series"][0].as_f64().unwrap();
+    assert_eq!((fill("fill a"), fill("fill b")), (4.0, 6.0));
+    let traj = v["trajectories"].as_array().unwrap();
+    let last = |n: &str| traj.iter().find(|s| s["name"] == n).unwrap()["series"][4].as_f64().unwrap();
+    assert_eq!((last("Tank A"), last("Tank B")), (20.0, 25.0));
+}
+
+#[test]
+fn the_thermostat_traced_two_ways_is_one_system() {
+    // ADR 0008 D3: the agent form of the thermostat (one `agent` line) and the
+    // probe-plus-comparator form hold the same room heat on every tick, and
+    // the agent's goal turns from the terminal like any setpoint.
+    let room = |file: &str| {
+        let out = facets(&["bench", file, "--t", "12", "--no-log"]);
+        assert_eq!(code(&out), 0, "{}", stderr(&out));
+        let v = stdout_json(&out);
+        assert_eq!(v["conserved"], true, "{file}");
+        v["trajectories"]
+            .as_array()
+            .unwrap()
+            .iter()
+            .find(|t| t["name"] == "Room")
+            .unwrap()["series"]
+            .clone()
+    };
+    assert_eq!(
+        room("assets/bench/thermostat-room.sl"),
+        room("assets/bench/thermostat-agent.sl"),
+        "the agent form and the comparator form diverge"
+    );
+    let out = facets(&["bench", "assets/bench/thermostat-agent.sl", "--t", "24", "--no-log", "--set", "Thermostat.target=3@12"]);
+    assert_eq!(code(&out), 0, "{}", stderr(&out));
+    let v = stdout_json(&out);
+    assert_eq!(v["edits"][0]["field"], "target");
+    let series = v["trajectories"].as_array().unwrap().iter().find(|t| t["name"] == "Room").unwrap()["series"].as_array().unwrap();
+    let before = series[11].as_f64().unwrap();
+    let after = series[23].as_f64().unwrap();
+    assert!((before - 1.6667).abs() < 1e-3 && (after - 2.5).abs() < 1e-3, "{before} -> {after}");
+}
+
+#[test]
+fn the_relay_thermostat_switches_and_overshoots_from_the_terminal() {
+    // ADR 0008 D3: the threshold rule's witness on the bench shelf — the
+    // command is a square wave and the room swings across the level; the
+    // level turns from the terminal like any setpoint.
+    let out = facets(&["bench", "assets/bench/thermostat-relay.sl", "--t", "24", "--no-log"]);
+    assert_eq!(code(&out), 0, "{}", stderr(&out));
+    let v = stdout_json(&out);
+    assert_eq!(v["conserved"], true);
+    let series = |name: &str| -> Vec<f64> {
+        v["trajectories"].as_array().unwrap().iter().find(|t| t["name"] == name).unwrap()["series"]
+            .as_array().unwrap().iter().map(|x| x.as_f64().unwrap()).collect()
+    };
+    let cmd = series("Thermostat");
+    assert!(cmd.iter().all(|&x| x == 0.0 || x == 1.0), "{cmd:?}");
+    assert!(cmd.windows(2).filter(|w| w[0] != w[1]).count() >= 4, "{cmd:?}");
+    let room = series("Room");
+    assert!(room.iter().any(|&r| r > 2.0) && room[1..].iter().any(|&r| r < 2.0), "{room:?}");
+    let out = facets(&["bench", "assets/bench/thermostat-relay.sl", "--t", "24", "--no-log", "--set", "Thermostat.above=3@12"]);
+    assert_eq!(code(&out), 0, "{}", stderr(&out));
+    let v = stdout_json(&out);
+    assert_eq!(v["edits"][0]["field"], "above");
+    let room: Vec<f64> = v["trajectories"].as_array().unwrap().iter().find(|t| t["name"] == "Room").unwrap()["series"]
+        .as_array().unwrap().iter().map(|x| x.as_f64().unwrap()).collect();
+    assert!(room[12..].iter().any(|&r| r > 3.0), "after raising the level the room never passed it: {room:?}");
+}
+
+/// The hysteresis band (facets#517) from the terminal: at the quarter-hour
+/// step, where the bare relay chatters, the banded relay switches fewer
+/// times a day and keeps the room inside its band; widening the band cuts
+/// the count again. The numbers are the README's.
+#[test]
+fn the_banded_relay_switches_less_than_the_bare_one_and_less_again_as_the_band_widens() {
+    let run = |file: &str, dt: &str, sets: &[&str]| {
+        let mut args = vec!["bench", file, "--t", "24", "--dt", dt, "--no-log"];
+        for s in sets {
+            args.push("--set");
+            args.push(s);
+        }
+        let out = facets(&args);
+        assert_eq!(code(&out), 0, "{}", stderr(&out));
+        let v = stdout_json(&out);
+        assert_eq!(v["conserved"], true, "{file}");
+        v
+    };
+    let series = |v: &serde_json::Value, name: &str| -> Vec<f64> {
+        v["trajectories"].as_array().unwrap().iter().find(|t| t["name"] == name).unwrap()["series"]
+            .as_array().unwrap().iter().map(|x| x.as_f64().unwrap()).collect()
+    };
+    let flips = |cmd: &[f64]| cmd.windows(2).filter(|w| w[0] != w[1]).count();
+    let swing = |room: &[f64]| {
+        let tail = &room[room.len() / 2..];
+        tail.iter().cloned().fold((f64::MAX, f64::MIN), |(lo, hi), x| (lo.min(x), hi.max(x)))
+    };
+    let bare = run("assets/bench/thermostat-relay.sl", "0.25", &[]);
+    let band = run("assets/bench/thermostat-band.sl", "0.25", &[]);
+    let wide = run("assets/bench/thermostat-band.sl", "0.25", &["Thermostat.below=1.4"]);
+    assert_eq!(wide["edits"][0]["field"], "below");
+    let (bare_n, band_n, wide_n) = (
+        flips(&series(&bare, "Thermostat")),
+        flips(&series(&band, "Thermostat")),
+        flips(&series(&wide, "Thermostat")),
+    );
+    assert_eq!((bare_n, band_n, wide_n), (39, 29, 14));
+    let (lo, hi) = swing(&series(&band, "Room"));
+    assert!(lo > 1.75 && hi < 2.25, "the banded room left its band: {lo} .. {hi}");
+    let (bare_lo, bare_hi) = swing(&series(&bare, "Room"));
+    assert!(bare_lo < 1.75 || bare_hi > 2.25, "the bare relay stayed inside the band: {bare_lo} .. {bare_hi}");
+    // At the hour step one hour's heating overshoots the whole band, so the
+    // band barely shows: the README says so, and this pins it.
+    let bare_h = flips(&series(&run("assets/bench/thermostat-relay.sl", "1", &[]), "Thermostat"));
+    let band_h = flips(&series(&run("assets/bench/thermostat-band.sl", "1", &[]), "Thermostat"));
+    assert_eq!((bare_h, band_h), (13, 12));
+}
+
+/// The table and trace rules (ADR 0008 D4) from the terminal, each against
+/// its one-level or memoryless control; the numbers are the README's. The
+/// trace thermostat at `window` 1 is `thermostat-agent.sl` digit for digit,
+/// at 3 it overshoots further and settles later; the table ward saws across
+/// its first bound where the relay ward settles, and a bin's output is a
+/// knob by its numbered word.
+#[test]
+fn the_trace_and_table_forms_differ_from_their_controls_as_the_readme_says() {
+    let run = |file: &str, t: &str, sets: &[&str]| {
+        let mut args = vec!["bench", file, "--t", t, "--no-log"];
+        for s in sets {
+            args.push("--set");
+            args.push(s);
+        }
+        let out = facets(&args);
+        assert_eq!(code(&out), 0, "{}", stderr(&out));
+        let v = stdout_json(&out);
+        assert_eq!(v["conserved"], true, "{file}");
+        v
+    };
+    let series = |v: &serde_json::Value, name: &str| -> Vec<f64> {
+        v["trajectories"].as_array().unwrap().iter().find(|t| t["name"] == name).unwrap()["series"]
+            .as_array().unwrap().iter().map(|x| x.as_f64().unwrap()).collect()
+    };
+    let level = |v: &serde_json::Value, name: &str| -> f64 {
+        v["levels"].as_array().unwrap().iter().find(|l| l["name"] == name).unwrap()["value"].as_f64().unwrap()
+    };
+    let settles = |room: &[f64]| (0..room.len()).find(|&i| room[i..].iter().all(|&x| (x - 5.0 / 3.0).abs() < 1.0 / 60.0)).map(|i| i + 1);
+    let peak = |s: &[f64]| s.iter().cloned().fold(f64::MIN, f64::max);
+    let low = |s: &[f64]| s.iter().cloned().fold(f64::MAX, f64::min);
+    // The thermostat with a memory.
+    let agent = run("assets/bench/thermostat-agent.sl", "72", &[]);
+    let traced = run("assets/bench/thermostat-trace.sl", "72", &[]);
+    let one = run("assets/bench/thermostat-trace.sl", "72", &["Thermostat.window=1"]);
+    assert_eq!(series(&agent, "Room"), series(&one, "Room"), "window 1 is not the memoryless agent");
+    assert_eq!(series(&agent, "Thermostat"), series(&one, "Thermostat"));
+    let (a, t) = (series(&agent, "Room"), series(&traced, "Room"));
+    assert!((peak(&a) - 1.9).abs() < 0.01 && (peak(&t) - 2.32).abs() < 0.01, "{} vs {}", peak(&a), peak(&t));
+    assert!(low(&a) > 1.6 && low(&t) < 1.32, "{} vs {}", low(&a), low(&t));
+    assert_eq!((settles(&a), settles(&t)), (Some(3), Some(26)));
+    let six = run("assets/bench/thermostat-trace.sl", "72", &["Thermostat.window=6"]);
+    assert_eq!(six["edits"][0]["field"], "window");
+    assert_eq!(settles(&series(&six, "Room")), None, "a six-hour memory settles within three days");
+    // The ward with a table.
+    let relay = run("assets/bench/hospital-beds-agent.sl", "24", &[]);
+    let table = run("assets/bench/hospital-beds-table.sl", "24", &[]);
+    let (r, w) = (series(&relay, "Ward"), series(&table, "Ward"));
+    assert!(r[12..].iter().all(|&b| b > 31.0 && b < 32.0), "{r:?}");
+    assert!(low(&w[6..]) > 19.0 && low(&w[6..]) < 20.0 && peak(&w[6..]) > 22.5 && peak(&w[6..]) < 23.0, "{w:?}");
+    assert!((level(&relay, "Home") - 184.0).abs() < 0.5 && (level(&table, "Home") - 128.1).abs() < 0.5);
+    let six_day = run("assets/bench/hospital-beds-table.sl", "24", &["Ward.time_constant=6"]);
+    assert!(series(&six_day, "Ward").iter().all(|&b| (b - 24.0).abs() < 1e-6), "{:?}", series(&six_day, "Ward"));
+    let quarter = run("assets/bench/hospital-beds-table.sl", "24", &["Ward.time_constant=6", "Gatekeeper.emit2=0.25@12"]);
+    assert_eq!(quarter["edits"][1]["field"], "emit2");
+    let q = series(&quarter, "Ward");
+    assert!(low(&q[12..]) > 18.7 && low(&q[12..]) < 18.9 && peak(&q[12..]) > 23.7 && peak(&q[12..]) < 23.9, "{q:?}");
+    // A bin the table lacks is refused by name.
+    let out = facets(&["bench", "assets/bench/hospital-beds-table.sl", "--t", "3", "--no-log", "--set", "Gatekeeper.under3=50"]);
+    assert_eq!(code(&out), 4, "{}", stderr(&out));
+    assert!(stderr(&out).contains("`under3` is not a table rule's word"), "{}", stderr(&out));
+}
+
+/// ADR 0008 D3, the stress test: four bench models from the literature, each
+/// with its aggregate form as the control, and the difference is the finding.
+/// Each pair runs from the terminal; the numbers are the README's.
+#[test]
+fn the_agent_forms_differ_from_their_aggregate_controls_as_the_readme_says() {
+    let run = |file: &str, t: &str, sets: &[&str]| {
+        let mut args = vec!["bench", file, "--t", t, "--no-log"];
+        for s in sets {
+            args.push("--set");
+            args.push(s);
+        }
+        let out = facets(&args);
+        assert_eq!(code(&out), 0, "{}", stderr(&out));
+        let v = stdout_json(&out);
+        assert_eq!(v["conserved"], true, "{file}");
+        v
+    };
+    let series = |v: &serde_json::Value, name: &str| -> Vec<f64> {
+        v["trajectories"].as_array().unwrap().iter().find(|t| t["name"] == name).unwrap()["series"]
+            .as_array().unwrap().iter().map(|x| x.as_f64().unwrap()).collect()
+    };
+    let level = |v: &serde_json::Value, name: &str| -> f64 {
+        v["levels"].as_array().unwrap().iter().find(|l| l["name"] == name).unwrap()["value"].as_f64().unwrap()
+    };
+    // The ward: the control pins at its ceiling; the gatekeeper's never reaches it.
+    let control = run("assets/bench/hospital-beds.sl", "24", &["Ward.time_constant=6"]);
+    let agent = run("assets/bench/hospital-beds-agent.sl", "24", &["Ward.time_constant=6"]);
+    assert!(series(&control, "Ward")[6..].iter().all(|&b| (b - 40.0).abs() < 1e-3));
+    let ward = series(&agent, "Ward");
+    assert!(ward.iter().all(|&b| b < 40.0) && ward[4..].iter().any(|&b| b < 32.0) && ward[4..].iter().any(|&b| b > 37.0), "{ward:?}");
+    // The epidemic: a lower, earlier peak and a longer tail.
+    let control = run("assets/bench/sir-epidemic.sl", "40", &[]);
+    let agent = run("assets/bench/sir-epidemic-agent.sl", "40", &[]);
+    let peak = |v: &serde_json::Value| series(v, "Infected").iter().cloned().fold(0.0, f64::max);
+    assert!(peak(&control) > 0.25 && peak(&agent) < 0.18, "{} vs {}", peak(&control), peak(&agent));
+    let above = |v: &serde_json::Value| series(v, "Infected").iter().filter(|&&x| x > 0.1).count();
+    assert!(above(&agent) > above(&control) + 3, "{} vs {} days above a tenth", above(&agent), above(&control));
+    // The fishery: closures keep the stock up and land several times more.
+    let control = run("assets/bench/logistic-harvest.sl", "80", &["Fish.time_constant=2"]);
+    let agent = run("assets/bench/logistic-harvest-agent.sl", "80", &[]);
+    assert!(series(&control, "Fish").iter().cloned().fold(1.0, f64::min) < 0.05);
+    assert!(series(&agent, "Fish").iter().cloned().fold(1.0, f64::min) > 0.25);
+    assert!(level(&agent, "Market") > 3.0 * level(&control, "Market"), "{} vs {}", level(&agent, "Market"), level(&control, "Market"));
+    // The bank: the switch crowd runs the bank in half the time.
+    let empties = |v: &serde_json::Value| series(v, "Vault").iter().position(|&x| x < 0.01).map(|i| i + 1).unwrap_or(99);
+    let control = run("assets/bench/bank-run.sl", "40", &[]);
+    let agent = run("assets/bench/bank-run-agent.sl", "40", &[]);
+    assert!(empties(&control) >= 28 && empties(&agent) <= 18, "{} vs {}", empties(&control), empties(&agent));
+}
+
+/// The command form of the quota agent (ADR 0008 D1; `logistic-harvest-quota.sl`)
+/// pinned to its controls from the terminal, as the README row says: pinned
+/// closed it traces the signal form pinned closed to one f32 ulp; with the
+/// split opened from tick 0 and the agent pinned open it traces the aggregate
+/// control at a two-day catch time digit for digit; left to itself it opens
+/// and closes one day after the signal form, so the sawtooths differ in phase
+/// and the eighty-day totals differ slightly; the knob log carries the
+/// agent's writes under its name, only when the share changes; and the tick
+/// log carries the decisions column.
+#[test]
+fn the_command_form_acts_one_day_after_the_signal_form_and_pins_to_its_controls() {
+    let run = |file: &str, t: &str, log: bool, sets: &[&str]| {
+        let mut args = vec!["bench", file, "--t", t];
+        if !log {
+            args.push("--no-log");
+        }
+        for s in sets {
+            args.push("--set");
+            args.push(s);
+        }
+        let out = facets(&args);
+        assert_eq!(code(&out), 0, "{}", stderr(&out));
+        let v = stdout_json(&out);
+        assert_eq!(v["conserved"], true, "{file}");
+        v
+    };
+    let series = |v: &serde_json::Value, name: &str| -> Vec<f64> {
+        v["trajectories"].as_array().unwrap().iter().find(|t| t["name"] == name).unwrap()["series"]
+            .as_array().unwrap().iter().map(|x| x.as_f64().unwrap()).collect()
+    };
+    let level = |v: &serde_json::Value, name: &str| -> f64 {
+        v["levels"].as_array().unwrap().iter().find(|l| l["name"] == name).unwrap()["value"].as_f64().unwrap()
+    };
+    let within_ulp = |a: f64, b: f64| ((a as f32).to_bits() as i64 - (b as f32).to_bits() as i64).abs() <= 1;
+    // Pinned closed, the two forms are one fishery to the ulp.
+    let cmd = run("assets/bench/logistic-harvest-quota.sl", "4", false, &["Quota.above=100"]);
+    let sig = run("assets/bench/logistic-harvest-agent.sl", "4", false, &["Quota.above=100"]);
+    let (c, s) = (series(&cmd, "Fish"), series(&sig, "Fish"));
+    assert!(c.iter().zip(&s).all(|(&a, &b)| within_ulp(a, b)), "{c:?} vs {s:?}");
+    assert_eq!(c[0], 0.29);
+    // Opened from tick 0 and held open, it is the aggregate control.
+    let cmd = run(
+        "assets/bench/logistic-harvest-quota.sl",
+        "10",
+        false,
+        &["Quota.above=0.001", "landed|Fish|Market=1", "released|Fish|Return=0"],
+    );
+    let control = run("assets/bench/logistic-harvest.sl", "10", false, &["Fish.time_constant=2"]);
+    assert_eq!(series(&cmd, "Fish"), series(&control, "Fish"));
+    assert_eq!(series(&control, "Fish")[..3], [0.19, 0.18097499, 0.172787]);
+    // Left to itself: the command lands one day after the signal, the
+    // totals differ slightly, the log says who turned what.
+    let cmd = run("assets/bench/logistic-harvest-quota.sl", "12", true, &[]);
+    let sig = run("assets/bench/logistic-harvest-agent.sl", "12", false, &[]);
+    let landed = |v: &serde_json::Value| -> Vec<f64> {
+        v["flows"].as_array().unwrap().iter().find(|f| f["name"] == "landed" && f["from"] == "Fish").unwrap()["series"]
+            .as_array().unwrap().iter().map(|x| x.as_f64().unwrap()).collect()
+    };
+    let first_open = |s: &[f64]| s.iter().position(|&x| x > 0.0).unwrap();
+    let (cl, sl) = (landed(&cmd), series(&sig, "Fish"));
+    assert_eq!(first_open(&cl), 3, "{cl:?}");
+    assert!(sl[2] < sl[1], "the signal form lands on day 3: {sl:?}");
+    assert!((level(&cmd, "Market") - 1.4267874).abs() < 1e-5, "{}", level(&cmd, "Market"));
+    assert!((level(&sig, "Market") - 1.4192014).abs() < 1e-5, "{}", level(&sig, "Market"));
+    let edits = cmd["edits"].as_array().unwrap();
+    assert_eq!(edits.len(), 4, "{edits:?}");
+    assert_eq!(edits[0]["by"], serde_json::json!({"kind": "agent", "name": "Quota"}));
+    assert_eq!(edits[0]["target"], "Fish -> Market : landed");
+    assert_eq!(edits[0]["field"], "share");
+    assert_eq!(edits.iter().map(|e| e["tick"].as_u64().unwrap()).collect::<Vec<_>>(), [1, 3, 10, 12]);
+    assert_eq!(edits.iter().map(|e| e["value"].as_f64().unwrap()).collect::<Vec<_>>(), [0.0, 1.0, 0.0, 1.0]);
+    assert_eq!(control["edits"][0]["by"], serde_json::json!({"kind": "human"}));
+    let log = cmd["log"].as_array().unwrap();
+    let d = &log[2]["decisions"][0];
+    assert_eq!(d["agent"], "Quota");
+    assert_eq!(d["knob"], "param \"landed share\"");
+    assert_eq!(d["output"], 1.0);
+    assert_eq!(d["written"], 1.0);
+    assert!((d["reading"].as_f64().unwrap() - 0.413975).abs() < 1e-6);
+}

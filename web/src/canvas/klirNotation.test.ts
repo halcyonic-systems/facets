@@ -2,7 +2,7 @@
 //
 // The cell-membership assertions this file used to hold — a neutral relation
 // marks both orders, a directed one marks its own — moved with the rule itself
-// into `crates/bert-canvas/src/notation.rs` (`neutral_relation_marks_both_orders`,
+// into `crates/facets-canvas/src/notation.rs` (`neutral_relation_marks_both_orders`,
 // `directed_relation_marks_its_own_order_only`, and their siblings), and cross
 // the wasm edge under the `klir_incidence` contract fixture. What is tested
 // below is the mapping from a kernel-decided mark to a character, and the layout

@@ -15,13 +15,13 @@ import {
   mint_model_id,
   open_model,
   write_archive,
-} from "bert-lenses-kernel";
+} from "facets-kernel";
 import { libraryWalk, slotName } from "./libraryExport";
 import { buildLibraryTree, type LibraryRecordLike } from "./libraryTree";
 import { splitWalk, stampWalk } from "./walk";
 
 initSync({
-  module: fs.readFileSync(path.resolve(__dirname, "../../crates/bert-lenses-kernel/pkg/bert_lenses_kernel_bg.wasm")),
+  module: fs.readFileSync(path.resolve(__dirname, "../../crates/facets-kernel/pkg/facets_kernel_bg.wasm")),
 });
 
 type Outcome = { ok: { model_id?: string }; lens_explicit: boolean } | { errors: { line: number; message: string }[] };

@@ -1,0 +1,7 @@
+{
+  "name": "bert-lenses-web",
+  "private": true,
+  "dependencies": {
+    "bert-lenses-kernel": "file:../crates/bert-lenses-kernel/pkg"
+  }
+}

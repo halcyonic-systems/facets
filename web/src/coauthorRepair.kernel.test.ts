@@ -7,10 +7,10 @@
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import fs from "node:fs";
 import path from "node:path";
-import { initSync, compile_sl, emit_sl, project, validate_mode } from "bert-lenses-kernel";
+import { initSync, compile_sl, emit_sl, project, validate_mode } from "facets-kernel";
 
 initSync({
-  module: fs.readFileSync(path.resolve(__dirname, "../../crates/bert-lenses-kernel/pkg/bert_lenses_kernel_bg.wasm")),
+  module: fs.readFileSync(path.resolve(__dirname, "../../crates/facets-kernel/pkg/facets_kernel_bg.wasm")),
 });
 
 const authorSlMock = vi.hoisted(() => vi.fn());

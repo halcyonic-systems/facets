@@ -1,0 +1,1408 @@
+//! Circuit ↔ BERT JSON: the canvas saves as an ordinary WorldModel that the
+//! editor opens and the Mesa bridge can simulate — and loads one back
+//! (`from_world_model`), completing the round-trip.
+//!
+//! Encoding follows the canonical pattern: each primitive node becomes an
+//! Atomic subsystem carrying `AgentModel.primitive` (the same
+//! encoding python/agents.py reads to pick its transfer function); wires
+//! become internal flows; Source/Sink nodes become environment externals
+//! whose flows connect to the wired subsystem directly. Compose-only knobs
+//! ride in the model's extensible fields: a buffer's release rate in
+//! `cognitive_params["release_rate"]`, a gradient wire's conductance as an
+//! Interaction parameter — so nothing is lost on the way back.
+
+use crate::circuit::{Circuit, DeclaredSubstance, FlowMode, Node, NodeKind, Wire};
+use facets_core::{
+    AgentCommand, AgentKind, AgentModel, Boundary, Complexity, Environment, ExternalEntity, ExternalEntityType,
+    Id, IdType, Info, Interaction, InteractionType, InteractionUsability, Interface,
+    InterfaceType, Parameter, ProcessPrimitive, Substance, System, Transform2d, WorldModel,
+};
+use glam::vec2 as pos2;
+use std::collections::HashMap;
+
+/// Canvas px → model px on save; the inverse on load.
+const SCALE: f32 = 0.6;
+
+fn id(ty: IdType, indices: &[i64]) -> Id {
+    Id {
+        ty,
+        indices: indices.to_vec(),
+    }
+}
+
+fn info(i: Id, level: i32, name: &str, description: &str) -> Info {
+    Info {
+        id: i,
+        level,
+        name: name.to_string(),
+        description: description.to_string(),
+        grounding: None,
+    }
+}
+
+fn transform(x: f32, y: f32) -> Option<Transform2d> {
+    Some(Transform2d {
+        translation: facets_core::Vec2::new(x, y),
+        rotation: 0.0,
+    })
+}
+
+pub fn to_world_model(circuit: &Circuit, name: &str) -> WorldModel {
+    let mut systems: Vec<System> = Vec::new();
+    let mut interactions: Vec<Interaction> = Vec::new();
+    let mut environment = Environment {
+        info: info(id(IdType::Environment, &[-1]), -1, "Environment", ""),
+        sources: Vec::new(),
+        sinks: Vec::new(),
+        // A circuit declares no milieu — M is authored structure, not derived.
+        milieu: Vec::new(),
+    };
+
+    // Composite root.
+    systems.push(System {
+        info: info(
+            id(IdType::System, &[0]),
+            0,
+            name,
+            "Built in facets-compose: process primitives wired into a working circuit \
+             (composition is unconditional — Systems/Mobus/Composition.lean).",
+        ),
+        sources: Vec::new(),
+        sinks: Vec::new(),
+        parent: id(IdType::Environment, &[-1]),
+        complexity: Complexity::Complex {
+            adaptable: false,
+            evolveable: false,
+        },
+        boundary: Boundary {
+            info: info(id(IdType::Boundary, &[0]), 0, "", ""),
+            porosity: 0.0,
+            perceptive_fuzziness: 0.0,
+            interfaces: Vec::new(),
+            parent_interface: None,
+        },
+        radius: 400.0,
+        transform: transform(0.0, 0.0),
+        equivalence: String::new(),
+        history: String::new(),
+        transformation: String::new(),
+        member_autonomy: 1.0,
+        time_constant: String::new(),
+        archetype: None,
+        agent: None,
+        child_model: None,
+    });
+
+    // Map node index → its model id (subsystem or environment external).
+    let mut node_id: HashMap<usize, Id> = HashMap::new();
+    let (mut sub_n, mut src_n, mut sink_n) = (0i64, 0i64, 0i64);
+
+    for (i, node) in circuit.nodes.iter().enumerate() {
+        let (x, y) = (node.pos.x * SCALE, node.pos.y * SCALE);
+        match node.kind {
+            NodeKind::Source => {
+                let eid = id(IdType::Source, &[-1, src_n]);
+                src_n += 1;
+                environment.sources.push(ExternalEntity {
+                    info: info(eid.clone(), -1, &node.name, "facets-compose source"),
+                    ty: ExternalEntityType::Source,
+                    transform: transform(x, y),
+                    equivalence: String::new(),
+                    model: String::new(),
+                    is_same_as_id: None,
+                    // A compose circuit node's kind IS its direction (#216).
+                    authored_direction: true,
+                    reservoir: None,
+                });
+                node_id.insert(i, eid);
+            }
+            NodeKind::Sink => {
+                let eid = id(IdType::Sink, &[-1, sink_n]);
+                sink_n += 1;
+                environment.sinks.push(ExternalEntity {
+                    info: info(eid.clone(), -1, &node.name, "facets-compose sink"),
+                    ty: ExternalEntityType::Sink,
+                    transform: transform(x, y),
+                    equivalence: String::new(),
+                    model: String::new(),
+                    is_same_as_id: None,
+                    // A compose circuit node's kind IS its direction (#216).
+                    authored_direction: true,
+                    reservoir: None,
+                });
+                node_id.insert(i, eid);
+            }
+            // An agent (facets#269) is a level-1 system whose model carries a
+            // policy and no primitive; the seam reads it back into its own
+            // list, so the round trip keeps the kind and the rule.
+            NodeKind::Agent => {
+                let sid = id(IdType::Subsystem, &[0, sub_n]);
+                sub_n += 1;
+                systems.push(System {
+                    info: info(sid.clone(), 1, &node.name, "agent (Mobus ch. 11 decision model)"),
+                    sources: Vec::new(),
+                    sinks: Vec::new(),
+                    parent: id(IdType::System, &[0]),
+                    complexity: Complexity::Atomic,
+                    boundary: Boundary {
+                        info: info(id(IdType::Boundary, &[0, sub_n - 1]), 1, "", ""),
+                        porosity: 0.0,
+                        perceptive_fuzziness: 0.0,
+                        interfaces: Vec::new(),
+                        parent_interface: None,
+                    },
+                    radius: 50.0,
+                    transform: transform(x, y),
+                    equivalence: String::new(),
+                    history: String::new(),
+                    transformation: String::new(),
+                    member_autonomy: 1.0,
+                    time_constant: String::new(),
+                    archetype: None,
+                    agent: Some(AgentModel {
+                        kind: AgentKind::Reactive,
+                        agency_capacity: node.param,
+                        primitive: None,
+                        policy: Some(node.policy.clone()),
+                        command: None,
+                        cognitive_params: HashMap::new(),
+                        process_configs: Vec::new(),
+                        initial_state: HashMap::new(),
+                        network_config: None,
+                        stock_unit: String::new(),
+                    }),
+                    child_model: None,
+                });
+                node_id.insert(i, sid);
+            }
+            NodeKind::Process(primitive) => {
+                let sid = id(IdType::Subsystem, &[0, sub_n]);
+                sub_n += 1;
+                systems.push(System {
+                    info: info(
+                        sid.clone(),
+                        1,
+                        &node.name,
+                        &format!("{primitive:?} work process (Mobus atomic primitive)"),
+                    ),
+                    sources: Vec::new(),
+                    sinks: Vec::new(),
+                    parent: id(IdType::System, &[0]),
+                    complexity: Complexity::Atomic,
+                    boundary: Boundary {
+                        info: info(id(IdType::Boundary, &[0, sub_n - 1]), 1, "", ""),
+                        porosity: 0.0,
+                        perceptive_fuzziness: 0.0,
+                        interfaces: Vec::new(),
+                        parent_interface: None,
+                    },
+                    radius: 50.0,
+                    transform: transform(x, y),
+                    equivalence: String::new(),
+                    history: String::new(),
+                    transformation: String::new(),
+                    member_autonomy: 1.0,
+                    time_constant: String::new(),
+                    archetype: None,
+                    agent: Some(AgentModel {
+                        kind: AgentKind::Reactive,
+                        agency_capacity: node.param,
+                        primitive: Some(primitive),
+                        policy: None,
+                        command: None,
+                        // Compose knobs with no canonical home ride in the
+                        // extensible params so the round-trip is lossless.
+                        cognitive_params: {
+                            let mut p = HashMap::new();
+                            if primitive == ProcessPrimitive::Buffering {
+                                p.insert("release_rate".to_string(), node.release_rate as f64);
+                                if node.capacity > 0.0 {
+                                    p.insert("capacity".to_string(), node.capacity as f64);
+                                }
+                                if node.time_constant > 0.0 {
+                                    p.insert(
+                                        "time_constant".to_string(),
+                                        node.time_constant as f64,
+                                    );
+                                }
+                                if node.maintenance > 0.0 {
+                                    p.insert("maintenance".to_string(), node.maintenance as f64);
+                                }
+                            }
+                            if primitive == ProcessPrimitive::Inverting && node.setpoint != 1.0 {
+                                p.insert("setpoint".to_string(), node.setpoint as f64);
+                            }
+                            if primitive == ProcessPrimitive::Modulating && node.back_pressure {
+                                p.insert("back_pressure".to_string(), 1.0);
+                            }
+                            p
+                        },
+                        process_configs: Vec::new(),
+                        initial_state: if node.initial_storage > 0.0 {
+                            HashMap::from([(
+                                "storage".to_string(),
+                                serde_json::json!(node.initial_storage),
+                            )])
+                        } else {
+                            HashMap::new()
+                        },
+                        network_config: None,
+                        // A stock's declared unit (bert-lenses#76) rides back to
+                        // the model so the round-trip stays lossless; empty when
+                        // the compose node never declared one.
+                        stock_unit: node.stock_unit.clone(),
+                    }),
+                    child_model: None,
+                });
+                node_id.insert(i, sid);
+            }
+        }
+    }
+
+    for (k, wire) in circuit.wires.iter().enumerate() {
+        let from = &circuit.nodes[wire.from];
+        let substance = circuit.wire_substance(wire);
+        let env_level = matches!(circuit.nodes[wire.from].kind, NodeKind::Source)
+            || matches!(circuit.nodes[wire.to].kind, NodeKind::Sink);
+        let usability = if matches!(circuit.nodes[wire.from].kind, NodeKind::Source) {
+            InteractionUsability::Resource
+        } else {
+            InteractionUsability::Product
+        };
+        interactions.push(Interaction {
+            info: info(
+                id(IdType::Flow, &[if env_level { -1 } else { 0 }, k as i64]),
+                if env_level { -1 } else { 1 },
+                &format!("{} → {}", from.name, circuit.nodes[wire.to].name),
+                "",
+            ),
+            // The declared substance name rides in sub_type — the kernel
+            // field that existed for exactly this — over the conserved base.
+            substance: Substance {
+                sub_type: from.out_substance.name.clone(),
+                ty: substance,
+            },
+            // Gradient (field-driven) flows export as BERT's Force interaction
+            // — the redemption of InteractionType::Force: it now means "a flow
+            // whose rate is a potential gradient," not a label without dynamics.
+            ty: if wire.mode == crate::circuit::FlowMode::Gradient {
+                InteractionType::Force
+            } else {
+                InteractionType::Flow
+            },
+            usability,
+            source: node_id[&wire.from].clone(),
+            source_interface: None,
+            sink: node_id[&wire.to].clone(),
+            sink_interface: None,
+            // Source-fed flows carry the asserted emission rate.
+            amount: facets_core::rust_decimal::Decimal::try_from(
+                if matches!(circuit.nodes[wire.from].kind, NodeKind::Source) {
+                    circuit.nodes[wire.from].param
+                } else {
+                    1.0
+                },
+            )
+            .unwrap_or(facets_core::rust_decimal::Decimal::ONE),
+            unit: from.out_substance.unit.clone(),
+            // Gradient conductance (k) rides as a flow parameter.
+            ample: wire.ample,
+            parameters: if wire.mode == FlowMode::Gradient {
+                vec![Parameter {
+                    name: "conductance".to_string(),
+                    value: wire.conductance.to_string(),
+                    ..Default::default()
+                }]
+            } else {
+                Vec::new()
+            },
+            smart_parameters: Vec::new(),
+            endpoint_offset: None,
+        });
+    }
+
+    // A command-form agent's knob (ADR 0008 D1) rides back as its command,
+    // named by the interactions the wires above became, so the kind and the
+    // knob survive the seam together.
+    for (i, node) in circuit.nodes.iter().enumerate() {
+        let Some(knob) = node.knob.as_ref() else { continue };
+        let flow_id_of = |k: usize| interactions.get(k).map(|ix| ix.info.id.clone());
+        let command = match knob {
+            crate::circuit::AgentKnob::Amount { param, wire } => {
+                flow_id_of(*wire).map(|flow| AgentCommand::Amount { param: param.clone(), flow })
+            }
+            crate::circuit::AgentKnob::Share { param, first, .. } => {
+                match (flow_id_of(*first), circuit.wires.get(*first).and_then(|w| node_id.get(&w.from))) {
+                    (Some(first), Some(of)) => {
+                        Some(AgentCommand::Share { param: param.clone(), of: of.clone(), first })
+                    }
+                    _ => None,
+                }
+            }
+        };
+        let Some(sid) = node_id.get(&i) else { continue };
+        if let Some(agent) = systems.iter_mut().find(|s| s.info.id == *sid).and_then(|s| s.agent.as_mut()) {
+            agent.command = command;
+        }
+    }
+
+    // Interfaces (#216, A2): every boundary-crossing wire routes through a
+    // member of I. Until this, the exporter wrote no interfaces at all, so its
+    // models carried crossing flows with a hole in the membrane the author
+    // never declared — refused by `check_crossing_flows_route_through_interface`
+    // once the kernel gained the converse gate. One interface per crossing
+    // component on the root membrane, the same shape the canvas projection
+    // builds: `receives_from` lists the sources feeding it, `exports_to` the
+    // sinks it feeds, the component attaches via `parent_interface`, and each
+    // interaction records its routing.
+    {
+        use std::collections::BTreeMap;
+        /// One crossing component's interface-in-the-making: what it receives,
+        /// what it exports, and the flow labels its protocol line reports.
+        #[derive(Default)]
+        struct Crossing {
+            receives_from: Vec<Id>,
+            exports_to: Vec<Id>,
+            labels: Vec<String>,
+        }
+        let mut per_comp: BTreeMap<usize, Crossing> = BTreeMap::new();
+        for (k, wire) in circuit.wires.iter().enumerate() {
+            let from_env = matches!(circuit.nodes[wire.from].kind, NodeKind::Source);
+            let to_env = matches!(circuit.nodes[wire.to].kind, NodeKind::Sink);
+            let label = interactions[k].info.name.clone();
+            if from_env && !to_env {
+                let e = per_comp.entry(wire.to).or_default();
+                e.receives_from.push(node_id[&wire.from].clone());
+                e.labels.push(label);
+            } else if to_env && !from_env {
+                let e = per_comp.entry(wire.from).or_default();
+                e.exports_to.push(node_id[&wire.to].clone());
+                e.labels.push(label);
+            }
+        }
+        let mut iface_of: BTreeMap<usize, Id> = BTreeMap::new();
+        for (seq, (node, x)) in per_comp.into_iter().enumerate() {
+            let iface_id = id(IdType::Interface, &[0, seq as i64]);
+            let ty = match (!x.receives_from.is_empty(), !x.exports_to.is_empty()) {
+                (true, false) => InterfaceType::Import,
+                (false, true) => InterfaceType::Export,
+                _ => InterfaceType::Hybrid,
+            };
+            systems[0].boundary.interfaces.push(Interface {
+                info: info(iface_id.clone(), 0, &circuit.nodes[node].name, ""),
+                protocol: x.labels.join(" · "),
+                ty,
+                exports_to: x.exports_to,
+                receives_from: x.receives_from,
+                angle: None,
+            });
+            if let Some(sys) = systems.iter_mut().find(|s| s.info.id == node_id[&node]) {
+                sys.boundary.parent_interface = Some(iface_id.clone());
+            }
+            iface_of.insert(node, iface_id);
+        }
+        for (k, wire) in circuit.wires.iter().enumerate() {
+            let from_env = matches!(circuit.nodes[wire.from].kind, NodeKind::Source);
+            let to_env = matches!(circuit.nodes[wire.to].kind, NodeKind::Sink);
+            if from_env && !to_env {
+                interactions[k].sink_interface = iface_of.get(&wire.to).cloned();
+            } else if to_env && !from_env {
+                interactions[k].source_interface = iface_of.get(&wire.from).cloned();
+            }
+        }
+    }
+
+    WorldModel {
+        version: 1,
+        model_id: None,
+        // Compose's dynamics live in the engine, not the dynamical-face string
+        // slots, so exports declare the Operational rung they actually occupy.
+        mode: Some(facets_core::Mode::Operational),
+        environment,
+        systems,
+        interactions,
+        hidden_entities: Vec::new(),
+        reachability_requirements: Vec::new(),
+        time_unit: None,
+    }
+}
+
+/// The model's display name = its root (level-0) system.
+pub fn model_name(model: &WorldModel) -> String {
+    model
+        .systems
+        .iter()
+        .find(|s| s.info.level == 0)
+        .map(|s| s.info.name.clone())
+        .filter(|n| !n.is_empty())
+        .unwrap_or_else(|| "Loaded model".to_string())
+}
+
+/// Build a circuit from the seam payload alone. Every executor-relevant datum
+/// comes from the [`OperationalSpec`], so the loader cannot disagree with the
+/// contract that produced it — agreement by construction, not by test.
+/// Canvas-only concerns (node positions) are the caller's overlay.
+pub fn from_spec(spec: &facets_core::operational::OperationalSpec) -> Circuit {
+    let mut c = Circuit::default();
+    let mut ids: Vec<(Id, usize)> = Vec::new();
+    let grid = |i: usize| {
+        pos2(
+            380.0 + (i % 4) as f32 * 160.0,
+            300.0 + (i / 4) as f32 * 140.0,
+        )
+    };
+
+    for t in &spec.sources {
+        let mut node = Node::new(NodeKind::Source, ids.len() + 1, grid(ids.len()));
+        node.name = t.name.clone();
+        node.reservoir = t.reservoir.map(|r| r as f32);
+        node.remaining = node.reservoir.unwrap_or(0.0);
+        ids.push((t.id.clone(), c.nodes.len()));
+        c.nodes.push(node);
+    }
+    for t in &spec.sinks {
+        let mut node = Node::new(NodeKind::Sink, ids.len() + 1, grid(ids.len()));
+        node.name = t.name.clone();
+        ids.push((t.id.clone(), c.nodes.len()));
+        c.nodes.push(node);
+    }
+    for p in &spec.processes {
+        let mut node = Node::new(
+            NodeKind::Process(p.primitive),
+            ids.len() + 1,
+            grid(ids.len()),
+        );
+        node.name = p.name.clone();
+        node.param = p.agency_capacity;
+        node.stock_unit = p.stock_unit.clone();
+        if let Some(s) = p.initial_storage {
+            node.initial_storage = s as f32;
+            node.storage = s as f32;
+        }
+        if let Some(&r) = p.cognitive_params.get("release_rate") {
+            node.release_rate = r as f32;
+        }
+        if let Some(&cap) = p.cognitive_params.get("capacity") {
+            node.capacity = cap as f32;
+        }
+        if let Some(&sp) = p.cognitive_params.get("setpoint") {
+            node.setpoint = sp as f32;
+        }
+        if let Some(&tc) = p.cognitive_params.get("time_constant") {
+            node.time_constant = tc as f32;
+        }
+        if let Some(&m) = p.cognitive_params.get("maintenance") {
+            node.maintenance = m as f32;
+        }
+        if p.cognitive_params.contains_key("back_pressure") {
+            node.back_pressure = true;
+        }
+        if p.cognitive_params.contains_key("limiting") {
+            node.limiting = true;
+        }
+        ids.push((p.id.clone(), c.nodes.len()));
+        c.nodes.push(node);
+    }
+    // Agents after the processes (facets#269); `from_world_model`'s position
+    // overlay walks the model's systems in the same two passes.
+    for a in &spec.agents {
+        let mut node = Node::new(NodeKind::Agent, ids.len() + 1, grid(ids.len()));
+        node.name = a.name.clone();
+        node.policy = a.policy.clone();
+        // The seam resolved the command to `flows` positions, and one wire
+        // is built per flow below in that order, so the positions are the
+        // wire indices.
+        node.knob = a.command.as_ref().map(|c| match c {
+            facets_core::operational::OperationalCommand::Amount { param, flow } => {
+                crate::circuit::AgentKnob::Amount { param: param.clone(), wire: *flow }
+            }
+            facets_core::operational::OperationalCommand::Share { param, first, second } => {
+                crate::circuit::AgentKnob::Share { param: param.clone(), first: *first, second: *second }
+            }
+        });
+        ids.push((a.id.clone(), c.nodes.len()));
+        c.nodes.push(node);
+    }
+
+    let idx_of = |id: &Id| ids.iter().find(|(i, _)| i == id).map(|(_, n)| *n);
+    // How many pushed flows leave each resolved sender, and whether any
+    // gradient flow does: a lone pushed outflow is the degenerate case where
+    // node rate = wire rate, so `param` stays the carrier (and the inspector's
+    // rate knob stays live); per-wire rates engage exactly when a source has
+    // SEVERAL pushed outflows — where a single node rate cannot represent
+    // them (bert#111).
+    let mut pushed_out: std::collections::HashMap<usize, usize> = std::collections::HashMap::new();
+    let mut gradient_out: std::collections::HashSet<usize> = std::collections::HashSet::new();
+    for f in &spec.flows {
+        if let Some(from) = idx_of(&f.source) {
+            if f.conductance.is_some() {
+                gradient_out.insert(from);
+            } else {
+                *pushed_out.entry(from).or_insert(0) += 1;
+            }
+        }
+    }
+
+    let mut substance_named: std::collections::HashSet<usize> = std::collections::HashSet::new();
+    for f in &spec.flows {
+        // The contract guarantees endpoint resolution; a miss here would mean
+        // a spec not produced by validate_operational.
+        let (Some(from), Some(to)) = (idx_of(&f.source), idx_of(&f.sink)) else {
+            continue;
+        };
+        let mut wire = match f.conductance {
+            Some(k) => Wire::gradient(from, to, k as f32),
+            None => Wire::new(from, to),
+        };
+        // Substance rides the wire — spec flows are quantified per-edge and a
+        // multi-outflow sender's flows may differ (bert#111 sibling). The
+        // FIRST flow also names the sender's display substance; later flows
+        // must not overwrite it (the old last-wire-wins).
+        wire.substance_override = Some(f.substance);
+        // Availability assertion rides the wire (#9). Note the rate blocks
+        // below stay untouched for ample flows: `amount_on` short-circuits an
+        // ample wire to a 0 delivery, so whatever `amount` the lowering
+        // defaulted to can never act.
+        wire.ample = f.ample;
+        if substance_named.insert(from) {
+            c.nodes[from].out_substance = DeclaredSubstance {
+                name: f.substance_name.clone(),
+                base: f.substance,
+                unit: f.unit.clone(),
+            };
+        }
+        // A per-tick series rides the WIRE (Mobus Eq. 4.5 edge attribute),
+        // whatever the sender: a Source reads it as a forced emission rate
+        // (#16), a Splitting/process reads it as an allocation WEIGHT (rung 2).
+        // The kernel (`wire_declared_rate`) resolves it per tick; it takes
+        // precedence over the scalar. Independent of node kind so a computed
+        // interior can carry a weight series just as a boundary carries a rate.
+        if wire.mode == FlowMode::Pushed {
+            if let Some(series) = &f.rate_series {
+                wire.rate_series = Some(series.iter().map(|&v| v as f32).collect());
+            }
+            // Multi-timescale (rung 3): the channel's Δt stride rides with its
+            // series, so a slow channel zero-order-holds between samples.
+            wire.dt_stride = f.dt_stride;
+        }
+        // Source-fed flows carry the asserted emission rate. Rate is an edge
+        // attribute (Mobus Eq. 4.5) — with several pushed outflows each
+        // amount rides ITS wire, so no rate collapses onto the node
+        // (bert#111). A single pushed outflow keeps the old node-param
+        // carrier (same behavior, live inspector knob), and a gradient
+        // flow's amount is the source's fixed potential, genuinely per-node.
+        if matches!(c.nodes[from].kind, NodeKind::Source) {
+            match wire.mode {
+                FlowMode::Pushed => {
+                    let lone_pushed = pushed_out.get(&from).copied().unwrap_or(0) == 1
+                        && !gradient_out.contains(&from);
+                    if lone_pushed {
+                        c.nodes[from].param = f.amount as f32;
+                    } else {
+                        wire.rate = Some(f.amount as f32);
+                    }
+                }
+                FlowMode::Gradient => c.nodes[from].param = f.amount as f32,
+            }
+        } else if matches!(c.nodes[from].kind, NodeKind::Process(_))
+            && wire.mode == FlowMode::Pushed
+        {
+            // A process outflow's amount is its allocation WEIGHT — the scalar
+            // form of the series above, read by `delivery_share`'s weighted
+            // split (rung 2; Mobus Eq. 4.5). Until now only the series rode
+            // the wire and the scalar was dropped here, so a Splitting's
+            // declared shares ran uniform — the documented-but-unhonored gap
+            // the llm-market gate caught. The kernel's narrowing makes an
+            // unauthored amount 1.0 (canvas.rs), so all-unauthored fanouts
+            // stay the uniform split, byte-for-byte.
+            wire.rate = Some(f.amount as f32);
+        }
+        c.wires.push(wire);
+    }
+    // Root-boundary porosity rides the seam (bert-lenses#54): the run scales
+    // boundary crossings by it, no effect until authored nonzero.
+    c.porosity = spec.porosity;
+    c
+}
+
+/// BERT JSON → Circuit: the inverse of [`to_world_model`], routed through the
+/// seam contract. `validate_operational` either yields the spec — from which
+/// [`from_spec`] builds the circuit — or the load fails with every refusal
+/// reason. The loader has no projection logic of its own left to drift:
+/// positions are the only thing read off the model here, because the canvas
+/// cares where nodes sit and the contract deliberately does not.
+/// A level-1 system the seam projects as an agent (facets#269): its model
+/// carries a policy. Mirrors `validate_operational`'s split, so the position
+/// overlay zips in `from_spec`'s order (processes, then agents).
+fn is_agent(s: &System) -> bool {
+    s.agent.as_ref().is_some_and(|a| a.policy.is_some())
+}
+
+pub fn from_world_model(model: &WorldModel) -> Result<Circuit, String> {
+    let spec = facets_core::operational::validate_operational(model).map_err(|errs| {
+        errs.iter()
+            .map(|e| format!("{}: {}", e.location, e.reason))
+            .collect::<Vec<_>>()
+            .join("\n")
+    })?;
+    let mut c = from_spec(&spec);
+    if c.nodes.is_empty() {
+        return Err("model has no sources, sinks, or primitive subsystems".to_string());
+    }
+
+    // Canvas overlay: node order in from_spec mirrors the model's declaration
+    // order (env sources, env sinks, level-1 systems), so positions zip.
+    let transforms: Vec<&Option<Transform2d>> = model
+        .environment
+        .sources
+        .iter()
+        .map(|e| &e.transform)
+        .chain(model.environment.sinks.iter().map(|e| &e.transform))
+        .chain(
+            model
+                .systems
+                .iter()
+                .filter(|s| s.info.level > 0 && !is_agent(s))
+                .map(|s| &s.transform),
+        )
+        .chain(
+            model
+                .systems
+                .iter()
+                .filter(|s| s.info.level > 0 && is_agent(s))
+                .map(|s| &s.transform),
+        )
+        .collect();
+    for (node, t) in c.nodes.iter_mut().zip(transforms) {
+        if let Some(t) = t {
+            node.pos = pos2(t.translation.x / SCALE, t.translation.y / SCALE);
+        }
+    }
+    Ok(c)
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use crate::circuit::{Node, Wire};
+    use facets_core::validate::{validate, Severity};
+    use facets_core::ProcessPrimitive;
+    use glam::vec2 as pos2;
+
+    /// Law: per-flow rates survive the spec→circuit seam into execution —
+    /// no last-wire-wins collapse, and each wire fires at its own declared
+    /// rate.
+    /// bert#111: per-flow amounts survive the seam INTO EXECUTION. A source
+    /// with two pushed, differently-quantified outflows keeps both rates on
+    /// their wires (no last-wire-wins), the FIRST flow names the display
+    /// substance, and the built circuit delivers each wire at its own rate.
+    /// (The prior coverage stopped at the spec — "the imported amount reaches
+    /// the spec" — which is exactly how the collapse went unseen.)
+    #[test]
+    fn from_spec_keeps_per_flow_source_rates_through_execution() {
+        use facets_core::operational::{OperationalFlow, OperationalSpec, OperationalTerminal};
+        use facets_core::{Id, IdType, SubstanceType};
+
+        let id = |ty: IdType, n: i64| Id {
+            ty,
+            indices: vec![n],
+        };
+        let flow = |name: &str, snk: i64, amount: f64| OperationalFlow {
+            name: name.into(),
+            source: id(IdType::Source, 0),
+            sink: id(IdType::Sink, snk),
+            substance_name: name.into(),
+            substance: SubstanceType::Material,
+            unit: "tok/mo".into(),
+            amount,
+            ample: false,
+            conductance: None,
+            interface_routing: None,
+            rate_series: None,
+            dt_stride: None,
+        };
+        let spec = OperationalSpec {
+            agents: Vec::new(),
+            processes: vec![],
+            sources: vec![OperationalTerminal {
+                id: id(IdType::Source, 0),
+                name: "Provider".into(),
+                reservoir: None
+            }],
+            sinks: vec![
+                OperationalTerminal {
+                    id: id(IdType::Sink, 0),
+                    name: "Dev channel".into(),
+                    reservoir: None
+                },
+                OperationalTerminal {
+                    id: id(IdType::Sink, 1),
+                    name: "Enterprise channel".into(),
+                    reservoir: None
+                },
+            ],
+            flows: vec![flow("dev tokens", 0, 12.0), flow("ent tokens", 1, 1.0)],
+            porosity: 0.0,
+        };
+
+        let mut c = from_spec(&spec);
+        assert_eq!(c.wires[0].rate, Some(12.0), "first flow's rate on its wire");
+        assert_eq!(c.wires[1].rate, Some(1.0), "second flow's rate survives");
+        assert_eq!(
+            c.nodes[0].out_substance.name, "dev tokens",
+            "display substance named by the FIRST flow, not the last"
+        );
+        for _ in 0..3 {
+            c.step();
+        }
+        assert!(
+            (c.wire_amount(0) - 12.0).abs() < 1e-3,
+            "declared rate EXECUTES: {}",
+            c.wire_amount(0)
+        );
+        assert!(
+            (c.wire_amount(1) - 1.0).abs() < 1e-3,
+            "sibling keeps its own rate: {}",
+            c.wire_amount(1)
+        );
+
+        // #263 separating pair: the READOUT presents the declared emission the
+        // dynamics honor (12 + 1), not the orphaned default param — which is
+        // what `level()` still reads, so the two must differ here.
+        assert!(
+            (c.source_readout(0) - 13.0).abs() < 1e-3,
+            "readout = declared per-wire sum: {}",
+            c.source_readout(0)
+        );
+        assert!(
+            (c.level(0) - c.source_readout(0)).abs() > 1.0,
+            "param ({}) is the orphaned default the old readout showed",
+            c.level(0)
+        );
+    }
+
+    /// Law (walkthrough #9): `ample` IS the huge-signal trick, without the
+    /// number. An Amplifying process with an ample signal produces exactly
+    /// what it produces with an absurdly large metered signal (min selects
+    /// power either way) — and NOT what it produces with a meager one (the
+    /// separating half: if ample were inert, output would collapse to the
+    /// signal-bound value). The ample wire itself delivers zero quantity.
+    #[test]
+    fn ample_signal_equals_huge_signal_and_beats_meager() {
+        use facets_core::operational::{
+            OperationalFlow, OperationalProcess, OperationalSpec, OperationalTerminal,
+        };
+        use facets_core::{Id, IdType, SubstanceType};
+
+        let id = |ty: IdType, n: i64| Id { ty, indices: vec![n] };
+        let rig = |signal_amount: f64, ample: bool| -> Circuit {
+            let flow = |name: &str,
+                        src: Id,
+                        snk: Id,
+                        substance: SubstanceType,
+                        amount: f64,
+                        ample: bool| OperationalFlow {
+                name: name.into(),
+                source: src,
+                sink: snk,
+                substance_name: name.into(),
+                substance,
+                unit: String::new(),
+                amount,
+                ample,
+                conductance: None,
+                interface_routing: None,
+                rate_series: None,
+                dt_stride: None,
+            };
+            let spec = OperationalSpec {
+                agents: Vec::new(),
+                processes: vec![OperationalProcess {
+                    id: id(IdType::Subsystem, 0),
+                    name: "Model".into(),
+                    primitive: ProcessPrimitive::Amplifying,
+                    agency_capacity: 0.5,
+                    cognitive_params: Default::default(),
+                    initial_storage: None,
+                    stock_unit: String::new(),
+                }],
+                sources: vec![
+                    OperationalTerminal { id: id(IdType::Source, 0), name: "Lab".into(), reservoir: None },
+                    OperationalTerminal { id: id(IdType::Source, 1), name: "Grid".into(), reservoir: None },
+                ],
+                sinks: vec![OperationalTerminal { id: id(IdType::Sink, 0), name: "Served".into(), reservoir: None }],
+                flows: vec![
+                    flow("weights", id(IdType::Source, 0), id(IdType::Subsystem, 0), SubstanceType::Message, signal_amount, ample),
+                    flow("compute", id(IdType::Source, 1), id(IdType::Subsystem, 0), SubstanceType::Energy, 100.0, false),
+                    flow("tokens", id(IdType::Subsystem, 0), id(IdType::Sink, 0), SubstanceType::Message, 1.0, false),
+                ],
+                porosity: 0.0,
+            };
+            let mut c = from_spec(&spec);
+            for _ in 0..5 {
+                c.step();
+            }
+            c
+        };
+
+        let amp_act = |c: &Circuit| {
+            let i = c
+                .nodes
+                .iter()
+                .position(|n| matches!(n.kind, NodeKind::Process(ProcessPrimitive::Amplifying)))
+                .unwrap();
+            c.nodes[i].activity
+        };
+
+        let ample = rig(1.0, true);
+        let huge = rig(100_000.0, false);
+        let meager = rig(0.001, false);
+
+        assert!(
+            (amp_act(&ample) - amp_act(&huge)).abs() < 1e-3,
+            "ample ≡ huge signal (power-bound): {} vs {}",
+            amp_act(&ample),
+            amp_act(&huge)
+        );
+        assert!(
+            amp_act(&ample) > amp_act(&meager) * 100.0,
+            "ample must NOT read as a meager signal: {} vs {}",
+            amp_act(&ample),
+            amp_act(&meager)
+        );
+        let ample_wire = ample.wires.iter().position(|w| w.ample).unwrap();
+        assert_eq!(
+            ample.wire_amount(ample_wire),
+            0.0,
+            "an ample wire asserts availability, it delivers no quantity"
+        );
+    }
+
+    /// Law: a forced flow's observed rate series survives the spec→circuit
+    /// seam and executes tick by tick, not just at rest in the spec.
+    /// bert-lenses#16, the seam hop: a forced flow's observed series survives
+    /// spec → circuit AND executes tick by tick. Complements the pure-circuit
+    /// `forced_wire_delivers_series_tick_by_tick` — the #111 lesson is that a
+    /// series can reach the wire yet fail to run, so both levels are tested.
+    #[test]
+    fn from_spec_carries_and_executes_a_forced_series() {
+        use facets_core::operational::{OperationalFlow, OperationalSpec, OperationalTerminal};
+        use facets_core::{Id, IdType, SubstanceType};
+
+        let id = |ty: IdType, n: i64| Id { ty, indices: vec![n] };
+        let spec = OperationalSpec {
+            agents: Vec::new(),
+            processes: vec![],
+            sources: vec![OperationalTerminal {
+                id: id(IdType::Source, 0),
+                name: "Provider".into(),
+                reservoir: None
+            }],
+            sinks: vec![OperationalTerminal {
+                id: id(IdType::Sink, 0),
+                name: "Dev channel".into(),
+                reservoir: None
+            }],
+            flows: vec![OperationalFlow {
+                name: "forced tokens".into(),
+                source: id(IdType::Source, 0),
+                sink: id(IdType::Sink, 0),
+                substance_name: "tokens".into(),
+                substance: SubstanceType::Material,
+                unit: "tok/mo".into(),
+                amount: 999.0, // the mean must NOT govern — the series does
+                ample: false,
+                conductance: None,
+                interface_routing: None,
+                rate_series: Some(vec![4.0, 8.0, 0.5]),
+                dt_stride: None,
+            }],
+            porosity: 0.0,
+        };
+
+        let mut c = from_spec(&spec);
+        assert_eq!(
+            c.wires[0].rate_series,
+            Some(vec![4.0, 8.0, 0.5]),
+            "the series survives spec → circuit"
+        );
+        let expected = [4.0f32, 8.0, 0.5, 0.5]; // last value held past the horizon
+        for (t, want) in expected.iter().enumerate() {
+            c.step();
+            assert!(
+                (c.wire_amount(0) - want).abs() < 1e-3,
+                "tick {t}: forced flow delivers {want}, got {}",
+                c.wire_amount(0)
+            );
+        }
+    }
+
+    /// Law: a per-wire rate series reaches any sender's outflow (not just a
+    /// Source's) and governs a computed split end to end.
+    /// Rung 2, the seam hop: a per-wire series reaches a SPLITTER's outflows
+    /// (not just a source's) and governs the allocation. This is the export
+    /// generalization — the series rides the wire regardless of sender kind —
+    /// proven end to end: spec (weights 3 and 1 on the splitter's two outflows)
+    /// → circuit → a 75/25 split that conserves.
+    #[test]
+    fn from_spec_carries_a_splitter_weight_series() {
+        use facets_core::operational::{
+            OperationalFlow, OperationalProcess, OperationalSpec, OperationalTerminal,
+        };
+        use facets_core::{Id, IdType, ProcessPrimitive, SubstanceType};
+
+        let id = |ty: IdType, n: i64| Id { ty, indices: vec![n] };
+        let flow = |name: &str, s: Id, k: Id, weight: Option<Vec<f64>>| OperationalFlow {
+            name: name.into(),
+            source: s,
+            sink: k,
+            substance_name: "tokens".into(),
+            substance: SubstanceType::Material,
+            unit: "tok/mo".into(),
+            amount: 4.0,
+            ample: false,
+            conductance: None,
+            interface_routing: None,
+            rate_series: weight,
+            dt_stride: None,
+        };
+        let spec = OperationalSpec {
+            agents: Vec::new(),
+            processes: vec![OperationalProcess {
+                id: id(IdType::Subsystem, 1),
+                name: "Router".into(),
+                primitive: ProcessPrimitive::Splitting,
+                agency_capacity: 0.0,
+                cognitive_params: Default::default(),
+                initial_storage: None,
+                stock_unit: String::new(),
+            }],
+            sources: vec![OperationalTerminal {
+                id: id(IdType::Source, 0),
+                name: "Demand".into(),
+                reservoir: None
+            }],
+            sinks: vec![
+                OperationalTerminal { id: id(IdType::Sink, 0), name: "Big".into(), reservoir: None },
+                OperationalTerminal { id: id(IdType::Sink, 1), name: "Small".into(), reservoir: None },
+            ],
+            flows: vec![
+                flow("demand", id(IdType::Source, 0), id(IdType::Subsystem, 1), None),
+                flow("to big", id(IdType::Subsystem, 1), id(IdType::Sink, 0), Some(vec![3.0])),
+                flow("to small", id(IdType::Subsystem, 1), id(IdType::Sink, 1), Some(vec![1.0])),
+            ],
+            porosity: 0.0,
+        };
+
+        let mut c = from_spec(&spec);
+        assert_eq!(
+            c.wires[1].rate_series,
+            Some(vec![3.0]),
+            "the splitter's weight reached its outflow wire (not gated to sources)"
+        );
+        for _ in 0..6 {
+            c.step();
+        }
+        assert!(
+            (c.wire_amount(1) - 3.0).abs() < 1e-2 && (c.wire_amount(2) - 1.0).abs() < 1e-2,
+            "weights 3 and 1 split the demand 3.0/1.0, got {}/{}",
+            c.wire_amount(1),
+            c.wire_amount(2)
+        );
+        assert!(c.balance().abs() < 1e-2, "the computed split conserves: {}", c.balance());
+    }
+
+    /// Law: a flow's dt_stride survives the spec→circuit seam and the wire
+    /// zero-order-holds its series on that slower clock.
+    /// Rung 3, the seam hop: a flow's `dt_stride` survives spec → circuit and
+    /// makes the wire zero-order-hold its series on the slower clock.
+    #[test]
+    fn from_spec_carries_a_slow_channel_stride() {
+        use facets_core::operational::{OperationalFlow, OperationalSpec, OperationalTerminal};
+        use facets_core::{Id, IdType, SubstanceType};
+
+        let id = |ty: IdType, n: i64| Id { ty, indices: vec![n] };
+        let spec = OperationalSpec {
+            agents: Vec::new(),
+            processes: vec![],
+            sources: vec![OperationalTerminal { id: id(IdType::Source, 0), name: "Demand".into(), reservoir: None }],
+            sinks: vec![OperationalTerminal { id: id(IdType::Sink, 0), name: "Channel".into(), reservoir: None }],
+            flows: vec![OperationalFlow {
+                name: "annual demand".into(),
+                source: id(IdType::Source, 0),
+                sink: id(IdType::Sink, 0),
+                substance_name: "tokens".into(),
+                substance: SubstanceType::Material,
+                unit: "tok/yr".into(),
+                amount: 1.0,
+                ample: false,
+                conductance: None,
+                interface_routing: None,
+                rate_series: Some(vec![10.0, 20.0]),
+                dt_stride: Some(3), // one value every 3 fast ticks
+            }],
+            porosity: 0.0,
+        };
+        let mut c = from_spec(&spec);
+        assert_eq!(c.wires[0].dt_stride, Some(3), "stride survives spec → circuit");
+        // ticks 0,1,2 hold 10; 3,4,5 hold 20 (then held-last)
+        let expected = [10.0f32, 10.0, 10.0, 20.0, 20.0];
+        for (t, want) in expected.iter().enumerate() {
+            c.step();
+            assert!(
+                (c.wire_amount(0) - want).abs() < 1e-3,
+                "tick {t}: slow channel holds {want}, got {}",
+                c.wire_amount(0)
+            );
+        }
+    }
+
+    /// Law: an exported model always validates cleanly and its JSON
+    /// round-trip preserves every asserted quantity (rates, stocks,
+    /// substance).
+    #[test]
+    fn emitted_model_validates_and_round_trips() {
+        let mut c = Circuit::default();
+        c.nodes
+            .push(Node::new(NodeKind::Source, 1, pos2(-200.0, 0.0)));
+        c.nodes.push(Node::new(
+            NodeKind::Process(ProcessPrimitive::Buffering),
+            2,
+            pos2(0.0, 0.0),
+        ));
+        c.nodes.push(Node::new(NodeKind::Sink, 3, pos2(200.0, 0.0)));
+        c.wires.push(Wire::new(0, 1));
+        c.wires.push(Wire::new(1, 2));
+        c.nodes[0].param = 2.5; // asserted emission rate
+        c.nodes[1].initial_storage = 12.0; // asserted starting stock
+        c.nodes[0].out_substance = crate::circuit::DeclaredSubstance::named(
+            "water",
+            facets_core::SubstanceType::Material,
+            "L",
+        );
+
+        let model = to_world_model(&c, "Touchable Circuit");
+        let errors: Vec<_> = validate(&model)
+            .issues
+            .into_iter()
+            .filter(|i| i.severity == Severity::Error)
+            .collect();
+        assert!(
+            errors.is_empty(),
+            "emitted model must validate: {errors:#?}"
+        );
+
+        let json = serde_json::to_string_pretty(&model).unwrap();
+        let reloaded: WorldModel = serde_json::from_str(&json).unwrap();
+        assert_eq!(reloaded.systems.len(), 2); // root + buffer
+        assert_eq!(reloaded.interactions.len(), 2);
+        let agent = reloaded.systems[1]
+            .agent
+            .as_ref()
+            .expect("primitive encoding");
+        assert_eq!(agent.primitive, Some(ProcessPrimitive::Buffering));
+        assert_eq!(
+            agent.initial_state.get("storage").and_then(|v| v.as_f64()),
+            Some(12.0),
+            "asserted stock survives as initial_state (what Mesa seeds)"
+        );
+        let src_flow = &reloaded.interactions[0];
+        assert_eq!(
+            src_flow.amount.to_string(),
+            "2.5",
+            "emission rate on the flow"
+        );
+        assert_eq!(
+            src_flow.substance.sub_type, "water",
+            "declared name rides in sub_type"
+        );
+        assert_eq!(
+            src_flow.substance.ty,
+            facets_core::SubstanceType::Material,
+            "over its base"
+        );
+        assert_eq!(src_flow.unit, "L", "declared unit on the interaction");
+    }
+
+    /// Law: every exported model satisfies bert-core's operational contract,
+    /// the two validation gates agree on refusals, and representational
+    /// (Klir/Bunge) rungs always refuse execution.
+    /// The seam as a contract: every model compose exports satisfies
+    /// bert-core's `validate_operational`, the two gates agree on refusals,
+    /// and the projected spec drives a circuit whose ledger balances.
+    #[test]
+    fn export_satisfies_the_seam_contract() {
+        use facets_core::operational::validate_operational;
+
+        let mut c = Circuit::default();
+        c.nodes
+            .push(Node::new(NodeKind::Source, 1, pos2(-200.0, 0.0)));
+        c.nodes.push(Node::new(
+            NodeKind::Process(ProcessPrimitive::Buffering),
+            2,
+            pos2(0.0, 0.0),
+        ));
+        c.nodes.push(Node::new(NodeKind::Sink, 3, pos2(200.0, 0.0)));
+        c.wires.push(Wire::new(0, 1));
+        c.wires.push(Wire::gradient(1, 2, 0.42));
+        c.nodes[0].param = 2.5;
+        c.nodes[1].initial_storage = 12.0;
+
+        let mut model = to_world_model(&c, "Seam");
+        let spec = validate_operational(&model).expect("compose exports satisfy the contract");
+        assert_eq!(spec.processes.len(), 1);
+        assert_eq!(spec.sources.len(), 1);
+        assert_eq!(spec.sinks.len(), 1);
+        assert_eq!(spec.flows.len(), 2);
+        assert_eq!(
+            spec.flows[1].conductance,
+            Some(0.42),
+            "gradient conductance crosses the seam typed"
+        );
+
+        // The projected model executes and conserves.
+        let mut r = from_world_model(&model).expect("loads");
+        for _ in 0..30 {
+            r.step();
+        }
+        assert!(r.balance().abs() < 1e-3, "projected circuit conserves");
+
+        // Representational rungs refuse: the hard gate, loud by design.
+        model.mode = Some(facets_core::Mode::Core);
+        assert!(
+            validate_operational(&model).is_err(),
+            "Klir rung must refuse execution"
+        );
+        model.mode = Some(facets_core::Mode::Structural);
+        assert!(
+            validate_operational(&model).is_err(),
+            "Bunge rung must refuse execution"
+        );
+        model.mode = None;
+
+        // Proto-gate agreement: what the contract refuses, the loader refuses.
+        model.systems[1].agent = None;
+        assert!(validate_operational(&model).is_err());
+        assert!(from_world_model(&model).is_err());
+    }
+
+    /// Law: cognitive parameters (setpoint, back-pressure) survive the JSON
+    /// round-trip intact.
+    /// An Inverting node's setpoint and a Modulating node's back-pressure flag
+    /// survive the JSON round-trip (cognitive_params, same path as capacity).
+    #[test]
+    fn setpoint_and_backpressure_round_trip() {
+        let mut c = Circuit::default();
+        c.nodes.push(Node::new(
+            NodeKind::Process(ProcessPrimitive::Inverting),
+            1,
+            pos2(0.0, 0.0),
+        ));
+        c.nodes.push(Node::new(
+            NodeKind::Process(ProcessPrimitive::Modulating),
+            2,
+            pos2(60.0, 0.0),
+        ));
+        c.nodes.push(Node::new(NodeKind::Sink, 3, pos2(120.0, 0.0)));
+        c.nodes[0].setpoint = 3.5;
+        c.nodes[1].back_pressure = true;
+        c.wires.push(Wire::new(0, 1)); // inverting → modulating (control)
+        c.wires.push(Wire::new(1, 2)); // modulating → sink
+        let model: WorldModel =
+            serde_json::from_str(&serde_json::to_string(&to_world_model(&c, "SP")).unwrap())
+                .unwrap();
+        let r = from_world_model(&model).expect("loads");
+        let inv = r
+            .nodes
+            .iter()
+            .find(|n| n.kind == NodeKind::Process(ProcessPrimitive::Inverting))
+            .expect("inverting survives");
+        assert_eq!(inv.setpoint, 3.5, "setpoint survives via cognitive_params");
+        let valve = r
+            .nodes
+            .iter()
+            .find(|n| n.kind == NodeKind::Process(ProcessPrimitive::Modulating))
+            .expect("modulating survives");
+        assert!(
+            valve.back_pressure,
+            "back-pressure survives via cognitive_params"
+        );
+    }
+
+    /// Law (facets#269): an agent node and its policy survive the JSON seam
+    /// both ways, land in the spec's own agent list, and the position overlay
+    /// zips in the seam's order (processes, then agents) even when the model
+    /// declares the agent before a process.
+    #[test]
+    fn agent_round_trips_through_the_seam() {
+        let mut c = Circuit::default();
+        c.nodes.push(Node::new(NodeKind::Agent, 1, pos2(10.0, 20.0)));
+        c.nodes.push(Node::new(
+            NodeKind::Process(ProcessPrimitive::Modulating),
+            2,
+            pos2(60.0, 0.0),
+        ));
+        c.nodes.push(Node::new(NodeKind::Sink, 3, pos2(120.0, 0.0)));
+        c.nodes[0].policy = facets_core::Policy::Proportional {
+            target: 2.5,
+            gain: 0.25,
+        };
+        c.wires.push(Wire::new(0, 1)); // agent → valve (command)
+        c.wires.push(Wire::new(1, 2));
+        let model: WorldModel =
+            serde_json::from_str(&serde_json::to_string(&to_world_model(&c, "AG")).unwrap())
+                .unwrap();
+        let spec = facets_core::operational::validate_operational(&model).expect("projects");
+        assert_eq!(spec.agents.len(), 1, "the agent has its own list");
+        assert_eq!(spec.processes.len(), 1, "and is not counted as a process");
+        let r = from_world_model(&model).expect("loads");
+        let ag = r
+            .nodes
+            .iter()
+            .find(|n| n.kind == NodeKind::Agent)
+            .expect("agent survives");
+        assert_eq!(
+            ag.policy,
+            facets_core::Policy::Proportional {
+                target: 2.5,
+                gain: 0.25
+            }
+        );
+        // The agent was declared first in the model but is built after the
+        // process; its position must still be its own.
+        assert_eq!(ag.pos, pos2(10.0, 20.0), "position overlay zipped out of order");
+    }
+
+    /// Law: save→load preserves every knob the canvas can set and the
+    /// reloaded circuit behaves identically (same dynamics, conserves).
+    /// Save → Load round-trip: every knob the canvas can set survives —
+    /// kinds, names, rates, stocks, release, substances, gradient mode and
+    /// conductance — and the loaded circuit behaves identically.
+    #[test]
+    fn save_load_round_trip_is_lossless() {
+        let mut c = Circuit::default();
+        c.nodes
+            .push(Node::new(NodeKind::Source, 1, pos2(-200.0, 0.0)));
+        c.nodes.push(Node::new(
+            NodeKind::Process(ProcessPrimitive::Buffering),
+            2,
+            pos2(0.0, 0.0),
+        ));
+        c.nodes.push(Node::new(
+            NodeKind::Process(ProcessPrimitive::Buffering),
+            3,
+            pos2(120.0, 80.0),
+        ));
+        c.nodes.push(Node::new(NodeKind::Sink, 4, pos2(200.0, 0.0)));
+        c.nodes[0].param = 2.5;
+        c.nodes[0].out_substance =
+            DeclaredSubstance::named("water", facets_core::SubstanceType::Material, "L");
+        c.nodes[1].name = "Tank".to_string();
+        c.nodes[1].initial_storage = 12.0;
+        c.nodes[1].storage = 12.0;
+        c.nodes[1].release_rate = 1.4;
+        c.nodes[1].capacity = 20.0;
+        c.nodes[1].time_constant = 4.0;
+        c.nodes[1].maintenance = 0.3;
+        c.nodes[1].out_substance =
+            DeclaredSubstance::named("water", facets_core::SubstanceType::Material, "L");
+        c.nodes[2].release_rate = 0.0;
+        c.wires.push(Wire::new(0, 1));
+        c.wires.push(Wire::gradient(1, 2, 0.42));
+        c.wires.push(Wire::new(1, 3));
+
+        let json = serde_json::to_string(&to_world_model(&c, "Round Trip")).unwrap();
+        let model: WorldModel = serde_json::from_str(&json).unwrap();
+        assert_eq!(model_name(&model), "Round Trip");
+        let mut r = from_world_model(&model).expect("loads");
+
+        assert_eq!(r.nodes.len(), 4);
+        assert_eq!(r.wires.len(), 3);
+        let tank = r
+            .nodes
+            .iter()
+            .find(|n| n.name == "Tank")
+            .expect("name survives");
+        assert_eq!(tank.initial_storage, 12.0);
+        assert_eq!(
+            tank.release_rate, 1.4,
+            "release rate survives via cognitive_params"
+        );
+        assert_eq!(
+            tank.capacity, 20.0,
+            "capacity survives via cognitive_params"
+        );
+        assert_eq!(
+            tank.time_constant, 4.0,
+            "time constant survives via cognitive_params"
+        );
+        assert_eq!(
+            tank.maintenance, 0.3,
+            "maintenance survives via cognitive_params"
+        );
+        assert_eq!(tank.out_substance.name, "water");
+        assert_eq!(tank.out_substance.unit, "L");
+        let grad = r
+            .wires
+            .iter()
+            .find(|w| w.mode == FlowMode::Gradient)
+            .expect("mode survives");
+        assert_eq!(
+            grad.conductance, 0.42,
+            "conductance survives via flow parameter"
+        );
+        let src = r.nodes.iter().find(|n| n.kind == NodeKind::Source).unwrap();
+        assert_eq!(src.param, 2.5, "emission rate survives");
+
+        // Behavioral identity: same physics on both sides of the trip.
+        // (Load reorders nodes — env entities first — so match by name.)
+        for _ in 0..30 {
+            c.step();
+            r.step();
+        }
+        for a in &c.nodes {
+            let b = r
+                .nodes
+                .iter()
+                .find(|n| n.name == a.name)
+                .expect("node survives");
+            assert!(
+                (a.storage - b.storage).abs() < 1e-4 && (a.total - b.total).abs() < 1e-4,
+                "loaded circuit diverges at {}: {} vs {}",
+                a.name,
+                a.storage,
+                b.storage
+            );
+        }
+        assert!(r.balance().abs() < 1e-3, "loaded circuit conserves");
+    }
+
+    /// Law: a model that projects to nothing builds no circuit. An Operational
+    /// model with no environment terminals and no level-1 work processes passes
+    /// projection (the bond precondition is Structural mode's, not Operational's)
+    /// and yields an empty spec — so the loader, not the projector, is what says
+    /// there is nothing here to run. Reachable, therefore witnessed (#231).
+    #[test]
+    fn a_model_that_projects_to_nothing_builds_no_circuit() {
+        let empty: WorldModel = serde_json::from_str(EMPTY_OPERATIONAL).expect("parses");
+        let spec = facets_core::operational::validate_operational(&empty)
+            .expect("an empty Operational model projects — there is nothing to refuse");
+        assert!(
+            spec.sources.is_empty() && spec.sinks.is_empty() && spec.processes.is_empty(),
+            "the separating instance really is empty"
+        );
+        assert_eq!(
+            from_world_model(&empty).err().as_deref(),
+            Some("model has no sources, sinks, or primitive subsystems"),
+            "the loader refuses a circuit with no nodes"
+        );
+
+        // Separating instance: the sample model has nodes and loads.
+        let json = include_str!("../../../assets/models/runnable-sample.json");
+        let sample: WorldModel = serde_json::from_str(json).unwrap();
+        assert!(from_world_model(&sample).is_ok(), "a populated model loads");
+    }
+
+    /// The smallest model that parses, projects, and yields an empty spec.
+    const EMPTY_OPERATIONAL: &str = r#"{"version":2,"mode":"Operational","environment":{"info":{"id":"E-1","level":-1,"name":"Environment","description":""},"sources":[],"sinks":[]},"systems":[],"interactions":[],"hidden_entities":[]}"#;
+}

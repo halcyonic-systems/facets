@@ -12,7 +12,7 @@
 | **Vendored in** | `5175835eb486fca0deb023645698761676db59cb` — *feat: rebuild bert-lenses web-first — self-contained wasm kernel (Phase 0)* · 2026-07-14 19:56 −0400 |
 | **Crates taken** | `bert-core`, `bert-compose` |
 
-**Established by content, not by timestamp.** Comparing the vendored `bert-compose/src/circuit.rs` against upstream candidates from that day: `40de7a7` and its parent differ by 12 lines, the commit before that by 79, and the one before that by 179. The minimal-diff commit that is also the last one touching either crate before the vendoring is the branch point. (`bert-core/src/lib.rs` was stable across all four candidates and cannot discriminate on its own — its constant 49-line delta is the vendoring edit, not upstream drift.)
+**Established by content, not by timestamp.** Comparing the vendored `facets-compose/src/circuit.rs` against upstream candidates from that day: `40de7a7` and its parent differ by 12 lines, the commit before that by 79, and the one before that by 179. The minimal-diff commit that is also the last one touching either crate before the vendoring is the branch point. (`facets-core/src/lib.rs` was stable across all four candidates and cannot discriminate on its own — its constant 49-line delta is the vendoring edit, not upstream drift.)
 
 (The subject is elided at `[…]`; the SHA is the identifier. The elided words use
 the mode-entry vocabulary retired in #90, which the doc gate refuses in a LIVE
@@ -44,7 +44,7 @@ Recorded in [`docs/decisions/0002-web-first-rebuild.md`](decisions/0002-web-firs
 | | vendored here | upstream at branch point |
 |---|---|---|
 | `bert-core` total | ~10,300 lines | ~5,600 |
-| `bert-core/src/validate.rs` | 3,775 | 1,750 (**2.2×**) |
+| `facets-core/src/validate.rs` | 3,775 | 1,750 (**2.2×**) |
 | Modules that exist only here | `decomposition.rs`, `model_id.rs`, `units.rs` | — |
 | `bert-compose` | engine-only, plus `markov.rs` | full app |
 

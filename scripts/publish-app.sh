@@ -6,18 +6,18 @@
 set -euo pipefail
 
 REPO_ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
-KERNEL_DIR="$REPO_ROOT/crates/bert-lenses-kernel"
+KERNEL_DIR="$REPO_ROOT/crates/facets-kernel"
 WEB_DIR="$REPO_ROOT/web"
 PUBLISH_DIR="$HOME/halcyonic-apps/bert-lenses"
 SERVER_DIR="$PUBLISH_DIR/server"
 PORT=5190
 
 needs_wasm_build() {
-  local pkg_js="$KERNEL_DIR/pkg/bert_lenses_kernel.js"
+  local pkg_js="$KERNEL_DIR/pkg/facets_kernel.js"
   [ ! -f "$pkg_js" ] && return 0
-  find "$KERNEL_DIR/src" "$REPO_ROOT/crates/bert-core/src" \
-       "$REPO_ROOT/crates/bert-compose/src" "$REPO_ROOT/crates/bert-canvas/src" \
-       "$REPO_ROOT/crates/bert-tether/src" \
+  find "$KERNEL_DIR/src" "$REPO_ROOT/crates/facets-core/src" \
+       "$REPO_ROOT/crates/facets-compose/src" "$REPO_ROOT/crates/facets-canvas/src" \
+       "$REPO_ROOT/crates/facets-tether/src" \
        -newer "$pkg_js" -name '*.rs' -print -quit 2>/dev/null | grep -q .
 }
 

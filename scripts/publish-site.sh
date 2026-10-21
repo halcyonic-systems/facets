@@ -13,7 +13,7 @@
 set -euo pipefail
 
 REPO_ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
-KERNEL_DIR="$REPO_ROOT/crates/bert-lenses-kernel"
+KERNEL_DIR="$REPO_ROOT/crates/facets-kernel"
 WEB_DIR="$REPO_ROOT/web"
 SITE_DIR="$REPO_ROOT/_site"
 DOMAIN="facets.systems"

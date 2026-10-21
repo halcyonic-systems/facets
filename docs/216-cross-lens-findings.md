@@ -2,7 +2,7 @@
 
 **Status: RESEARCH.**
 
-*First full read of the matrix, 2026-07-29; label-diff read 2026-08-01 (#285). Reproduce with `cargo test -p bert-canvas --test matrix_report -- --nocapture`. Raw run archived outside this repo; the command is the source of truth.*
+*First full read of the matrix, 2026-07-29; label-diff read 2026-08-01 (#285). Reproduce with `cargo test -p facets-canvas --test matrix_report -- --nocapture`. Raw run archived outside this repo; the command is the source of truth.*
 
 The matrix had been runnable for some time and was never read. Two things came out of reading it: the report was answering two of #216's three questions, and the third question — *travels but reads differently* — turns out to have an answer already computed on every call and thrown away.
 

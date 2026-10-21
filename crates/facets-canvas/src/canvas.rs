@@ -1,0 +1,2763 @@
+//! The canvas authoring seam — the lightweight editing model the canvas holds,
+//! and its projection into a bert-core `WorldModel` for validation.
+//!
+//! Like the old egui app, the canvas keeps its OWN model (things/relations/lens)
+//! and holds zero formalism: the lens is a *view*, mere-relations (B̄) and
+//! kind-neutrality live only here. Every systemhood verdict routes through a
+//! fresh projection into a `WorldModel` (`project`) that the kernel validates.
+//! This is the port of the old `to_world_model_with` (main.rs:1822-2010) onto a
+//! serializable `CanvasModel`, so the React canvas never constructs a WorldModel
+//! itself — it sends its editing model, and Rust builds + judges.
+//!
+//! LOAD-BEARING: the canvas asks Rust for legality (`validate_connection`,
+//! `validate_mode`). JS decides nothing about systemhood.
+
+use serde::{Deserialize, Serialize};
+
+use facets_core::validate::{validate_mode, Severity, ValidationIssue};
+use facets_core::{
+    AgentCommand, AgentModel, Boundary, Complexity, Environment, ExternalEntity, ExternalEntityType, Grounding,
+    HcgsArchetype, Id, IdType, Info, Interaction, InteractionType, InteractionUsability, Interface, InterfaceType,
+    Mode, ModelRef, ProcessPrimitive, Substance, SubstanceType, System, Transform2d, Vec2, WorldModel,
+};
+
+const RADIUS: f32 = 34.0;
+
+/// The lens an author is reading through — a view, mapped to a kernel `Mode`.
+#[derive(Serialize, Deserialize, Clone, Copy, Debug, PartialEq, Eq)]
+pub enum Lens {
+    Klir,
+    Bunge,
+    Mobus,
+}
+
+impl Lens {
+    pub fn mode(self) -> Mode {
+        match self {
+            Lens::Klir => Mode::Core,
+            Lens::Bunge => Mode::Structural,
+            Lens::Mobus => Mode::Operational,
+        }
+    }
+}
+
+/// Bunge's C/E membership. Klir ignores it (everything is just a thing in T).
+#[derive(Serialize, Deserialize, Clone, Copy, Debug, PartialEq, Eq, Default)]
+pub enum Role {
+    #[default]
+    Component,
+    Environment,
+}
+
+/// What the author declared an environment thing to be (#216).
+///
+/// SL gives three words for a thing outside the boundary and they are three
+/// different commitments: `source` says it originates, `sink` says it terminates,
+/// and `environment` says neither — it mediates, and flows may run both ways.
+///
+/// Before this existed, all three parsed to `Role::Environment` and the distinction
+/// was destroyed at parse time. Two places downstream then re-derived it from flow
+/// direction, and a derivation cannot recover what the parse discarded: `emit_sl`
+/// wrote `source y` back over an authored `sink y`, and `project` typed a neutral
+/// mediator as a `Source`, after which every flow *into* it was refused. The rules
+/// doing the refusing are correct — they were checking a guess.
+///
+/// `Neutral` is the serde default, so a `CanvasModel` deserialized from JSON written
+/// before this field existed loses any authored directional constraint rather than
+/// gaining a false one. That widens what validates; it never invents an error.
+#[derive(Serialize, Deserialize, Clone, Copy, Debug, PartialEq, Eq, Default)]
+pub enum EnvKind {
+    /// `source` — originates flow. A flow into it contradicts the author.
+    Source,
+    /// `sink` — terminates flow. A flow out of it contradicts the author.
+    Sink,
+    /// `environment` — neither, by the author's own word. Flows run both ways.
+    #[default]
+    Neutral,
+}
+
+/// The kind of a bond (Bunge's connection-flow taxonomy). Maps 1:1 onto Mobus
+/// substance; the flow-name axis, not the Mobus `InteractionType::Force`.
+#[derive(Serialize, Deserialize, Clone, Copy, Debug, PartialEq, Eq, Default)]
+pub enum Kind {
+    #[default]
+    Unspecified,
+    Energy,
+    Matter,
+    Field,
+    Informational,
+}
+
+/// Klir's measurement scale for a variable's state set (§4, Table 4.1): the
+/// level at which the values are comparable. Authored metadata on the source
+/// system, read only in the Klir register — the kernel carries no scale.
+#[derive(Serialize, Deserialize, Clone, Copy, Debug, PartialEq, Eq)]
+pub enum ScaleType {
+    Nominal,
+    Ordinal,
+    Interval,
+    Ratio,
+}
+
+/// Klir's basic-vs-supporting partition of the source variables (§4, Table 4.1):
+/// basic variables are the observed quantities; supporting variables encode the
+/// support set (time, space, population) the basic states range over. This is a
+/// SEMANTIC role the modeler declares, not a property readable off R — an
+/// isolated variable is not thereby a support, and a coupled one is not thereby
+/// basic. Authored Klir metadata, read only in the register; the kernel carries
+/// none. `None` reads as `Basic` (the overwhelming default — a canvas variable
+/// is normally an observed quantity), so an explicit `Support` is the rare
+/// declared case and old models stay byte-identical.
+#[derive(Serialize, Deserialize, Clone, Copy, Debug, PartialEq, Eq)]
+pub enum KlirVarKind {
+    Basic,
+    Support,
+}
+
+/// Klir's epistemological hierarchy (§4.5): the level at which a model claims
+/// to stand — source (variables and observation channels), data (observed
+/// states over a support), generative (a rule producing the data), structure
+/// (coupled subsystems), metasystem (a rule for how the rule changes). The
+/// modeling relation is defined only WITHIN a level (§5.4), which is what the
+/// cross-level refusal in `lenses::check_cross_level` enforces (#288). A
+/// declared claim, never derived — the ladder ([`crate::lenses::klir_ladder`])
+/// reads the honest position off the model; this is what the author asserts.
+#[derive(Serialize, Deserialize, Clone, Copy, Debug, PartialEq, Eq)]
+pub enum KlirLevel {
+    Source,
+    Data,
+    Generative,
+    Structure,
+    Metasystem,
+}
+
+fn kind_to_substance(k: Kind) -> SubstanceType {
+    match k {
+        Kind::Matter => SubstanceType::Material,
+        Kind::Informational => SubstanceType::Message,
+        Kind::Energy | Kind::Field | Kind::Unspecified => SubstanceType::Energy,
+    }
+}
+
+/// A reference from a component to the child model that realizes it (SL's
+/// `decomposes` clause; bert-lenses#89 step 4). Two halves: a human `name` label
+/// (may drift harmlessly across renames) and the stamped `id` — the stable key,
+/// the same `ModelRef` the kernel carries in [`facets_core::System::child_model`].
+/// The kernel stores only the id; the name is the surface layer's readability
+/// affordance, so a reference reconstructed from a kernel model (`to_canvas`)
+/// carries the component's own name as its label.
+#[derive(Serialize, Deserialize, Clone, Debug, PartialEq)]
+pub struct ChildRef {
+    pub name: String,
+    pub id: ModelRef,
+}
+
+/// A node on the canvas.
+#[derive(Serialize, Deserialize, Clone, Debug)]
+pub struct Thing {
+    pub id: u64,
+    pub name: String,
+    pub x: f32,
+    pub y: f32,
+    #[serde(default)]
+    pub role: Role,
+    /// The author's own word for an environment thing (#216). Meaningless on a
+    /// component, which is why it is a separate field rather than a `Role` variant:
+    /// inside-or-outside the boundary and what-the-author-declared are different
+    /// questions, and only the second one has a neutral answer.
+    #[serde(default)]
+    pub env_kind: EnvKind,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub primitive: Option<ProcessPrimitive>,
+    /// The decision rule that makes this component an agent (facets#269, ADR
+    /// 0008): a thing of its own kind, never a work process with a badge, so
+    /// `rule` and `primitive` are exclusive and the parser refuses the pair.
+    /// The rule's numbers (`target`, `gain`) ride `cognitive_params` under
+    /// those keys, as a comparator's `setpoint` does, and `project()` builds
+    /// the kernel's `Policy` from them. The tap it watches through and the
+    /// command wire it manages through are ordinary relations drawn by the
+    /// `agent` line. `skip` when `None` so every earlier model is byte-identical.
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub rule: Option<AgentRule>,
+    /// The declared `param` this agent writes each tick instead of signalling
+    /// a process over a command wire: the command form (ADR 0008 D1, Mobus
+    /// §12.2.3.2). Read only beside `rule`. The name is the reference, as a
+    /// scenario's would be; a name no `param` line declares is the
+    /// required-param fault (`check_agent_is_given_agency`), because the
+    /// param an agent names is the one place its command span was checked.
+    /// `skip` when `None` so every earlier model is byte-identical.
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub manages_param: Option<String>,
+    /// Authored interface designation — this component is a member of the root
+    /// membrane's I (I ⊆ C, Boundary.lean / Tuple.lean). A flowless designation
+    /// is authorable, and refused at Operational: `Tuple.lean` gained the
+    /// coverage constraint from interfaces onto flows in SSF #31. Ignored on env
+    /// things (their internals are opaque, §4.3.3.2.2).
+    #[serde(default)]
+    pub interface: bool,
+    /// Born of the `interface "Name"` declaration (#226): a pass-way — a
+    /// member of I with no work-process character — as opposed to a component
+    /// STAMPED `interface` (the merged form). Same ontology either way (both
+    /// are components, I ⊆ C); what this records is the authored form, and
+    /// only a pass-way fuses at projection. A stamped component never fuses:
+    /// existing models keep their meaning exactly (typical-neuron's
+    /// `Synaptic Compartments` is a genuine compartment, not a pass-way).
+    /// `skip` when false so models authored before it stay byte-identical.
+    #[serde(default, skip_serializing_if = "std::ops::Not::not")]
+    pub passway: bool,
+    /// Authored interface protocol (bert-lenses#333, Mobus Listing 4.2): the
+    /// admission rule this pass-way enforces, in the author's words.
+    /// Meaningful only alongside `interface`; projection prefers it over the
+    /// computed flow-label join. `skip` when empty so models authored before
+    /// it stay byte-identical on disk.
+    #[serde(default, skip_serializing_if = "String::is_empty")]
+    pub protocol: String,
+    /// The child model this component decomposes into, by reference (SL's
+    /// `decomposes`; bert-lenses#89 step 4). `None` for atomic components and
+    /// every model authored before step 4; `skip_serializing_if` so those stay
+    /// byte-identical on disk. Projects to [`facets_core::System::child_model`]
+    /// (the id only); ignored on env things (their internals are opaque).
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub child_model: Option<ChildRef>,
+    /// The stock's declared unit (bert-lenses#76/#94) — meaningful on a
+    /// Buffering component, whose stock accumulates its inflow over Δt and so
+    /// carries its own unit rather than inheriting the flow's. Set by the run
+    /// panel's accept-derived-unit affordance (or SL's `stock` clause); empty =
+    /// undeclared (the run derives a display unit and marks its provenance).
+    /// `skip` when empty so existing models serialize unchanged.
+    #[serde(default, skip_serializing_if = "String::is_empty")]
+    pub stock_unit: String,
+    /// What this thing IS, in the author's own words (bert-lenses#326). The
+    /// original BERT carried one on every entity and the rebuild dropped it,
+    /// while `facets_core::Info` kept the destination field and received an
+    /// empty string forever; this restores the authoring path to it. Prose,
+    /// never semantics: no verdict reads it, and two models differing only
+    /// here are the same system. `skip` when empty so models authored before
+    /// it stay byte-identical on disk.
+    #[serde(default, skip_serializing_if = "String::is_empty")]
+    pub description: String,
+    /// Where the author's claim about this element comes from (facets#411):
+    /// a grade from a closed vocabulary and the reference in the author's
+    /// words. Authorial, like `description`: no verdict reads it. Absent when
+    /// unsaid; `skip` so models authored before it stay byte-identical.
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub grounding: Option<Grounding>,
+    /// Klir's measurement scale for this variable (§4, Table 4.1) — nominal,
+    /// ordinal, interval, or ratio. Authored source-system metadata read only
+    /// in the Klir register; the kernel carries no scale, so this never
+    /// projects. `None` for every model authored before this field;
+    /// `skip_serializing_if` keeps those byte-identical on disk.
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub scale: Option<ScaleType>,
+    /// The variable's state set — the values it can take (Klir's source-system
+    /// state set, §4). Enumerated labels, the FSA-native case (`{Green, Yellow,
+    /// Red}`). Authored Klir metadata, never projected to the kernel. `None`
+    /// (not `Some(vec![])`) when undeclared, `skip` so old models stay
+    /// byte-identical.
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub states: Option<Vec<String>>,
+    /// Klir's basic-vs-supporting standing for this variable (§4, Table 4.1).
+    /// AUTHORED, not derived: support-hood is a semantic role (does this variable
+    /// index the support set, or is it an observed quantity?), which cannot be
+    /// read off R. `None` reads as `Basic`; `skip` so undeclared/basic variables
+    /// stay byte-identical on disk.
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub variable_kind: Option<KlirVarKind>,
+    /// [`AgentModel::cognitive_params`], carried OPAQUELY (#216). The canvas
+    /// neither edits nor interprets these — they are an untyped bag because
+    /// nothing has yet chosen the transition functor, and a functor's parameters
+    /// cannot be typed before the functor is (#112, where their typed form is
+    /// scoped). What the canvas must not do is *discard* them: dropping the bag
+    /// on load is how a demo round-tripped into a different system while still
+    /// reporting `conserved=true`. SL cannot express them, and `emit_sl` refuses
+    /// rather than narrowing silently (§7.3). Empty = absent, `skip` on disk.
+    #[serde(default, skip_serializing_if = "std::collections::HashMap::is_empty")]
+    pub cognitive_params: std::collections::HashMap<String, f64>,
+    /// [`AgentModel::initial_state`], carried OPAQUELY (#216) — same standing,
+    /// same #112 boundary, same emit refusal as `cognitive_params` above.
+    #[serde(default, skip_serializing_if = "std::collections::HashMap::is_empty")]
+    pub initial_state: std::collections::HashMap<String, serde_json::Value>,
+    /// [`AgentModel::agency_capacity`], carried opaquely with the bags (#216):
+    /// the operational spec reads it as the process's engine parameter
+    /// (`node.param` in bert-compose), so dropping it changed a Modulating
+    /// valve's factor from an authored 0.2 to the 0.5 default and the run with
+    /// it. `None` = unauthored; only projection supplies the kernel default.
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub agency_capacity: Option<f32>,
+}
+
+/// A drawn connection: `a → b`, a bond (or a mere relation), optionally typed.
+#[derive(Serialize, Deserialize, Clone, Debug)]
+pub struct Relation {
+    pub id: u64,
+    pub a: u64,
+    pub b: u64,
+    #[serde(default)]
+    pub name: String,
+    #[serde(default = "default_true")]
+    pub is_bond: bool,
+    #[serde(default)]
+    pub kind: Kind,
+    /// What this flow IS, in the author's own words (#326). Same standing as
+    /// `Thing::description`: prose the kernel never reads.
+    #[serde(default, skip_serializing_if = "String::is_empty")]
+    pub description: String,
+    /// Where the author's claim about this element comes from (facets#411):
+    /// a grade from a closed vocabulary and the reference in the author's
+    /// words. Authorial, like `description`: no verdict reads it. Absent when
+    /// unsaid; `skip` so models authored before it stay byte-identical.
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub grounding: Option<Grounding>,
+    /// Mobus's reading of what a boundary crossing IS to the system (#331) — a
+    /// 2x2 of direction against value: `Resource` (useful in), `Disruption`
+    /// (harmful in), `Product` (useful out), `Waste` (harmful out). The kernel
+    /// has carried the enum since its first version; `project()` hardcoded
+    /// every flow to `Resource`, so the distinction was unauthorable and any
+    /// model needing it had to assert it in a comment.
+    ///
+    /// `None` is UNDECLARED, not `Resource`: an author who has not ruled on a
+    /// flow's usability has said nothing, and projection supplies the default
+    /// rather than the model pretending it was authored.
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub usability: Option<InteractionUsability>,
+    /// Klir's observer toggle: neutral ⇄ directed (Facets Ch. 4 — "directed
+    /// systems" merely add an orientation the observer commits to). Pure view
+    /// state, canvas-resident; never projects (the kernel `dep` is ordered
+    /// regardless, so this changes what the Klir lens *shows*, not the model).
+    #[serde(default)]
+    pub klir_directed: bool,
+    /// Per-transition weight for the #67 DTMC read (`markov_edges`). A
+    /// non-negative integer COUNT, matching SSF's `kindCodomain .markov =
+    /// List (X × Nat)`: `Chain::from_edges` normalizes a state's out-edge counts
+    /// into its row distribution, so a count and a probability reduce to the same
+    /// `P`. `None` reads as the uniform default `1`; `skip` keeps every model
+    /// authored before this field byte-identical on disk.
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub weight: Option<u64>,
+    /// The flow's magnitude — [`facets_core::Interaction::amount`], which the
+    /// kernel has carried from the beginning and this struct dropped, capping
+    /// every canvas-authored model at emission rate 1.0 (#216, C1). A structural
+    /// attribute of the edge, not dynamics: it does not vary during a run.
+    /// `None` = unauthored — a different statement from "declared 1", and the
+    /// file keeps the difference; only [`project`] conflates them (declared
+    /// there). `skip` keeps pre-#216 models byte-identical on disk.
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub amount: Option<facets_core::rust_decimal::Decimal>,
+    /// The magnitude's unit — [`facets_core::Interaction::unit`] (#216, C1).
+    /// Empty = undeclared.
+    #[serde(default, skip_serializing_if = "String::is_empty")]
+    pub unit: String,
+    /// What flows, named separately from what the flow is *called* —
+    /// [`facets_core::Substance::sub_type`] (#216, C4). "F-1.1 — iron-input" is a
+    /// label; `iron` is a substance, and `check_stock_dimensions` reasons over
+    /// the latter. Empty = undeclared.
+    #[serde(default, skip_serializing_if = "String::is_empty")]
+    pub substance: String,
+    /// `ample` (#9) — see [`facets_core::Interaction::ample`]: an availability
+    /// assertion on an informational flow; no magnitude. The SL parser refuses
+    /// it with `amount`/`unit`, on `mere`, and on non-informational kinds.
+    /// `skip` keeps pre-existing models byte-identical on disk.
+    #[serde(default, skip_serializing_if = "std::ops::Not::not")]
+    pub ample: bool,
+}
+
+fn default_true() -> bool {
+    true
+}
+
+/// Authored boundary properties — B's P = ⟨porosity, perceptive_fuzziness⟩ for
+/// the ROOT system's membrane (the canvas is single-root). 0.0 = unauthored,
+/// matching bert-core's defaults; the palette's boundary inspector writes these
+/// and `project` carries them into the root boundary instead of hardcoding 0.0.
+#[derive(Serialize, Deserialize, Clone, Copy, Debug, Default, PartialEq)]
+pub struct CanvasBoundaryProps {
+    #[serde(default)]
+    pub porosity: f32,
+    #[serde(default)]
+    pub perceptive_fuzziness: f32,
+}
+
+/// Bunge's two kingdoms of systems (Treatise Vol. 4, Postulate 6.4): every
+/// system is either Conceptual or Concrete. Aligns with Mobus's abstract vs
+/// concrete split. See systems-science-foundations/docs/reference/
+/// system-type-typologies.md for the author-grounded vocabulary.
+#[derive(Serialize, Deserialize, Clone, Copy, Debug, PartialEq, Eq)]
+pub enum Kingdom {
+    Conceptual,
+    Concrete,
+}
+
+/// Bunge's five genera of concrete systems (Postulate 6.4). Meaningful only when
+/// the kingdom is Concrete; Klir's §2.4 type-(a) axis lands on nearly the same
+/// list (an independent K≅2 corroboration — see the reference doc).
+#[derive(Serialize, Deserialize, Clone, Copy, Debug, PartialEq, Eq)]
+pub enum Genus {
+    Physical,
+    Chemical,
+    Biological,
+    Social,
+    Technical,
+}
+
+/// The modeler's asserted ontological kind of the whole model — semantic
+/// metadata, NOT a systemhood verdict (no validator gates it). Genus is
+/// meaningful when kingdom = Concrete; no cross-field validation in v1. Domain
+/// is the free-text subject area that frames the narration for the analyst.
+#[derive(Serialize, Deserialize, Clone, Debug, Default, PartialEq, Eq)]
+pub struct SystemType {
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub kingdom: Option<Kingdom>,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub genus: Option<Genus>,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub domain: Option<String>,
+}
+
+/// The rule an agent runs (facets#269): the closed set of ADR 0008 D4, grown
+/// one rule at a time, each with one reading and one refusal. Spelled in SL
+/// as the word after `rule`.
+#[derive(Serialize, Deserialize, Clone, Copy, Debug, PartialEq, Eq)]
+#[serde(rename_all = "lowercase")]
+pub enum AgentRule {
+    /// `gain · (target − level)`, floored at zero: Wiener's error correction,
+    /// Mobus §12.3.2. At gain 1 it is the Inverting comparator exactly.
+    Proportional,
+    /// `emit` at or above `above`, else `else`: the on–off thermostat, Mobus
+    /// §11.2.1.1's purely reactive agent; a square wave no primitive makes.
+    Threshold,
+    /// `under b1 emit o1 … else oN`: a declared map from reading bins to
+    /// outputs, Mobus §11.2.1.1's "algorithmic or heuristic program of
+    /// response". Contiguous bins under strictly increasing bounds.
+    Table,
+    /// `window n target t gain g`: Proportional over the mean of the last
+    /// `n` readings, Mobus §11.2.1.1's adaptive reactive agent ("tracks the
+    /// input variables and responds in kind. This is the homeostatic
+    /// mechanism"); the first rule with a memory, which the engine keeps.
+    Trace,
+}
+
+impl AgentRule {
+    pub const ALL: [AgentRule; 4] =
+        [AgentRule::Proportional, AgentRule::Threshold, AgentRule::Table, AgentRule::Trace];
+    /// The SL word.
+    pub fn word(self) -> &'static str {
+        match self {
+            AgentRule::Proportional => "proportional",
+            AgentRule::Threshold => "threshold",
+            AgentRule::Table => "table",
+            AgentRule::Trace => "trace",
+        }
+    }
+    /// The rule by its SL word.
+    pub fn from_word(w: &str) -> Option<AgentRule> {
+        AgentRule::ALL.into_iter().find(|r| r.word().eq_ignore_ascii_case(w))
+    }
+    /// The rule's clause words, in the order the line spells them, each
+    /// marked required or optional; also the bag keys its numbers ride
+    /// under. The one place the order and the optionality live: the parser,
+    /// the emitter and the param check all read it.
+    pub fn clauses(self) -> &'static [(&'static str, bool)] {
+        match self {
+            AgentRule::Proportional => &[("target", true), ("gain", true)],
+            // `below` is the hysteresis band (facets#517): optional, and
+            // spelled between the level and the commands.
+            AgentRule::Threshold => &[("above", true), ("below", false), ("emit", true), ("else", true)],
+            // A table repeats its first two clauses, one pair per bin; the
+            // bag numbers them (`under1`, `emit1`, …), see `spelled`.
+            AgentRule::Table => &[("under", true), ("emit", true), ("else", true)],
+            AgentRule::Trace => &[("window", true), ("target", true), ("gain", true)],
+        }
+    }
+    /// The rule's required clause words, in the order the line spells them.
+    pub fn words(self) -> Vec<&'static str> {
+        self.clauses().iter().filter(|(_, required)| *required).map(|(w, _)| *w).collect()
+    }
+    /// Whether `word` is one of this rule's clauses, required or not.
+    pub fn takes(self, word: &str) -> bool {
+        self.clauses().iter().any(|(w, _)| *w == word)
+    }
+    /// The rule's numbers as the line spells them, read out of a thing's
+    /// bag: each clause word with its value, in order, and `None` when the
+    /// bag is not exactly this rule's declaration (a required word missing,
+    /// a stray key, a table whose bins are not numbered 1..k without a gap).
+    /// The one reading of the bag the emitter and the kernel policy share,
+    /// so parse → emit → parse is a fixpoint for every arity.
+    pub fn spelled(self, bag: &std::collections::HashMap<String, f64>) -> Option<Vec<(String, f64)>> {
+        let mut out = Vec::new();
+        match self {
+            AgentRule::Table => {
+                let mut i = 1;
+                while let Some(b) = bag.get(&format!("under{i}")) {
+                    out.push((format!("under{i}"), *b));
+                    out.push((format!("emit{i}"), *bag.get(&format!("emit{i}"))?));
+                    i += 1;
+                }
+                if i == 1 {
+                    return None;
+                }
+                out.push(("else".to_string(), *bag.get("else")?));
+            }
+            _ => {
+                for (w, required) in self.clauses() {
+                    match bag.get(*w) {
+                        Some(v) => out.push((w.to_string(), *v)),
+                        None if *required => return None,
+                        None => {}
+                    }
+                }
+            }
+        }
+        (out.len() == bag.len()).then_some(out)
+    }
+    /// The rule of a kernel policy.
+    pub fn of(policy: &facets_core::Policy) -> AgentRule {
+        match policy {
+            facets_core::Policy::Proportional { .. } => AgentRule::Proportional,
+            facets_core::Policy::Threshold { .. } => AgentRule::Threshold,
+            facets_core::Policy::Table { .. } => AgentRule::Table,
+            facets_core::Policy::Trace { .. } => AgentRule::Trace,
+        }
+    }
+    /// The kernel's policy over this rule's declared numbers, read by word;
+    /// `None` for a word the bag does not carry. A required word that is
+    /// missing reads as 1, the bag's own default; an optional one as absent;
+    /// a table's bins run from `under1` to the first bin the bag lacks.
+    pub fn policy(self, num: impl Fn(&str) -> Option<f64>) -> facets_core::Policy {
+        let req = |w: &str| num(w).unwrap_or(1.0);
+        match self {
+            AgentRule::Proportional => facets_core::Policy::Proportional {
+                target: req("target"),
+                gain: req("gain"),
+            },
+            AgentRule::Threshold => facets_core::Policy::Threshold {
+                above: req("above"),
+                below: num("below"),
+                emit: req("emit"),
+                otherwise: req("else"),
+            },
+            AgentRule::Table => {
+                let (mut bounds, mut outputs) = (Vec::new(), Vec::new());
+                while let Some(b) = num(&format!("under{}", bounds.len() + 1)) {
+                    bounds.push(b);
+                    outputs.push(req(&format!("emit{}", bounds.len())));
+                }
+                facets_core::Policy::Table { bounds, outputs, otherwise: req("else") }
+            }
+            AgentRule::Trace => facets_core::Policy::Trace {
+                window: req("window").max(1.0) as usize,
+                target: req("target"),
+                gain: req("gain"),
+            },
+        }
+    }
+}
+
+/// What a declared parameter is anchored to. A param never stores a value —
+/// the value IS the anchored declared amount; the param names it in the
+/// model's own domain terms (walkthrough #18). Anchors are by id, so a rename
+/// of a thing or flow label cannot orphan a param mid-session; SL resolves
+/// names to ids at parse time and emits names back from ids.
+#[derive(Serialize, Deserialize, Clone, Copy, Debug, PartialEq, Eq)]
+pub enum ParamAnchor {
+    /// One declared flow amount (`Relation::amount`).
+    Flow { relation: u64 },
+    /// A process's whole out-fanout of declared amounts, presented as % shares.
+    /// Normalization is presentation: the engine keeps raw weights (Mobus
+    /// Eq. 4.5 is scale-free), and editing one share edits one raw weight.
+    Shares { thing: u64 },
+    /// One of a component's declared engine parameters (#343, #463 move 3):
+    /// the #112 typed set a component line can carry. The value lives in the
+    /// thing's `cognitive_params` under the field's key, exactly as the
+    /// component line put it there; the param names it and bounds it.
+    Field { thing: u64, field: EngineField },
+}
+
+/// The engine parameters a `param … of <component>` line may name — the #112
+/// slice-1/2 set, keyed as the engine and the session knob read them
+/// (`Session::set_node_param`). Serialized by key so a surface addresses the
+/// session with the same word it read off the model.
+#[derive(Serialize, Deserialize, Clone, Copy, Debug, PartialEq, Eq, Hash)]
+pub enum EngineField {
+    #[serde(rename = "release_rate")]
+    Release,
+    #[serde(rename = "capacity")]
+    Capacity,
+    #[serde(rename = "time_constant")]
+    TimeConstant,
+    #[serde(rename = "setpoint")]
+    Setpoint,
+    #[serde(rename = "maintenance")]
+    Maintenance,
+    /// An agent's goal (facets#269): the level its rule holds the stock at.
+    #[serde(rename = "target")]
+    Target,
+    /// An agent's gain (facets#269): the rule's sensitivity to the error.
+    #[serde(rename = "gain")]
+    Gain,
+    /// A threshold agent's level (facets#269): where its output switches.
+    #[serde(rename = "above")]
+    Above,
+    /// A threshold agent's lower level (facets#517): where a banded switch
+    /// turns back, the hysteresis band's floor.
+    #[serde(rename = "below")]
+    Below,
+    /// A trace agent's window (facets#269, ADR 0008 D4): how many of its own
+    /// readings its mean runs over.
+    #[serde(rename = "window")]
+    Window,
+}
+
+impl EngineField {
+    /// The `cognitive_params` key and the session knob name.
+    pub fn key(self) -> &'static str {
+        match self {
+            EngineField::Release => "release_rate",
+            EngineField::Capacity => "capacity",
+            EngineField::TimeConstant => "time_constant",
+            EngineField::Setpoint => "setpoint",
+            EngineField::Maintenance => "maintenance",
+            EngineField::Target => "target",
+            EngineField::Gain => "gain",
+            EngineField::Above => "above",
+            EngineField::Below => "below",
+            EngineField::Window => "window",
+        }
+    }
+    /// The SL word(s) on the component line and on the param line.
+    pub fn word(self) -> &'static str {
+        match self {
+            EngineField::Release => "release",
+            EngineField::Capacity => "capacity",
+            EngineField::TimeConstant => "time constant",
+            EngineField::Setpoint => "setpoint",
+            EngineField::Maintenance => "maintenance",
+            EngineField::Target => "target",
+            EngineField::Gain => "gain",
+            EngineField::Above => "above",
+            EngineField::Below => "below",
+            EngineField::Window => "window",
+        }
+    }
+    /// The primitive that reads this field (the component line's own gate);
+    /// `None` for the ones an agent line declares (facets#269), which no
+    /// work process reads.
+    pub fn reader(self) -> Option<facets_core::ProcessPrimitive> {
+        match self {
+            EngineField::Setpoint => Some(facets_core::ProcessPrimitive::Inverting),
+            EngineField::Target
+            | EngineField::Gain
+            | EngineField::Above
+            | EngineField::Below
+            | EngineField::Window => None,
+            _ => Some(facets_core::ProcessPrimitive::Buffering),
+        }
+    }
+    /// A field an agent line declares rather than a component line.
+    pub fn is_agent_field(self) -> bool {
+        matches!(
+            self,
+            EngineField::Target
+                | EngineField::Gain
+                | EngineField::Above
+                | EngineField::Below
+                | EngineField::Window
+        )
+    }
+    pub const ALL: [EngineField; 10] = [
+        EngineField::Release,
+        EngineField::Capacity,
+        EngineField::TimeConstant,
+        EngineField::Setpoint,
+        EngineField::Maintenance,
+        EngineField::Target,
+        EngineField::Gain,
+        EngineField::Above,
+        EngineField::Below,
+        EngineField::Window,
+    ];
+}
+
+/// An author-declared adjustable quantity, named in the model's domain
+/// vocabulary rather than the kernel's mechanism taxonomy. The #268 inputs
+/// panel remains the floor for undeclared magnitudes; a param enriches how a
+/// declared amount is presented, never what runs. Names are unique — they are
+/// the stable references scenario overrides (#202) will hold.
+#[derive(Serialize, Deserialize, Clone, Debug, PartialEq)]
+pub struct ParamDecl {
+    pub name: String,
+    pub anchor: ParamAnchor,
+    /// Inclusive slider bounds for a `Flow` anchor. Declared, not enforced by
+    /// the engine: the range is the author's statement of the sensible span,
+    /// and a declared amount outside it is a parse-time contradiction.
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub range: Option<ParamRange>,
+}
+
+/// Inclusive bounds, in the anchored flow's own unit.
+#[derive(Serialize, Deserialize, Clone, Copy, Debug, PartialEq)]
+pub struct ParamRange {
+    pub min: facets_core::rust_decimal::Decimal,
+    pub max: facets_core::rust_decimal::Decimal,
+}
+
+/// What a declared metric computes over the run's trace (#203). The verb set
+/// is deliberately CLOSED and grows one checkable verb at a time — each new
+/// verb owes a separating instance a model can actually fail (ADR 0006), which
+/// is the repo's alternative to an open expression language nothing can
+/// refuse. Anchors are by id, like [`ParamAnchor`], so renames cannot orphan a
+/// metric mid-session; SL resolves names to ids at parse time and emits names
+/// back from ids.
+#[derive(Serialize, Deserialize, Clone, Copy, Debug, PartialEq, Eq)]
+pub enum MetricExpr {
+    /// This flow's per-tick value as a fraction of everything leaving its
+    /// source that tick. Composition, stated in the author's words — and
+    /// written to survive #269: when the split becomes agent-chosen, the same
+    /// declaration reads a PRODUCED share with no rewrite.
+    ShareOfFlow { relation: u64 },
+    /// Everything arriving at this thing, per tick, plus the run-end
+    /// cumulative. Throughput, stated in the author's words.
+    SumInto { thing: u64 },
+}
+
+/// An author-declared readout computed over a run — the OUTPUT twin of
+/// [`ParamDecl`] (#203): a param names an input in the model's domain
+/// vocabulary, a metric names what the author wants to watch come out. A
+/// metric is a derived reading of kernel-executed values, never a new source
+/// of truth: it carries the provenance of the trace it reads, and nothing
+/// else. Names are unique — they are the stable references the scenario
+/// comparison view (#202) will hold.
+#[derive(Serialize, Deserialize, Clone, Debug, PartialEq)]
+pub struct MetricDecl {
+    pub name: String,
+    pub expr: MetricExpr,
+}
+
+/// A boundary flow that has no interior owner yet (facets#384): it enters or
+/// leaves through the ROOT of this model, from or to the environment thing
+/// `env`. Born from `derive_child`, retired by `project` once a relation on
+/// `env` in the same direction and of the same kind exists.
+#[derive(Serialize, Deserialize, Clone, Debug, PartialEq)]
+pub struct Crossing {
+    /// The environment thing (a stand-in for the parent-side counterparty).
+    pub env: u64,
+    /// `true`: from `env` into the root; `false`: from the root out to `env`.
+    pub inbound: bool,
+    #[serde(default)]
+    pub name: String,
+    #[serde(default)]
+    pub kind: Kind,
+    #[serde(default, skip_serializing_if = "String::is_empty")]
+    pub substance: String,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub amount: Option<facets_core::rust_decimal::Decimal>,
+    #[serde(default, skip_serializing_if = "String::is_empty")]
+    pub unit: String,
+}
+
+impl Crossing {
+    /// Has an interface taken this crossing? A relation between `env` and a
+    /// component, in the crossing's direction, of the crossing's kind.
+    pub fn taken_by(&self, relations: &[Relation], is_component: impl Fn(u64) -> bool) -> bool {
+        relations.iter().any(|r| {
+            r.is_bond
+                && r.kind == self.kind
+                && if self.inbound {
+                    r.a == self.env && is_component(r.b)
+                } else {
+                    r.b == self.env && is_component(r.a)
+                }
+        })
+    }
+}
+
+/// The canvas editing model — the JSON the React canvas holds and sends.
+#[derive(Serialize, Deserialize, Clone, Debug)]
+pub struct CanvasModel {
+    pub lens: Lens,
+    /// The model's stable self-identity, carried through the canvas seam so a
+    /// walked child re-projects under the SAME id its parent references
+    /// (bert-lenses#89 step 5b) — without this, every edit-and-save of a child
+    /// would break the parent's `decomposes` stamp. Carried, never minted:
+    /// `to_canvas` copies it in, `project` writes it back, and a model without
+    /// one stays without one (`skip_serializing_if` keeps old files identical).
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub model_id: Option<facets_core::ModelId>,
+    #[serde(default)]
+    pub things: Vec<Thing>,
+    #[serde(default)]
+    pub relations: Vec<Relation>,
+    /// Boundary flows that land on the ROOT until an interface takes them
+    /// (facets#384). `derive_child` carries every crossing of a decomposed
+    /// component into the newborn as a flow terminating on the child's root,
+    /// which is what makes the newborn pass the seam contract from birth. The
+    /// canvas has no thing for the root, so `to_canvas` used to drop them and
+    /// the stored child failed the contract as soon as it was judged. They now
+    /// ride here: `to_canvas` reads them off root-terminated interactions,
+    /// `project` writes them back — unless a relation on the same stand-in, in
+    /// the same direction, of the same kind exists, in which case an interface
+    /// has taken the crossing and it retires. Never authored in SL (it is
+    /// derived from the parent, not written); `emit_sl` lists them as comments.
+    #[serde(default, skip_serializing_if = "Vec::is_empty")]
+    pub crossings: Vec<Crossing>,
+    /// The milieu M (E = ⟨O, M⟩, lifecycle-paper revision): ambient condition
+    /// variables that bathe the system — never things, never flow endpoints;
+    /// the absence of edges IS the ontology. One struct, defined in the
+    /// kernel, shared here. `skip` when empty: old models stay byte-identical.
+    #[serde(default, skip_serializing_if = "Vec::is_empty")]
+    pub milieu: Vec<facets_core::MilieuVariable>,
+    #[serde(default)]
+    pub boundary: CanvasBoundaryProps,
+    /// Author-asserted system type (genus + optional domain). serde `default` so
+    /// pre-existing models deserialize unchanged; not gated by any validator.
+    #[serde(default)]
+    pub system_type: SystemType,
+    /// Author-given name of the system of interest (Mobus's "Process M",
+    /// "Steel-Plant"). serde `default` so pre-existing models deserialize
+    /// unchanged; `None` projects as the placeholder root name.
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub name: Option<String>,
+    /// What the SYSTEM OF INTEREST is, in the author's words (#326). There is
+    /// no "model" here separate from the SOI: `name` above IS the root
+    /// system's name, so this is the root system's `Info.description` and not
+    /// a second concept beside it. `skip` when empty so stored models stay
+    /// byte-identical.
+    #[serde(default, skip_serializing_if = "String::is_empty")]
+    pub description: String,
+    /// The model's time-unit symbol (bert-lenses#94) — what one unit of model
+    /// time is called (`"h"`, `"mo"`). Projects to [`WorldModel::time_unit`],
+    /// where the run's derived-stock-unit display reads it (`kW` inflow →
+    /// `kW·h` instead of the abstract `kW·Δt`). `None` = undeclared; `skip` so
+    /// pre-existing models serialize unchanged.
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub time_unit: Option<String>,
+    /// Declared parameters (walkthrough #18) — domain names over declared
+    /// amounts. Presentation-layer semantics: `project` ignores them, the run
+    /// panel reads them. `skip` when empty so pre-existing models stay
+    /// byte-identical on disk (the #163 pattern).
+    #[serde(default, skip_serializing_if = "Vec::is_empty")]
+    pub params: Vec<ParamDecl>,
+    /// Declared metrics (#203) — domain names over computed OUTPUTS of the
+    /// trace, the output twin of `params`. Presentation-layer semantics:
+    /// `project` ignores them, the run deck evaluates them over the recorder.
+    /// `skip` when empty so pre-existing models stay byte-identical on disk
+    /// (the #163 pattern).
+    #[serde(default, skip_serializing_if = "Vec::is_empty")]
+    pub metrics: Vec<MetricDecl>,
+    /// The model's declared Klir epistemological level (#288) — the author's
+    /// claim about where on the §4.5 hierarchy this model stands. Authored
+    /// metadata read in the Klir register only; `project` never reads it, so
+    /// no systemhood verdict depends on it (C2). `None` = undeclared, which
+    /// gates nothing; `skip` so pre-existing models serialize unchanged.
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub klir_level: Option<KlirLevel>,
+}
+
+fn info(id: Id, level: i32, name: &str) -> Info {
+    described(id, level, name, "")
+}
+
+/// `Info` has carried a `description` since bert-core's first version, and
+/// until #326 every one built here got an empty string — the kernel kept the
+/// slot and the authoring surface never reached it. This is the reaching.
+/// Structural nodes with no author behind them (the boundary, the environment
+/// wrapper) still go through `info` and are still empty, which is correct:
+/// nobody wrote prose about them.
+fn described(id: Id, level: i32, name: &str, description: &str) -> Info {
+    Info {
+        id,
+        level,
+        name: name.to_string(),
+        description: description.to_string(),
+        grounding: None,
+    }
+}
+
+fn transform_of(x: f32, y: f32) -> Transform2d {
+    Transform2d {
+        translation: Vec2::new(x, y),
+        rotation: 0.0,
+    }
+}
+
+fn new_system(
+    id: Id,
+    level: i32,
+    name: &str,
+    description: &str,
+    parent: Id,
+    pos: Option<(f32, f32)>,
+    primitive: Option<ProcessPrimitive>,
+) -> System {
+    let boundary_id = Id {
+        ty: IdType::Boundary,
+        indices: id.indices.clone(),
+    };
+    System {
+        info: described(id, level, name, description),
+        sources: vec![],
+        sinks: vec![],
+        parent,
+        complexity: Complexity::Atomic,
+        boundary: Boundary {
+            info: info(boundary_id, level, ""),
+            porosity: 0.0,
+            perceptive_fuzziness: 0.0,
+            interfaces: vec![],
+            parent_interface: None,
+        },
+        radius: RADIUS,
+        transform: pos.map(|(x, y)| transform_of(x, y)),
+        equivalence: String::new(),
+        history: String::new(),
+        transformation: String::new(),
+        member_autonomy: 1.0,
+        time_constant: String::new(),
+        archetype: primitive.map(|_| HcgsArchetype::Agent),
+        agent: primitive.map(|p| AgentModel {
+            primitive: Some(p),
+            ..Default::default()
+        }),
+        child_model: None,
+    }
+}
+
+/// A projection plus the id bridges the canvas needs to read kernel verdicts
+/// back onto its own nodes/edges. `project` built (and discarded) both maps
+/// already; `lens_facts` needs them, so they are surfaced here.
+pub struct Projection {
+    pub world: WorldModel,
+    /// canvas thing id → projected kernel `Id` (components and touched env things).
+    pub thing_ids: std::collections::HashMap<u64, Id>,
+    /// canvas relation id → the projected interaction's kernel `Id`. An explicit
+    /// map, not positional parallelism with `world.interactions`: only bonds with
+    /// both endpoints projected appear (skipped bonds have no entry).
+    pub interaction_of: std::collections::HashMap<u64, Id>,
+}
+
+/// Project the canvas model into a bert-core `WorldModel`, mode-stamped by the
+/// lens. Only bonds project to interactions; an environment thing projects only
+/// if a bond touches it (originates one → Source, else Sink). Port of the old
+/// `to_world_model_with` (structure only; CSV params are the tether's job).
+pub fn project(model: &CanvasModel) -> WorldModel {
+    project_with_map(model).world
+}
+
+/// [`project`], keeping the canvas↔kernel id maps. Behavior-identical.
+pub fn project_with_map(model: &CanvasModel) -> Projection {
+    use std::collections::{HashMap, HashSet};
+
+    let env_id = Id {
+        ty: IdType::Environment,
+        indices: vec![-1],
+    };
+    let root_id = Id {
+        ty: IdType::System,
+        indices: vec![0],
+    };
+
+    let bonds: Vec<&Relation> = model.relations.iter().filter(|r| r.is_bond).collect();
+    let originates: HashSet<u64> = bonds.iter().map(|r| r.a).collect();
+    // An environment thing a pending crossing still lands on is not an orphan
+    // (facets#384): the crossing is the bond, and it is written back below.
+    let component_ids: HashSet<u64> = model
+        .things
+        .iter()
+        .filter(|t| t.role == Role::Component)
+        .map(|t| t.id)
+        .collect();
+    let pending_crossing_envs: HashSet<u64> = model
+        .crossings
+        .iter()
+        .filter(|c| !c.taken_by(&model.relations, |id| component_ids.contains(&id)))
+        .map(|c| c.env)
+        .collect();
+    let touched: HashSet<u64> = bonds
+        .iter()
+        .flat_map(|r| [r.a, r.b])
+        .chain(pending_crossing_envs.iter().copied())
+        .collect();
+
+    // ── Pass-way fusion (#226) ─────────────────────────────────────────────
+    // A PURE pass-way — `interface` with no work-process freight — whose
+    // interior flows all reach ONE processor component fuses at projection:
+    // it becomes an Interface record alone (never a subsystem), each of its
+    // crossing flows re-anchors to the processor with source/sink_interface
+    // set, and its interior legs vanish. bert#108 then guarantees the run is
+    // exactly what it would be with the pass-way absent — the authored
+    // two-hop chain and the lowered one-hop interaction are the same system.
+    // The 1:1 bound is deliberate (SSF InterfaceDecomposition covers 1:1
+    // refinement only): a pass-way serving several processors, or serving
+    // none, falls back to the merged projection unfused.
+    let is_env = |id: u64| {
+        model
+            .things
+            .iter()
+            .any(|t| t.id == id && t.role == Role::Environment)
+    };
+    let pure_passway = |t: &Thing| {
+        t.passway
+            && t.role == Role::Component
+            && t.interface
+            && t.primitive.is_none()
+            && t.rule.is_none()
+            && t.stock_unit.is_empty()
+            && t.cognitive_params.is_empty()
+            && t.initial_state.is_empty()
+            && t.child_model.is_none()
+            && t.agency_capacity.is_none()
+    };
+    // fused pass-way id → the one processor component it serves
+    let mut fused_to: HashMap<u64, u64> = HashMap::new();
+    for t in model.things.iter().filter(|t| pure_passway(t)) {
+        let mut interior: HashSet<u64> = HashSet::new();
+        let mut crossings = 0usize;
+        for r in &bonds {
+            let other = if r.a == t.id {
+                r.b
+            } else if r.b == t.id {
+                r.a
+            } else {
+                continue;
+            };
+            if is_env(other) {
+                crossings += 1;
+            } else {
+                interior.insert(other);
+            }
+        }
+        if crossings > 0 && interior.len() == 1 {
+            let c = *interior.iter().next().unwrap();
+            // The counterpart must itself be a processor, not another
+            // pass-way — a chain of pure pass-ways stays unfused.
+            let c_is_passway = model
+                .things
+                .iter()
+                .any(|x| x.id == c && pure_passway(x));
+            if !c_is_passway {
+                fused_to.insert(t.id, c);
+            }
+        }
+    }
+
+    let mut id_map: HashMap<u64, Id> = HashMap::new();
+    let mut systems: Vec<System> = Vec::new();
+    let mut sources: Vec<ExternalEntity> = Vec::new();
+    let mut sinks: Vec<ExternalEntity> = Vec::new();
+
+    let root_name = model.name.as_deref().unwrap_or("System");
+    let mut root = new_system(root_id.clone(), 0, root_name, &model.description, env_id.clone(), None, None);
+    // Authored P lands on the root membrane — the projection stops erasing it.
+    root.boundary.porosity = model.boundary.porosity;
+    root.boundary.perceptive_fuzziness = model.boundary.perceptive_fuzziness;
+    systems.push(root);
+
+    let mut comp_idx: i64 = 0;
+    let mut env_idx: i64 = 0;
+    // (systems index, thing id, name, authored protocol, description) per
+    // interface-designated component.
+    let mut designated: Vec<(usize, u64, &str, &str, &str)> = Vec::new();
+    // (thing id, name, protocol, description) per FUSED pass-way — an
+    // Interface record alone, never a subsystem (#226).
+    let mut fused_passways: Vec<(u64, &str, &str, &str)> = Vec::new();
+    // component thing id → its systems[] index (the fusion's parent_interface
+    // back-pointer needs to find the processor's subsystem).
+    let mut sys_idx_of: HashMap<u64, usize> = HashMap::new();
+    for t in &model.things {
+        match t.role {
+            Role::Component => {
+                if fused_to.contains_key(&t.id) {
+                    fused_passways.push((t.id, &t.name, &t.protocol, &t.description));
+                    continue;
+                }
+                let id = Id {
+                    ty: IdType::Subsystem,
+                    indices: vec![0, comp_idx],
+                };
+                comp_idx += 1;
+                sys_idx_of.insert(t.id, systems.len());
+                // #493: a pure pass-way that did NOT fuse (it serves several
+                // processors, or none) still has to be executable. The kernel's
+                // own doctrine (bert#108, `operational.rs`): an interface sited
+                // in B is an Impeding process by default, and unparameterised
+                // its characteristic is the identity. So it is lowered to
+                // exactly that — an Impeding node at agency 1.0 — which passes
+                // everything it is handed, conserves by construction, and
+                // shows in the tick log as carrying. The fused 1:1 case above
+                // is untouched (the rain barrel pins it tick for tick).
+                let lowered = pure_passway(t);
+                systems.push(new_system(
+                    id.clone(),
+                    1,
+                    &t.name,
+                    &t.description,
+                    root_id.clone(),
+                    Some((t.x, t.y)),
+                    if lowered { Some(ProcessPrimitive::Impeding) } else { t.primitive },
+                ));
+                if lowered {
+                    systems
+                        .last_mut()
+                        .unwrap()
+                        .agent
+                        .get_or_insert_with(AgentModel::default)
+                        .agency_capacity = 1.0;
+                }
+                // #496: a sensor reports what it sees. The projection's blanket
+                // agency default (0.5) was meant for gains and efficiencies and
+                // halved every SL-authored Sensing silently; the sandbox palette
+                // has always said 1.0. Authored `gain <n>` overrides below.
+                if t.primitive == Some(ProcessPrimitive::Sensing) && t.agency_capacity.is_none() {
+                    systems
+                        .last_mut()
+                        .unwrap()
+                        .agent
+                        .get_or_insert_with(AgentModel::default)
+                        .agency_capacity = 1.0;
+                }
+                systems.last_mut().unwrap().info.grounding = t.grounding.clone();
+                // The `decomposes` reference carries its id into the kernel; the
+                // human label stays surface-side (the kernel keys on the id).
+                if let Some(child) = &t.child_model {
+                    systems.last_mut().unwrap().child_model = Some(child.id);
+                }
+                // A declared stock unit rides the agent record (bert-lenses#76/#94).
+                // The agent normally exists iff a primitive was authored; a unit
+                // declared without one still projects (a default AgentModel is
+                // additive — serde skips its every unset field), so the accept
+                // affordance can never silently drop an author's declaration.
+                if !t.stock_unit.is_empty() {
+                    let sys = systems.last_mut().unwrap();
+                    sys.agent
+                        .get_or_insert_with(AgentModel::default)
+                        .stock_unit = t.stock_unit.clone();
+                }
+                // The opaque engine-parameter bags ride the same agent record
+                // (#216): the canvas carries them without interpreting them,
+                // so a loaded model's dynamical content survives projection.
+                if !t.cognitive_params.is_empty()
+                    || !t.initial_state.is_empty()
+                    || t.agency_capacity.is_some()
+                {
+                    let agent = systems
+                        .last_mut()
+                        .unwrap()
+                        .agent
+                        .get_or_insert_with(AgentModel::default);
+                    agent.cognitive_params = t.cognitive_params.clone();
+                    agent.initial_state = t.initial_state.clone();
+                    if let Some(ac) = t.agency_capacity {
+                        agent.agency_capacity = ac;
+                    }
+                }
+                // An agent (facets#269): its rule and the two numbers the
+                // agent line put in the bag become the kernel's policy, and
+                // the seam reads a policy-only system into its own list.
+                if let Some(rule) = t.rule {
+                    let agent = systems
+                        .last_mut()
+                        .unwrap()
+                        .agent
+                        .get_or_insert_with(AgentModel::default);
+                    let num = |k: &str| t.cognitive_params.get(k).copied();
+                    agent.policy = Some(rule.policy(num));
+                    agent.primitive = None;
+                }
+                if t.interface {
+                    designated.push((systems.len() - 1, t.id, &t.name, &t.protocol, &t.description));
+                }
+                id_map.insert(t.id, id);
+            }
+            Role::Environment => {
+                if !touched.contains(&t.id) {
+                    continue; // an untouched env dot would be an orphan terminal
+                }
+                // The author's word decides, with the derivation only as a fallback
+                // for a neutral thing (#216). A `WorldModel` has no neutral external
+                // — sources and sinks are separate arrays — so a mediator must still
+                // be filed on one side. Filing it is harmless; what was harmful was
+                // treating the filing as an authored claim and refusing flows that
+                // contradicted it. `check_flow_direction` in bert-core now gates on
+                // `authored_direction`, so a Neutral thing accepts both.
+                let is_source = match t.env_kind {
+                    EnvKind::Source => true,
+                    EnvKind::Sink => false,
+                    EnvKind::Neutral => originates.contains(&t.id),
+                };
+                let id = Id {
+                    ty: if is_source { IdType::Source } else { IdType::Sink },
+                    indices: vec![-1, env_idx],
+                };
+                env_idx += 1;
+                let mut ext = ExternalEntity {
+                    info: described(id.clone(), -1, &t.name, &t.description),
+                    ty: if is_source {
+                        ExternalEntityType::Source
+                    } else {
+                        ExternalEntityType::Sink
+                    },
+                    transform: Some(transform_of(t.x, t.y)),
+                    equivalence: String::new(),
+                    model: String::new(),
+                    is_same_as_id: None,
+                    // Only a `source`/`sink` declaration is the author's claim; a
+                    // neutral `environment` thing is merely filed on one side
+                    // because a WorldModel has no neutral external (#216).
+                    authored_direction: t.env_kind != EnvKind::Neutral,
+                    reservoir: if is_source { t.cognitive_params.get("reservoir").copied() } else { None },
+                };
+                ext.info.grounding = t.grounding.clone();
+                if is_source {
+                    sources.push(ext);
+                } else {
+                    sinks.push(ext);
+                }
+                id_map.insert(t.id, id);
+            }
+        }
+    }
+
+    // Authored interface designation (I ⊆ C): each designated component adds an
+    // Interface entry to the ROOT membrane and attaches to it via its own
+    // boundary.parent_interface (Mobus: an interface IS a subsystem r = (S, φ)).
+    // A flowless entry projects, but no longer validates: SSF #31 added the
+    // converse coverage constraint (every interface carries a boundary-crossing
+    // flow), so `check_interfaces_carry_flow` refuses it at Operational. The
+    // projection stays faithful to what was authored and lets the kernel judge.
+    let env_things: HashSet<u64> = model
+        .things
+        .iter()
+        .filter(|t| t.role == Role::Environment)
+        .map(|t| t.id)
+        .collect();
+    let mut iface_of: HashMap<u64, Id> = HashMap::new();
+    for (seq, (sys_idx, thing_id, name, authored_protocol, description)) in
+        designated.into_iter().enumerate()
+    {
+        let iface_id = Id {
+            ty: IdType::Interface,
+            indices: vec![0, seq as i64],
+        };
+        let mut receives_from: Vec<Id> = Vec::new();
+        let mut exports_to: Vec<Id> = Vec::new();
+        let mut labels: Vec<String> = Vec::new();
+        for r in &bonds {
+            let (env, incoming) = if r.b == thing_id && env_things.contains(&r.a) {
+                (r.a, true)
+            } else if r.a == thing_id && env_things.contains(&r.b) {
+                (r.b, false)
+            } else {
+                continue;
+            };
+            let Some(env_kernel) = id_map.get(&env) else { continue };
+            if incoming {
+                receives_from.push(env_kernel.clone());
+            } else {
+                exports_to.push(env_kernel.clone());
+            }
+            let label = if r.name.trim().is_empty() { None } else { Some(r.name.trim().to_string()) };
+            if let Some(l) = label {
+                if !labels.contains(&l) {
+                    labels.push(l);
+                }
+            }
+        }
+        let ty = match (!receives_from.is_empty(), !exports_to.is_empty()) {
+            (true, false) => InterfaceType::Import,
+            (false, true) => InterfaceType::Export,
+            _ => InterfaceType::Hybrid, // both, or flowless (direction unbound)
+        };
+        systems[0].boundary.interfaces.push(Interface {
+            // The author's prose rides the Interface record too (#347): a
+            // reader of the projected model meets the pass-way here, not at
+            // the subsystem behind it.
+            info: described(iface_id.clone(), 0, name, description),
+            // The author's protocol wins (#333, Listing 4.2); the flow-label
+            // join is the fallback for interfaces that never declared one.
+            protocol: if authored_protocol.is_empty() {
+                labels.join(" · ")
+            } else {
+                authored_protocol.to_string()
+            },
+            ty,
+            exports_to,
+            receives_from,
+            angle: None,
+        });
+        systems[sys_idx].boundary.parent_interface = Some(iface_id.clone());
+        iface_of.insert(thing_id, iface_id);
+    }
+
+    // Fused pass-ways (#226): an Interface record alone. The processor's
+    // subsystem claims it via parent_interface — the back-pointer direction
+    // the original BERT settled on — and the crossing flows re-anchor to the
+    // processor in the interaction loop below.
+    let fused_seq_base = systems[0].boundary.interfaces.len();
+    for (seq, (thing_id, name, authored_protocol, description)) in
+        fused_passways.into_iter().enumerate()
+    {
+        let iface_id = Id {
+            ty: IdType::Interface,
+            indices: vec![0, (fused_seq_base + seq) as i64],
+        };
+        let mut receives_from: Vec<Id> = Vec::new();
+        let mut exports_to: Vec<Id> = Vec::new();
+        let mut labels: Vec<String> = Vec::new();
+        for r in &bonds {
+            let (env, incoming) = if r.b == thing_id && env_things.contains(&r.a) {
+                (r.a, true)
+            } else if r.a == thing_id && env_things.contains(&r.b) {
+                (r.b, false)
+            } else {
+                continue;
+            };
+            let Some(env_kernel) = id_map.get(&env) else { continue };
+            if incoming {
+                receives_from.push(env_kernel.clone());
+            } else {
+                exports_to.push(env_kernel.clone());
+            }
+            if !r.name.trim().is_empty() && !labels.contains(&r.name.trim().to_string()) {
+                labels.push(r.name.trim().to_string());
+            }
+        }
+        let ty = match (!receives_from.is_empty(), !exports_to.is_empty()) {
+            (true, false) => InterfaceType::Import,
+            (false, true) => InterfaceType::Export,
+            _ => InterfaceType::Hybrid,
+        };
+        systems[0].boundary.interfaces.push(Interface {
+            info: described(iface_id.clone(), 0, name, description),
+            protocol: if authored_protocol.is_empty() {
+                labels.join(" · ")
+            } else {
+                authored_protocol.to_string()
+            },
+            ty,
+            exports_to,
+            receives_from,
+            angle: None,
+        });
+        if let Some(&c_idx) = fused_to.get(&thing_id).and_then(|c| sys_idx_of.get(c)) {
+            systems[c_idx].boundary.parent_interface = Some(iface_id.clone());
+        }
+        iface_of.insert(thing_id, iface_id);
+    }
+
+    let mut interactions: Vec<Interaction> = Vec::new();
+    let mut interaction_of: HashMap<u64, Id> = HashMap::new();
+    for (k, r) in bonds.iter().enumerate() {
+        // Pass-way fusion (#226): the interior leg (pass-way ↔ its processor)
+        // lowers to nothing — the crossing leg carries the payload — and a
+        // crossing leg re-anchors to the processor, routed through the fused
+        // interface (source/sink_interface below reads the ORIGINAL endpoint,
+        // which is where iface_of keys the pass-way).
+        if fused_to.get(&r.a) == Some(&r.b) || fused_to.get(&r.b) == Some(&r.a) {
+            continue;
+        }
+        let ea = fused_to.get(&r.a).copied().unwrap_or(r.a);
+        let eb = fused_to.get(&r.b).copied().unwrap_or(r.b);
+        let (Some(src), Some(snk)) = (id_map.get(&ea), id_map.get(&eb)) else {
+            continue;
+        };
+        let flow_id = Id {
+            ty: IdType::Flow,
+            indices: vec![k as i64],
+        };
+        interaction_of.insert(r.id, flow_id.clone());
+        interactions.push(Interaction {
+            info: described(flow_id, 0, &r.name, &r.description),
+            substance: Substance {
+                sub_type: r.substance.clone(),
+                ty: kind_to_substance(r.kind),
+            },
+            ty: InteractionType::Flow,
+            // Authored wins; undeclared keeps the historical default. The
+            // default is a PROJECTION artifact and not a claim the author made
+            // — which is exactly why the field above is an Option (#331).
+            usability: r.usability.unwrap_or(InteractionUsability::Resource),
+            // Crossing flows route through the designated component's interface
+            // (flow ⇒ interface — bipartite_implies_boundary_complete).
+            source: src.clone(),
+            source_interface: (env_things.contains(&r.b))
+                .then(|| iface_of.get(&r.a).cloned())
+                .flatten(),
+            sink: snk.clone(),
+            sink_interface: (env_things.contains(&r.a))
+                .then(|| iface_of.get(&r.b).cloned())
+                .flatten(),
+            // A declared narrowing: the kernel has no "unauthored" amount, so
+            // None becomes the kernel default ONE here — and a model read back
+            // by `to_canvas` therefore returns Some(1), not None (#216). An
+            // outbound crossing leg that declares none takes the amount its
+            // fused interior leg declared: the interior leg lowers to nothing,
+            // and the weight the author put on `Fish -> Landing` is the weight
+            // of the one wire that survives, `Fish -> Market` (ADR 0008 D1's
+            // share command names that wire by the leg the author wrote).
+            amount: r
+                .amount
+                .or_else(|| {
+                    let processor = *fused_to.get(&r.a)?;
+                    if !env_things.contains(&r.b) {
+                        return None;
+                    }
+                    bonds
+                        .iter()
+                        .find(|x| x.a == processor && x.b == r.a)
+                        .and_then(|x| x.amount)
+                })
+                .unwrap_or(facets_core::rust_decimal::Decimal::ONE),
+            unit: r.unit.clone(),
+            ample: r.ample,
+            parameters: vec![],
+            smart_parameters: vec![],
+            endpoint_offset: None,
+        });
+        interactions.last_mut().unwrap().info.grounding = r.grounding.clone();
+    }
+
+    // The crossings nobody inside owns yet land on the root, exactly as
+    // `derive_child` made them (facets#384); one an interface has taken is
+    // already among the interactions above and is not written twice.
+    let is_component = |id: u64| !env_things.contains(&id) && id_map.contains_key(&id);
+    for c in &model.crossings {
+        if c.taken_by(&model.relations, is_component) {
+            continue;
+        }
+        let Some(env) = id_map.get(&c.env) else { continue };
+        let flow_id = Id {
+            ty: IdType::Flow,
+            indices: vec![interactions.len() as i64],
+        };
+        let (source, sink) = if c.inbound {
+            (env.clone(), root_id.clone())
+        } else {
+            (root_id.clone(), env.clone())
+        };
+        interactions.push(Interaction {
+            info: described(flow_id, 0, &c.name, ""),
+            substance: Substance {
+                sub_type: c.substance.clone(),
+                ty: kind_to_substance(c.kind),
+            },
+            ty: InteractionType::Flow,
+            usability: InteractionUsability::Resource,
+            source,
+            source_interface: None,
+            sink,
+            sink_interface: None,
+            amount: c.amount.unwrap_or(facets_core::rust_decimal::Decimal::ONE),
+            unit: c.unit.clone(),
+            ample: false,
+            parameters: vec![],
+            smart_parameters: vec![],
+            endpoint_offset: None,
+        });
+    }
+
+    // The command form (ADR 0008 D1): an agent that names a param writes
+    // that param's knob, so the param it names is the one declaration that
+    // projects — as the agent's command, resolved to the interaction the
+    // knob sits on. Every other param stays unprojected (spec §4.5). A leg
+    // the author wrote into a fused pass-way lowers to nothing, so the
+    // command names the crossing leg that carries its amount instead.
+    let flow_of_relation = |rel: &Relation| -> Option<Id> {
+        if let Some(id) = interaction_of.get(&rel.id) {
+            return Some(id.clone());
+        }
+        if fused_to.get(&rel.b) != Some(&rel.a) {
+            return None;
+        }
+        bonds
+            .iter()
+            .find(|x| x.a == rel.b && env_things.contains(&x.b))
+            .and_then(|x| interaction_of.get(&x.id).cloned())
+    };
+    for t in model.things.iter().filter(|t| t.rule.is_some()) {
+        let Some(name) = t.manages_param.as_deref() else { continue };
+        let Some(decl) = model.params.iter().find(|p| p.name == name) else { continue };
+        let Some(&sys_idx) = sys_idx_of.get(&t.id) else { continue };
+        let command = match decl.anchor {
+            ParamAnchor::Flow { relation } => model
+                .relations
+                .iter()
+                .find(|r| r.id == relation)
+                .and_then(flow_of_relation)
+                .map(|flow| AgentCommand::Amount { param: name.to_string(), flow }),
+            ParamAnchor::Shares { thing } => {
+                let first = model
+                    .relations
+                    .iter()
+                    .find(|r| r.a == thing && r.is_bond && r.amount.is_some() && r.kind != Kind::Informational)
+                    .and_then(flow_of_relation);
+                match (id_map.get(&thing), first) {
+                    (Some(of), Some(first)) => {
+                        Some(AgentCommand::Share { param: name.to_string(), of: of.clone(), first })
+                    }
+                    _ => None,
+                }
+            }
+            ParamAnchor::Field { .. } => None,
+        };
+        if let Some(command) = command {
+            if let Some(agent) = systems[sys_idx].agent.as_mut() {
+                agent.command = Some(command);
+            }
+        }
+    }
+
+    let world = WorldModel {
+        version: 1,
+        model_id: model.model_id,
+        mode: Some(model.lens.mode()),
+        environment: Environment {
+            info: info(env_id, -1, "Environment"),
+            sources,
+            sinks,
+            // E = ⟨O, M⟩: the authored milieu crosses the seam verbatim.
+            milieu: model.milieu.clone(),
+        },
+        systems,
+        interactions,
+        hidden_entities: vec![],
+        reachability_requirements: vec![],
+        // The declared time-unit symbol crosses the seam verbatim (an empty or
+        // whitespace-only declaration reads as undeclared).
+        time_unit: model
+            .time_unit
+            .as_deref()
+            .map(str::trim)
+            .filter(|t| !t.is_empty())
+            .map(str::to_string),
+    };
+
+    Projection {
+        world,
+        thing_ids: id_map,
+        interaction_of,
+    }
+}
+
+fn substance_to_kind(s: SubstanceType) -> Kind {
+    match s {
+        SubstanceType::Material => Kind::Matter,
+        SubstanceType::Message => Kind::Informational,
+        SubstanceType::Energy => Kind::Energy,
+    }
+}
+
+/// Load an existing `WorldModel` back onto the canvas as an editing model — the
+/// display-faithful inverse of [`project`]. Level-1 systems become component
+/// things (carrying their primitive + position), environment source/sink
+/// entities become environment things, interactions become relations (typed by
+/// substance), and the lens is read from the model's mode. Fidelity of dynamics
+/// params (storage, cognitive params) is NOT round-tripped here: in Phase 2b the
+/// canvas is a VIEW + drive-target picker, and the run uses the original model —
+/// so this only needs to draw the structure faithfully.
+///
+/// Decomposition (`System::child_model`) is now PRESERVED (bert-lenses#89 step
+/// 4): a level-1 system carrying a `child_model` reference reconstructs a
+/// [`ChildRef`] on its component thing, so the reference survives into SL's
+/// `decomposes` clause instead of being silently dropped. The kernel stores only
+/// the id, so the reconstructed label is the component's own name (the label may
+/// drift; the id is the key). This is what lifted the `assert_sl_expressible`
+/// guard the shipping `to_canvas` wasm entry used to enforce.
+pub fn to_canvas(model: &WorldModel) -> CanvasModel {
+    use std::collections::HashMap;
+
+    let lens = match model.mode() {
+        Mode::Core => Lens::Klir,
+        Mode::Structural => Lens::Bunge,
+        Mode::Operational | Mode::Full => Lens::Mobus,
+    };
+
+    let mut things: Vec<Thing> = Vec::new();
+    let mut id_of: HashMap<Id, u64> = HashMap::new();
+    let mut next: u64 = 1;
+
+    for s in model.systems.iter().filter(|s| s.info.level == 1) {
+        let (x, y) = s
+            .transform
+            .as_ref()
+            .map(|t| (t.translation.x, t.translation.y))
+            .unwrap_or((0.0, 0.0));
+        let id = next;
+        next += 1;
+        id_of.insert(s.info.id.clone(), id);
+        things.push(Thing {
+            id,
+            name: s.info.name.clone(),
+            // The return leg of #326: project() writes the author's prose into
+            // Info.description, and this reads it back, so a description
+            // survives a round trip through the kernel like a name does.
+            description: s.info.description.clone(),
+            grounding: s.info.grounding.clone(),
+            x,
+            y,
+            role: Role::Component,
+            // Meaningless on a component; the field only speaks for env things.
+            env_kind: EnvKind::default(),
+            primitive: s.agent.as_ref().and_then(|a| a.primitive),
+            // The return leg of facets#269: a policy reads back as the rule,
+            // and its numbers land in the bag below where the agent line and
+            // the param layer expect them.
+            rule: s
+                .agent
+                .as_ref()
+                .and_then(|a| a.policy.as_ref())
+                .map(AgentRule::of),
+            // The command form reads back as the param's name; the param
+            // itself is rebuilt below once the relations have their ids.
+            manages_param: s
+                .agent
+                .as_ref()
+                .and_then(|a| a.command.as_ref())
+                .map(|c| c.param().to_string()),
+            // parent_interface is the designation's inverse: a level-1 system
+            // attached to a root-membrane interface IS a designated member of I.
+            interface: s.boundary.parent_interface.is_some(),
+            passway: false,
+            // The claimed Interface record's protocol reads back onto the
+            // thing (#333). The kernel cannot say whether it was authored or
+            // the computed flow-label join — the read-back keeps the best
+            // information the record carries, same trade the `interface`
+            // bool above already makes.
+            protocol: s
+                .boundary
+                .parent_interface
+                .as_ref()
+                .and_then(|iid| {
+                    model.systems.first().and_then(|root| {
+                        root.boundary
+                            .interfaces
+                            .iter()
+                            .find(|i| &i.info.id == iid)
+                            .map(|i| i.protocol.clone())
+                    })
+                })
+                .unwrap_or_default(),
+            // The kernel keys decomposition on the id alone; label the
+            // reconstructed reference with the component's own name.
+            child_model: s.child_model.map(|id| ChildRef {
+                name: if s.info.name.is_empty() {
+                    facets_core::model_id::encode_uuid(&id.as_uuid())
+                } else {
+                    s.info.name.clone()
+                },
+                id,
+            }),
+            stock_unit: s
+                .agent
+                .as_ref()
+                .map(|a| a.stock_unit.clone())
+                .unwrap_or_default(),
+            // Klir source-system metadata lives only canvas-side; the kernel
+            // carries none, so a reconstructed thing has neither.
+            scale: None,
+            states: None,
+            variable_kind: None,
+            // The engine-parameter bags cross the seam opaquely in both
+            // directions (#216). What this load still narrows, declared:
+            // `process_configs` and `network_config` are NOT carried — no
+            // shipped model uses them, and #112 owns their typed future.
+            cognitive_params: {
+                let mut bag = s
+                    .agent
+                    .as_ref()
+                    .map(|a| a.cognitive_params.clone())
+                    .unwrap_or_default();
+                // The policy is the authority for an agent's numbers; a model
+                // the engine exported carries them nowhere else.
+                if let Some(policy) = s.agent.as_ref().and_then(|a| a.policy.as_ref()) {
+                    for (word, v) in policy.fields() {
+                        bag.insert(word, v);
+                    }
+                }
+                bag
+            },
+            initial_state: s
+                .agent
+                .as_ref()
+                .map(|a| a.initial_state.clone())
+                .unwrap_or_default(),
+            agency_capacity: s.agent.as_ref().map(|a| a.agency_capacity),
+        });
+    }
+
+    for e in model
+        .environment
+        .sources
+        .iter()
+        .chain(model.environment.sinks.iter())
+    {
+        let (x, y) = e
+            .transform
+            .as_ref()
+            .map(|t| (t.translation.x, t.translation.y))
+            .unwrap_or((0.0, 0.0));
+        let id = next;
+        next += 1;
+        id_of.insert(e.info.id.clone(), id);
+        things.push(Thing {
+            id,
+            name: e.info.name.clone(),
+            description: e.info.description.clone(),
+            grounding: e.info.grounding.clone(),
+            x,
+            y,
+            role: Role::Environment,
+            // Loading a WorldModel back: the kernel keeps sources and sinks in
+            // separate arrays, so a declared direction is recoverable here even
+            // though neutrality is not — a WorldModel cannot represent it (#216).
+            env_kind: match e.ty {
+                ExternalEntityType::Source => EnvKind::Source,
+                ExternalEntityType::Sink => EnvKind::Sink,
+            },
+            primitive: None,
+            rule: None,
+            manages_param: None,
+            interface: false,
+            passway: false,
+            protocol: String::new(),
+            child_model: None,
+            stock_unit: String::new(),
+            scale: None,
+            states: None,
+            variable_kind: None,
+            cognitive_params: e
+                .reservoir
+                .map(|r| std::collections::HashMap::from([("reservoir".to_string(), r)]))
+                .unwrap_or_default(),
+            initial_state: Default::default(),
+            agency_capacity: None,
+        });
+    }
+
+    let root = model
+        .systems
+        .iter()
+        .find(|s| s.info.level == 0)
+        .map(|s| s.info.id.clone());
+    let mut relations: Vec<Relation> = Vec::new();
+    let mut crossings: Vec<Crossing> = Vec::new();
+    let mut relation_of_flow: HashMap<Id, u64> = HashMap::new();
+    for ix in &model.interactions {
+        // A flow with the root at one end and an environment thing at the
+        // other is a crossing nobody inside owns yet (facets#384): keep it.
+        let is_root = |id: &Id| root.as_ref() == Some(id);
+        let crossing = if is_root(&ix.sink) {
+            id_of.get(&ix.source).map(|&env| (env, true))
+        } else if is_root(&ix.source) {
+            id_of.get(&ix.sink).map(|&env| (env, false))
+        } else {
+            None
+        };
+        if let Some((env, inbound)) = crossing {
+            crossings.push(Crossing {
+                env,
+                inbound,
+                name: ix.info.name.clone(),
+                kind: substance_to_kind(ix.substance.ty),
+                substance: ix.substance.sub_type.clone(),
+                amount: Some(ix.amount),
+                unit: ix.unit.clone(),
+            });
+            continue;
+        }
+        let (Some(&a), Some(&b)) = (id_of.get(&ix.source), id_of.get(&ix.sink)) else {
+            continue;
+        };
+        let id = next;
+        next += 1;
+        relation_of_flow.insert(ix.info.id.clone(), id);
+        relations.push(Relation {
+            id,
+            a,
+            b,
+            name: ix.info.name.clone(),
+            description: ix.info.description.clone(),
+            grounding: ix.info.grounding.clone(),
+            // A WorldModel cannot say "undeclared" — every interaction carries
+            // one — so the historical default reads back as unauthored rather
+            // than emitting a `usability Resource` nobody typed. Same trade
+            // `amount` makes just below (#262).
+            usability: (ix.usability != InteractionUsability::Resource).then_some(ix.usability),
+            is_bond: true,
+            kind: substance_to_kind(ix.substance.ty),
+            klir_directed: false,
+            weight: None,
+            // The kernel cannot say "unauthored", and project() writes ONE
+            // wherever the author wrote nothing — so a reloaded ONE reads back
+            // as unauthored rather than emitting `amount 1` the author never
+            // typed (#262). A genuinely authored 1 is indistinguishable and
+            // also reads back None: the same trade the placeholder root name
+            // makes below, and projection resupplies the ONE either way.
+            amount: Some(ix.amount).filter(|a| *a != facets_core::rust_decimal::Decimal::ONE),
+            unit: ix.unit.clone(),
+            substance: ix.substance.sub_type.clone(),
+            ample: ix.ample,
+        });
+    }
+
+    let root = model.systems.iter().find(|s| s.info.level == 0);
+    let boundary = root
+        .map(|s| CanvasBoundaryProps {
+            porosity: s.boundary.porosity,
+            perceptive_fuzziness: s.boundary.perceptive_fuzziness,
+        })
+        .unwrap_or_default();
+    // The projection's placeholder root name reads back as unnamed — a model
+    // genuinely named "System" is indistinguishable and also reads back None.
+    let name = root
+        .map(|s| s.info.name.as_str())
+        .filter(|n| !n.is_empty() && *n != "System")
+        .map(str::to_string);
+
+    // The SOI's own prose, read back off the root system — the return leg that
+    // makes a model-level description round-trip like `name` does.
+    let description = model
+        .systems
+        .iter()
+        .find(|s| s.info.level == 0)
+        .map(|s| s.info.description.clone())
+        .unwrap_or_default();
+
+    // The one param a WorldModel does carry is the one an agent commands
+    // (ADR 0008 D1): it rides as the agent's command and is rebuilt here so
+    // the agent line's `manages param` resolves. A flow param's range does
+    // not cross the seam, so an amount command reads back rangeless and the
+    // emitter refuses it as inexpressible rather than emitting a line the
+    // parser would refuse. Every other param stays canvas-resident.
+    let mut params: Vec<ParamDecl> = Vec::new();
+    for command in model.systems.iter().filter_map(|s| s.agent.as_ref()?.command.as_ref()) {
+        if params.iter().any(|p| p.name == command.param()) {
+            continue;
+        }
+        let anchor = match command {
+            AgentCommand::Amount { flow, .. } => {
+                relation_of_flow.get(flow).map(|&relation| ParamAnchor::Flow { relation })
+            }
+            AgentCommand::Share { of, .. } => id_of.get(of).map(|&thing| ParamAnchor::Shares { thing }),
+        };
+        if let Some(anchor) = anchor {
+            params.push(ParamDecl { name: command.param().to_string(), anchor, range: None });
+        }
+    }
+
+    CanvasModel {
+        lens,
+        model_id: model.model_id,
+        milieu: model.environment.milieu.clone(),
+        things,
+        relations,
+        crossings,
+        boundary,
+        system_type: SystemType::default(),
+        name,
+        description,
+        time_unit: model.time_unit.clone(),
+        // Params and metrics are canvas-resident presentation semantics; a
+        // WorldModel carries none but the commanded ones above, so a model
+        // born from kernel JSON starts otherwise bare.
+        params,
+        metrics: vec![],
+        klir_level: None,
+    }
+}
+
+/// Derive the newborn child of the canvas component `thing_id` — the door's
+/// canvas half (bert-lenses#89 step 5b). Projects the editing model and hands
+/// the projected component to [`facets_core::decomposition::derive_child`], which
+/// derives G′, mints the child's identity, and judges eligibility (interface
+/// components refuse under the v1 narrowing). The caller saves the returned
+/// model and stamps the parent's `child_model` reference — stamping is tooling,
+/// never done here.
+pub fn decompose_thing(
+    model: &CanvasModel,
+    thing_id: u64,
+) -> Result<WorldModel, Vec<ValidationIssue>> {
+    let p = project_with_map(model);
+    match p.thing_ids.get(&thing_id) {
+        Some(comp) => facets_core::decomposition::derive_child(&p.world, comp),
+        None => Err(vec![ValidationIssue {
+            severity: facets_core::validate::Severity::Error,
+            code: "not_a_relatum".to_string(),
+            location: format!("thing {thing_id}"),
+            message: "nothing to decompose here: the selected element does not project as a \
+                      model relatum"
+                .to_string(),
+            suggestion: Some("Select a component of the model".to_string()),
+            doc: Some(facets_core::validate::doc::DECOMPOSITION.to_string()),
+            subject: None,
+        }]),
+    }
+}
+
+/// Does this issue belong at the connection gesture?
+///
+/// Two things keep an issue here. A refusal always does — a `Severity::Error`
+/// is the kernel declaring the edge illegal, and no refusal is ever deferred.
+/// Otherwise the `location` decides: node-scoped checks address `systems[i]…`
+/// (dead ends, reachability), while relation- and mode-scoped ones address
+/// `interactions[i]` or `mode/…` (self-loops, duplicate edges, the Bunge
+/// bond). Nothing is re-tagged; this only reads the coordinate and the rating
+/// the check already wrote.
+///
+/// One refusal is exempt, and the exemption is the point of #213: the
+/// flowless-interface Error (`interfaces_carry_flow`, SSF #31) is a claim about
+/// a designation, not about an edge. The stamp is made BEFORE the crossing flow
+/// is drawn, so every model passes through the refused state on the way to a
+/// legal one — carrying it to the gesture would refuse a half-drawn model for
+/// being half-drawn, the #212 defect again with a different check. It is
+/// audit-time only. Nothing is lost: `analyze` runs the full set, so Review
+/// still shows it.
+///
+/// Its #225 sibling — a declared `receives_from`/`exports_to` no interaction
+/// records — is exempt for the same reason. The projection derives the
+/// declaration from the bonds, so it cannot fire on a canvas model at all; on
+/// any path that writes the declaration directly the declaration precedes the
+/// flow, and refusing the drag would be #212 a fourth time.
+fn belongs_at_the_gesture(issue: &ValidationIssue) -> bool {
+    if facets_core::validate::is_interface_flow_refusal(issue)
+        || facets_core::validate::is_interface_declaration_refusal(issue)
+    {
+        return false;
+    }
+    issue.severity == Severity::Error || !issue.location.starts_with("systems")
+}
+
+/// Validate a proposed connection against the current lens: project the model
+/// WITH the candidate, run `validate_mode(lens.mode())`, and return the issues
+/// the candidate INTRODUCED (a self-loop at Mobus, an unbonded aggregate at
+/// Bunge, …). Empty = the connection is legal at this lens. React calls this per
+/// drag; it decides nothing itself.
+///
+/// The question here is "is this edge legal", not "is this model finished".
+/// Node-scoped OBSERVATIONS are dropped: the first edge into a node
+/// structurally always makes it a dead end, and that clears itself once the
+/// node's outflow is drawn. Refusals are never dropped, wherever they sit. No
+/// verdict changes and no check is removed — `analyze` still runs the whole
+/// set, so every deferred observation stays visible in the audit.
+pub fn validate_connection(model: &CanvasModel, candidate: &Relation) -> Vec<ValidationIssue> {
+    use std::collections::HashSet;
+    let mode = model.lens.mode();
+    let before = validate_mode(&project(model), mode);
+    let mut with = model.clone();
+    with.relations.push(candidate.clone());
+    let after = validate_mode(&project(&with), mode);
+
+    let seen: HashSet<(String, String)> = before
+        .issues
+        .iter()
+        .map(|i| (i.location.clone(), i.message.clone()))
+        .collect();
+    after
+        .issues
+        .into_iter()
+        .filter(|i| !seen.contains(&(i.location.clone(), i.message.clone())))
+        .filter(belongs_at_the_gesture)
+        .collect()
+}
+
+/// Read a model AS A KLIR STATE MACHINE for the #67 DTMC run: its things are the
+/// states `T`, its directed relations are the transitions `R`. Returns the state
+/// labels and the weighted edges (`from_index`, `to_index`, `weight`) a
+/// [`facets_compose::markov::Chain`] consumes.
+///
+/// This reads the Klir `(T, R)` structure DIRECTLY — it never projects to a
+/// `WorldModel` or calls `validate_operational`, so the Mobus irreflexivity gate
+/// (`k ≠ o`, which refuses self-loops entering Operational mode) is bypassed
+/// entirely. A self-loop `a → a` is a legal, ordinary transition here (a state
+/// that stays put), as it is at Klir/Core. Feedback-as-a-first-class-cycle is
+/// Cybernetic mode's future seat; Klir carries it for now.
+///
+/// Each edge carries its authored [`Relation::weight`] count; an unweighted
+/// transition reads as the uniform default `1`. `Chain::from_edges` normalizes a
+/// state's out-edge counts into its row distribution, so authoring `weight 3`
+/// vs `weight 1` on a state's two successors biases its split 3:1.
+pub fn markov_edges(model: &CanvasModel) -> (Vec<String>, Vec<(usize, usize, u64)>) {
+    use std::collections::HashMap;
+    let states: Vec<String> = model.things.iter().map(|t| t.name.clone()).collect();
+    let index: HashMap<u64, usize> = model
+        .things
+        .iter()
+        .enumerate()
+        .map(|(i, t)| (t.id, i))
+        .collect();
+    let edges = model
+        .relations
+        .iter()
+        .filter_map(|r| {
+            let &i = index.get(&r.a)?;
+            let &j = index.get(&r.b)?;
+            Some((i, j, r.weight.unwrap_or(1)))
+        })
+        .collect();
+    (states, edges)
+}
+
+#[cfg(all(test, not(target_arch = "wasm32")))]
+mod tests {
+    use super::*;
+
+    fn thing(id: u64, name: &str, role: Role) -> Thing {
+        Thing {
+            id,
+            name: name.to_string(),
+            description: String::new(),
+            grounding: None,
+            x: id as f32 * 100.0,
+            y: 0.0,
+            role,
+            primitive: None,
+            rule: None,
+            manages_param: None,
+            interface: false,
+            passway: false,
+            protocol: String::new(),
+            child_model: None,
+            stock_unit: String::new(),
+            scale: None,
+            states: None,
+            variable_kind: None,
+            cognitive_params: Default::default(),
+            initial_state: Default::default(),
+            agency_capacity: None,
+            env_kind: Default::default(),
+        }
+    }
+    fn bond(id: u64, a: u64, b: u64) -> Relation {
+        Relation {
+            id,
+            a,
+            b,
+            name: String::new(),
+            description: String::new(),
+            grounding: None,
+            usability: None,
+            is_bond: true,
+            kind: Kind::Unspecified,
+            klir_directed: false,
+            weight: None,
+            amount: None,
+            unit: String::new(),
+            substance: String::new(),
+            ample: false,
+        }
+    }
+
+    /// Law: `markov_edges` reads a Klir state machine's things as states and its
+    /// directed relations as transitions — self-loops included, with no
+    /// projection and no Operational gate. The parity automaton (each state with
+    /// a self-loop `0` and a cross-edge `1`) reads back as the four expected
+    /// edges over two states.
+    #[test]
+    fn markov_edges_reads_klir_state_machine_with_self_loops() {
+        let model = CanvasModel {
+            crossings: vec![],
+            lens: Lens::Klir,
+            model_id: None,
+            milieu: Vec::new(),
+            things: vec![
+                thing(1, "Even", Role::Component),
+                thing(2, "Odd", Role::Component),
+            ],
+            // Self-loops (1→1, 2→2) are legal Klir transitions; they would be
+            // refused entering Operational mode, which this path never touches.
+            relations: vec![
+                bond(10, 1, 2), // Even --1--> Odd
+                bond(11, 1, 1), // Even --0--> Even (self-loop)
+                bond(12, 2, 1), // Odd  --1--> Even
+                bond(13, 2, 2), // Odd  --0--> Odd  (self-loop)
+            ],
+            boundary: Default::default(),
+            system_type: Default::default(),
+            name: None,
+            description: String::new(),
+            time_unit: None,
+            params: vec![],
+            metrics: vec![],
+            klir_level: None,
+        };
+        let (states, edges) = markov_edges(&model);
+        assert_eq!(states, vec!["Even".to_string(), "Odd".to_string()]);
+        assert_eq!(
+            edges,
+            vec![(0, 1, 1), (0, 0, 1), (1, 0, 1), (1, 1, 1)],
+            "uniform-weighted edges, self-loops kept"
+        );
+    }
+
+    /// Law: two components joined by a bond project to a legal (error-free)
+    /// world at every lens — Klir, Bunge, and Mobus alike.
+    #[test]
+    fn projects_a_bonded_pair_cleanly_at_every_lens() {
+        for lens in [Lens::Klir, Lens::Bunge, Lens::Mobus] {
+            let model = CanvasModel { milieu: vec![],
+                crossings: vec![],
+                lens,
+                model_id: None,
+                things: vec![
+                    thing(1, "A", Role::Component),
+                    thing(2, "B", Role::Component),
+                ],
+                relations: vec![bond(10, 1, 2)],
+                boundary: Default::default(),
+                system_type: Default::default(),
+                name: None,
+                description: String::new(),
+                time_unit: None,
+                params: vec![],
+                metrics: vec![],
+                klir_level: None,
+            };
+            let wm = project(&model);
+            assert_eq!(wm.mode, Some(lens.mode()));
+            assert_eq!(wm.interactions.len(), 1);
+            // two components + root
+            assert_eq!(wm.systems.len(), 3);
+            let issues = validate_mode(&wm, lens.mode());
+            assert!(
+                !issues.has_errors(),
+                "{lens:?}: {:?}",
+                issues.issues
+            );
+        }
+    }
+
+    /// Law: a self-loop (k = o) is illegal at Mobus's irreflexivity gate but
+    /// legal at Klir — Core has no such gate.
+    #[test]
+    fn self_loop_is_rejected_at_mobus_but_not_klir() {
+        let model = CanvasModel {
+            crossings: vec![],
+            lens: Lens::Mobus,
+            model_id: None,
+            milieu: Vec::new(),
+            things: vec![thing(1, "A", Role::Component), thing(2, "B", Role::Component)],
+            relations: vec![bond(10, 1, 2)],
+            boundary: Default::default(),
+            system_type: Default::default(),
+            name: None,
+            description: String::new(),
+            time_unit: None,
+            params: vec![],
+            metrics: vec![],
+            klir_level: None,
+        };
+        let loop_edge = bond(11, 1, 1); // A → A
+        let issues = validate_connection(&model, &loop_edge);
+        assert!(
+            issues.iter().any(|i| i.message.contains("k ≠ o") || i.message.contains("same endpoint")),
+            "Mobus should reject a self-loop: {issues:?}"
+        );
+        // The same edge is legal at Klir (Core has no irreflexivity gate).
+        let klir = CanvasModel { lens: Lens::Klir, ..model.clone() };
+        assert!(validate_connection(&klir, &loop_edge).is_empty());
+    }
+
+    /// Law: the FIRST edge between two fresh components is legal at Mobus. It
+    /// necessarily makes the sink a dead end, but that is a whole-model
+    /// observation about an unfinished model, not a statement about the edge.
+    #[test]
+    fn first_edge_carries_no_gesture_time_issue_at_mobus() {
+        let model = CanvasModel {
+            crossings: vec![],
+            lens: Lens::Mobus,
+            model_id: None,
+            milieu: Vec::new(),
+            things: vec![thing(1, "S", Role::Component), thing(2, "H", Role::Component)],
+            relations: vec![],
+            boundary: Default::default(),
+            system_type: Default::default(),
+            name: None,
+            description: String::new(),
+            time_unit: None,
+            params: vec![],
+            metrics: vec![],
+            klir_level: None,
+        };
+        let issues = validate_connection(&model, &bond(10, 1, 2));
+        assert!(issues.is_empty(), "S → H must connect: {issues:?}");
+    }
+
+    /// Law: the dead-end observation the gesture defers is not lost — `analyze`
+    /// still reports it, as a Warning, on the model the edge produced.
+    #[test]
+    fn deferred_dead_end_still_reaches_the_audit() {
+        let model = CanvasModel {
+            crossings: vec![],
+            lens: Lens::Mobus,
+            model_id: None,
+            milieu: Vec::new(),
+            things: vec![thing(1, "S", Role::Component), thing(2, "H", Role::Component)],
+            relations: vec![bond(10, 1, 2)],
+            boundary: Default::default(),
+            system_type: Default::default(),
+            name: None,
+            description: String::new(),
+            time_unit: None,
+            params: vec![],
+            metrics: vec![],
+            klir_level: None,
+        };
+        let audit = crate::lenses::analyze(&model, Lens::Mobus);
+        let hit = audit
+            .validation
+            .issues
+            .iter()
+            .find(|i| i.message.contains("no outgoing transitions"))
+            .expect("the audit keeps the dead-end observation");
+        assert_eq!(hit.severity, Severity::Warning);
+        assert!(hit.location.starts_with("systems"), "node-scoped: {hit:?}");
+    }
+
+    /// Law: relation-scoped observations stay at gesture time. A second
+    /// identical edge is a duplicate — a Warning the drawer should see as the
+    /// edge lands, not an observation deferred to the audit.
+    #[test]
+    fn duplicate_edge_stays_a_gesture_time_warning() {
+        let model = CanvasModel {
+            crossings: vec![],
+            lens: Lens::Mobus,
+            model_id: None,
+            milieu: Vec::new(),
+            things: vec![
+                thing(1, "S", Role::Component),
+                thing(2, "H", Role::Component),
+                thing(3, "T", Role::Component),
+            ],
+            relations: vec![bond(10, 1, 2), bond(11, 2, 3)],
+            boundary: Default::default(),
+            system_type: Default::default(),
+            name: None,
+            description: String::new(),
+            time_unit: None,
+            params: vec![],
+            metrics: vec![],
+            klir_level: None,
+        };
+        let issues = validate_connection(&model, &bond(12, 1, 2));
+        let dup = issues
+            .iter()
+            .find(|i| i.message.contains("duplicate edge"))
+            .expect("the duplicate is named at gesture time");
+        assert_eq!(dup.severity, Severity::Warning);
+        assert!(dup.location.starts_with("interactions"), "relation-scoped: {dup:?}");
+    }
+
+    /// Law: only OBSERVATIONS defer. A node-located refusal (the stock/inflow
+    /// dimension Error is the one the kernel can raise at `systems[i].…`) still
+    /// belongs at the gesture — location defers a Warning, never an Error.
+    #[test]
+    fn a_node_located_error_still_belongs_at_the_gesture() {
+        let at = |severity, location: &str| ValidationIssue {
+            severity,
+            code: "test".to_string(),
+            location: location.to_string(),
+            message: String::new(),
+            suggestion: None,
+            doc: None,
+            subject: None,
+        };
+        assert!(belongs_at_the_gesture(&at(
+            Severity::Error,
+            "systems[0].agent.stock_unit"
+        )));
+        assert!(!belongs_at_the_gesture(&at(Severity::Warning, "systems[0]")));
+        assert!(belongs_at_the_gesture(&at(
+            Severity::Warning,
+            "interactions[0]"
+        )));
+        assert!(belongs_at_the_gesture(&at(Severity::Error, "mode/Structural")));
+    }
+
+    /// E = ⟨O, M⟩ crosses the seam: authored milieu variables project into
+    /// the kernel Environment verbatim, and read back through to_canvas.
+    #[test]
+    fn the_milieu_projects_and_reads_back() {
+        let mut model = CanvasModel {
+            crossings: vec![],
+            lens: Lens::Mobus,
+            model_id: None,
+            milieu: vec![facets_core::MilieuVariable {
+                name: "pH".into(),
+                value: Some(7.2),
+                unit: String::new(),
+                description: String::new(),
+            }],
+            things: vec![thing(1, "Core", Role::Component)],
+            relations: vec![],
+            boundary: Default::default(),
+            system_type: Default::default(),
+            name: None,
+            description: String::new(),
+            time_unit: None,
+            params: vec![],
+            metrics: vec![],
+            klir_level: None,
+        };
+        model.things[0].primitive = Some(ProcessPrimitive::Buffering);
+        let world = project(&model);
+        assert_eq!(world.environment.milieu.len(), 1);
+        assert_eq!(world.environment.milieu[0].name, "pH");
+        assert_eq!(world.environment.milieu[0].value, Some(7.2));
+        let back = to_canvas(&world);
+        assert_eq!(back.milieu, model.milieu);
+    }
+
+    /// The fusion law (#226 + bert#108): a pure pass-way with one processor
+    /// projects to an Interface record ALONE — never a subsystem — its
+    /// crossing flow re-anchors to the processor with the interface routed,
+    /// its interior leg vanishes, and the processor's subsystem claims the
+    /// interface via parent_interface. Operational then validates clean:
+    /// the authored two-hop chain IS the lowered one-hop interaction.
+    #[test]
+    fn a_pure_passway_fuses_to_an_interface_record() {
+        let mut gate = thing(1, "Ore Gate", Role::Component);
+        gate.interface = true;
+        gate.passway = true;
+        gate.protocol = "graded ore only".into();
+        let model = CanvasModel {
+            crossings: vec![],
+            lens: Lens::Mobus,
+            model_id: None,
+            milieu: Vec::new(),
+            things: vec![gate, thing(2, "Furnace", Role::Component), thing(3, "Mine", Role::Environment)],
+            relations: vec![bond(10, 3, 1), bond(11, 1, 2)],
+            boundary: Default::default(),
+            system_type: Default::default(),
+            name: None,
+            description: String::new(),
+            time_unit: None,
+            params: vec![],
+            metrics: vec![],
+            klir_level: None,
+        };
+        let world = project(&model);
+        // One subsystem (the Furnace); the pass-way is no system at all.
+        assert_eq!(world.systems.len(), 2, "root + processor only");
+        assert_eq!(world.systems[1].info.name, "Furnace");
+        // The Interface record carries the pass-way's name and protocol.
+        let ifaces = &world.systems[0].boundary.interfaces;
+        assert_eq!(ifaces.len(), 1);
+        assert_eq!(ifaces[0].info.name, "Ore Gate");
+        assert_eq!(ifaces[0].protocol, "graded ore only");
+        // The processor claims it — the old-BERT back-pointer.
+        assert_eq!(
+            world.systems[1].boundary.parent_interface,
+            Some(ifaces[0].info.id.clone())
+        );
+        // One interaction: Mine → Furnace, routed through the pass-way; the
+        // interior leg lowered to nothing.
+        assert_eq!(world.interactions.len(), 1);
+        let ix = &world.interactions[0];
+        assert_eq!(ix.sink, world.systems[1].info.id);
+        assert_eq!(ix.sink_interface, Some(ifaces[0].info.id.clone()));
+        // And the lowered model is well-formed where it counts.
+        let report = validate_mode(&world, facets_core::Mode::Operational);
+        assert!(
+            !report.issues.iter().any(|i| i.severity == Severity::Error),
+            "fused projection validates clean: {:?}",
+            report.issues
+        );
+    }
+
+    /// The 1:1 bound is deliberate (SSF InterfaceDecomposition covers 1:1
+    /// only): a pass-way whose interior flows reach TWO processors stays
+    /// unfused and falls back to the merged projection — it remains a
+    /// subsystem, exactly as a stamped component would.
+    #[test]
+    fn a_passway_serving_two_processors_does_not_fuse() {
+        let mut gate = thing(1, "Gate", Role::Component);
+        gate.interface = true;
+        gate.passway = true;
+        let model = CanvasModel {
+            crossings: vec![],
+            lens: Lens::Mobus,
+            model_id: None,
+            milieu: Vec::new(),
+            things: vec![
+                gate,
+                thing(2, "A", Role::Component),
+                thing(3, "B", Role::Component),
+                thing(4, "Mine", Role::Environment),
+            ],
+            relations: vec![bond(10, 4, 1), bond(11, 1, 2), bond(12, 1, 3)],
+            boundary: Default::default(),
+            system_type: Default::default(),
+            name: None,
+            description: String::new(),
+            time_unit: None,
+            params: vec![],
+            metrics: vec![],
+            klir_level: None,
+        };
+        let world = project(&model);
+        assert_eq!(world.systems.len(), 4, "root + Gate + A + B: no fusion");
+        assert_eq!(world.interactions.len(), 3, "all three legs survive");
+    }
+
+    /// The separating pair for #333: with an authored protocol the projected
+    /// Interface record carries the author's rule; without one it falls back
+    /// to the computed flow-label join. Same model otherwise.
+    #[test]
+    fn authored_protocol_wins_and_the_join_is_the_fallback() {
+        let mut gate = thing(1, "Gate", Role::Component);
+        gate.interface = true;
+        let mut r = bond(10, 3, 1);
+        r.name = "graded ore".into();
+        let base = CanvasModel {
+            crossings: vec![],
+            lens: Lens::Mobus,
+            model_id: None,
+            milieu: Vec::new(),
+            things: vec![gate, thing(2, "Core", Role::Component), thing(3, "Mine", Role::Environment)],
+            relations: vec![r, bond(11, 1, 2)],
+            boundary: Default::default(),
+            system_type: Default::default(),
+            name: None,
+            description: String::new(),
+            time_unit: None,
+            params: vec![],
+            metrics: vec![],
+            klir_level: None,
+        };
+        let joined = project(&base);
+        assert_eq!(joined.systems[0].boundary.interfaces[0].protocol, "graded ore");
+
+        let mut authored = base.clone();
+        authored.things[0].protocol = "badge required".into();
+        let world = project(&authored);
+        assert_eq!(world.systems[0].boundary.interfaces[0].protocol, "badge required");
+    }
+
+    /// #347: an interface's description reaches the projected Interface
+    /// record, on both shapes an interface projects through — the fused
+    /// pass-way (a record alone) and the designated component. The third
+    /// interface separates the check: undescribed stays empty.
+    #[test]
+    fn an_interface_description_survives_projection() {
+        let model = crate::sl::parse_sl(
+            "interface Gate\n    description \"the intake\"\n\
+             component Core\n\
+             component Vent interface description \"the exhaust\"\n\
+             component Drain interface\n\
+             source Mine\nsink Air\nsink Sewer\n\
+             flow Mine -> Gate : matter \"ore\"\n\
+             flow Gate -> Core : matter \"ore\"\n\
+             flow Core -> Vent : matter \"gas\"\n\
+             flow Vent -> Air : matter \"gas\"\n\
+             flow Core -> Drain : matter \"slag\"\n\
+             flow Drain -> Sewer : matter \"slag\"\n",
+        )
+        .unwrap();
+        let world = project(&model);
+        let described = |name: &str| {
+            let ifaces = &world.systems[0].boundary.interfaces;
+            let i = ifaces.iter().find(|i| i.info.name == name);
+            i.unwrap_or_else(|| panic!("no interface {name}")).info.description.clone()
+        };
+        assert_eq!(described("Gate"), "the intake");
+        assert_eq!(described("Vent"), "the exhaust");
+        assert_eq!(described("Drain"), "");
+    }
+
+    /// Law (#213 / SSF #31): a component stamped `interface` with no crossing
+    /// flow is REFUSED at Operational. The refusal is the kernel's, addressed to
+    /// the interface's own path, and it names the designated component.
+    #[test]
+    fn flowless_interface_is_refused_at_operational() {
+        let mut a = thing(1, "Gate", Role::Component);
+        a.interface = true;
+        let model = CanvasModel {
+            crossings: vec![],
+            lens: Lens::Mobus,
+            model_id: None,
+            milieu: Vec::new(),
+            things: vec![a, thing(2, "Core", Role::Component)],
+            relations: vec![bond(10, 1, 2)],
+            boundary: Default::default(),
+            system_type: Default::default(),
+            name: None,
+            description: String::new(),
+            time_unit: None,
+            params: vec![],
+            metrics: vec![],
+            klir_level: None,
+        };
+        let world = project(&model);
+        let report = validate_mode(&world, facets_core::Mode::Operational);
+        let hit = report
+            .issues
+            .iter()
+            .find(|i| facets_core::validate::is_interface_flow_refusal(i))
+            .expect("Operational refuses the flowless interface");
+        assert_eq!(hit.severity, Severity::Error);
+        assert_eq!(hit.location, "systems[0].boundary.interfaces[0]");
+        assert!(hit.message.contains("Gate"), "names the designation: {hit:?}");
+
+        // Structural is Bunge's mode and Core is Klir's; neither runs the check.
+        for quiet in [facets_core::Mode::Core, facets_core::Mode::Structural] {
+            assert!(
+                !validate_mode(&world, quiet)
+                    .issues
+                    .iter()
+                    .any(facets_core::validate::is_interface_flow_refusal),
+                "{quiet:?} must be unaffected"
+            );
+        }
+    }
+
+    /// Law (#213, the load-bearing half): that refusal never reaches the
+    /// connection gesture. The stamp precedes the flow, so every model passes
+    /// through the refused state on the way to a legal one — blocking here would
+    /// refuse a half-drawn model for being half-drawn (#212). The edge lands;
+    /// the audit still carries the refusal.
+    #[test]
+    fn flowless_interface_refusal_never_blocks_a_connection() {
+        let mut a = thing(1, "Gate", Role::Component);
+        a.interface = true;
+        let model = CanvasModel {
+            crossings: vec![],
+            lens: Lens::Mobus,
+            model_id: None,
+            milieu: Vec::new(),
+            things: vec![a, thing(2, "Core", Role::Component)],
+            relations: vec![],
+            boundary: Default::default(),
+            system_type: Default::default(),
+            name: None,
+            description: String::new(),
+            time_unit: None,
+            params: vec![],
+            metrics: vec![],
+            klir_level: None,
+        };
+        let issues = validate_connection(&model, &bond(10, 1, 2));
+        assert!(
+            issues.is_empty(),
+            "stamping then connecting must still connect: {issues:?}"
+        );
+
+        let mut drawn = model.clone();
+        drawn.relations.push(bond(10, 1, 2));
+        assert!(
+            crate::lenses::analyze(&drawn, Lens::Mobus)
+                .validation
+                .issues
+                .iter()
+                .any(facets_core::validate::is_interface_flow_refusal),
+            "the audit keeps the refusal the gesture deferred"
+        );
+    }
+
+    /// Law (#213 step 3): Shingai's reported workflow, end to end. Place a
+    /// component, stamp it `interface`, then drag a flow in from an environment
+    /// object — which is now a drop on the PORT, resolved to its component. The
+    /// edge must land. This is the shape the canvas actually produces (exo, not
+    /// the endo bond the sibling law uses), so the deferral is proven on the
+    /// gesture the user performs, not only on a nearby one.
+    #[test]
+    fn the_env_to_stamped_interface_flow_connects() {
+        let mut gate = thing(1, "Gate", Role::Component);
+        gate.interface = true;
+        let model = CanvasModel {
+            crossings: vec![],
+            lens: Lens::Mobus,
+            model_id: None,
+            milieu: Vec::new(),
+            things: vec![gate, thing(2, "Core", Role::Component), thing(3, "Supply", Role::Environment)],
+            relations: vec![bond(10, 1, 2)],
+            boundary: Default::default(),
+            system_type: Default::default(),
+            name: None,
+            description: String::new(),
+            time_unit: None,
+            params: vec![],
+            metrics: vec![],
+            klir_level: None,
+        };
+        let issues = validate_connection(&model, &bond(11, 3, 1));
+        assert!(
+            issues.is_empty(),
+            "the crossing flow onto the stamped interface must land: {issues:?}"
+        );
+
+        // And once it lands the designation is satisfied — the audit goes quiet.
+        let mut drawn = model.clone();
+        drawn.relations.push(bond(11, 3, 1));
+        assert!(
+            !crate::lenses::analyze(&drawn, Lens::Mobus)
+                .validation
+                .issues
+                .iter()
+                .any(facets_core::validate::is_interface_flow_refusal),
+            "a flow now crosses at Gate; the refusal must clear"
+        );
+    }
+
+    /// Law: the deferral is a property of the check, not of the dedup that
+    /// happens to hide it — `belongs_at_the_gesture` drops the refusal outright,
+    /// while every other node-located Error stays.
+    #[test]
+    fn the_interface_refusal_is_dropped_at_the_gesture_by_rule() {
+        let at = |location: &str| ValidationIssue {
+            severity: Severity::Error,
+            code: "test".to_string(),
+            location: location.to_string(),
+            message: String::new(),
+            suggestion: None,
+            doc: None,
+            subject: None,
+        };
+        assert!(!belongs_at_the_gesture(&at("systems[0].boundary.interfaces[0]")));
+        assert!(!belongs_at_the_gesture(&at(
+            "systems[0].boundary.interfaces[0].exports_to"
+        )));
+        assert!(!belongs_at_the_gesture(&at(
+            "systems[0].boundary.interfaces[0].receives_from"
+        )));
+        assert!(belongs_at_the_gesture(&at("systems[0].agent.stock_unit")));
+        assert!(belongs_at_the_gesture(&at(
+            "systems[0].boundary.interfaces[0].info.id"
+        )));
+    }
+
+    /// Law: `to_canvas` reads a real WorldModel back faithfully (roles,
+    /// primitives, positions, named relations survive), and re-projecting the
+    /// result still validates as an executable Operational model.
+    #[test]
+    fn to_canvas_loads_a_demo_faithfully() {
+        // The reservoir demo: Watershed(Source) → Reservoir(Buffering) → Release(Sink).
+        let json = include_str!("../../../assets/archive/demos/reservoir-model.json");
+        let model: WorldModel = serde_json::from_str(json).unwrap();
+        let cm = to_canvas(&model);
+
+        assert_eq!(cm.lens, Lens::Mobus); // demos are Operational
+        // one component (Reservoir) + two environment things (Watershed, Release)
+        let reservoir = cm
+            .things
+            .iter()
+            .find(|t| t.name == "Reservoir")
+            .expect("Reservoir component");
+        assert_eq!(reservoir.role, Role::Component);
+        assert_eq!(reservoir.primitive, Some(ProcessPrimitive::Buffering));
+        assert!(cm.things.iter().any(|t| t.name == "Watershed" && t.role == Role::Environment));
+        assert!(cm.things.iter().any(|t| t.name == "Release" && t.role == Role::Environment));
+        // positions came through (not all at origin)
+        assert!(cm.things.iter().any(|t| t.x != 0.0 || t.y != 0.0));
+        // two relations, named, connecting real things
+        assert_eq!(cm.relations.len(), 2);
+        assert!(cm.relations.iter().all(|r| !r.name.is_empty()));
+
+        // And it re-projects to a still-executable model (display-faithful round-trip).
+        let back = project(&cm);
+        assert!(
+            facets_core::operational::validate_operational(&back).is_ok(),
+            "reloaded demo should still project to an executable model"
+        );
+    }
+
+    /// Law: an environment thing's Source/Sink identity is derived from bond
+    /// direction (originates → Source, receives → Sink), never a stored type.
+    #[test]
+    fn environment_projects_by_bond_direction() {
+        // env originates a bond → Source; env receives → Sink.
+        let model = CanvasModel {
+            crossings: vec![],
+            lens: Lens::Mobus,
+            model_id: None,
+            milieu: Vec::new(),
+            things: vec![
+                thing(1, "Env", Role::Environment),
+                thing(2, "Comp", Role::Component),
+            ],
+            relations: vec![bond(10, 1, 2)], // Env → Comp
+            boundary: Default::default(),
+            system_type: Default::default(),
+            name: None,
+            description: String::new(),
+            time_unit: None,
+            params: vec![],
+            metrics: vec![],
+            klir_level: None,
+        };
+        let wm = project(&model);
+        assert_eq!(wm.environment.sources.len(), 1);
+        assert_eq!(wm.environment.sinks.len(), 0);
+    }
+
+    /// Law: a model's stable identity survives the canvas round trip — carried,
+    /// never minted (a model without one stays without one). Without this, every
+    /// edit-and-save of a walked child would orphan its parent's reference.
+    #[test]
+    fn model_id_survives_the_canvas_round_trip() {
+        let mut world = project(&CanvasModel {
+            crossings: vec![],
+            lens: Lens::Mobus,
+            model_id: None,
+            milieu: Vec::new(),
+            things: vec![thing(1, "A", Role::Component), thing(2, "B", Role::Component)],
+            relations: vec![bond(10, 1, 2)],
+            boundary: Default::default(),
+            system_type: Default::default(),
+            name: None,
+            description: String::new(),
+            time_unit: None,
+            params: vec![],
+            metrics: vec![],
+            klir_level: None,
+        });
+        assert!(world.model_id.is_none(), "the canvas never mints");
+        let id = world.mint_id();
+        let cm = to_canvas(&world);
+        assert_eq!(cm.model_id, Some(id), "to_canvas carries the identity in");
+        assert_eq!(project(&cm).model_id, Some(id), "project writes it back");
+    }
+
+    /// Law: the door refuses through the kernel — an interior component derives
+    /// a child that is born passing its own seam; an environment thing refuses
+    /// with a defined issue, never a panic.
+    #[test]
+    fn decompose_thing_derives_a_passing_child() {
+        // Src(env) → A → B → Snk(env): A and B are boundary components (v1
+        // refuses), so add interior C between them: A → C → B.
+        let model = CanvasModel {
+            crossings: vec![],
+            lens: Lens::Mobus,
+            model_id: None,
+            milieu: Vec::new(),
+            things: vec![
+                thing(1, "Src", Role::Environment),
+                thing(2, "A", Role::Component),
+                thing(3, "C", Role::Component),
+                thing(4, "B", Role::Component),
+                thing(5, "Snk", Role::Environment),
+            ],
+            relations: vec![bond(10, 1, 2), bond(11, 2, 3), bond(12, 3, 4), bond(13, 4, 5)],
+            boundary: Default::default(),
+            system_type: Default::default(),
+            name: None,
+            description: String::new(),
+            time_unit: None,
+            params: vec![],
+            metrics: vec![],
+            klir_level: None,
+        };
+        let child = decompose_thing(&model, 3).expect("interior component derives");
+        assert!(child.model_id.is_some(), "the child is born nameable");
+        assert_eq!(child.systems[0].info.name, "C");
+        let p = project_with_map(&model);
+        let issues = facets_core::decomposition::check_decomposition_contract(
+            &p.world,
+            &p.thing_ids[&3],
+            &child,
+        );
+        assert!(issues.is_empty(), "newborn seam must hold: {issues:?}");
+
+        let refused = decompose_thing(&model, 1).err().expect("env thing refuses");
+        assert!(refused[0].message.contains("not a component"), "{refused:?}");
+        let missing = decompose_thing(&model, 99).err().expect("unknown id refuses");
+        assert!(missing[0].message.contains("nothing to decompose"), "{missing:?}");
+    }
+}

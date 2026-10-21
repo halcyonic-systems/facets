@@ -57,7 +57,7 @@ bearing and the corpus lands on the shipped side of it:
 
 | Tree | What it is | Reaches the user? |
 |---|---|---|
-| `fixtures/sl/*.sl` | round-trip goldens, compiled into the Rust test binary via `include_str!` (`crates/bert-canvas/tests/sl_roundtrip.rs:14-19`) | no |
+| `fixtures/sl/*.sl` | round-trip goldens, compiled into the Rust test binary via `include_str!` (`crates/facets-canvas/tests/sl_roundtrip.rs:14-19`) | no |
 | `fixtures/sl/teaching/*.sl` | learning material, deliberately out of every test suite (`fixtures/sl/teaching/README.md:36-38`) | no |
 | `assets/demos/*.json`, `assets/models/**` | bundled content, globbed into the app by Vite (`web/src/demos.ts:17-25`) | yes |
 | **`assets/corpus/**/*.sl`** | **bundled content a user opens from the gallery** | **yes** |
@@ -252,7 +252,7 @@ three round-trip goldens in `fixtures/sl/`. The new set must not become a second
 
 "Source corpus" because every entry is drawn from a primary source and carries
 its citation. The bare phrase "the corpus" is retired from `docs/language/`; both
-names are always qualified. `crates/bert-canvas/tests/sl_roundtrip.rs` uses the
+names are always qualified. `crates/facets-canvas/tests/sl_roundtrip.rs` uses the
 constant `CORPUS` for the goldens, which is fine because it is scoped to that
 file, and the new gate uses a distinct name (§5).
 
@@ -273,7 +273,7 @@ Three `.sl` files in [`fixtures/sl/`](../../fixtures/sl/) serve simultaneously a
 - `bathtub.sl` — the minimal stock-and-flow system
 - `hal-projection.sl` — a real structural model: hal published as a projection, with a retained-SSOT boundary
 
-The round-trip contract (model → text → model, exact) is tested over these in [`crates/bert-canvas/tests/sl_roundtrip.rs`](../../crates/bert-canvas/tests/sl_roundtrip.rs).
+The round-trip contract (model → text → model, exact) is tested over these in [`crates/facets-canvas/tests/sl_roundtrip.rs`](../../crates/facets-canvas/tests/sl_roundtrip.rs).
 
 **Corpus precedence.** Three sets of `.sl` files exist, each with a different obligation. "The corpus" alone is ambiguous between them, so the qualified names are always used: the *golden corpus* (`fixtures/sl/`), the *teaching fixtures* (`fixtures/sl/teaching/`), and the *source corpus* (`assets/corpus/`).
 
@@ -300,7 +300,7 @@ The round-trip contract (model → text → model, exact) is tested over these i
 
 ### 5.1 Where it lives
 
-`crates/bert-canvas/tests/source_corpus.rs`, a new Rust integration test
+`crates/facets-canvas/tests/source_corpus.rs`, a new Rust integration test
 alongside `sl_roundtrip.rs`.
 
 Rust, not vitest, for three reasons:
@@ -470,7 +470,7 @@ which was the whole reason the build step was cut.
    into `CanvasModel` (which is why the corpus is SL and not JSON), but whether
    `lens_facts` and `describe` surface them is unverified. If they do not, the
    Bunge and Klir entries teach a lesson the app does not show. Fix inside #132
-   as kernel work in `crates/bert-canvas/src/lenses.rs`, or split to its own
+   as kernel work in `crates/facets-canvas/src/lenses.rs`, or split to its own
    issue and ship the corpus degraded? This is the only question that can change
    what the corpus is worth.
 3. **Does a Bunge entry pass `Mode::Structural`?** Unverified. If not, §5.3's

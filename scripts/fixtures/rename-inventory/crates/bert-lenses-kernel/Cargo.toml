@@ -1,0 +1,6 @@
+[package]
+name = "bert-lenses-kernel"
+version = "0.1.0"
+
+[dependencies]
+bert-core = { path = "../bert-core" }

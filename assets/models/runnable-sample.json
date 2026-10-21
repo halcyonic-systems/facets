@@ -14,7 +14,7 @@
           "id": "Src-1.0",
           "level": -1,
           "name": "Source 1",
-          "description": "bert-compose source"
+          "description": "facets-compose source"
         },
         "type": "Source",
         "transform": {
@@ -35,7 +35,7 @@
           "id": "Snk-1.0",
           "level": -1,
           "name": "Sink 3",
-          "description": "bert-compose sink"
+          "description": "facets-compose sink"
         },
         "type": "Sink",
         "transform": {
@@ -57,7 +57,7 @@
         "id": "S0",
         "level": 0,
         "name": "flows-runnable-sample",
-        "description": "Built in bert-compose: process primitives wired into a working circuit (composition is unconditional — Systems/Mobus/Composition.lean)."
+        "description": "Built in facets-compose: process primitives wired into a working circuit (composition is unconditional — Systems/Mobus/Composition.lean)."
       },
       "sources": [],
       "sinks": [],

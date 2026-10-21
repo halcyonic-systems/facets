@@ -1,8 +1,8 @@
 // serde↔TS contract tests: the web side of the boundary fixture gate.
 //
 // These load the SAME committed fixtures the Rust tests write (fixtures/
-// contract/, generated from real kernel output by crates/bert-canvas's
-// tests/contract.rs and the bert-lenses-kernel api.rs test module) and validate
+// contract/, generated from real kernel output by crates/facets-canvas's
+// tests/contract.rs and the facets-kernel api.rs test module) and validate
 // them against the TS mirrors in ./types.ts. The validation is REAL: each
 // `parse*` helper walks every field, checks its runtime type, rejects any
 // unexpected key (so a Rust-added field the TS types miss FAILS here), and
@@ -10,8 +10,8 @@
 // none of that — the point is to fail on drift, not to launder it through a cast.
 //
 // If a fixture is missing, regenerate the whole set:
-//   BLESS_FIXTURES=1 cargo test -p bert-canvas --test contract
-//   BLESS_FIXTURES=1 cargo test -p bert-lenses-kernel --lib
+//   BLESS_FIXTURES=1 cargo test -p facets-canvas --test contract
+//   BLESS_FIXTURES=1 cargo test -p facets-kernel --lib
 
 import { readFileSync } from "node:fs";
 import { fileURLToPath } from "node:url";

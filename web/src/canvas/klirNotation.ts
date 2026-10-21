@@ -6,8 +6,8 @@
 // matrix. That is a reading of Klir, not typesetting, and the register is a
 // write surface, so it moved to the kernel:
 //
-//   crates/bert-canvas/src/notation.rs :: klir_incidence_cells
-//   crates/bert-lenses-kernel/src/api.rs :: klir_incidence_cells (wasm export)
+//   crates/facets-canvas/src/notation.rs :: klir_incidence_cells
+//   crates/facets-kernel/src/api.rs :: klir_incidence_cells (wasm export)
 //   web/src/kernel/index.ts :: klirIncidenceCells (the forwarder)
 //
 // What remains below is typography and layout: mapping a kernel-decided mark

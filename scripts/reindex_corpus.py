@@ -2,14 +2,14 @@
 """Regenerate assets/corpus/corpus.json from the entries' provenance headers.
 
 The index stays a committed file that the ship gate checks
-(crates/bert-canvas/tests/source_corpus.rs) — this only removes the chance of a
+(crates/facets-canvas/tests/source_corpus.rs) — this only removes the chance of a
 hand-copied `citation` drifting from the §3.2 composition rule, which is the one
 field with a mechanical definition. ORDER below is the editorial decision the
 index carries and the one thing this script will not invent: adding a file
 without listing it here fails loudly rather than silently appending.
 
     python3 scripts/reindex_corpus.py
-    cargo test -p bert-canvas --test source_corpus
+    cargo test -p facets-canvas --test source_corpus
 """
 import json
 import pathlib

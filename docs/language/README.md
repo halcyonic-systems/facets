@@ -91,9 +91,9 @@ Every emitted structure line starts with a keyword: `system`, `component`, `flow
 
 ## The round-trip contract, and why the docs can't drift
 
-Write a model in SL and compile it: `parse(emit(m)) = m`, digit for digit, positions included. Load an arbitrary model built by other means (the canvas, JSON, a decade of authoring history) and canonicalize it: one pass through `emit`/`parse` lands in stable canonical form and stays there. Neither claim is "proven." Both are **golden-tested**, over the same corpus this README quotes from, in [`crates/bert-canvas/tests/sl_roundtrip.rs`](../../crates/bert-canvas/tests/sl_roundtrip.rs). Full statement: spec [§7.2](spec.md#72-the-contract-golden-tested).
+Write a model in SL and compile it: `parse(emit(m)) = m`, digit for digit, positions included. Load an arbitrary model built by other means (the canvas, JSON, a decade of authoring history) and canonicalize it: one pass through `emit`/`parse` lands in stable canonical form and stays there. Neither claim is "proven." Both are **golden-tested**, over the same corpus this README quotes from, in [`crates/facets-canvas/tests/sl_roundtrip.rs`](../../crates/facets-canvas/tests/sl_roundtrip.rs). Full statement: spec [§7.2](spec.md#72-the-contract-golden-tested).
 
-The vocabulary itself is under the same discipline. SL's 78 words (47 reserved keywords plus 31 position-bound words like `param` and `range`) are held equal, in both directions, against the EBNF terminals in spec §4 by [`tests/keyword_parity.rs`](../../crates/bert-canvas/tests/keyword_parity.rs): a word can't enter the language without entering the spec, and vice versa. That vocabulary is published machine-readably at [`fixtures/contract/sl_keywords.json`](../../fixtures/contract/sl_keywords.json), so tooling (the VS Code extension, below) reads the same list the compiler enforces rather than a hand-copied guess.
+The vocabulary itself is under the same discipline. SL's 78 words (47 reserved keywords plus 31 position-bound words like `param` and `range`) are held equal, in both directions, against the EBNF terminals in spec §4 by [`tests/keyword_parity.rs`](../../crates/facets-canvas/tests/keyword_parity.rs): a word can't enter the language without entering the spec, and vice versa. That vocabulary is published machine-readably at [`fixtures/contract/sl_keywords.json`](../../fixtures/contract/sl_keywords.json), so tooling (the VS Code extension, below) reads the same list the compiler enforces rather than a hand-copied guess.
 
 This is why the example above is a real fixture and not a hand-typed illustration: the spec's worked examples *are* the test corpus. A documentation change that broke the language would break a test, not just a reader's expectations.
 
@@ -104,11 +104,11 @@ In the app: open the SL pane, type the file above (or start from scratch), and c
 From the command line:
 
 ```
-cargo run -p bert-cli -- compile fixtures/sl/process-m.sl
-cargo run -p bert-cli -- verdict fixtures/sl/process-m.sl --lens mobus
+cargo run -p facets-cli -- compile fixtures/sl/process-m.sl
+cargo run -p facets-cli -- verdict fixtures/sl/process-m.sl --lens mobus
 ```
 
-`compile` parses the file and prints the model; `verdict` compiles, projects to a lens, and prints the systemhood judgment. Also available: `describe` (the formal 8-tuple), `run` (step the trajectory), `bench` (the Model bench from the terminal, #463), and `layout` (node positions). `just bert <args>` is the repo's shorthand for all of them.
+`compile` parses the file and prints the model; `verdict` compiles, projects to a lens, and prints the systemhood judgment. Also available: `describe` (the formal 8-tuple), `run` (step the trajectory), `bench` (the Model bench from the terminal, #463), and `layout` (node positions). `just facets <args>` is the repo's shorthand for all of them.
 
 ## Editor support
 
@@ -156,11 +156,11 @@ SysML v2 (Part 1, formally adopted March 2026) is the obvious question: why writ
 
 | Concern | Location |
 |---|---|
-| Parser and serializer | [`crates/bert-canvas/src/sl.rs`](../../crates/bert-canvas/src/sl.rs) |
-| Compile target (the neutral spec) | `CanvasModel`, `crates/bert-canvas/src/canvas.rs` |
-| JS↔wasm boundary | `compile_sl` / `emit_sl`, see [`crates/bert-lenses-kernel/API.md`](../../crates/bert-lenses-kernel/API.md), "SL surface" |
+| Parser and serializer | [`crates/facets-canvas/src/sl.rs`](../../crates/facets-canvas/src/sl.rs) |
+| Compile target (the neutral spec) | `CanvasModel`, `crates/facets-canvas/src/canvas.rs` |
+| JS↔wasm boundary | `compile_sl` / `emit_sl`, see [`crates/facets-kernel/API.md`](../../crates/facets-kernel/API.md), "SL surface" |
 | Editor surface | `web/src/SlPane.tsx` |
-| Round-trip goldens | `crates/bert-canvas/tests/sl_roundtrip.rs` |
+| Round-trip goldens | `crates/facets-canvas/tests/sl_roundtrip.rs` |
 
 ## Lineage and open work
 

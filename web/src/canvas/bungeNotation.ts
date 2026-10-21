@@ -7,8 +7,8 @@
 // of Bunge, and the register is a write surface — a cell that silently cannot be
 // authored is a refusal, so it owes a reason in the kernel's voice. They moved:
 //
-//   crates/bert-canvas/src/notation.rs :: bunge_coupling_cells
-//   crates/bert-lenses-kernel/src/api.rs :: bunge_coupling_cells (wasm export)
+//   crates/facets-canvas/src/notation.rs :: bunge_coupling_cells
+//   crates/facets-kernel/src/api.rs :: bunge_coupling_cells (wasm export)
 //   web/src/kernel/index.ts :: bungeCouplingCells (the forwarder)
 //
 // What remains below is typography: Bunge's four-kind glyph alphabet and the

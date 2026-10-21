@@ -4,13 +4,13 @@
 
 ## The question
 
-Continuous zoom opens only where a model asserts a process inside a process. The kernel says why. A decomposed component points at a child model whose boundary must *refine* every crossing of the parent component: same substance kind, same environmental counterparty matched by name, landing on a named child interface. That contract is transcribed row by row from the Lean `Decomposition` and `InterfaceDecomposition` structures into [`crates/bert-core/src/decomposition.rs`](../../crates/bert-core/src/decomposition.rs), whose header table is the authority for everything below.
+Continuous zoom opens only where a model asserts a process inside a process. The kernel says why. A decomposed component points at a child model whose boundary must *refine* every crossing of the parent component: same substance kind, same environmental counterparty matched by name, landing on a named child interface. That contract is transcribed row by row from the Lean `Decomposition` and `InterfaceDecomposition` structures into [`crates/facets-core/src/decomposition.rs`](../../crates/facets-core/src/decomposition.rs), whose header table is the authority for everything below.
 
 The consequence is blunt. A component joined to its neighbours by untyped arrows has nothing for a child boundary to refine. A model built network-first — peers joined by relations, nothing crossing anything — cannot open at all, no matter what the surface offers. So: which of the models that ship with the Model face could carry a seam today, and which are not systems models in the first place?
 
 ## Method
 
-`scripts/seam_audit.py` is read-only. It enumerates the shipped set exactly as `web/src/home.ts` does, compiles each `.sl` with the real kernel through the headless `bert compile` door, and reads the compiled canvas model. It decides nothing the kernel does not already carry: role, primitive, interface flag, bond kind, substance name, counterparty, and the `decomposes` reference are all fields of the compiled model.
+`scripts/seam_audit.py` is read-only. It enumerates the shipped set exactly as `web/src/home.ts` does, compiles each `.sl` with the real kernel through the headless `facets compile` door, and reads the compiled canvas model. It decides nothing the kernel does not already carry: role, primitive, interface flag, bond kind, substance name, counterparty, and the `decomposes` reference are all fields of the compiled model.
 
 Per component:
 
@@ -28,7 +28,7 @@ Two limits worth stating. The `.json` beside each walkthrough level is the archi
 
 ## What the kernel's own seam check says
 
-`check_decomposition` was run, on the only two seams that ship. `cargo test -p bert-lenses-kernel --test steel_walkthrough` passes all three tests, including `walkthrough_seams_are_clean`, which runs `check_decompositions_canvas` over both the level 0 to level 1 seam and the level 1 to level 2 seam. It was not run on any other model, because no other shipped model contains a `decomposes` reference.
+`check_decomposition` was run, on the only two seams that ship. `cargo test -p facets-kernel --test steel_walkthrough` passes all three tests, including `walkthrough_seams_are_clean`, which runs `check_decompositions_canvas` over both the level 0 to level 1 seam and the level 1 to level 2 seam. It was not run on any other model, because no other shipped model contains a `decomposes` reference.
 
 ## Totals
 
@@ -94,7 +94,7 @@ Nothing is marked REBUILD and nothing is marked REMOVE. That is the honest readi
 ## Regenerating
 
 ```bash
-cargo build -p bert-cli --bin bert
+cargo build -p facets-cli --bin facets
 python3 scripts/seam_audit.py                 # Markdown to stdout
 python3 scripts/seam_audit.py --json          # machine-readable
 ```

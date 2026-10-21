@@ -353,7 +353,7 @@
             "self action",
             "self action"
           ],
-          "t_note": "T: transforms — parametric by intent; bert-compose fills the slot"
+          "t_note": "T: transforms — parametric by intent; facets-compose fills the slot"
         },
         "facts": {
           "aggregate": false,
@@ -1058,7 +1058,7 @@
           "porosity": 0.0,
           "question": "how is the mechanism built, and what happens when it runs?",
           "self_loop_conflicts": [],
-          "t_note": "T: transforms — parametric by intent; bert-compose fills the slot"
+          "t_note": "T: transforms — parametric by intent; facets-compose fills the slot"
         },
         "facts": {
           "aggregate": true,
@@ -1824,7 +1824,7 @@
           "porosity": 0.0,
           "question": "how is the mechanism built, and what happens when it runs?",
           "self_loop_conflicts": [],
-          "t_note": "T: transforms — parametric by intent; bert-compose fills the slot"
+          "t_note": "T: transforms — parametric by intent; facets-compose fills the slot"
         },
         "facts": {
           "aggregate": false,
@@ -3093,7 +3093,7 @@
           "porosity": 0.0,
           "question": "how is the mechanism built, and what happens when it runs?",
           "self_loop_conflicts": [],
-          "t_note": "T: transforms — parametric by intent; bert-compose fills the slot"
+          "t_note": "T: transforms — parametric by intent; facets-compose fills the slot"
         },
         "facts": {
           "aggregate": false,
@@ -4298,7 +4298,7 @@
           "porosity": 0.0,
           "question": "how is the mechanism built, and what happens when it runs?",
           "self_loop_conflicts": [],
-          "t_note": "T: transforms — parametric by intent; bert-compose fills the slot"
+          "t_note": "T: transforms — parametric by intent; facets-compose fills the slot"
         },
         "facts": {
           "aggregate": false,
@@ -5041,7 +5041,7 @@
           "porosity": 0.0,
           "question": "how is the mechanism built, and what happens when it runs?",
           "self_loop_conflicts": [],
-          "t_note": "T: transforms — parametric by intent; bert-compose fills the slot"
+          "t_note": "T: transforms — parametric by intent; facets-compose fills the slot"
         },
         "facts": {
           "aggregate": false,

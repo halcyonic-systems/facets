@@ -12,14 +12,14 @@ Facets: a systems-modeling instrument. `crates/` (Rust, compiled to WebAssembly)
 owns every verdict, all validation, and the run; `web/` (React) renders it;
 `chat/` and `portal/` are the other two faces of the site at facets.systems.
 **Any systems logic found in JavaScript is a bug.** The wasm surface
-(`crates/bert-lenses-kernel/API.md`) is frozen and append-only.
+(`crates/facets-kernel/API.md`) is frozen and append-only.
 
 ## First commands
 
 ```bash
 just preflight   # names any missing prerequisite and its install line
 just check       # the full gate, in CI's order; green before every commit
-just bert verdict assets/examples/predator-prey.sl --lens bunge   # ask the kernel from a shell
+just facets verdict assets/examples/predator-prey.sl --lens bunge   # ask the kernel from a shell
 ```
 
 `just check` skips one gate locally: Lean citation resolution (Gate A) needs a
@@ -72,7 +72,7 @@ exists to keep it true.
    vendored here. Do not re-introduce a `../bert` path dependency. `bert-compose`
    is engine-only (circuit/export/run/examples/ladder/lens) — no native egui shell,
    so it stays wasm-clean.
-4. **The wasm API is frozen** (`crates/bert-lenses-kernel/API.md`). Add functions;
+4. **The wasm API is frozen** (`crates/facets-kernel/API.md`). Add functions;
    don't mutate existing signatures. Wrappers are marshaling-only (deserialize →
    call kernel → serialize); no logic in `api.rs`.
 5. **Web-first is a hard target:** browser + mobile + Claude-in-Chrome. Keep the
@@ -93,26 +93,26 @@ exists to keep it true.
 
 ## Layout
 
-- `crates/bert-core` — vendored kernel. Wasm-clean (dropped the `reflect` feature).
+- `crates/facets-core` — vendored kernel. Wasm-clean (dropped the `reflect` feature).
   The semantic authority: `validate::validate`, `operational::validate_operational`.
-- `crates/bert-compose` — vendored engine. `circuit` (physics), `export` (JSON seam
+- `crates/facets-compose` — vendored engine. `circuit` (physics), `export` (JSON seam
   both ways), `run` (recorder), plus `examples`/`ladder`/`lens` vocabulary. Uses
   `glam::Vec2` for node geometry (was `egui::Pos2`).
-- `crates/bert-canvas` — the canvas/lens domain, pure Rust (NO wasm-bindgen).
+- `crates/facets-canvas` — the canvas/lens domain, pure Rust (NO wasm-bindgen).
   `canvas` (the serializable `CanvasModel`, `project` / `to_canvas` /
   `validate_connection`) + `lenses` (`lens_facts` — boundary identity set,
   edge ladder, ports, aggregate verdict, all canvas-keyed — and `describe`, the
   formal face). Depends on bert-core.
-- `crates/bert-tether` — the boundary-interface subsystem, pure Rust (NO
+- `crates/facets-tether` — the boundary-interface subsystem, pure Rust (NO
   wasm-bindgen). The CSV import ritual (`tether`), the declarative run manifest
   (`manifest`), and the forced-run pipeline + `mapping_status` (`forcing`).
   Neither engine physics nor marshaling — the interface where empirical data
   becomes forcing on a model. Depends on bert-core + bert-compose.
-- `crates/bert-lenses-kernel` — the wasm-bindgen boundary, MARSHALING ONLY
+- `crates/facets-kernel` — the wasm-bindgen boundary, MARSHALING ONLY
   (`api.rs`): deserialize JS input → call bert-core / bert-compose / bert-canvas /
   bert-tether (the truth) → serialize. Zero domain logic. Built to `pkg/` via
   wasm-pack (gitignored). Frozen surface: `API.md` (append-only).
-- `crates/bert-cli` — the `bert` binary, the workspace's only `[[bin]]`. A
+- `crates/facets-cli` — the `facets` binary, the workspace's only `[[bin]]`. A
   headless door onto the same library calls the wasm boundary marshals: compile,
   verdict (under any lens), describe, run, layout. Native only — the ONE package
   excluded from the wasm build, and the exclusion is gated by its own test.
@@ -132,7 +132,7 @@ exists to keep it true.
   `assets/archive/README.md` before adding to `examples/` or concluding a model
   is gone. An SL-authored runnable demo's bundled model is a machine projection
   of its `.sl` (never hand-edit the JSON; re-mint with `BLESS_SL_DEMOS=1`, gated
-  by `crates/bert-canvas/tests/sl_demos.rs`, two residents: `llm-market` and
+  by `crates/facets-canvas/tests/sl_demos.rs`, two residents: `llm-market` and
   `translation-apparatus`; llm-market's bundle is generated from the pinned
   vintage in `assets/data/`, see its README).
   **Authoring a new runnable model? Read `docs/authoring-models.md` FIRST** —
@@ -167,7 +167,7 @@ exists to keep it true.
 ## Working rules
 
 - After changing any crate, rebuild the wasm pkg (`just wasm`, or `wasm-pack build
-  --target web --out-dir pkg` in `crates/bert-lenses-kernel`) before the web app
+  --target web --out-dir pkg` in `crates/facets-kernel`) before the web app
   will see it. A crate change must never silently serve stale wasm to `web/`.
 - Gate: `just check` runs the full suite (`scripts/doc_lint.py` first, then cargo
   test + clippy `-D warnings` + wasm32 build + wasm pkg build + `tsc --noEmit` +
@@ -201,19 +201,19 @@ desktop one for what genuinely needs eyes. Choosing wrong is the common failure:
 driving the GUI to answer a kernel question produces a one-shot artifact that
 rots the next time the kernel moves.
 
-### Headless — START HERE. `bert`, the CLI, is the first door for any model question
+### Headless — START HERE. `facets`, the CLI, is the first door for any model question
 
 **Reach for the CLI before the browser, before a throwaway test, and before
-reasoning about what a model probably does.** `bert` (`crates/bert-cli`, the
+reasoning about what a model probably does.** `facets` (`crates/facets-cli`, the
 workspace's only `[[bin]]`) answers compile / verdict / describe / run / layout
 from a shell, in JSON, with an exit code that means something.
 
 ```bash
-just bert verdict assets/corpus/bunge/coupling-sigma3.sl --lens bunge   # 0
-just bert verdict assets/corpus/bunge/coupling-sigma3.sl --lens mobus   # 4 — §4.3
-just bert compile <f> | jq '.things[] | {id,name,role,interface}'      # what it became
-just bert layout  <f>                                                  # node positions
-just bert run     <f> --t 30                                           # or why it cannot
+just facets verdict assets/corpus/bunge/coupling-sigma3.sl --lens bunge   # 0
+just facets verdict assets/corpus/bunge/coupling-sigma3.sl --lens mobus   # 4 — §4.3
+just facets compile <f> | jq '.things[] | {id,name,role,interface}'      # what it became
+just facets layout  <f>                                                  # node positions
+just facets run     <f> --t 30                                           # or why it cannot
 ```
 
 Exit 0 = the answer is on stdout · 3 = did not compile · 4 = the kernel refused.
@@ -225,13 +225,13 @@ verdict, and the same bug, as one computed anywhere else.
 day by describing a model instead of opening it — a verdict declared correct from
 a meeting transcript, a canvas measured by arithmetic that was a fifth off, a
 service blamed for an error whose cause was in its own log. Every one was settled
-in one command. If a question is about what a model IS, run `bert` rather than
+in one command. If a question is about what a model IS, run `facets` rather than
 argue.
 
 ### The same truth from inside Rust
 
 When you are already writing Rust, `bert_canvas::lenses::analyze(&CanvasModel, Lens)`
-(`crates/bert-canvas/src/lenses.rs`) takes the lens as an **explicit argument and
+(`crates/facets-canvas/src/lenses.rs`) takes the lens as an **explicit argument and
 ignores `model.lens`** — the same cross-lens door the CLI's `--lens` exposes.
 
 ```rust
@@ -247,11 +247,11 @@ type** — it is a `ValidationIssue` with `Severity::Error` at the lens's mode
 `code` naming the defect kind (#319) that groups instances without regex.
 
 ```
-bert compile  <file.sl>                 the canvas model the text becomes
-bert verdict  <file> [--lens L]         CanvasAnalysis; exits 4 on a refusal
-bert describe <file> [--lens L]         the tradition's formal object
-bert run      <file> [--t T] [--dt D]   the trajectory, or why there is none
-bert layout   <file>                    node positions (id/name/role/env_kind/x/y)
+facets compile  <file.sl>                 the canvas model the text becomes
+facets verdict  <file> [--lens L]         CanvasAnalysis; exits 4 on a refusal
+facets describe <file> [--lens L]         the tradition's formal object
+facets run      <file> [--t T] [--dt D]   the trajectory, or why there is none
+facets layout   <file>                    node positions (id/name/role/env_kind/x/y)
 ```
 
 stdout is JSON and only JSON; diagnostics go to stderr. Exit codes: `0` ok ·
@@ -259,18 +259,18 @@ stdout is JSON and only JSON; diagnostics go to stderr. Exit codes: `0` ok ·
 refused. **3 against 4 is the split that matters** — a mistyped keyword and a
 model that is not a system are different findings. A file argument is a path or
 `-` for stdin; `.sl` compiles, anything else opens through `archive::read`.
-Full treatment: README, "The `bert` CLI".
+Full treatment: README, "The `facets` CLI".
 
 `bert-cli` is the ONE package excluded from `cargo build --workspace --target
 wasm32-unknown-unknown` (argv + filesystem have no browser meaning). The
-exclusion is executed, not asserted: `crates/bert-cli/tests/wasm_gate.rs` goes
+exclusion is executed, not asserted: `crates/facets-cli/tests/wasm_gate.rs` goes
 red if the list grows, so the wasm gate cannot widen into one that skips things.
 
 **Still write the test when the finding is a law.** The CLI is for asking; a
-`cargo test` integration test in `crates/bert-canvas/tests/` is for making the
+`cargo test` integration test in `crates/facets-canvas/tests/` is for making the
 answer stay true, and it is picked up free by `cargo test --workspace` and
 `ci.yml`. Working example: `tests/cross_lens.rs`. The CLI's own tests
-(`crates/bert-cli/tests/`) hold the door open the same way, at two strengths
+(`crates/facets-cli/tests/`) hold the door open the same way, at two strengths
 (#317): `fixtures/cli/canonical.json` is a **full** cross-lens reading of six
 named models — three keep-set examples plus one corpus entry per tradition — so
 a kernel change that moves any of them has to be seen and accepted; every other
@@ -349,16 +349,16 @@ verdict is born in Rust and only rendered in TS. Do the eight steps in order; th
 type is not "real" until every layer knows it. Skipping a step (e.g. rendering a
 type the kernel never validates) reintroduces systems logic in JS — invariant #1.
 
-1. **bert-core type** — add the variant to the domain type in `crates/bert-core`
+1. **bert-core type** — add the variant to the domain type in `crates/facets-core`
    (`src/lib.rs`). This is the semantic authority; the type exists here or nowhere.
-2. **`validate_mode` case** — teach `crates/bert-core/src/validate.rs`
+2. **`validate_mode` case** — teach `crates/facets-core/src/validate.rs`
    (`validate` / `validate_mode`) what makes the new type well-formed per mode.
    No verdict lives outside this crate.
 3. **bert-canvas projection** — map it across the canvas↔model seam in
-   `crates/bert-canvas/src/canvas.rs` (`project` / `to_canvas`), so the authoring
+   `crates/facets-canvas/src/canvas.rs` (`project` / `to_canvas`), so the authoring
    shape and the formal `WorldModel` stay in sync.
 4. **`lens_facts` field** — expose whatever the face needs to render as a
-   canvas-keyed fact in `crates/bert-canvas/src/lenses.rs` (`lens_facts`). The
+   canvas-keyed fact in `crates/facets-canvas/src/lenses.rs` (`lens_facts`). The
    face reads facts; it never recomputes them.
 5. **`describe` branch** — add the formal-object text to `describe` in the same
    `lenses.rs`, per lens (`Lens::Klir | Bunge | Mobus`).

@@ -1,0 +1,66 @@
+old,new,class,phase,note
+bert-core,facets-core,cargo-name,2,[package] name and every [dependencies] key; Cargo.lock regenerates
+bert-core,facets-core,crate-dir,2,crates/bert-core moves; every path in Cargo and docs and scripts and workflows and docs/lean-manifest.json moves in the same PR (doc_lint link gate; Gate A)
+bert_core,facets_core,rust-ident,2,
+bert_core,facets_core,import,2,use paths
+bert-compose,facets-compose,cargo-name,2,
+bert-compose,facets-compose,crate-dir,2,
+bert_compose,facets_compose,rust-ident,2,
+bert_compose,facets_compose,import,2,
+bert-canvas,facets-canvas,cargo-name,2,
+bert-canvas,facets-canvas,crate-dir,2,
+bert_canvas,facets_canvas,rust-ident,2,
+bert_canvas,facets_canvas,import,2,
+bert-tether,facets-tether,cargo-name,2,
+bert-tether,facets-tether,crate-dir,2,
+bert_tether,facets_tether,rust-ident,2,
+bert_tether,facets_tether,import,2,
+bert-lenses-kernel,facets-kernel,cargo-name,2,the wasm boundary crate
+bert-lenses-kernel,facets-kernel,crate-dir,2,crates/bert-lenses-kernel moves; its API.md path is linked from docs/README.md and .github/PULL_REQUEST_TEMPLATE.md
+bert_lenses_kernel,facets_kernel,rust-ident,2,bert-cli reads the archive seam through it
+bert_lenses_kernel,facets_kernel,import,2,
+bert-lenses-kernel,facets-kernel,workflow,2,working-directory in ci.yml and desktop.yml and wasm-exec.yml
+bert-cli,facets-cli,cargo-name,2,-p and --exclude flags in justfile and ci.yml and docs and scripts; crates/bert-cli/tests/wasm_gate.rs pins the exclusion by name
+bert-cli,facets-cli,crate-dir,2,
+bert-cli,facets-cli,workflow,2,
+bert_cli,facets_cli,rust-ident,2,
+bert-lenses-kernel,facets-kernel,package-name,3,npm dependency name in web/package.json and package-lock.json; crateVersion() in vite.config.ts; the --pkg default in scripts/wasm_exec.mjs
+bert-lenses-kernel,facets-kernel,import,3,TS and JS imports of the wasm package
+bert_lenses_kernel,facets_kernel,package-name,3,wasm-pack output facets_kernel.js and facets_kernel_bg.wasm; vite.config.ts and the kernel tests and wasm_exec.mjs and publish-app.sh name the files
+bert-lenses-web,facets-web,package-name,3,web/package.json and package-lock.json
+bert,facets,cli-word,4,the binary: [[bin]] name and CARGO_BIN_EXE_bert and the eprintln prefix and every doc line and shelf README and the audit scripts' --bert flag and find_bert; a one-release alias binary bert runs the same program with identical stdout and exit codes and one stderr line naming facets (decided 2026-10-15 in place of exit 2); retires 2027-01-11
+bert,facets,workflow,4,the CLI word in the two issue templates
+bert,facets,rust-ident,4,the bert() test helper in crates/bert-cli/tests/support/mod.rs; renamed with the binary
+*,*,golden,5,re-minted by BLESS_FIXTURES and BLESS_CLI_GOLDEN after the string in bert-canvas lenses.rs changes (phase 6); read the diff
+*,*,fixture,5,hand-edited with the diff read; assets/models/runnable-sample.json is re-minted by mint_runnable_sample
+docs/lean-manifest.json stated_in,crates/facets-*,crate-dir,5,moves with phase 2 or Gate A breaks; then just provenance regenerates docs/lean-provenance.md
+*,*,doc-prose,6,the map applied to docs/ and READMEs and AGENTS.md and comments and strings that are prose; doc_lint gains the check that bert-lenses appears only in the lineage line and docs/archive/ and ADR history
+bert-lenses,facets,doc-prose,6,the project name in prose
+bert-lenses.app,Facets.app,deploy,6,already true in src-tauri (productName Facets); AGENTS.md and docs/running-permanently.md are stale
+bert-lenses-desktop,facets-desktop,deploy,6,already true (src-tauri/Cargo.toml name); AGENTS.md is stale
+systems.halcyonic.bert-lenses,systems.halcyonic.facets,deploy,6,already true (tauri identifier); AGENTS.md is stale
+com.halcyonic.bert-lenses,com.halcyonic.facets,deploy,7,launchd label and plist filename; docs/running-permanently.md and publish-app.sh follow
+halcyonic-apps/bert-lenses,halcyonic-apps/facets,deploy,7,the published copy outside the repo; publish-app.sh and the plist and docs/running-permanently.md
+bert-lenses-serve,facets-serve,deploy,7,the throwaway package.json publish-app.sh writes
+bert-lenses-pipeline,facets-pipeline,deploy,7,User-Agent in tools/pipeline
+BERT_LENSES_DATA_DIR,FACETS_DATA_DIR,deploy,7,tools/pipeline env var (also BERT_LENSES_SCRATCH_DIR); the data directory itself is one machine's
+Documents/bert-lenses,Documents/facets,deploy,7,pipeline data and output dirs outside the repo; DECIDE(2026-10-11): move the directory or only the env var
+bert-lenses/canvas@1,facets/canvas@1,format-tag,3,decided 2026-10-11 (#541): the writer emits facets/canvas@1 and the reader accepts both (it decides by shape); dual reader until 2027-01-11 when the old tag retires; archive.rs keeps FORMAT_RETIRING and API.md line 599 stays (append-only) until then; the four walkthrough JSONs keep the old tag until phase 5 re-mints them; applied by hand (not a token rename_apply.py maps)
+README.md history line,keep,lineage,keep,the name changed in August 2026 and this codebase was bert-lenses: the one lineage line in the README
+AGENTS.md history line,keep,lineage,keep,named bert-lenses until 2026-08-27
+THIRD_PARTY_NOTICES.md lineage line,keep,lineage,keep,generated by scripts/gen_notices.py; both carry it
+docs/archive/,keep,lineage,keep,superseded design docs kept as record
+assets/archive/,keep,lineage,keep,the library's by-products; three gates still read them
+docs/decisions/,keep,lineage,keep,ADR text is the record of what was decided under the old name
+git history,keep,lineage,keep,not rewritten
+bert-lenses#N,keep,issue-ref,keep,the issue was filed under the old repo name and GitHub redirects; phase 6 may rewrite to #N
+bert#N,keep,issue-ref,keep,issues on the upstream BERT repo
+BERT,keep,upstream-bert,keep,the upstream desktop app in provenance lines and crate comments; some design-doc uses mean this project and are a phase 6 reading
+halcyonic-systems/bert,keep,upstream-bert,keep,the upstream repo slug in VENDORING.md and the notices
+../bert,keep,upstream-bert,keep,the sibling checkout VENDORING.md diffs against
+bert::,keep,upstream-bert,keep,stale rustdoc examples in crates/bert-core/src/lib.rs naming the upstream crate path; phase 6 may retire them
+https://github.com/halcyonic-systems/bert/issues/99,keep,external-url,keep,HEAD 200 on 2026-10-11; in docs/archive/
+https://github.com/halcyonic-systems/bert/issues/109,keep,external-url,keep,HEAD 200 on 2026-10-11; in docs/archive/
+https://github.com/halcyonic-systems/bert-lenses,(not in tree),external-url,keep,HEAD 301 to https://github.com/halcyonic-systems/facets on 2026-10-11; the redirect covers the repo and not crate names
+bert-lenses.app (domain),(not in tree),external-url,keep,no such URL remains; the .app occurrences are the macOS bundle name (deploy)
+fixtures/gates_truth_table.json,keep,fixture,5,generated by SSF's GatesTruthTable.lean; the ../bert-lenses/ output path and bert-core::check_bond are SSF-side text; DECIDE(2026-10-11): re-bless at the pin or keep as lineage

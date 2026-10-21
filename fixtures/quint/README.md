@@ -1,7 +1,7 @@
 # Quint mode-ladder trace fixtures (bert-lenses#17)
 
 Committed ITF (Informal Trace Format) traces of the mode-ladder spec, replayed
-against the real bert-core mode machine by `crates/bert-core/tests/quint_replay.rs`.
+against the real bert-core mode machine by `crates/facets-core/tests/quint_replay.rs`.
 
 The traces are generated **offline** with the Quint CLI and committed here, so CI
 replays them with nothing but `serde` — no Quint, no Java, no Apalache. The

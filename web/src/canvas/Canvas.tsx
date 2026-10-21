@@ -1489,7 +1489,7 @@ export default function Canvas({
         {/* A flowless port has no membrane crossing to inspect — it names one
             component (#180), so its click selects THAT thing, not the
             boundary (the fixable warning for the same fact is emitted by
-            check_flowless_interfaces in bert-canvas/src/lenses.rs).
+            check_flowless_interfaces in facets-canvas/src/lenses.rs).
 
             #213: the notch is TETHERED to the component it designates and
             labelled with its name. `I ⊆ C` — the port is not a second object

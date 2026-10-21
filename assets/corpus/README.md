@@ -3,7 +3,7 @@
 Author-grounded teaching models: each entry is lifted from a **source text's own
 worked example** and carries its citation in a provenance header. These ship — a
 user opens one from the gallery and reads it on the canvas — so every file is
-gated by `crates/bert-canvas/tests/source_corpus.rs` (header well-formed,
+gated by `crates/facets-canvas/tests/source_corpus.rs` (header well-formed,
 compiles with zero faults, pins its tradition's lens, projects clean).
 
 Three sets of `.sl` files exist and "the corpus" alone is ambiguous between them,
@@ -49,7 +49,7 @@ entry rather than a refusal, and the cross-lens matrix now run over every model 
 **six** refusals in the tree, not one. Four are below; the two on the demos are noted at
 the end. The count was wrong because nothing had ever read an entry under a lens other
 than its own — the ship gate validates each entry under its pinned lens only, so the
-lessons here were asserted in prose and executed by nothing until `crates/bert-canvas/
+lessons here were asserted in prose and executed by nothing until `crates/facets-canvas/
 tests/cross_lens.rs` bound them.*
 
 **`bunge/coupling-sigma3.sl` does not travel, and that is the lesson.** Bunge admits the diagonal — a thing may act on itself, and his coupling matrix records it. Mobus forbids it (§4.3 requires `k ≠ o`). So the file is a legal Bunge structure and a **refused** Mobus one. Open it and switch to the Mobus lens: *"self-dependency is not representable in the 8-tuple."* A real divergence between two traditions, shown rather than asserted. Now asserted by a test that fails if the self-actions are removed.
@@ -60,7 +60,7 @@ State the divergence carefully, because the obvious reading of it is wrong. **It
 
 Two honesty flags this entry must carry. First, the composition-of-one is **partly our encoding**: Fig. 4.14 has one box, and SL puts the SOI's name on the model with its things one level in, so the single `Combining` component is our construction (the entry's own `note` says this). A different surface syntax might present the same figure as a composition of zero, which Bunge also refuses, but for a different reason. Second, no re-encoding *within SL* escapes the refusal, and inventing a second component to clear it would be the corpus inventing — see the standard below.
 
-> **One caveat this entry must carry.** The Rust gate that fires here is *stronger* than the Lean it was documented as mirroring: `check_bond` additionally requires both endpoints to be `System | Subsystem`, a restriction with no counterpart in `Kernel.HasBond` (see `crates/bert-core/src/validate.rs`). Under the Lean alone, this model satisfies `HasBond`. The paragraph above is therefore written against `Systems/Core/System.lean:47` — Bunge's own definition — rather than against the Rust, so it stands whichever way that discrepancy is resolved. If the extra conjunct turns out to be unjustified, the refusal is our gate's and not Bunge's, and this entry becomes a finding about the kernel instead.
+> **One caveat this entry must carry.** The Rust gate that fires here is *stronger* than the Lean it was documented as mirroring: `check_bond` additionally requires both endpoints to be `System | Subsystem`, a restriction with no counterpart in `Kernel.HasBond` (see `crates/facets-core/src/validate.rs`). Under the Lean alone, this model satisfies `HasBond`. The paragraph above is therefore written against `Systems/Core/System.lean:47` — Bunge's own definition — rather than against the Rust, so it stands whichever way that discrepancy is resolved. If the extra conjunct turns out to be unjustified, the refusal is our gate's and not Bunge's, and this entry becomes a finding about the kernel instead.
 
 **`klir/cellular-array-cell.sl` is Klir's own lesson, returned by Bunge.** His point in Fig. 4.11 is that the same 5×5 array admits 2²⁵ structure systems, because the environment is placed by the investigator rather than found. The entry encodes his cut, one distinguished cell and four neighbours as environment, and under Bunge that cut yields a composition of one, with eight bonds all exostructural and no system. Move the cut by one cell and the same array becomes a Bunge system with no change to the world. Klir says the observer chooses the system; Bunge's refusal says the observer chooses whether there is one. This refusal is induced by our encoding of his figure rather than forced by his text, which is the honest form of the lesson rather than a weakening of it. The same caveat above applies.
 
@@ -109,14 +109,14 @@ So `set` keeps one meaning across the corpus — one composition, several struct
    is why the script will not invent a position for you and fails loudly on an
    unlisted file. Everything else in the index is projected from the header, so
    `citation` cannot drift from its composition rule.
-5. `cargo test -p bert-canvas --test source_corpus`.
+5. `cargo test -p facets-canvas --test source_corpus`.
 
 An unindexed file is a gate failure, not a silent omission from the gallery.
 
 ## One shelf, one book
 
 Each tradition declares the works it may cite, as `(author, work, year)` triples
-in `SHELVES` at the top of `crates/bert-canvas/tests/source_corpus.rs`. Every
+in `SHELVES` at the top of `crates/facets-canvas/tests/source_corpus.rs`. Every
 entry's header must match one of its shelf's triples exactly. All three shelves
 hold a single book today.
 

@@ -73,7 +73,7 @@ MATCH_KINDS = {"slug", "prefix"}
 OTHER = "other"
 
 # Bundle shape: assets/examples-data/README.md, "A routed-share bundle for the
-# pooled llm-market"; the engine side is bert-tether/src/forcing.rs,
+# pooled llm-market"; the engine side is facets-tether/src/forcing.rs,
 # forcing_a_splitters_outwires_moves_the_routed_share_and_conserves.
 TICKS_PER_MONTH = 30
 BUNDLE_MAPPING = [

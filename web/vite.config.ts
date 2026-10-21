@@ -47,7 +47,7 @@ const gitSha = (() => {
 const wasmSha256 = (() => {
   try {
     const bytes = readFileSync(
-      resolve(ROOT, "crates/bert-lenses-kernel/pkg/bert_lenses_kernel_bg.wasm"),
+      resolve(ROOT, "crates/facets-kernel/pkg/facets_kernel_bg.wasm"),
     );
     return createHash("sha256").update(bytes).digest("hex");
   } catch {
@@ -63,7 +63,7 @@ const wasmSha256 = (() => {
 // its record here, and it lands in `runs/bench/` (gitignored): `latest.json`
 // plus a dated copy. The point is the loop between a person in the tool and
 // an agent in the terminal: the agent reads the file, nobody re-types what
-// was run. `bert bench` takes the same model and knobs when a variation is
+// was run. `facets bench` takes the same model and knobs when a variation is
 // wanted. Nothing here ships; the live site has the Export run button.
 function benchRecorder(): Plugin {
   return {
@@ -124,8 +124,8 @@ export default defineConfig({
   plugins: [react(), tailwindcss(), shipNotices(), benchRecorder()],
   define: {
     __APP_VERSION__: JSON.stringify(version),
-    __KERNEL_VERSION__: JSON.stringify(crateVersion("bert-lenses-kernel")),
-    __CORE_VERSION__: JSON.stringify(crateVersion("bert-core")),
+    __KERNEL_VERSION__: JSON.stringify(crateVersion("facets-kernel")),
+    __CORE_VERSION__: JSON.stringify(crateVersion("facets-core")),
     __GIT_SHA__: JSON.stringify(gitSha),
     __SSF_COMMIT__: JSON.stringify(ssfCommit),
     __WASM_SHA256__: JSON.stringify(wasmSha256),

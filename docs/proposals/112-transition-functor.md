@@ -8,7 +8,7 @@ checks the declared kind) and finding 2 filed as #340 with Fig 3.17 as the
 ruling authority; the §1.7 trace documents pre-fix behavior and stays as the
 record. §3's two productions landed as `stock <unit> initial <n>` and
 `release <n>` (grammar words ruled 2026-08-15; separating instances in
-`crates/bert-canvas/tests/sl_stock_dynamics.rs`). §4's Lean instantiation and
+`crates/facets-canvas/tests/sl_stock_dynamics.rs`). §4's Lean instantiation and
 §5's openness frontier remain open under #112.
 
 **Original status:** proposal. This document measures the shipping `bert-compose` stepper
@@ -28,14 +28,14 @@ already carries.
 A run is `WorldModel → OperationalSpec → Circuit → RecordedRun`:
 
 - `validate_operational` projects a `WorldModel` into an `OperationalSpec`
-  (`crates/bert-core/src/operational.rs:206`), reading each level-1 system's
+  (`crates/facets-core/src/operational.rs:206`), reading each level-1 system's
   `AgentModel.initial_state.get("storage")` into
   `OperationalProcess.initial_storage: Option<f64>` and cloning
   `AgentModel.cognitive_params` verbatim into
   `OperationalProcess.cognitive_params: HashMap<String, f64>`
   (`operational.rs:319-327`).
 - `bert_compose::export::from_spec` builds a `Circuit` from the spec
-  (`crates/bert-compose/src/export.rs:370`), setting
+  (`crates/facets-compose/src/export.rs:370`), setting
   `node.initial_storage = s as f32; node.storage = s as f32;` from
   `p.initial_storage` (`export.rs:401-404`) and
   `node.release_rate = r as f32;` from
@@ -43,14 +43,14 @@ A run is `WorldModel → OperationalSpec → Circuit → RecordedRun`:
 - `bert-cli`'s `run` subcommand calls `validate_operational`, then
   `bert_compose::from_spec`, then
   `bert_compose::RecordedRun::record_over(&mut circuit, &spec, dt, t)`
-  (`crates/bert-cli/src/main.rs:345-360`), which derives a tick count from
-  `(Δt, T)` via `ticks_over` (`crates/bert-compose/src/run.rs:163-187`) and
+  (`crates/facets-cli/src/main.rs:345-360`), which derives a tick count from
+  `(Δt, T)` via `ticks_over` (`crates/facets-compose/src/run.rs:163-187`) and
   calls `circuit.step_dt(dt as f32)` in a loop after `circuit.reset()`
-  (`crates/bert-compose/src/run.rs:71-84`).
+  (`crates/facets-compose/src/run.rs:71-84`).
 - `bert-tether`'s forcing path writes the same two fields by a second route:
-  `apply_params` (`crates/bert-tether/src/forcing.rs:151-197`) sets
+  `apply_params` (`crates/facets-tether/src/forcing.rs:151-197`) sets
   `s.agent.initial_state["storage"]` from `params.stock_initial` (a column's
-  first present observation, "the value at t0" — `crates/bert-tether/src/
+  first present observation, "the value at t0" — `crates/facets-tether/src/
   tether.rs:64`, `:144-148`) and `s.agent.cognitive_params[name]` from
   `params.component_param` (`forcing.rs:184-195`) — landing on exactly the
   fields `validate_operational` reads. Authoring and CSV-tether forcing are
@@ -59,7 +59,7 @@ A run is `WorldModel → OperationalSpec → Circuit → RecordedRun`:
 ### 1.2 The state space X
 
 `X` is the mutable field set of `Circuit`
-(`crates/bert-compose/src/circuit.rs:477-519`):
+(`crates/facets-compose/src/circuit.rs:477-519`):
 
 - per node (`Node`, `circuit.rs:262-328`): `storage: f32`, `activity: f32`,
   `total: f32`, `spark: VecDeque<f32>` (a bounded sparkline buffer, also
@@ -189,7 +189,7 @@ Lean-side gloss.
   treats this as a refusal at the caller level, not silently: it checks
   `circuit.algebraic_cycle()` before recording and returns `Err` naming the
   loop rather than recording a run of identity steps
-  (`crates/bert-compose/src/run.rs:106-117`). The refusal is principled and
+  (`crates/facets-compose/src/run.rs:106-117`). The refusal is principled and
   documented (SSV Ex 4.2.9, cited in both files), but the coalgebra
   structure map itself is only genuinely `X → F(X)` on the sub-domain of
   circuits with no anchorless cycle; outside that domain it degenerates to
@@ -230,7 +230,7 @@ Lean-side gloss.
 
 ### 1.7 A measured pathology: the tRNA recycle loop mints mass
 
-Repro, in this worktree: `cargo build -p bert-cli && target/debug/bert run
+Repro, in this worktree: `cargo build -p facets-cli && target/debug/facets run
 assets/examples/translation-apparatus.sl --t 15`. By `t=15` `stored` has
 grown from 45 to 4935.9 while `emitted` has grown only from 101 to 1515;
 `dissipated` crosses from positive to negative at tick 6 and reaches
@@ -432,7 +432,7 @@ a separating instance" (SSF #35, cited in the issue's 2026-07-27 comment).
 ### 3.1 The refusal being closed
 
 `emit_sl` currently refuses any thing carrying either bag, verbatim
-(`crates/bert-canvas/src/sl.rs:1735-1741`):
+(`crates/facets-canvas/src/sl.rs:1735-1741`):
 
 > ``"`{}` carries engine parameters (cognitive_params / initial_state) SL
 > cannot yet express (#112) — export the model as kernel JSON instead of

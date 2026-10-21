@@ -30,7 +30,7 @@ Six crates:
 | `bert-tether` | Boundary interface: CSV import, run manifest, forcing |
 | `bert-compose` | The dynamical engine: a dynamics run under the model's declared invariant (current engine: one supported dynamics-kind — Id-functor over ℝⁿ stocks with an additive conservation invariant; engine-only, wasm-clean) |
 | `bert-lenses-kernel` | The JS↔wasm boundary — marshaling only; frozen append-only surface (`API.md`) |
-| `bert-cli` | The `bert` binary: a headless door onto the same library calls the wasm boundary marshals (compile, verdict, describe, run, bench, layout); native only, the one package excluded from the wasm build |
+| `bert-cli` | The `facets` binary: a headless door onto the same library calls the wasm boundary marshals (compile, verdict, describe, run, bench, layout); native only, the one package excluded from the wasm build |
 
 ---
 
@@ -40,7 +40,7 @@ All four sections below are CODE-READ: a direct read of the named source, nothin
 
 ### 1. `describe(model, lens)` → the named per-lens formal object  — CODE-READ (rich)
 
-`pub fn describe` in `crates/bert-canvas/src/lenses.rs`. Returns a `#[serde(tag="lens")]` discriminated union — the model typeset in **each lens's own formal notation, with the actual named structure**, not just counts:
+`pub fn describe` in `crates/facets-canvas/src/lenses.rs`. Returns a `#[serde(tag="lens")]` discriminated union — the model typeset in **each lens's own formal notation, with the actual named structure**, not just counts:
 
 - **Klir** `S = (T, R)`: `things`, `relations`, `directed`, `neutral`, `note`.
 - **Bunge** `σ = ⟨C, E, S⟩` (CES; M carried as untyped `mechanism_note` prose, not a Lean-projected coordinate — see concordance §14): `composition[]` (named), `environment[]` (named), `endostructure`, `exostructure`, `bondage`, `mere_relations`, `boundary_components[]` (named), `verdict`, `mechanism_note`.
@@ -54,7 +54,7 @@ Counts are "read off the same kernel facts the canvas renders — never re-deriv
 
 ### 3. `validate_mode(model, mode)` → per-lens legality, gated on Lean-named preconditions  — CODE-READ
 
-`pub fn validate_mode` in `crates/bert-core/src/validate.rs`. This is the hard guarantee. It never asks "is the model valid" — it asks "may this model be authored *as* this mode," each lens adding its own precondition — the named hypothesis its faithful-view theorem in `ViewGeneration.lean` is proved *under*:
+`pub fn validate_mode` in `crates/facets-core/src/validate.rs`. This is the hard guarantee. It never asks "is the model valid" — it asks "may this model be authored *as* this mode," each lens adding its own precondition — the named hypothesis its faithful-view theorem in `ViewGeneration.lean` is proved *under*:
 
 - **Core**: on-ness (every interaction endpoint resolves) — via `validate`'s reference checks.
 - **Structural (Bunge)**: `check_bond` (`fn check_bond`, `validate.rs`) — requires ≥1 bond between *distinct* components, else an "aggregate" error. Mirrors the Lean *definition* `Kernel.HasBond` — a `Prop`-valued `def`, not a theorem (claim `kernel.bunge-gate`).
@@ -97,7 +97,7 @@ Counts are "read off the same kernel facts the canvas renders — never re-deriv
 
 ## Where the guarantees are documented (cross-refs)
 
-- `crates/bert-lenses-kernel/API.md` — the frozen wasm boundary (every exported fn's shape + error contract).
+- `crates/facets-kernel/API.md` — the frozen wasm boundary (every exported fn's shape + error contract).
 - `docs/archive/canvas-architecture.md` — the canvas/face side (HISTORICAL, egui-era).
 - [`lean-provenance.md`](lean-provenance.md) — the pinned SSF commit, the generated per-claim map (every `claim_id` cited above), and the two gates that keep those citations resolving. Every MACHINE-CHECKED mark in this document points there.
 - `docs/design/llm-integration-research.md` — the LLM story that rests on this kernel (its §4 substrate and §11 lens-fidelity claims are the ones this doc verifies).

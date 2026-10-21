@@ -1,0 +1,8 @@
+{
+  "tables": [
+    {
+      "id": "kernel-views",
+      "stated_in": "`README.md`, `crates/bert-core/src/transition.rs` header table."
+    }
+  ]
+}

@@ -40,8 +40,8 @@ import init, {
   BenchHandle as WasmBenchHandle,
   sandbox_palette as wasmSandboxPalette,
   ladder_stamps as wasmLadderStamps,
-} from "bert-lenses-kernel";
-import wasmUrl from "bert-lenses-kernel/bert_lenses_kernel_bg.wasm?url";
+} from "facets-kernel";
+import wasmUrl from "facets-kernel/facets_kernel_bg.wasm?url";
 
 import type {
   ValidationResult,
@@ -118,9 +118,10 @@ export function ready(): Promise<void> {
 if (typeof window !== "undefined" && import.meta.hot) void ready();
 
 /**
- * A typed failure from the kernel boundary. The Rust API (crates/bert-lenses-
- * kernel/API.md, "Error contract") guarantees every boundary function either
- * returns its documented shape or throws a `JsError` — never panics. This class
+ * A typed failure from the kernel boundary. The Rust API
+ * (crates/facets-kernel/API.md, "Error contract") guarantees every boundary
+ * function either returns its documented shape or throws a `JsError` — never
+ * panics. This class
  * is how the face SEES that throw: `call` below catches the raw wasm exception
  * and rethrows it as a `KernelError` carrying the kernel's own message plus the
  * function name, so React state never receives `undefined` and the error

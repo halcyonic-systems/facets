@@ -150,7 +150,7 @@ So a channel spec owes three things:
    genuinely present, made to fail on purpose once. Bondhood's is
    `web/src/canvas/bondhood.test.tsx` over the 2026-08-12 ribosome shape, with
    the fixture's own bond/mere split asserted in
-   `crates/bert-canvas/tests/issue_codes.rs` so the check cannot be defanged by
+   `crates/facets-canvas/tests/issue_codes.rs` so the check cannot be defanged by
    repairing the model out from under it.
 
 ## Rules
