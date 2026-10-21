@@ -91,15 +91,6 @@ assets/archive/demos/reservoir-model.json,38,lineage,"""description"": ""bert-co
 assets/archive/demos/reservoir-model.json,60,lineage,"""description"": ""Built in bert-compose: process primitives wired into a working circuit (composition is unconditional — S"
 assets/corpus/README.md,73,issue-ref,The corpus is the **empirical arm** of the formalization. You cannot find that `Tuple.lean` under-constrains `I` by read
 assets/examples/translation-apparatus.sl,140,issue-ref,# Mobus ch. 4 (bert-lenses#260): environmental entities are unmodeled
-assets/models/runnable-sample.json,17,fixture,"""description"": ""bert-compose source"""
-assets/models/runnable-sample.json,38,fixture,"""description"": ""bert-compose sink"""
-assets/models/runnable-sample.json,60,fixture,"""description"": ""Built in bert-compose: process primitives wired into a working circuit (composition is unconditional — S"
-assets/walkthroughs/digital-computer/level-1.json,2,format-tag,"""format"": ""bert-lenses/canvas@1"","
-assets/walkthroughs/llm-market/frontier-serving.json,2,format-tag,"""format"": ""bert-lenses/canvas@1"","
-assets/walkthroughs/llm-market/frontier-serving.sl,12,fixture,# boundary contract (bert-core::decomposition) holds. Router sends the
-assets/walkthroughs/llm-market/open-weight-serving.json,2,format-tag,"""format"": ""bert-lenses/canvas@1"","
-assets/walkthroughs/llm-market/open-weight-serving.sl,14,fixture,# boundary contract (bert-core::decomposition) holds. Router sends the
-assets/walkthroughs/steel-plant/level-2.json,2,format-tag,"""format"": ""bert-lenses/canvas@1"","
 crates/facets-canvas/Cargo.toml,5,doc-prose,"description = ""The canvas/lens domain: the serializable CanvasModel, its projection into a bert-core WorldModel, and the"
 crates/facets-canvas/Cargo.toml,19,doc-prose,# `initial_state` values are arbitrary JSON — same Value type bert-core uses.
 crates/facets-canvas/Cargo.toml,26,doc-prose,# that let a 22% trajectory change ship green (#216). No cycle: bert-compose
@@ -132,7 +123,6 @@ crates/facets-canvas/src/lenses.rs,150,doc-prose,"/// Compute the lens facts for
 crates/facets-canvas/src/lenses.rs,338,doc-prose,// construction; residue makes the read-side loss loud. `bert-core`'s
 crates/facets-canvas/src/lenses.rs,784,issue-ref,/// (bert-lenses#320).
 crates/facets-canvas/src/lenses.rs,870,issue-ref,"/// The decomposition seam verdict, canvas-keyed (bert-lenses#89 step 5b): the"
-crates/facets-canvas/src/lenses.rs,1647,doc-prose,"t_note: ""T: transforms — parametric by intent; bert-compose fills the slot"".to_string(),"
 crates/facets-canvas/src/lib.rs,1,doc-prose,"//! bert-canvas — the canvas/lens domain, pure Rust (no wasm-bindgen)."
 crates/facets-canvas/src/lib.rs,4,doc-prose,//! its projection into a bert-core [`facets_core::WorldModel`] for validation
 crates/facets-canvas/src/sl.rs,1111,upstream-bert,// rides ENVIRONMENT lines too: old-bert's descriptions are
@@ -191,9 +181,6 @@ crates/facets-compose/src/circuit.rs,4499,doc-prose,"/// Def 2.7 β; position §
 crates/facets-compose/src/circuit.rs,4632,issue-ref,/// bert-lenses#54: an authored NONZERO porosity scales a boundary-crossing
 crates/facets-compose/src/circuit.rs,4683,issue-ref,"/// The convention, made explicit (bert-lenses#54): porosity `0.0` is the"
 crates/facets-compose/src/export.rs,1,upstream-bert,//! Circuit ↔ BERT JSON: the canvas saves as an ordinary WorldModel that the
-crates/facets-compose/src/export.rs,67,doc-prose,"""Built in bert-compose: process primitives wired into a working circuit \"
-crates/facets-compose/src/export.rs,107,doc-prose,"info: info(eid.clone(), -1, &node.name, ""bert-compose source""),"
-crates/facets-compose/src/export.rs,123,doc-prose,"info: info(eid.clone(), -1, &node.name, ""bert-compose sink""),"
 crates/facets-compose/src/export.rs,250,issue-ref,// A stock's declared unit (bert-lenses#76) rides back to
 crates/facets-compose/src/export.rs,285,upstream-bert,// Gradient (field-driven) flows export as BERT's Force interaction
 crates/facets-compose/src/export.rs,533,issue-ref,// them (bert#111).
@@ -358,10 +345,7 @@ crates/facets-kernel/src/api.rs,1107,doc-prose,"// demo, by round-tripping a ber
 crates/facets-kernel/src/archive.rs,1,issue-ref,"//! The archive seam (bert-lenses#140, ADR 0004): what a saved model IS on disk."
 crates/facets-kernel/src/archive.rs,38,format-tag,"pub const FORMAT_RETIRING: &str = ""bert-lenses/canvas@1"";"
 crates/facets-kernel/src/lib.rs,1,doc-prose,//! bert-lenses-kernel — the JS-facing wasm boundary. Marshaling only.
-crates/facets-kernel/tests/digital_computer_walkthrough.rs,88,format-tag,"// mint in its format tag alone: written as bert-lenses/canvas@1, it is the"
-crates/facets-kernel/tests/format_tag.rs,4,format-tag,"//! rename carries `bert-lenses/canvas@1`, and that includes the four"
-crates/facets-kernel/tests/llm_market_walkthrough.rs,113,format-tag,"// the mint in its format tag alone: written as bert-lenses/canvas@1, it"
-crates/facets-kernel/tests/steel_walkthrough.rs,93,format-tag,"// the mint in its format tag alone: written as bert-lenses/canvas@1, it"
+crates/facets-kernel/tests/format_tag.rs,4,format-tag,//! carries `bert-lenses/canvas@1`. Phase 5 re-minted the four walkthrough
 crates/facets-tether/src/forcing.rs,23,doc-prose,//! - **Mobus `InteractionType::Force`** (bert-core): an *ontological* flow type —
 crates/facets-tether/src/forcing.rs,316,issue-ref,"/// inflow × Δt, bert-lenses#94), not read from an author-declared stock unit —"
 crates/facets-tether/src/forcing.rs,380,issue-ref,"// (bert-lenses#76). Otherwise, for a Buffering stock, it DERIVES a display unit"
@@ -897,14 +881,7 @@ docs/theory-fidelity.md,87,doc-prose,"GitHub issue #5 (bert-lenses) decided how 
 docs/theory-fidelity.md,109,doc-prose,The model carries an author-asserted `system_type` (`CanvasModel.system_type` in `bert-canvas`): a **kingdom** (Conceptu
 docs/wellformedness-mapping.md,41,doc-prose,"**1 — `internal_lawful`, edges land on vertices.** The Lean requires an internal edge's endpoints to be members of `N.no"
 editors/vscode/package.json,4,doc-prose,"""description"": ""Syntax highlighting for SL, the bert-lenses systems language."","
-fixtures/cli/canonical.json,356,golden,"""t_note"": ""T: transforms — parametric by intent; bert-compose fills the slot"""
-fixtures/cli/canonical.json,1061,golden,"""t_note"": ""T: transforms — parametric by intent; bert-compose fills the slot"""
-fixtures/cli/canonical.json,1827,golden,"""t_note"": ""T: transforms — parametric by intent; bert-compose fills the slot"""
-fixtures/cli/canonical.json,3096,golden,"""t_note"": ""T: transforms — parametric by intent; bert-compose fills the slot"""
-fixtures/cli/canonical.json,4301,golden,"""t_note"": ""T: transforms — parametric by intent; bert-compose fills the slot"""
-fixtures/cli/canonical.json,5044,golden,"""t_note"": ""T: transforms — parametric by intent; bert-compose fills the slot"""
-fixtures/contract/canvas_analysis.json,141,golden,"""t_note"": ""T: transforms — parametric by intent; bert-compose fills the slot"","
-fixtures/contract/lens_description_mobus.json,20,golden,"""t_note"": ""T: transforms — parametric by intent; bert-compose fills the slot"","
+fixtures/format-tag/steel-plant-level-2.json,2,format-tag,"""format"": ""bert-lenses/canvas@1"","
 fixtures/gates_truth_table.json,4,crate-dir,"""command"": ""lake env lean --run Systems/Klir/GatesTruthTable.lean > ../bert-lenses/fixtures/gates_truth_table.json"","
 fixtures/gates_truth_table.json,6,fixture,"""acts_on_pinning"": ""HasBond is computed under the total action instance, where every distinct pair is bonded; this is th"
 fixtures/quint/README.md,1,issue-ref,# Quint mode-ladder trace fixtures (bert-lenses#17)
@@ -976,8 +953,6 @@ web/DESIGN.md,5,doc-prose,"is the kernel's. Labels name the source (`bert-core �
 web/DESIGN.md,12,doc-prose,bert-lenses takes **teal** as its accent to distinguish the instrument within the
 web/DESIGN.md,42,doc-prose,attribute and the stored choice (`bert-lenses.theme`); the control is the one
 web/DESIGN.md,67,upstream-bert,"(Phase 2+) will harvest old BERT's curved-flow polish, but the token system stays."
-web/fixtures/bill-broken.analysis.json,305,doc-prose,"""t_note"": ""T: transforms — parametric by intent; bert-compose fills the slot"","
-web/fixtures/bill-broken.context.txt,11,doc-prose,T: transforms — parametric by intent; bert-compose fills the slot
 web/src/AnalystPanel.tsx,26,doc-prose,"const COVERAGE_KEY = ""bert-lenses.analysis-coverage"";"
 web/src/App.tsx,1613,doc-prose,// File → Save / Export: project the canvas editing model back to a bert-core
 web/src/App.tsx,1770,doc-prose,// Save-as-copy discipline (bert-core model_id contract): saving under a NEW
@@ -1011,9 +986,7 @@ web/src/drafterModel.ts,59,doc-prose,"const KEY = ""bert-lenses.coauthor-model""
 web/src/index.css,5,doc-prose,* bert-lenses — Halcyonic Frost design tokens.
 web/src/index.css,9,doc-prose,* bert-lenses takes TEAL as its accent to distinguish the instrument within the
 web/src/kernel/bill_render.harness.test.ts,32,doc-prose,"provenance: { generated_at: ""1970-01-01T00:00:00.000Z"", source: ""bert-lenses"" },"
-web/src/kernel/context.test.ts,50,doc-prose,"t_note: ""T: transforms — parametric by intent; bert-compose fills the slot"","
 web/src/kernel/context.test.ts,98,doc-prose,"provenance: { generated_at: ""2026-07-17T00:00:00.000Z"", source: ""bert-lenses"" },"
-web/src/kernel/context.test.ts,202,doc-prose,T: transforms — parametric by intent; bert-compose fills the slot
 web/src/kernel/context.test.ts,280,doc-prose,"provenance: { generated_at: ""1999-01-01T00:00:00.000Z"", source: ""bert-lenses"" },"
 web/src/kernel/context.test.ts,305,doc-prose,"expect(ctx.provenance.source).toBe(""bert-lenses"");"
 web/src/kernel/context.ts,21,doc-prose,"provenance: { generated_at: string; source: ""bert-lenses"" };"
