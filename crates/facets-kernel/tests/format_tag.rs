@@ -1,10 +1,10 @@
-//! The format tag's dual reader, held on real files (#541, phase 3).
+//! The format tag's dual reader, held on a real file (#541, phases 3 and 5).
 //!
-//! The writer now emits `facets/canvas@1`; every archive written before the
-//! rename carries `bert-lenses/canvas@1`, and that includes the four
-//! walkthrough archives this repository ships. Those are not re-minted until
-//! phase 5, so for one release they are the proof that the old tag opens: each
-//! is read through `archive::read` (what `open_model` and the CLI call) and
+//! The writer emits `facets/canvas@1`; every archive written before the rename
+//! carries `bert-lenses/canvas@1`. Phase 5 re-minted the four walkthrough
+//! archives under the new tag and kept one of them, as stored on 2026-10-11,
+//! under `fixtures/format-tag/`: that copy is the proof that the old tag opens.
+//! It is read through `archive::read` (what `open_model` and the CLI call) and
 //! must come back whole. The old tag retires on 2027-01-11 (`FORMAT_RETIRING`).
 
 use std::fs;
@@ -13,15 +13,9 @@ use std::path::{Path, PathBuf};
 use facets_kernel::archive::{self, FORMAT, FORMAT_RETIRING};
 use serde_json::Value;
 
-/// Every shipped file carrying the old tag on 2026-10-11. Phase 5 re-mints
-/// them under the new tag; this list then empties and the proof moves to a
-/// kept copy.
-const OLD_TAG_FILES: [&str; 4] = [
-    "assets/walkthroughs/digital-computer/level-1.json",
-    "assets/walkthroughs/llm-market/frontier-serving.json",
-    "assets/walkthroughs/llm-market/open-weight-serving.json",
-    "assets/walkthroughs/steel-plant/level-2.json",
-];
+/// The one file in the repository carrying the old tag: the steel plant's
+/// level 2 as stored before phase 5 re-minted it.
+const OLD_TAG_FILES: [&str; 1] = ["fixtures/format-tag/steel-plant-level-2.json"];
 
 fn repo() -> PathBuf {
     Path::new(env!("CARGO_MANIFEST_DIR")).join("../..")
@@ -46,7 +40,7 @@ fn tag_of(text: &str) -> Option<String> {
 /// The list above is the whole set, so a file that carries the old tag cannot
 /// ship without the reader being proved on it.
 #[test]
-fn the_old_tag_files_are_exactly_the_listed_four() {
+fn the_old_tag_files_are_exactly_the_listed_one() {
     let root = repo();
     let mut files = Vec::new();
     for dir in ["assets", "fixtures"] {

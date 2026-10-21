@@ -4,8 +4,8 @@
 // Rust), so the proof is that the face's own calls open an old-tag file: the
 // Open… import (openModel, then writeArchive into the library), and the
 // identity the library and the working folder key records by (modelIdentity).
-// The fixtures are the shipped walkthrough archives, which keep the old tag
-// until phase 5 re-mints them.
+// The fixture is the steel plant's level 2 as stored before phase 5 re-minted
+// the walkthrough archives under the new tag.
 import { describe, expect, it } from "vitest";
 import fs from "node:fs";
 import path from "node:path";
@@ -19,12 +19,7 @@ initSync({
 const OLD_TAG = "bert-lenses/canvas@1";
 const NEW_TAG = "facets/canvas@1";
 
-const FIXTURES = [
-  "assets/walkthroughs/digital-computer/level-1.json",
-  "assets/walkthroughs/llm-market/frontier-serving.json",
-  "assets/walkthroughs/llm-market/open-weight-serving.json",
-  "assets/walkthroughs/steel-plant/level-2.json",
-];
+const FIXTURES = ["fixtures/format-tag/steel-plant-level-2.json"];
 
 const read = (rel: string) => fs.readFileSync(path.resolve(__dirname, "../..", rel), "utf8");
 
