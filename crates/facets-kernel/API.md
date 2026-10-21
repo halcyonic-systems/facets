@@ -919,3 +919,13 @@ writes or names it, and a file carrying it still opens, by shape, like a
 marker-less archive. The shipped walkthrough archives keep the old tag until
 phase 5 of #541 re-mints them; `crates/facets-kernel/tests/format_tag.rs` and
 `web/src/archiveTag.kernel.test.ts` open each of them through the reader.
+
+## The walkthrough archives carry `facets/canvas@1` (appended 2026-10-21, #541)
+
+Phase 5 of #541 re-minted the four shipped walkthrough archives; each moved in
+its `format` line alone, and each identity is unchanged. The note above, that
+they keep the old tag, is therefore historical. The reader's proof on a real
+old-tag file now runs on one kept copy, `fixtures/format-tag/steel-plant-level-2.json`
+(the steel plant's level 2 as stored on 2026-10-11), through
+`crates/facets-kernel/tests/format_tag.rs` and `web/src/archiveTag.kernel.test.ts`.
+No signature changed.

@@ -17,7 +17,7 @@
   ],
   "porosity": 0.35,
   "perceptive_fuzziness": 0.2,
-  "t_note": "T: transforms — parametric by intent; bert-compose fills the slot",
+  "t_note": "T: transforms — parametric by intent; facets-compose fills the slot",
   "h_note": "H: history (accumulated state conditioning T) — NOT hierarchy",
   "dt_note": "Δt: time scale — a parametric field on the system",
   "self_loop_conflicts": [

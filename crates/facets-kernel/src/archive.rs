@@ -31,8 +31,8 @@ pub const FORMAT: &str = "facets/canvas@1";
 /// The marker every archive carried before the rename (#541): the same
 /// generation as `FORMAT` under the project's old name, so nothing about the
 /// content differs. The reader has always opened it, since shape decides and
-/// the marker only corroborates; the constant exists so the tests and the
-/// shipped walkthrough archives (re-minted in phase 5 of #541) can name it.
+/// the marker only corroborates; the constant exists so the tests and the one
+/// kept old-tag file, `fixtures/format-tag/steel-plant-level-2.json`, can name it.
 /// It retires on 2027-01-11: after that date nothing writes or names it, and a
 /// file carrying it still opens, by shape, like any marker-less archive.
 pub const FORMAT_RETIRING: &str = "bert-lenses/canvas@1";

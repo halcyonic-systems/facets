@@ -64,7 +64,7 @@ pub fn to_world_model(circuit: &Circuit, name: &str) -> WorldModel {
             id(IdType::System, &[0]),
             0,
             name,
-            "Built in bert-compose: process primitives wired into a working circuit \
+            "Built in facets-compose: process primitives wired into a working circuit \
              (composition is unconditional — Systems/Mobus/Composition.lean).",
         ),
         sources: Vec::new(),
@@ -104,7 +104,7 @@ pub fn to_world_model(circuit: &Circuit, name: &str) -> WorldModel {
                 let eid = id(IdType::Source, &[-1, src_n]);
                 src_n += 1;
                 environment.sources.push(ExternalEntity {
-                    info: info(eid.clone(), -1, &node.name, "bert-compose source"),
+                    info: info(eid.clone(), -1, &node.name, "facets-compose source"),
                     ty: ExternalEntityType::Source,
                     transform: transform(x, y),
                     equivalence: String::new(),
@@ -120,7 +120,7 @@ pub fn to_world_model(circuit: &Circuit, name: &str) -> WorldModel {
                 let eid = id(IdType::Sink, &[-1, sink_n]);
                 sink_n += 1;
                 environment.sinks.push(ExternalEntity {
-                    info: info(eid.clone(), -1, &node.name, "bert-compose sink"),
+                    info: info(eid.clone(), -1, &node.name, "facets-compose sink"),
                     ty: ExternalEntityType::Sink,
                     transform: transform(x, y),
                     equivalence: String::new(),

@@ -1,5 +1,5 @@
 {
-  "format": "bert-lenses/canvas@1",
+  "format": "facets/canvas@1",
   "lens": "Mobus",
   "model_id": "Vf4yUhPg55VodT1f4n666S",
   "things": [

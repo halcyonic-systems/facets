@@ -11,7 +11,7 @@
 #
 # The environment stand-ins are the seam's other half, the parent's
 # neighbours of the decomposed component name for name, so the kernel's
-# boundary contract (bert-core::decomposition) holds. Router sends the
+# boundary contract (facets-core::decomposition) holds. Router sends the
 # routed workload across the interior; the parent's Self-hosting and
 # Open-weight release pass-ways fuse onto the subsystem at projection
 # (#226), so the self-hosted workload and the weights cross the seam

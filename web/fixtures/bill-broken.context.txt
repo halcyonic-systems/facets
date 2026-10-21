@@ -8,7 +8,7 @@ E objects=[]
 μ (milieu) is parametric/opaque — the one element with no cross-lens preimage (milieuOnly_bunge_empty)
 G=0
 B interfaces=[], porosity=0, perceptive_fuzziness=0
-T: transforms — parametric by intent; bert-compose fills the slot
+T: transforms — parametric by intent; facets-compose fills the slot
 H: history (accumulated state conditioning T) — NOT hierarchy
 Δt: time scale — a parametric field on the system
 self_loop_conflicts=[]
