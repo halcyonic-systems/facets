@@ -62,10 +62,16 @@ jobs:
         run: cargo build --workspace --exclude facets-cli --target wasm32-unknown-unknown
 
       # --- Build the wasm pkg the web app consumes ---
+      # The release binary, installed directly: jetli/wasm-pack-action@v0.4.0
+      # renames it across filesystems, which the runner image refuses (EXDEV)
+      # by 2026-10-21 (green on 2026-10-18).
       - name: Install wasm-pack
-        uses: jetli/wasm-pack-action@v0.4.0
-        with:
-          version: 'v0.13.1'
+        env:
+          WASM_PACK: wasm-pack-v0.13.1-x86_64-unknown-linux-musl
+        run: |
+          curl -sSfL "https://github.com/rustwasm/wasm-pack/releases/download/v0.13.1/$WASM_PACK.tar.gz" | tar xz -C "$RUNNER_TEMP"
+          install -m 755 "$RUNNER_TEMP/$WASM_PACK/wasm-pack" "$HOME/.cargo/bin/wasm-pack"
+          wasm-pack --version
 
       - name: Build wasm pkg
         run: wasm-pack build --target web --out-dir pkg
