@@ -75,6 +75,7 @@ pub struct OperationalProcess {
     pub name: String,
     pub primitive: ProcessPrimitive,
     pub agency_capacity: f32,
+    #[serde(serialize_with = "crate::sorted_map")]
     pub cognitive_params: HashMap<String, f64>,
     pub initial_storage: Option<f64>,
     /// The stock's declared unit (bert-lenses#76). A stock accumulates a rate

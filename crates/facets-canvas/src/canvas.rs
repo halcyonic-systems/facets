@@ -279,11 +279,11 @@ pub struct Thing {
     /// on load is how a demo round-tripped into a different system while still
     /// reporting `conserved=true`. SL cannot express them, and `emit_sl` refuses
     /// rather than narrowing silently (§7.3). Empty = absent, `skip` on disk.
-    #[serde(default, skip_serializing_if = "std::collections::HashMap::is_empty")]
+    #[serde(serialize_with = "facets_core::sorted_map", default, skip_serializing_if = "std::collections::HashMap::is_empty")]
     pub cognitive_params: std::collections::HashMap<String, f64>,
     /// [`AgentModel::initial_state`], carried OPAQUELY (#216) — same standing,
     /// same #112 boundary, same emit refusal as `cognitive_params` above.
-    #[serde(default, skip_serializing_if = "std::collections::HashMap::is_empty")]
+    #[serde(serialize_with = "facets_core::sorted_map", default, skip_serializing_if = "std::collections::HashMap::is_empty")]
     pub initial_state: std::collections::HashMap<String, serde_json::Value>,
     /// [`AgentModel::agency_capacity`], carried opaquely with the bags (#216):
     /// the operational spec reads it as the process's engine parameter

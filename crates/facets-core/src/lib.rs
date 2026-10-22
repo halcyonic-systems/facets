@@ -27,6 +27,22 @@ use uuid::Uuid;
 
 pub use model_id::ModelId;
 
+/// Serialize a `HashMap` in key order (`#[serde(serialize_with =
+/// "facets_core::sorted_map")]`). A `HashMap`'s iteration order is randomized
+/// per map, so serializing one directly writes the same model as different
+/// bytes from run to run, which breaks SL's deterministic compile (spec C1)
+/// and every byte-compared output: `facets compile`, the kernel's JSON, a
+/// written archive. Reading is unchanged; only the written order is fixed.
+pub fn sorted_map<K, V, S>(map: &HashMap<K, V>, serializer: S) -> Result<S::Ok, S::Error>
+where
+    K: Ord + Serialize,
+    V: Serialize,
+    S: serde::Serializer,
+{
+    let ordered: std::collections::BTreeMap<&K, &V> = map.iter().collect();
+    ordered.serialize(serializer)
+}
+
 /// Corresponds to the System Language Interaction types.
 #[derive(Copy, Clone, Debug, PartialEq, Eq, Hash, Default, Serialize, Deserialize, Sequence)]
 pub enum InteractionType {
@@ -1430,7 +1446,7 @@ pub struct AgentModel {
     pub observation: Option<AgentObservation>,
 
     /// Domain-agnostic cognitive parameters (e.g., "fee_threshold": 50.0)
-    #[serde(default, skip_serializing_if = "HashMap::is_empty")]
+    #[serde(serialize_with = "crate::sorted_map", default, skip_serializing_if = "HashMap::is_empty")]
     pub cognitive_params: HashMap<String, f64>,
 
     /// Process behavior configurations with flexible parameters
@@ -1438,7 +1454,7 @@ pub struct AgentModel {
     pub process_configs: Vec<ProcessAssignment>,
 
     /// Initial state for agent instantiation as arbitrary JSON values
-    #[serde(default, skip_serializing_if = "HashMap::is_empty")]
+    #[serde(serialize_with = "crate::sorted_map", default, skip_serializing_if = "HashMap::is_empty")]
     pub initial_state: HashMap<String, serde_json::Value>,
 
     /// Optional network behavior configuration for multi-agent interactions
@@ -1832,7 +1848,7 @@ impl AgentCommand {
 #[derive(Serialize, Deserialize, Clone, Debug, PartialEq)]
 pub struct ProcessAssignment {
     pub name: String,
-    #[serde(default)]
+    #[serde(serialize_with = "crate::sorted_map", default)]
     pub params: HashMap<String, serde_json::Value>,
 }
 
@@ -1840,9 +1856,9 @@ pub struct ProcessAssignment {
 #[derive(Serialize, Deserialize, Clone, Debug, PartialEq)]
 pub struct NetworkConfig {
     pub topology: String,
-    #[serde(default)]
+    #[serde(serialize_with = "crate::sorted_map", default)]
     pub connection_params: HashMap<String, serde_json::Value>,
-    #[serde(default)]
+    #[serde(serialize_with = "crate::sorted_map", default)]
     pub interaction_rules: HashMap<String, serde_json::Value>,
 }
 
@@ -2577,6 +2593,25 @@ impl_has_sources_and_sinks!(System, Environment);
 #[cfg(test)]
 mod tests {
     use super::*;
+
+    /// `sorted_map` writes a map in key order whatever the insertion order,
+    /// so two equal agents serialize to equal bytes (spec C1).
+    #[test]
+    fn agent_maps_serialize_in_key_order() {
+        let agent = |keys: &[&str]| AgentModel {
+            cognitive_params: keys.iter().enumerate().map(|(i, k)| (k.to_string(), i as f64)).collect(),
+            ..AgentModel::default()
+        };
+        let a = agent(&["under1", "emit1", "under2", "emit2", "else"]);
+        let mut b = AgentModel::default();
+        for k in ["else", "emit2", "under2", "emit1", "under1"] {
+            b.cognitive_params.insert(k.to_string(), a.cognitive_params[k]);
+        }
+        let (ja, jb) = (serde_json::to_string(&a).unwrap(), serde_json::to_string(&b).unwrap());
+        assert_eq!(ja, jb);
+        let at = |k: &str| ja.find(&format!("\"{k}\"")).unwrap();
+        assert!(at("else") < at("emit1") && at("emit1") < at("emit2") && at("emit2") < at("under1") && at("under1") < at("under2"), "{ja}");
+    }
 
     #[test]
     fn parameter_construction_is_deterministic() {
