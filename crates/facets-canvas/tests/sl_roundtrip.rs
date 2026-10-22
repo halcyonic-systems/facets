@@ -71,6 +71,7 @@ fn canvas_born_model_canonicalizes() {
         primitive: None,
         rule: None,
         manages_param: None,
+        watches_flow: None,
         interface: false,
         passway: false,
         protocol: String::new(),

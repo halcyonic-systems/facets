@@ -45,9 +45,9 @@ pub fn doc(kind: NodeKind) -> Doc {
             code: "total += inflow",
         },
         NodeKind::Agent => Doc {
-            plain: "A decision-maker. It watches one stock's level, applies its rule, and either signals the work process it manages or writes a declared parameter for the next tick.",
+            plain: "A decision-maker. It watches one stock's level, or what one flow delivered on the last tick, applies its rule, and either signals the work process it manages or writes a declared parameter for the next tick.",
             everyday: "A thermostat: reads the room, decides, and tells the furnace how hard to run. A fisheries council: reads the stock and sets tomorrow's landed share.",
-            math: "out = rule(level)   — proportional: max(0, gain · (target − level));  threshold: emit if level ≥ above else else;  table: the bin's output;  trace: max(0, gain · (target − mean of the last window levels))",
+            math: "out = rule(reading), the reading a stock's level or a watched flow's last delivery   — proportional: max(0, gain · (target − level));  threshold: emit if level ≥ above else else;  table: the bin's output;  trace: max(0, gain · (target − mean of the last window levels))",
             substance: "reads a level over an observation tap (never drains it); emits a command signal, or writes a knob (a flow's amount, or a two-way split's share as (s, 1 − s)) after the tick's record closes. Its goal is a declared parameter. A trace rule's window of past readings is the engine's run state, written after each decision.",
             theory: "Mobus ch. 11 Fig 11.1 — engine, decision model, memory; agency when its output commands an actuator with requisite variety (Ashby). Proportional, threshold and table are purely reactive (§11.2.1.1); trace is adaptive reactive, the homeostatic mechanism, and the first rule to read its own history. The signal form is the operational agent (§12.2.3.1); the knob form is the coordination agent that changes an operational parameter (§12.2.3.2), and it acts one tick later.",
             code: "out = policy.decide_in(level, last_command, past_readings);  if knob { write_amount(knob, out) }  // after the record",

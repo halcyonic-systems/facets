@@ -513,3 +513,171 @@ fn the_command_form_faults_are_named() {
     assert!(matches!(sys.agent.as_ref().unwrap().command, Some(facets_core::AgentCommand::Amount { .. })));
     assert!(emit_sl(&m).unwrap().contains("manages param \"feed rate\""));
 }
+
+// The feedforward form (spec v1.14, ADR 0008 D5): `watches flow <a> -> <b>
+// ["label"]` reads what one physical flow delivered on the last completed
+// tick. The room's thermostat reads the heat loss instead of the room; the
+// line comes after the flow it names, and no tap is drawn.
+const FEEDFORWARD: &str = "\
+system \"Room\" : Concrete/Technical
+interface Mains
+interface Walls
+component Room primitive Buffering stock kWh initial 0.5 time constant 5
+component Switch primitive Modulating backpressure
+source Grid
+sink Outdoors
+flow Grid -> Mains : energy \"electricity\" substance heat amount 2 unit \"kWh/h\"
+flow Mains -> Switch : energy \"electricity\" substance heat
+flow Switch -> Room : energy \"heat\" substance heat
+flow Room -> Walls : energy \"loss\" substance heat
+flow Walls -> Outdoors : energy \"loss\" substance heat
+agent Thermostat watches flow Room -> Walls \"loss\" rule threshold above 0.3 emit 0 else 1 manages Switch
+    description \"Reads the heat leaving through the walls, and shuts the switch while it is high.\"
+";
+
+#[test]
+fn a_flow_watch_parses_projects_resolves_and_emits_back() {
+    use facets_core::operational::OperationalObservation;
+    use facets_core::AgentObservation;
+    let m = parse_sl(FEEDFORWARD).unwrap();
+    let th = m.things.iter().find(|t| t.name == "Thermostat").unwrap();
+    let room = m.things.iter().find(|t| t.name == "Room").unwrap();
+    let walls = m.things.iter().find(|t| t.name == "Walls").unwrap();
+    let loss = m.relations.iter().find(|r| r.a == room.id && r.b == walls.id).unwrap();
+    assert_eq!(th.watches_flow, Some(loss.id), "the watch names the declared flow");
+    assert!(m.relations.iter().all(|r| r.b != th.id), "a flow watch draws no tap");
+    assert!(m.relations.iter().any(|r| r.a == th.id && r.name == "command"), "the command wire is drawn");
+
+    // The watched leg crosses into a pass-way; it projects to the interaction
+    // the fusion keeps, and the seam resolves it to that flow's wire.
+    let world = project(&m);
+    let sys = world.systems.iter().find(|s| s.info.name == "Thermostat").unwrap();
+    let Some(AgentObservation::Flow { flow }) = sys.agent.as_ref().unwrap().observation.clone() else {
+        panic!("the observation projects")
+    };
+    assert_eq!(world.interactions.iter().find(|ix| ix.info.id == flow).unwrap().info.name, "loss");
+    let spec = facets_core::operational::validate_operational(&world).expect("projects");
+    let Some(OperationalObservation::Flow { flow: k }) = spec.agents[0].observation.clone() else {
+        panic!("resolved")
+    };
+    assert_eq!(spec.flows[k].name, "loss");
+    assert!(spec.flows.iter().all(|f| f.name != "reading"), "no tap in the spec");
+
+    // Emits as itself, after the flow it names; the canonical form is a fixpoint.
+    let text = emit_sl(&m).unwrap();
+    let line = "agent Thermostat watches flow Room -> Walls \"loss\" rule threshold above 0.3 emit 0 else 1 manages Switch";
+    let at = |s: &str| text.find(s).unwrap_or_else(|| panic!("{s} missing in {text}"));
+    assert!(at("flow Room -> Walls") < at(line), "{text}");
+    assert!(!text.contains("flow Thermostat -> Switch"), "{text}");
+    let again = parse_sl(&text).unwrap();
+    assert_eq!(emit_sl(&again).unwrap(), text, "canonical form is a fixpoint");
+
+    // The kernel read-back keeps the watch.
+    let back = facets_canvas::canvas::to_canvas(&world);
+    let th = back.things.iter().find(|t| t.name == "Thermostat").unwrap();
+    assert!(th.watches_flow.is_some(), "the watch reads back");
+    assert!(emit_sl(&back).unwrap().contains("agent Thermostat watches flow"), "{}", emit_sl(&back).unwrap());
+}
+
+#[test]
+fn a_flow_watch_drives_the_command_form() {
+    use facets_core::AgentObservation;
+    // The fishery's quota reads the feed coming in instead of the stock: a
+    // flow watch and a knob write, the form the llm-market buyers take.
+    let text = QUOTA.replace(
+        "agent Quota watches Fish rule",
+        "agent Quota watches flow Feed -> Feeder \"feed\" rule",
+    );
+    let m = parse_sl(&text).unwrap();
+    let q = m.things.iter().find(|t| t.name == "Quota").unwrap();
+    assert!(q.watches_flow.is_some() && q.manages_param.as_deref() == Some("landed share"));
+    assert!(m.relations.iter().all(|r| r.a != q.id && r.b != q.id), "neither a tap nor a command wire");
+    let world = project(&m);
+    let sys = world.systems.iter().find(|s| s.info.name == "Quota").unwrap();
+    let agent = sys.agent.as_ref().unwrap();
+    assert!(matches!(agent.observation, Some(AgentObservation::Flow { .. })));
+    assert!(agent.command.is_some());
+    let spec = facets_core::operational::validate_operational(&world).expect("projects");
+    assert!(spec.agents[0].observation.is_some() && spec.agents[0].command.is_some());
+    let out = emit_sl(&m).unwrap();
+    assert!(
+        out.contains("agent Quota watches flow Feed -> Feeder \"feed\" rule threshold above 0.3 emit 1 else 0 manages param \"landed share\""),
+        "{out}"
+    );
+    assert_eq!(emit_sl(&parse_sl(&out).unwrap()).unwrap(), out, "canonical form is a fixpoint");
+}
+
+#[test]
+fn the_flow_watch_faults_are_named() {
+    let swap = |from: &str, to: &str| FEEDFORWARD.replace(from, to);
+    // a flow the file does not declare
+    let e = errs(&swap("watches flow Room -> Walls \"loss\"", "watches flow Room -> Switch"));
+    assert!(e.contains("no flow `Room -> Switch` is declared above this line"), "{e}");
+    // an undeclared endpoint
+    let e = errs(&swap("watches flow Room -> Walls \"loss\"", "watches flow Attic -> Walls"));
+    assert!(e.contains("`Attic` is not declared"), "{e}");
+    // a label that matches nothing
+    let e = errs(&swap("watches flow Room -> Walls \"loss\"", "watches flow Room -> Walls \"draught\""));
+    assert!(e.contains("labeled \"draught\""), "{e}");
+    // the agent line before the flow it names
+    let early = FEEDFORWARD
+        .replace("agent Thermostat watches flow Room -> Walls \"loss\" rule threshold above 0.3 emit 0 else 1 manages Switch\n    description \"Reads the heat leaving through the walls, and shuts the switch while it is high.\"\n", "")
+        .replace("source Grid\n", "agent Thermostat watches flow Room -> Walls \"loss\" rule threshold above 0.3 emit 0 else 1 manages Switch\nsource Grid\n");
+    let e = errs(&early);
+    assert!(e.contains("is declared above this line"), "{e}");
+    // two flows on the pair, no label
+    let e = errs(
+        &swap(
+            "flow Walls -> Outdoors : energy \"loss\" substance heat\n",
+            "flow Walls -> Outdoors : energy \"loss\" substance heat\nflow Room -> Walls : energy \"leak\" substance heat\n",
+        )
+        .replace("watches flow Room -> Walls \"loss\"", "watches flow Room -> Walls"),
+    );
+    assert!(e.contains("2 flows run `Room -> Walls`"), "{e}");
+    // an informational flow is a signal, not a quantity delivered
+    let e = errs(&swap(
+        "flow Walls -> Outdoors : energy \"loss\" substance heat\n",
+        "flow Walls -> Outdoors : energy \"loss\" substance heat\ncomponent Gauge primitive Sensing\nflow Room -> Gauge : informational \"temperature\"\n",
+    )
+    .replace("watches flow Room -> Walls \"loss\"", "watches flow Room -> Gauge"));
+    assert!(e.contains("is informational"), "{e}");
+    // another agent's command wire is a signal: no agent over agent
+    let e = errs(&format!(
+        "{FEEDFORWARD}component Damper primitive Modulating\nagent Watcher watches flow Thermostat -> Switch rule threshold above 0.5 emit 0 else 1 manages Damper\n"
+    ));
+    assert!(e.contains("is informational") && e.contains("ADR 0008 D2"), "{e}");
+}
+
+#[test]
+fn the_seam_refuses_a_watch_on_what_delivers_nothing() {
+    // SL cannot write an ample physical flow, but a kernel model can carry
+    // one: the seam refuses a watch on it, and on a flow that did not project.
+    let m = parse_sl(FEEDFORWARD).unwrap();
+    let world = project(&m);
+    let Some(facets_core::AgentObservation::Flow { flow }) = world
+        .systems
+        .iter()
+        .find(|s| s.info.name == "Thermostat")
+        .and_then(|s| s.agent.as_ref()?.observation.clone())
+    else {
+        panic!("the observation projects")
+    };
+    let mut ample = world.clone();
+    ample.interactions.iter_mut().find(|ix| ix.info.id == flow).unwrap().ample = true;
+    let e = facets_core::operational::validate_operational(&ample).unwrap_err();
+    assert!(e.iter().any(|x| x.reason.contains("an ample flow")), "{e:?}");
+    let mut gone = world.clone();
+    // An id that names no interaction: the agent's own.
+    for s in gone.systems.iter_mut().filter(|s| s.info.name == "Thermostat") {
+        let own = s.info.id.clone();
+        s.agent.as_mut().unwrap().observation = Some(facets_core::AgentObservation::Flow { flow: own });
+    }
+    let e = facets_core::operational::validate_operational(&gone).unwrap_err();
+    assert!(e.iter().any(|x| x.reason.contains("watches a flow that does not project")), "{e:?}");
+    // A physical flow re-anchored onto an agent.
+    let mut touching = world.clone();
+    let agent_id = touching.systems.iter().find(|s| s.info.name == "Thermostat").unwrap().info.id.clone();
+    touching.interactions.iter_mut().find(|ix| ix.info.id == flow).unwrap().source = agent_id;
+    let e = facets_core::operational::validate_operational(&touching).unwrap_err();
+    assert!(e.iter().any(|x| x.reason.contains("touching an agent")), "{e:?}");
+}
