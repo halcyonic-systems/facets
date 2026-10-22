@@ -62,6 +62,55 @@ export function bindingEntry(
   return { column, as: "flow", element: value, force: true, ...(unit ? { unit } : {}) };
 }
 
+/** Column names that read as the support (time axis) when nothing declares it. */
+const TIME_NAMES = new Set(["time", "t", "date"]);
+
+/**
+ * The bindings Data mode PROPOSES for an attached CSV (#535 item 2, #339): a
+ * column whose name matches exactly one declared flow, or one Buffering
+ * component (as a stock level), case-insensitively, proposes that binding;
+ * a `time`/`t`/`date` column proposes the support when no column holds it.
+ * Binding stays by declaration, never invention: a column already bound, a
+ * column matching nothing, and a column matching more than one target
+ * propose nothing. A proposal is the dropdown value `bindingEntry` takes,
+ * and nothing is written until the author confirms it.
+ */
+export function proposeBindings(
+  headers: string[],
+  model: CanvasModel,
+  mapping: ColumnMapping[] = [],
+): Map<string, string> {
+  const key = (s: string) => s.trim().toLowerCase();
+  const targets = new Map<string, string[]>();
+  const offer = (name: string | undefined, value: string) => {
+    if (!name) return;
+    const k = key(name);
+    targets.set(k, [...(targets.get(k) ?? []), value]);
+  };
+  for (const r of model.relations) offer(r.name, r.name!);
+  for (const th of model.things) {
+    if (th.role === "Component" && th.primitive === "Buffering") offer(th.name, `stock:${th.name}`);
+  }
+  const bound = new Set(mapping.filter((m) => m.as !== "ignore").map((m) => m.column));
+  const boundElements = new Set(
+    mapping.filter((m) => m.as === "flow" || m.as === "stock").map((m) => m.element),
+  );
+  let timeHeld = mapping.some((m) => m.as === "time");
+  const proposals = new Map<string, string>();
+  for (const h of headers) {
+    if (bound.has(h)) continue;
+    const hits = targets.get(key(h)) ?? [];
+    if (hits.length === 1) {
+      const element = hits[0].startsWith("stock:") ? hits[0].slice("stock:".length) : hits[0];
+      if (!boundElements.has(element)) proposals.set(h, hits[0]);
+    } else if (hits.length === 0 && !timeHeld && TIME_NAMES.has(key(h))) {
+      proposals.set(h, "time");
+      timeHeld = true;
+    }
+  }
+  return proposals;
+}
+
 export function DataMode({
   model,
   modelName,
@@ -272,6 +321,25 @@ export function DataMode({
     onManifestChange({ ...manifest, mapping });
   };
 
+  const proposals = useMemo(
+    () => (parsed ? proposeBindings(parsed.headers, model, manifest?.mapping ?? []) : new Map<string, string>()),
+    [parsed, model, manifest],
+  );
+
+  /** Confirm every proposal at once: one manifest write, each via bindingEntry. */
+  const confirmProposals = () => {
+    if (!onManifestChange || proposals.size === 0) return;
+    const base: Manifest = manifest ?? { model: "", data: "attached.csv", t: 12, mapping: [] };
+    const added = [...proposals].flatMap(([column, value]) => {
+      const entry = bindingEntry(column, value, model, undefined);
+      return entry ? [entry] : [];
+    });
+    onManifestChange({ ...base, mapping: [...base.mapping, ...added] });
+  };
+
+  const proposalLabel = (value: string) =>
+    value === "time" ? "time" : value.startsWith("stock:") ? `▤ ${value.slice(6)}` : `→ ${value}`;
+
   const currentBinding = (column: string): string => {
     const m = manifest?.mapping.find((x) => x.column === column);
     if (!m || m.as === "ignore") return "ignore";
@@ -293,6 +361,22 @@ export function DataMode({
       >
         Column bindings
       </h2>
+      {proposals.size > 0 && (
+        <button
+          type="button"
+          data-testid="confirm-proposed"
+          onClick={confirmProposals}
+          title="bind every proposed column as shown; the dropdowns stay the correction surface"
+          className="mb-1.5 w-full px-2 py-1 font-mono text-[11px]"
+          style={{
+            border: "1px dashed var(--accent)",
+            color: "var(--accent-strong)",
+            background: "var(--bg-surface)",
+          }}
+        >
+          confirm {proposals.size} proposed by name
+        </button>
+      )}
       <ul className="text-xs">
         {parsed.headers.map((h) => (
           <li key={h} className="flex items-center justify-between gap-2 py-0.5">
@@ -335,6 +419,18 @@ export function DataMode({
                 </optgroup>
               )}
             </select>
+            {proposals.has(h) && (
+              <button
+                type="button"
+                data-proposed={proposals.get(h)}
+                onClick={() => setBinding(h, proposals.get(h)!)}
+                title="proposed by name, not yet bound: click to bind this column"
+                className="truncate px-1 py-0.5 font-mono text-[11px] italic"
+                style={{ border: "1px dashed var(--hairline)", color: "var(--text-secondary)" }}
+              >
+                proposed {proposalLabel(proposals.get(h)!)}
+              </button>
+            )}
             {manifest?.mapping.find((m) => m.column === h && m.as === "flow") && (
               <input
                 aria-label={`unit of ${h}`}
