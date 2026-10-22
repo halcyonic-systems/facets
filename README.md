@@ -543,7 +543,8 @@ is at `/docs/`. Per-lens authoring (Phase 4) is built (`analyze_canvas` and the
 authoring palette, `crates/facets-kernel/API.md`); the read-only LLM
 analysis seam shipped 2026-07-17. The agent layer landed 2026-10-10/11 (ADR
 0008; spec v1.10–v1.13): an `agent` line in both forms, the signal form
-`manages <process>` and the command form `manages param "<name>"`, with the
+`manages <process>` and the command form `manages param "<name>"`, and since
+2026-10-21 (v1.14) a feedforward agent that `watches flow` instead of a stock, with the
 bench shelf (`assets/bench/`) beside it, the pooled llm-market model and the
 routed-share sensor that drives its bundle from a pinned vintage
 (`assets/data/README.md`). The prior egui app lives on the `pre-web-rebuild`

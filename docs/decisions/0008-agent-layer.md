@@ -168,6 +168,30 @@ command form); `watches flow …` (feedforward, §12.3.2.3 "measuring the value 
 inputs as compared with ideal values"; tactical, §12.2.3.2 watching "the
 behaviors of the external agents").
 
+Note 2026-10-21 (feedforward form built, spec v1.14; #523): `agent …
+watches flow <a> -> <b> ["label"]`. The reading is what that one physical
+flow delivered on the LAST COMPLETED tick: the step's executed delivery on
+the wire, the number `wire_history` records, written onto the node at the
+end of the step (`Node.watched`, run state, zeroed on reset) and read at the
+top of the next. It is not `wire_amount` at read time, which can mix the
+sender's committed activity with a weight a forcing series has already moved
+for this tick. Before the first tick the reading is 0, nothing having been
+delivered, so a step in a watched flow reaches the agent one tick late, as a
+level does. What the grammar reaches: a physical flow, named as `param` and
+`metric` name one. Refused: an informational flow (a signal, so reading it is
+the agent-over-agent case D2 defers; in SL that covers every relation touching
+an agent, and `ample`, which SL allows only on informational flows); at the
+seam, also an ample or agent-touching physical flow a kernel model can carry,
+and a watch beside a stock tap (an agent reads one thing). D2 and D6 hold
+unchanged: the reading is a function of committed state, as the banded
+threshold's own last command already is, so the step stays read-before-write
+and one deterministic transition. SSF `agent_step_is_product` is stated for an
+arbitrary carrier `S`; a flow reading instantiates `S` as the stocks plus the
+last tick's executed deliveries, which the engine already writes each step.
+No Lean statement changes and nothing new is proved there. The witness is
+`assets/bench/thermostat-feedforward.sl`. Not designed: watching an
+informational flow, another agent, or a metric.
+
 **D6. The Lean obligation is `agent_step_is_product`.** For a circuit whose
 agents are all deterministic, the step with agents is a deterministic transition
 on the product of the stock coordinates and the agent-memory coordinates, with

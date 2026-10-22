@@ -346,7 +346,7 @@ export function NodeBody({
           oval on the process (ch. 12). The oval is the face; no glyph. */}
       {agentOval && (
         <g data-glyph="agent-oval" pointerEvents="none">
-          <title>agent: a decision model — watches a stock, commands a process</title>
+          <title>agent: a decision model — watches a stock or a flow, commands a process</title>
           <ellipse rx={NODE_R * 0.62} ry={NODE_R * 0.36} fill="none" stroke="var(--lens-accent)" strokeWidth={1.6} />
           <circle r={NODE_R * 0.09} fill="var(--lens-accent)" />
         </g>

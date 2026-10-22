@@ -188,6 +188,14 @@ pub struct Thing {
     /// `skip` when `None` so every earlier model is byte-identical.
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub manages_param: Option<String>,
+    /// The flow this agent reads instead of a stock's level: the feedforward
+    /// form (ADR 0008 D5, spec v1.14; Mobus §12.3.2.3, "measuring the value of
+    /// inputs as compared with ideal values"). The relation id of a physical
+    /// flow; the agent reads what it delivered on the last completed tick.
+    /// Read only beside `rule`; an agent carries this or an observation tap,
+    /// never both. `skip` when `None` so every earlier model is byte-identical.
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub watches_flow: Option<u64>,
     /// Authored interface designation — this component is a member of the root
     /// membrane's I (I ⊆ C, Boundary.lean / Tuple.lean). A flowless designation
     /// is authorable, and refused at Operational: `Tuple.lean` gained the
@@ -1504,6 +1512,17 @@ pub fn project_with_map(model: &CanvasModel) -> Projection {
             }
         }
     }
+    // A flow-watching agent (spec v1.14): the watched relation projects to
+    // the interaction it became, through the same pass-way fusion a command
+    // follows, so a watched crossing leg names the leg that survives.
+    for t in model.things.iter().filter(|t| t.rule.is_some()) {
+        let Some(relation) = t.watches_flow else { continue };
+        let Some(&sys_idx) = sys_idx_of.get(&t.id) else { continue };
+        let flow = model.relations.iter().find(|r| r.id == relation).and_then(flow_of_relation);
+        if let (Some(flow), Some(agent)) = (flow, systems[sys_idx].agent.as_mut()) {
+            agent.observation = Some(facets_core::AgentObservation::Flow { flow });
+        }
+    }
 
     let world = WorldModel {
         version: 1,
@@ -1612,6 +1631,8 @@ pub fn to_canvas(model: &WorldModel) -> CanvasModel {
                 .as_ref()
                 .and_then(|a| a.command.as_ref())
                 .map(|c| c.param().to_string()),
+            // A flow watch reads back once the relations have their ids, below.
+            watches_flow: None,
             // parent_interface is the designation's inverse: a level-1 system
             // attached to a root-membrane interface IS a designated member of I.
             interface: s.boundary.parent_interface.is_some(),
@@ -1715,6 +1736,7 @@ pub fn to_canvas(model: &WorldModel) -> CanvasModel {
             primitive: None,
             rule: None,
             manages_param: None,
+            watches_flow: None,
             interface: false,
             passway: false,
             protocol: String::new(),
@@ -1820,6 +1842,19 @@ pub fn to_canvas(model: &WorldModel) -> CanvasModel {
         .find(|s| s.info.level == 0)
         .map(|s| s.info.description.clone())
         .unwrap_or_default();
+
+    // A flow-watching agent (spec v1.14) names its flow by interaction id;
+    // the relation that interaction became is its canvas reading.
+    for sys in &model.systems {
+        let Some(facets_core::AgentObservation::Flow { flow }) = sys.agent.as_ref().and_then(|a| a.observation.as_ref())
+        else {
+            continue;
+        };
+        let (Some(&thing), Some(&relation)) = (id_of.get(&sys.info.id), relation_of_flow.get(flow)) else { continue };
+        if let Some(t) = things.iter_mut().find(|t| t.id == thing) {
+            t.watches_flow = Some(relation);
+        }
+    }
 
     // The one param a WorldModel does carry is the one an agent commands
     // (ADR 0008 D1): it rides as the agent's command and is rebuilt here so
@@ -2011,6 +2046,7 @@ mod tests {
             primitive: None,
             rule: None,
             manages_param: None,
+            watches_flow: None,
             interface: false,
             passway: false,
             protocol: String::new(),

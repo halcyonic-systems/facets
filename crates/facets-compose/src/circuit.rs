@@ -78,13 +78,14 @@ pub enum NodeKind {
     Sink,
     Process(ProcessPrimitive),
     /// A decision-maker (facets#269, ADR 0008): reads the level of the stock
-    /// it watches over an observation tap and emits a command signal to the
-    /// work process it manages. Mobus §11.2.1: "The agent is given agency …
-    /// when its output signals command an actuator having the necessary
-    /// power to affect changes on those conditions." Its rule lives on the
-    /// node (`Node::policy`), as a comparator's setpoint does; the ten work
-    /// processes stay ten, because Mobus separates a work process from the
-    /// agent that manages it.
+    /// it watches over an observation tap, or what its watched wire delivered
+    /// on the last completed tick (`Node::watch`, spec v1.14), and emits a
+    /// command signal to the work process it manages. Mobus §11.2.1: "The
+    /// agent is given agency … when its output signals command an actuator
+    /// having the necessary power to affect changes on those conditions." Its
+    /// rule lives on the node (`Node::policy`), as a comparator's setpoint
+    /// does; the ten work processes stay ten, because Mobus separates a work
+    /// process from the agent that manages it.
     Agent,
 }
 
@@ -353,6 +354,20 @@ pub struct Node {
     /// is the same `write_amount` a bench knob takes, so `facets run`, the
     /// web run and the bench mean one model.
     pub knob: Option<AgentKnob>,
+    /// The wire a flow-watching agent reads instead of a stock's level (ADR
+    /// 0008 D5, spec v1.14, the feedforward form; Mobus §12.3.2.3). `None` is
+    /// the level form, whose reading is its observation tap. Only
+    /// `NodeKind::Agent` reads it. Remapped by the topology calls with the
+    /// knobs; a watch whose wire went is cleared, and the agent then reads
+    /// nothing, as an agent whose knob went commands nothing.
+    pub watch: Option<usize>,
+    /// What the watched wire delivered on the last completed tick: run state,
+    /// written at the end of every step from that tick's executed deliveries
+    /// (the same numbers `wire_history` records) and zeroed on reset, so the
+    /// reading before the first tick is zero, nothing having been delivered.
+    /// Kept on the node rather than read back from `wire_history`, which the
+    /// session trims.
+    pub watched: f32,
     /// A stock's declared unit (bert-lenses#76). A Buffering stock accumulates
     /// its inflow over Δt, so its dimension is not the feeding flow's unit
     /// (`out_substance.unit`) — a `kW` inflow accrues energy, not power. The
@@ -397,6 +412,8 @@ impl Node {
             back_pressure: false, // false = push model sheds; true = backs up
             policy: facets_core::Policy::default(),
             knob: None,
+            watch: None,
+            watched: 0.0,
             stock_unit: String::new(),
             process: None,
             storage: 0.0,
@@ -706,6 +723,7 @@ impl Circuit {
             n.remaining = n.reservoir.unwrap_or(0.0);
             n.activity = 0.0;
             n.total = 0.0;
+            n.watched = 0.0;
             n.spark.clear();
         }
         self.tick = 0;
@@ -865,6 +883,7 @@ impl Circuit {
     /// whose wire the map no longer carries.
     fn remap_knobs(&mut self, map: impl Fn(usize) -> Option<usize>) {
         for node in &mut self.nodes {
+            node.watch = node.watch.and_then(&map);
             node.knob = match node.knob.take() {
                 Some(AgentKnob::Amount { param, wire }) => {
                     map(wire).map(|wire| AgentKnob::Amount { param, wire })
@@ -1785,15 +1804,20 @@ impl Circuit {
                 // decision below, so this tick's reading is not yet among
                 // them.
                 NodeKind::Agent => {
+                    // A flow-watching agent (spec v1.14) reads what its wire
+                    // delivered on the last completed tick, kept on the node;
+                    // a level-watching one reads its tap. Both are committed
+                    // state, so the decision is read-before-write either way.
+                    let reading = if node.watch.is_some() { node.watched } else { physical };
                     let last = (self.tick > 0).then_some(node.activity as f64);
                     let past: Vec<f64> = if node.policy.window() > 0 {
-                        observed.push((i, physical));
+                        observed.push((i, reading));
                         self.agent_readings.get(i).map(|m| m.iter().map(|&r| r as f64).collect()).unwrap_or_default()
                     } else {
                         Vec::new()
                     };
-                    let output = node.policy.decide_in(physical as f64, last, &past) as f32;
-                    decided.push((i, physical, output));
+                    let output = node.policy.decide_in(reading as f64, last, &past) as f32;
+                    decided.push((i, reading, output));
                     output
                 }
             };
@@ -1987,6 +2011,13 @@ impl Circuit {
         // the engine's own fanout read (`wire_amount`), recorded here and
         // never re-derived downstream.
         let wire_row: Vec<f32> = (0..self.wires.len()).map(|k| self.wire_amount(k)).collect();
+        // A flow-watching agent's next reading is what its wire delivered on
+        // this tick, taken from the row the recorder keeps (spec v1.14).
+        for node in &mut self.nodes {
+            if let Some(k) = node.watch {
+                node.watched = wire_row.get(k).copied().unwrap_or(0.0);
+            }
+        }
 
         // The row about to be written belongs to the current epoch, which
         // must be open BEFORE the tick advances (a row with tick `t` belongs
@@ -4207,6 +4238,79 @@ mod tests {
         let (lo, hi) = tail.iter().fold((f32::MAX, f32::MIN), |(a, b), &x| (a.min(x), b.max(x)));
         assert!(lo < 2.0 && hi > 2.0, "the room never crossed the level: {lo} .. {hi}");
         assert!(balance.abs() < 1e-3, "leak: {balance}");
+    }
+
+    /// Law (ADR 0008 D5, spec v1.14, the feedforward form): an agent that
+    /// watches a flow reads what that wire delivered on the last completed
+    /// tick, the number `wire_history` records for it, and zero before the
+    /// first tick, when nothing has been delivered. Committed state, so the
+    /// decision is read-before-write as a level's is. Reset zeroes the
+    /// reading and the run repeats exactly; removing the watched wire clears
+    /// the watch, and the agent reads nothing.
+    #[test]
+    fn agent_watching_a_flow_reads_the_last_ticks_delivery() {
+        use ProcessPrimitive::*;
+        // The thermostat room of `relay`, with the agent reading the room's
+        // heat loss (the Buffering stock's outflow to outdoors) instead of
+        // the room's level: it shuts the switch when the loss is at or above
+        // 0.3 a tick. No tap; the watched wire is index 2.
+        let build = || {
+            let mut c = Circuit::default();
+            c.nodes.push(node(NodeKind::Source)); // 0 grid
+            c.nodes.push(node(NodeKind::Process(Modulating))); // 1 switch
+            c.nodes.push(node(NodeKind::Process(Buffering))); // 2 room
+            c.nodes.push(node(NodeKind::Sink)); // 3 outdoors
+            c.nodes.push(node(NodeKind::Agent)); // 4 thermostat
+            c.nodes[0].param = 2.0;
+            c.nodes[1].back_pressure = true;
+            c.nodes[2].time_constant = 5.0;
+            c.nodes[2].initial_storage = 0.5;
+            c.nodes[2].storage = 0.5;
+            c.nodes[4].policy =
+                facets_core::Policy::Threshold { above: 0.3, below: None, emit: 0.0, otherwise: 1.0 };
+            for (f, t) in [(0, 1), (1, 2), (2, 3)] {
+                c.wires.push(Wire::new(f, t));
+            }
+            c.wires.push(Wire::new(4, 1)); // command
+            c.nodes[4].watch = Some(2);
+            c
+        };
+        let run = |c: &mut Circuit, ticks: usize| -> Vec<(f32, f32)> {
+            for _ in 0..ticks {
+                c.step();
+            }
+            c.decision_history.iter().map(|(_, row)| (row[0].reading, row[0].output)).collect()
+        };
+
+        let mut c = build();
+        let decided = run(&mut c, 40);
+        assert_eq!(decided.len(), 40);
+        assert_eq!(decided[0].0, 0.0, "before the first tick nothing has been delivered");
+        for (t, &(reading, _)) in decided.iter().enumerate().skip(1) {
+            assert_eq!(
+                reading, c.wire_history[t - 1][2],
+                "tick {t}: the reading is the previous tick's delivery on the watched wire"
+            );
+        }
+        // The rule acts on the reading: the switch shuts on every tick whose
+        // reading is at or above 0.3, and only then.
+        assert!(decided.iter().all(|&(r, o)| o == if r >= 0.3 { 0.0 } else { 1.0 }), "{decided:?}");
+        assert!(decided.iter().any(|&(_, o)| o == 0.0) && decided.iter().any(|&(_, o)| o == 1.0), "{decided:?}");
+        assert!(c.balance().abs() < 1e-3, "leak: {}", c.balance());
+
+        // Reading a flow is not reading a level: the same rule on the room's
+        // level (the relay's tap) decides differently.
+        let (level_commands, _, _) = relay(None, 40);
+        let flow_commands: Vec<f32> = decided.iter().map(|&(_, o)| o).collect();
+        assert_ne!(flow_commands, level_commands, "the flow watch traced the level watch");
+
+        c.reset();
+        assert_eq!(c.nodes[4].watched, 0.0, "reset zeroes the reading");
+        assert_eq!(run(&mut c, 40), decided, "a reset run repeats exactly");
+
+        let mut c = build();
+        c.remove_wire(2);
+        assert_eq!(c.nodes[4].watch, None, "a watch whose wire went is cleared");
     }
 
     /// The relay thermostat of `agent_threshold_makes_a_square_wave`, shut

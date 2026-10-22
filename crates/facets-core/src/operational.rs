@@ -42,7 +42,7 @@
 
 use crate::validate::{validate_mode, Severity};
 use crate::{
-    AgentCommand, Id, IdType, InteractionType, Mode, Policy, ProcessPrimitive, SubstanceType,
+    AgentCommand, AgentObservation, Id, IdType, InteractionType, Mode, Policy, ProcessPrimitive, SubstanceType,
     WorldModel,
 };
 use serde::{Deserialize, Serialize};
@@ -89,9 +89,10 @@ pub struct OperationalProcess {
 
 /// An agent the executor must instantiate (facets#269, ADR 0008): a thing of
 /// its own kind, not a work process, carrying the decision model it runs. It
-/// reads the level of the stock its observation flow comes from and emits a
-/// command on its outgoing message flow; which stock and which process are
-/// the flows' endpoints, exactly as for any other thing.
+/// reads the level of the stock its observation flow comes from, or the flow
+/// its `observation` names (spec v1.14), and emits a command on its outgoing
+/// message flow or writes its `command` knob; which stock and which process
+/// are the flows' endpoints, exactly as for any other thing.
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
 pub struct OperationalAgent {
     pub id: Id,
@@ -103,6 +104,22 @@ pub struct OperationalAgent {
     /// serializes and hashes as before.
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub command: Option<OperationalCommand>,
+    /// What the agent reads instead of a stock's level (ADR 0008 D5, spec
+    /// v1.14), resolved to a position in this spec's `flows`. `None` is the
+    /// level form. `skip` when `None` so a level-form spec serializes and
+    /// hashes as before.
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub observation: Option<OperationalObservation>,
+}
+
+/// [`AgentObservation`] with its flow resolved against the spec: one wire is
+/// built per flow in `flows` order, so the position is the wire the executor
+/// reads.
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+#[serde(tag = "reads", rename_all = "lowercase")]
+pub enum OperationalObservation {
+    /// The amount `flows[flow]` delivered on the last completed tick.
+    Flow { flow: usize },
 }
 
 /// [`AgentCommand`] with its target resolved against the spec: the executor
@@ -284,6 +301,7 @@ pub fn validate_operational(model: &WorldModel) -> Result<OperationalSpec, Vec<O
     let mut projected: HashSet<Id> = HashSet::new();
     // Command-form agents, resolved after the flows are placed (below).
     let mut pending_commands: Vec<(usize, String, AgentCommand)> = Vec::new();
+    let mut pending_observations: Vec<(usize, String, AgentObservation)> = Vec::new();
     let mut flow_index_of: HashMap<Id, usize> = HashMap::new();
 
     // The root system's boundary carries B's P (bert-lenses#54). Its porosity
@@ -373,11 +391,15 @@ pub fn validate_operational(model: &WorldModel) -> Result<OperationalSpec, Vec<O
             if let Some(command) = agent.command.as_ref() {
                 pending_commands.push((spec.agents.len(), sys.info.name.clone(), command.clone()));
             }
+            if let Some(observation) = agent.observation.as_ref() {
+                pending_observations.push((spec.agents.len(), sys.info.name.clone(), observation.clone()));
+            }
             spec.agents.push(OperationalAgent {
                 id: sys.info.id.clone(),
                 name: sys.info.name.clone(),
                 policy: policy.clone(),
                 command: None,
+                observation: None,
             });
             continue;
         }
@@ -609,6 +631,57 @@ pub fn validate_operational(model: &WorldModel) -> Result<OperationalSpec, Vec<O
         }
     }
 
+    // The feedforward reading (ADR 0008 D5, spec v1.14), resolved once the
+    // flows are in their final order. The watched flow must project, must be
+    // physical (an informational flow carries a signal, and reading another
+    // node's signal is the agent-over-agent case D2 defers), must carry a
+    // quantity (an `ample` flow asserts availability and delivers nothing),
+    // and must not touch an agent. An agent reads one thing: a flow watch
+    // beside a stock tap into the same agent is two readings, and refused.
+    for (slot, agent_name, observation) in pending_observations {
+        let loc = format!("agent \"{agent_name}\"");
+        let AgentObservation::Flow { flow } = &observation;
+        let agent_id = spec.agents[slot].id.clone();
+        let Some(&k) = flow_index_of.get(flow) else {
+            errors.push(OperationalError::new(
+                &loc,
+                "watches a flow that does not project".to_string(),
+                Some("Keep the flow the agent watches, or watch another"),
+            ));
+            continue;
+        };
+        let f = &spec.flows[k];
+        let is_agent = |id: &Id| spec.agents.iter().any(|a| a.id == *id);
+        let refusal = if f.substance == SubstanceType::Message {
+            Some((
+                format!("watches \"{}\", an informational flow — a signal, not a quantity delivered", f.name),
+                "Watch the physical flow the signal reports, or the stock it reads",
+            ))
+        } else if f.ample {
+            Some((
+                format!("watches \"{}\", an ample flow, which asserts availability and delivers no quantity", f.name),
+                "Give the flow an amount, or watch another",
+            ))
+        } else if is_agent(&f.source) || is_agent(&f.sink) {
+            Some((
+                format!("watches \"{}\", a flow touching an agent (no agent over agent, ADR 0008 D2)", f.name),
+                "Watch a flow between work processes or across the boundary",
+            ))
+        } else if spec.flows.iter().any(|g| g.sink == agent_id && g.substance == SubstanceType::Message) {
+            Some((
+                "watches a flow and also reads a stock over an informational inflow — an agent reads one thing"
+                    .to_string(),
+                "Drop the tap or the flow watch",
+            ))
+        } else {
+            None
+        };
+        match refusal {
+            Some((message, repair)) => errors.push(OperationalError::new(&loc, message, Some(repair))),
+            None => spec.agents[slot].observation = Some(OperationalObservation::Flow { flow: k }),
+        }
+    }
+
     if errors.is_empty() {
         Ok(spec)
     } else {
@@ -677,6 +750,7 @@ mod tests {
             primitive: Some(primitive),
             policy: None,
             command: None,
+            observation: None,
             cognitive_params: HashMap::new(),
             process_configs: vec![],
             initial_state: HashMap::new(),

@@ -1140,6 +1140,36 @@ fn check_agent_is_given_agency(model: &CanvasModel, issues: &mut Vec<ValidationI
                 && r.b == t.id
                 && by_id.get(&r.a).is_some_and(|s| s.primitive == Some(P::Buffering))
         });
+        // The feedforward form (spec v1.14) reads a physical flow that carries
+        // a quantity and touches no agent; anything else it names reads
+        // nothing the engine can hand it.
+        let reads_a_flow = t.watches_flow.is_some_and(|relation| {
+            model.relations.iter().any(|r| {
+                r.id == relation
+                    && r.is_bond
+                    && r.kind != crate::canvas::Kind::Informational
+                    && !r.ample
+                    && by_id.get(&r.a).is_some_and(|a| a.rule.is_none())
+                    && by_id.get(&r.b).is_some_and(|b| b.rule.is_none())
+            })
+        });
+        if reads_a_stock && t.watches_flow.is_some() {
+            issues.push(ValidationIssue {
+                severity: Severity::Error,
+                code: AGENT_UNWIRED_CODE.to_string(),
+                location: format!("things[{}]", t.id),
+                message: format!(
+                    "'{}' watches a flow and also reads a stock over an observation tap — an agent \
+                     reads one thing (ADR 0008 D5, spec v1.14).",
+                    t.name
+                ),
+                suggestion: Some("remove the tap, or the flow watch".to_string()),
+                doc: None,
+                subject: None,
+            });
+            continue;
+        }
+        let reads = reads_a_stock || reads_a_flow;
         // The command form (ADR 0008 D1) commands a declared param instead
         // of a process; the param it names is required, so a name no param
         // line declares is the fault the spec's §4.5 rule promises, named
@@ -1173,11 +1203,11 @@ fn check_agent_is_given_agency(model: &CanvasModel, issues: &mut Vec<ValidationI
                             && matches!(p.primitive, Some(P::Modulating | P::Amplifying | P::Buffering))
                     })
             });
-        let (missing, repair) = match (reads_a_stock, commands_a_process) {
+        let (missing, repair) = match (reads, commands_a_process) {
             (true, true) => continue,
-            (false, true) => ("reads no stock's level", "draw an informational flow from a Buffering stock into it (the agent line's `watches`)"),
+            (false, true) => ("reads no stock's level and no flow", "draw an informational flow from a Buffering stock into it, or point it at a physical flow that carries a quantity (the agent line's `watches` or `watches flow`)"),
             (true, false) => ("commands no work process", "draw an informational flow from it into a Modulating valve, an Amplifying drive or a Buffering stock (the agent line's `manages`)"),
-            (false, false) => ("reads no stock and commands no work process", "draw its observation tap from a Buffering stock and its command wire into a process that reads a control signal"),
+            (false, false) => ("reads nothing and commands no work process", "draw its observation tap from a Buffering stock (or watch a physical flow) and its command wire into a process that reads a control signal"),
         };
         issues.push(ValidationIssue {
             severity: Severity::Warning,
@@ -1769,6 +1799,7 @@ mod tests {
             primitive: None,
             rule: None,
             manages_param: None,
+            watches_flow: None,
             interface: false,
             passway: false,
             protocol: String::new(),
@@ -2275,6 +2306,7 @@ mod tests {
         let agent = |id: u64| Thing {
             rule: Some(AgentRule::Proportional),
             manages_param: None,
+            watches_flow: None,
             cognitive_params: [("target".to_string(), 1.0), ("gain".to_string(), 1.0)].into_iter().collect(),
             ..thing(id, "Thermostat", Role::Component)
         };
@@ -2320,6 +2352,28 @@ mod tests {
         });
         let a = analyze(&m, Lens::Mobus);
         assert!(a.validation.issues.iter().all(|i| i.code != AGENT_PARAM_MISSING_CODE), "{:?}", a.validation.issues);
+
+        // The feedforward form (spec v1.14): a watched physical flow is a
+        // reading, so the agent with a command wire and no tap is wired; an
+        // informational flow is not a reading; a watch beside a tap is two
+        // readings, an Error.
+        let watcher = |id: u64, flow: u64| Thing { watches_flow: Some(flow), ..agent(id) };
+        let wired = |watch: Thing, extra: Vec<Relation>| {
+            let mut rels = vec![relation(10, 4, 2, true), relation(11, 2, 1, true), tap(13, 3, 2)];
+            rels.extend(extra);
+            model(vec![stock(1), valve(2), watch, thing(4, "Grid", Role::Environment)], rels)
+        };
+        let a = analyze(&wired(watcher(3, 11), vec![]), Lens::Mobus);
+        assert!(a.validation.issues.iter().all(|i| i.code != AGENT_UNWIRED_CODE), "{:?}", a.validation.issues);
+        let a = analyze(&wired(watcher(3, 14), vec![tap(14, 1, 2)]), Lens::Mobus);
+        let found: Vec<_> = a.validation.issues.iter().filter(|i| i.code == AGENT_UNWIRED_CODE).collect();
+        assert_eq!(found.len(), 1, "{:?}", a.validation.issues);
+        assert!(found[0].message.contains("reads no stock's level and no flow"), "{}", found[0].message);
+        let a = analyze(&wired(watcher(3, 11), vec![tap(12, 1, 3)]), Lens::Mobus);
+        let found: Vec<_> = a.validation.issues.iter().filter(|i| i.code == AGENT_UNWIRED_CODE).collect();
+        assert_eq!(found.len(), 1, "{:?}", a.validation.issues);
+        assert_eq!(found[0].severity, Severity::Error);
+        assert!(found[0].message.contains("an agent reads one thing"), "{}", found[0].message);
     }
 
     /// facets#443: `Ambient Air` whose one line is an informational reading

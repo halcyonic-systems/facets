@@ -4,7 +4,7 @@
 
 *What the kernel actually is, what it actually computes, and — honestly rated — how much of the LLM-integration story (`docs/design/llm-integration-research.md`) it can really bear. Written 2026-07-16 as a source-reading pass over `crates/`. Read this when you want to trust (or distrust) the substrate before building on it.*
 
-*Note (2026-10-11): the agent layer postdates this read and is not covered below — `NodeKind::Agent`, the closed rule set (`Policy::{Proportional, Threshold, Table, Trace}`) and the command form, [ADR 0008](decisions/0008-agent-layer.md), SL spec §4.7 (v1.10–v1.13). One consequence for the "T/H/Δt are notes" rows: the trace rule's window is typed run state the engine owns (`Circuit::agent_readings`, spec §8.3), the first coordinate of H read back into T; the 8-tuple's own slots on `WorldModel` remain prose.*
+*Note (2026-10-11): the agent layer postdates this read and is not covered below — `NodeKind::Agent`, the closed rule set (`Policy::{Proportional, Threshold, Table, Trace}`) the command form and the flow watch (`Node::watch`, v1.14), [ADR 0008](decisions/0008-agent-layer.md), SL spec §4.7 (v1.10–v1.14). One consequence for the "T/H/Δt are notes" rows: the trace rule's window is typed run state the engine owns (`Circuit::agent_readings`, spec §8.3), the first coordinate of H read back into T; the 8-tuple's own slots on `WorldModel` remain prose.*
 
 ## The two marks, and what each one is worth
 

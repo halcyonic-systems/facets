@@ -256,7 +256,11 @@ export function NodeEditorRows({
             </Row>
           ))}
           <p className="mb-2 text-[10px] leading-snug" style={{ color: "var(--text-muted)" }} data-testid="rule-gloss">
-            {RULES.find((r) => r.rule === thing.rule)?.gloss} · it watches a Buffering (a stock) over an informational flow in — its reading — and{" "}
+            {RULES.find((r) => r.rule === thing.rule)?.gloss} ·{" "}
+            {thing.watches_flow !== undefined
+              ? "it reads a declared physical flow, what that flow delivered on the last completed tick (the feedforward form, spec v1.14), drawn as a dotted line from the flow,"
+              : "it watches a Buffering (a stock) over an informational flow in — its reading —"}{" "}
+            and{" "}
             {thing.manages_param
               ? `writes the declared param “${thing.manages_param}” at the end of every tick — its command, a knob the next tick runs under (the command form, ADR 0008 D1); the Review panel says when the param is not declared.`
               : "commands a Modulating (a valve), an Amplifying (an amplifier) or a Buffering's release over one out — its command, the heavy dashed line; the Review panel says when either is missing."}

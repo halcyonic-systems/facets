@@ -1,6 +1,6 @@
 # SL — the facets system language
 
-**Status: LIVE.** SL is specified and shipped at v1.13 (v1.0 on 2026-07-18; each additive revision since is marked in the spec and rowed in its §11). Write SL in the app's text pane, compile, and the model renders and is judged like any other. Round-trip goldens pass. The language is under active development; §"Known gaps" in the spec lists what the next revision owes.
+**Status: LIVE.** SL is specified and shipped at v1.14 (v1.0 on 2026-07-18; each additive revision since is marked in the spec and rowed in its §11). Write SL in the app's text pane, compile, and the model renders and is judged like any other. Round-trip goldens pass. The language is under active development; §"Known gaps" in the spec lists what the next revision owes.
 
 The text IS the model. Not a config format that happens to describe one, not a serialization of something else: the words on the page are the source, and everything else (the canvas, the JSON, the run) is a view onto them.
 
@@ -79,7 +79,7 @@ A file is a flat sequence of lines. Structure lines carry meaning; a blank line,
 |---|---|
 | `system` / `domain` / `time unit` / `level` | the header: what kind of thing this is, in what vocabulary, over what time base |
 | things (`component`, `source`, `sink`, `environment`, `interface`, `interface unresolved`, `milieu`) | what's inside the boundary and what's outside it; `interface unresolved` is the one reserved pass-way, for crossings whose interface is not yet identified (#308) |
-| `agent` | a decision-maker (v1.10–v1.13, ADR 0008): what it `watches`, the `rule` it runs, and what it `manages` (a process, or a declared `param` in the command form); written after the things it names, its tap and command wire never as flows |
+| `agent` | a decision-maker (v1.10–v1.14, ADR 0008): what it `watches` (a stock, or with `watches flow` a physical flow, v1.14), the `rule` it runs, and what it `manages` (a process, or a declared `param` in the command form); written after the things it names, its tap and command wire never as flows |
 | `description` / `grounding` (indented, directly under a declaration) | the author's prose, and the grade and reference of a number (v1.5, v1.7); continuation lines of the declaration above, never declarations |
 | `flow` | the connections between them, directed |
 | `param` / `metric` | declared names over input knobs and output readouts |
@@ -147,7 +147,7 @@ SysML v2 (Part 1, formally adopted March 2026) is the obvious question: why writ
 
 | | Document | What it gives you |
 |---|---|---|
-| 1 | **[`spec.md`](spec.md)**, the SL specification (v1.13) | The normative document: five design commitments, lexicon, EBNF grammar, semantics, the annotation layer, the round-trip contract, the structure/dynamics boundary, three worked examples, lineage, known gaps. |
+| 1 | **[`spec.md`](spec.md)**, the SL specification (v1.14) | The normative document: five design commitments, lexicon, EBNF grammar, semantics, the annotation layer, the round-trip contract, the structure/dynamics boundary, three worked examples, lineage, known gaps. |
 | 2 | [`../design/sl2-authoring-language.md`](../design/sl2-authoring-language.md) | The research foundation behind the spec: why three syntaxes over one neutral spec, the precedent survey (SysML v2, Modelica, Stella, Quint, gpt-jargon as negative control), the keep/shed analysis against Mobus and BERT SL v0.1, and the staged build plan. |
 | 3 | [`../design/dynamics-principled-position.md`](../design/dynamics-principled-position.md) | Why SL v1 stops at structure. Dynamics as a state-transition family; conservation as an invariant the model *declares* rather than one the engine assumes. |
 | 4 | [`terminology-concordance.md`](terminology-concordance.md) | The homage ledger behind the lexicon: 12 kernel distinctions × {Klir, Bunge, Mobus}, every cell primary-cited. |

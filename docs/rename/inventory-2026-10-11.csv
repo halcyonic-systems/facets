@@ -43,34 +43,34 @@ assets/archive/demos/reservoir-model.json,60,lineage,"""description"": ""Built i
 assets/corpus/README.md,73,issue-ref,The corpus is the **empirical arm** of the formalization. You cannot find that `Tuple.lean` under-constrains `I` by read
 assets/examples/translation-apparatus.sl,140,issue-ref,# Mobus ch. 4 (bert-lenses#260): environmental entities are unmodeled
 crates/facets-canvas/src/canvas.rs,143,issue-ref,/// `decomposes` clause; bert-lenses#89 step 4). Two halves: a human `name` label
-crates/facets-canvas/src/canvas.rs,208,issue-ref,"/// Authored interface protocol (bert-lenses#333, Mobus Listing 4.2): the"
-crates/facets-canvas/src/canvas.rs,216,issue-ref,/// `decomposes`; bert-lenses#89 step 4). `None` for atomic components and
-crates/facets-canvas/src/canvas.rs,222,issue-ref,/// The stock's declared unit (bert-lenses#76/#94) — meaningful on a
-crates/facets-canvas/src/canvas.rs,230,issue-ref,"/// What this thing IS, in the author's own words (bert-lenses#326). The"
-crates/facets-canvas/src/canvas.rs,231,upstream-bert,"/// original BERT carried one on every entity and the rebuild dropped it,"
-crates/facets-canvas/src/canvas.rs,779,issue-ref,"/// (bert-lenses#89 step 5b) — without this, every edit-and-save of a child"
-crates/facets-canvas/src/canvas.rs,826,issue-ref,/// The model's time-unit symbol (bert-lenses#94) — what one unit of model
-crates/facets-canvas/src/canvas.rs,985,issue-ref,"// set, and its interior legs vanish. bert#108 then guarantees the run is"
-crates/facets-canvas/src/canvas.rs,1080,issue-ref,"// own doctrine (bert#108, `operational.rs`): an interface sited"
-crates/facets-canvas/src/canvas.rs,1123,issue-ref,// A declared stock unit rides the agent record (bert-lenses#76/#94).
-crates/facets-canvas/src/canvas.rs,1292,upstream-bert,// the original BERT settled on — and the crossing flows re-anchor to the
-crates/facets-canvas/src/canvas.rs,1557,issue-ref,/// Decomposition (`System::child_model`) is now PRESERVED (bert-lenses#89 step
-crates/facets-canvas/src/canvas.rs,1868,issue-ref,/// canvas half (bert-lenses#89 step 5b). Projects the editing model and hands
-crates/facets-canvas/src/canvas.rs,2308,issue-ref,/// The fusion law (#226 + bert#108): a pure pass-way with one processor
-crates/facets-canvas/src/canvas.rs,2345,upstream-bert,// The processor claims it — the old-BERT back-pointer.
+crates/facets-canvas/src/canvas.rs,216,issue-ref,"/// Authored interface protocol (bert-lenses#333, Mobus Listing 4.2): the"
+crates/facets-canvas/src/canvas.rs,224,issue-ref,/// `decomposes`; bert-lenses#89 step 4). `None` for atomic components and
+crates/facets-canvas/src/canvas.rs,230,issue-ref,/// The stock's declared unit (bert-lenses#76/#94) — meaningful on a
+crates/facets-canvas/src/canvas.rs,238,issue-ref,"/// What this thing IS, in the author's own words (bert-lenses#326). The"
+crates/facets-canvas/src/canvas.rs,239,upstream-bert,"/// original BERT carried one on every entity and the rebuild dropped it,"
+crates/facets-canvas/src/canvas.rs,787,issue-ref,"/// (bert-lenses#89 step 5b) — without this, every edit-and-save of a child"
+crates/facets-canvas/src/canvas.rs,834,issue-ref,/// The model's time-unit symbol (bert-lenses#94) — what one unit of model
+crates/facets-canvas/src/canvas.rs,993,issue-ref,"// set, and its interior legs vanish. bert#108 then guarantees the run is"
+crates/facets-canvas/src/canvas.rs,1088,issue-ref,"// own doctrine (bert#108, `operational.rs`): an interface sited"
+crates/facets-canvas/src/canvas.rs,1131,issue-ref,// A declared stock unit rides the agent record (bert-lenses#76/#94).
+crates/facets-canvas/src/canvas.rs,1300,upstream-bert,// the original BERT settled on — and the crossing flows re-anchor to the
+crates/facets-canvas/src/canvas.rs,1576,issue-ref,/// Decomposition (`System::child_model`) is now PRESERVED (bert-lenses#89 step
+crates/facets-canvas/src/canvas.rs,1903,issue-ref,/// canvas half (bert-lenses#89 step 5b). Projects the editing model and hands
+crates/facets-canvas/src/canvas.rs,2344,issue-ref,/// The fusion law (#226 + bert#108): a pure pass-way with one processor
+crates/facets-canvas/src/canvas.rs,2381,upstream-bert,// The processor claims it — the old-BERT back-pointer.
 crates/facets-canvas/src/lenses.rs,784,issue-ref,/// (bert-lenses#320).
 crates/facets-canvas/src/lenses.rs,870,issue-ref,"/// The decomposition seam verdict, canvas-keyed (bert-lenses#89 step 5b): the"
-crates/facets-canvas/src/sl.rs,1111,upstream-bert,// rides ENVIRONMENT lines too: old-bert's descriptions are
-crates/facets-canvas/src/sl.rs,3586,issue-ref,/// to right the way the flows run (bert-lenses#309). A lone component sits at
-crates/facets-canvas/src/sl.rs,5688,issue-ref,/// The container label's rename round trip (bert-lenses#116): the canvas
-crates/facets-canvas/src/sl.rs,5830,upstream-bert,// ── descriptions: restoring what old-bert had (#326) ────────────────
-crates/facets-canvas/src/sl.rs,5844,upstream-bert,"/// Environment lines take it too, and that is deliberate: old-bert's"
+crates/facets-canvas/src/sl.rs,1112,upstream-bert,// rides ENVIRONMENT lines too: old-bert's descriptions are
+crates/facets-canvas/src/sl.rs,3694,issue-ref,/// to right the way the flows run (bert-lenses#309). A lone component sits at
+crates/facets-canvas/src/sl.rs,5818,issue-ref,/// The container label's rename round trip (bert-lenses#116): the canvas
+crates/facets-canvas/src/sl.rs,5960,upstream-bert,// ── descriptions: restoring what old-bert had (#326) ────────────────
+crates/facets-canvas/src/sl.rs,5974,upstream-bert,"/// Environment lines take it too, and that is deliberate: old-bert's"
 crates/facets-canvas/tests/projection_ledger.rs,85,upstream-bert,"(""WorldModel"", ""hidden_entities"", Ontology(""a LOST old-bert capability, not a Mobus slot: hiding elements on a crowded c"
 crates/facets-canvas/tests/projection_ledger.rs,85,cli-word,"(""WorldModel"", ""hidden_entities"", Ontology(""a LOST old-bert capability, not a Mobus slot: hiding elements on a crowded c"
-crates/facets-canvas/tests/sl_roundtrip.rs,164,issue-ref,/// Law (bert-lenses#94 tail): the model's time-unit symbol and a declared stock
-crates/facets-canvas/tests/sl_roundtrip.rs,215,issue-ref,/// Law (bert-lenses#154): a component's Klir source-system metadata — the
-crates/facets-canvas/tests/sl_roundtrip.rs,252,issue-ref,/// Law (bert-lenses#154 revision): the source-system metadata rides ENVIRONMENT
-crates/facets-canvas/tests/sl_roundtrip.rs,277,issue-ref,"/// Law (bert-lenses#154): `kind Basic|Support` round-trips, and the default"
+crates/facets-canvas/tests/sl_roundtrip.rs,165,issue-ref,/// Law (bert-lenses#94 tail): the model's time-unit symbol and a declared stock
+crates/facets-canvas/tests/sl_roundtrip.rs,216,issue-ref,/// Law (bert-lenses#154): a component's Klir source-system metadata — the
+crates/facets-canvas/tests/sl_roundtrip.rs,253,issue-ref,/// Law (bert-lenses#154 revision): the source-system metadata rides ENVIRONMENT
+crates/facets-canvas/tests/sl_roundtrip.rs,278,issue-ref,"/// Law (bert-lenses#154): `kind Basic|Support` round-trips, and the default"
 crates/facets-canvas/tests/source_signal_rate.rs,2,issue-ref,"//! WIRE (bert#111, the Message sibling of the physical rule). Replication"
 crates/facets-cli/Cargo.toml,23,cli-word,"name = ""bert"""
 crates/facets-cli/Cargo.toml,24,cli-word,"path = ""src/bert_alias.rs"""
@@ -83,37 +83,37 @@ crates/facets-cli/tests/alias.rs,1,cli-word,//! The `bert` alias (#541 phase 4):
 crates/facets-cli/tests/alias.rs,19,cli-word,"const NOTE: &str = ""bert: renamed to facets; this alias retires 2027-01-11\n"";"
 crates/facets-cli/tests/alias.rs,47,cli-word,"let old = run(env!(""CARGO_BIN_EXE_bert""), args, stdin);"
 crates/facets-compose/src/circuit.rs,3,upstream-bert,//! Transfer functions are ports of BERT's verified implementations
-crates/facets-compose/src/circuit.rs,200,upstream-bert,"/// along into the BERT JSON (`Substance.sub_type`, `Interaction.unit`)."
-crates/facets-compose/src/circuit.rs,356,issue-ref,/// A stock's declared unit (bert-lenses#76). A Buffering stock accumulates
-crates/facets-compose/src/circuit.rs,437,issue-ref,/// them onto the node loses all but one (bert#111). `None` falls back to
-crates/facets-compose/src/circuit.rs,441,issue-ref,/// Series forcing (bert-lenses#16): a forced source outwire emits an
-crates/facets-compose/src/circuit.rs,451,issue-ref,/// Availability assertion (bert-lenses#9): this informational wire carries
-crates/facets-compose/src/circuit.rs,467,issue-ref,/// Per-wire substance when a sender's flows differ (bert#111 sibling: a
-crates/facets-compose/src/circuit.rs,586,issue-ref,"/// Root-boundary porosity (B's P, bert-lenses#54). When authored NONZERO it"
-crates/facets-compose/src/circuit.rs,1082,issue-ref,"/// when it has one (a multi-outflow sender's flows may differ, bert#111),"
-crates/facets-compose/src/circuit.rs,1119,issue-ref,/// (bert-lenses#54). A crossing flow is one a Source emits across the root
-crates/facets-compose/src/circuit.rs,1175,issue-ref,"// rate on its wire (bert#111, same as physical), but replication"
-crates/facets-compose/src/circuit.rs,1187,issue-ref,// Weighted fanout (bert#111): a source wire with a declared rate
-crates/facets-compose/src/circuit.rs,1199,issue-ref,// Weighted split (bert-lenses#16 → rung 2): a process divides its
-crates/facets-compose/src/circuit.rs,1223,issue-ref,"/// The outwires bert#111 quantifies: pushed, non-observation, physical"
-crates/facets-compose/src/circuit.rs,1303,issue-ref,"/// reads `param`, but since bert#111 a multi-pushed source carries its"
-crates/facets-compose/src/circuit.rs,1446,issue-ref,"// (bert-lenses#54), mirroring `wire_amount`'s gradient path"
-crates/facets-compose/src/circuit.rs,1616,issue-ref,"// (bert#111), param when none are declared — throttled to what"
-crates/facets-compose/src/circuit.rs,2312,issue-ref,"/// bert#111 fixture: a source with two outflows, one carrying a declared"
-crates/facets-compose/src/circuit.rs,2357,issue-ref,/// bert-lenses#16: a forced source wire emits an OBSERVED series tick by
-crates/facets-compose/src/circuit.rs,2731,issue-ref,"/// bert#111 back-compat: with no declared rates anywhere, a two-outflow"
-crates/facets-compose/src/circuit.rs,4632,issue-ref,/// bert-lenses#54: an authored NONZERO porosity scales a boundary-crossing
-crates/facets-compose/src/circuit.rs,4683,issue-ref,"/// The convention, made explicit (bert-lenses#54): porosity `0.0` is the"
+crates/facets-compose/src/circuit.rs,201,upstream-bert,"/// along into the BERT JSON (`Substance.sub_type`, `Interaction.unit`)."
+crates/facets-compose/src/circuit.rs,371,issue-ref,/// A stock's declared unit (bert-lenses#76). A Buffering stock accumulates
+crates/facets-compose/src/circuit.rs,454,issue-ref,/// them onto the node loses all but one (bert#111). `None` falls back to
+crates/facets-compose/src/circuit.rs,458,issue-ref,/// Series forcing (bert-lenses#16): a forced source outwire emits an
+crates/facets-compose/src/circuit.rs,468,issue-ref,/// Availability assertion (bert-lenses#9): this informational wire carries
+crates/facets-compose/src/circuit.rs,484,issue-ref,/// Per-wire substance when a sender's flows differ (bert#111 sibling: a
+crates/facets-compose/src/circuit.rs,603,issue-ref,"/// Root-boundary porosity (B's P, bert-lenses#54). When authored NONZERO it"
+crates/facets-compose/src/circuit.rs,1101,issue-ref,"/// when it has one (a multi-outflow sender's flows may differ, bert#111),"
+crates/facets-compose/src/circuit.rs,1138,issue-ref,/// (bert-lenses#54). A crossing flow is one a Source emits across the root
+crates/facets-compose/src/circuit.rs,1194,issue-ref,"// rate on its wire (bert#111, same as physical), but replication"
+crates/facets-compose/src/circuit.rs,1206,issue-ref,// Weighted fanout (bert#111): a source wire with a declared rate
+crates/facets-compose/src/circuit.rs,1218,issue-ref,// Weighted split (bert-lenses#16 → rung 2): a process divides its
+crates/facets-compose/src/circuit.rs,1242,issue-ref,"/// The outwires bert#111 quantifies: pushed, non-observation, physical"
+crates/facets-compose/src/circuit.rs,1322,issue-ref,"/// reads `param`, but since bert#111 a multi-pushed source carries its"
+crates/facets-compose/src/circuit.rs,1465,issue-ref,"// (bert-lenses#54), mirroring `wire_amount`'s gradient path"
+crates/facets-compose/src/circuit.rs,1635,issue-ref,"// (bert#111), param when none are declared — throttled to what"
+crates/facets-compose/src/circuit.rs,2343,issue-ref,"/// bert#111 fixture: a source with two outflows, one carrying a declared"
+crates/facets-compose/src/circuit.rs,2388,issue-ref,/// bert-lenses#16: a forced source wire emits an OBSERVED series tick by
+crates/facets-compose/src/circuit.rs,2762,issue-ref,"/// bert#111 back-compat: with no declared rates anywhere, a two-outflow"
+crates/facets-compose/src/circuit.rs,4736,issue-ref,/// bert-lenses#54: an authored NONZERO porosity scales a boundary-crossing
+crates/facets-compose/src/circuit.rs,4787,issue-ref,"/// The convention, made explicit (bert-lenses#54): porosity `0.0` is the"
 crates/facets-compose/src/export.rs,1,upstream-bert,//! Circuit ↔ BERT JSON: the canvas saves as an ordinary WorldModel that the
-crates/facets-compose/src/export.rs,250,issue-ref,// A stock's declared unit (bert-lenses#76) rides back to
-crates/facets-compose/src/export.rs,285,upstream-bert,// Gradient (field-driven) flows export as BERT's Force interaction
-crates/facets-compose/src/export.rs,533,issue-ref,// them (bert#111).
-crates/facets-compose/src/export.rs,558,issue-ref,// multi-outflow sender's flows may differ (bert#111 sibling). The
-crates/facets-compose/src/export.rs,591,issue-ref,// (bert#111). A single pushed outflow keeps the old node-param
-crates/facets-compose/src/export.rs,622,issue-ref,// Root-boundary porosity rides the seam (bert-lenses#54): the run scales
-crates/facets-compose/src/export.rs,628,upstream-bert,"/// BERT JSON → Circuit: the inverse of [`to_world_model`], routed through the"
-crates/facets-compose/src/export.rs,695,issue-ref,/// bert#111: per-flow amounts survive the seam INTO EXECUTION. A source
-crates/facets-compose/src/export.rs,883,issue-ref,"/// bert-lenses#16, the seam hop: a forced flow's observed series survives"
+crates/facets-compose/src/export.rs,252,issue-ref,// A stock's declared unit (bert-lenses#76) rides back to
+crates/facets-compose/src/export.rs,287,upstream-bert,// Gradient (field-driven) flows export as BERT's Force interaction
+crates/facets-compose/src/export.rs,550,issue-ref,// them (bert#111).
+crates/facets-compose/src/export.rs,575,issue-ref,// multi-outflow sender's flows may differ (bert#111 sibling). The
+crates/facets-compose/src/export.rs,608,issue-ref,// (bert#111). A single pushed outflow keeps the old node-param
+crates/facets-compose/src/export.rs,639,issue-ref,// Root-boundary porosity rides the seam (bert-lenses#54): the run scales
+crates/facets-compose/src/export.rs,645,upstream-bert,"/// BERT JSON → Circuit: the inverse of [`to_world_model`], routed through the"
+crates/facets-compose/src/export.rs,712,issue-ref,/// bert#111: per-flow amounts survive the seam INTO EXECUTION. A source
+crates/facets-compose/src/export.rs,900,issue-ref,"/// bert-lenses#16, the seam hop: a forced flow's observed series survives"
 crates/facets-compose/src/ladder.rs,127,issue-ref,"provenance: ""predator-prey; the sweep's sharpest boundary (bert#85)"","
 crates/facets-compose/src/ladder.rs,138,issue-ref,"provenance: ""predator-prey, resolved — first-order drain (τ) lifted bert#85"","
 crates/facets-compose/src/ladder.rs,240,issue-ref,/// (proportional) death isn't expressible here — bert#85.
@@ -155,42 +155,42 @@ crates/facets-core/src/lib.rs,1160,upstream-bert,"/// use bert::data_model::{Inf
 crates/facets-core/src/lib.rs,1281,issue-ref,"/// decomposed component points at by reference (bert-lenses#89, §4 of"
 crates/facets-core/src/lib.rs,1358,issue-ref,/// (bert-lenses#89 step 3). `None` for every flat single-level model and
 crates/facets-core/src/lib.rs,1395,issue-ref,"/// (bert-lenses#5 collapse, 2026-07-11). Reads the legacy `primitives`"
-crates/facets-core/src/lib.rs,1439,issue-ref,/// A stock's declared unit (bert-lenses#76). A Buffering component's stock
-crates/facets-core/src/lib.rs,1965,issue-ref,/// `ample` (bert-lenses#9): an AVAILABILITY assertion on an informational
-crates/facets-core/src/lib.rs,2007,upstream-bert,/// and analyzed within BERT.
-crates/facets-core/src/lib.rs,2025,upstream-bert,/// use bert::data_model::Complexity;
-crates/facets-core/src/lib.rs,2100,upstream-bert,/// use bert::data_model::Complexity;
-crates/facets-core/src/lib.rs,2125,upstream-bert,/// use bert::data_model::Complexity;
-crates/facets-core/src/lib.rs,2146,upstream-bert,/// use bert::data_model::Complexity;
-crates/facets-core/src/lib.rs,2168,upstream-bert,/// use bert::data_model::Complexity;
+crates/facets-core/src/lib.rs,1448,issue-ref,/// A stock's declared unit (bert-lenses#76). A Buffering component's stock
+crates/facets-core/src/lib.rs,1993,issue-ref,/// `ample` (bert-lenses#9): an AVAILABILITY assertion on an informational
+crates/facets-core/src/lib.rs,2035,upstream-bert,/// and analyzed within BERT.
+crates/facets-core/src/lib.rs,2053,upstream-bert,/// use bert::data_model::Complexity;
+crates/facets-core/src/lib.rs,2128,upstream-bert,/// use bert::data_model::Complexity;
+crates/facets-core/src/lib.rs,2153,upstream-bert,/// use bert::data_model::Complexity;
+crates/facets-core/src/lib.rs,2174,upstream-bert,/// use bert::data_model::Complexity;
 crates/facets-core/src/lib.rs,2196,upstream-bert,/// use bert::data_model::Complexity;
-crates/facets-core/src/lib.rs,2229,upstream-bert,/// use bert::data_model::Complexity;
-crates/facets-core/src/lib.rs,2262,upstream-bert,/// use bert::data_model::Complexity;
-crates/facets-core/src/lib.rs,2326,upstream-bert,"/// use bert::data_model::{HasInfo, System, Environment};"
-crates/facets-core/src/lib.rs,2367,upstream-bert,"/// use bert::data_model::{HasInfo, System};"
-crates/facets-core/src/lib.rs,2411,upstream-bert,"/// use bert::data_model::{HasSourcesAndSinks, ExternalEntity, System, Environment};"
-crates/facets-core/src/lib.rs,2453,upstream-bert,"/// use bert::data_model::{HasSourcesAndSinks, System};"
-crates/facets-core/src/lib.rs,2473,upstream-bert,"/// use bert::data_model::{HasSourcesAndSinks, ExternalEntity, System};"
-crates/facets-core/src/lib.rs,2493,upstream-bert,"/// use bert::data_model::{HasSourcesAndSinks, System};"
-crates/facets-core/src/lib.rs,2511,upstream-bert,"/// use bert::data_model::{HasSourcesAndSinks, ExternalEntity, System};"
+crates/facets-core/src/lib.rs,2224,upstream-bert,/// use bert::data_model::Complexity;
+crates/facets-core/src/lib.rs,2257,upstream-bert,/// use bert::data_model::Complexity;
+crates/facets-core/src/lib.rs,2290,upstream-bert,/// use bert::data_model::Complexity;
+crates/facets-core/src/lib.rs,2354,upstream-bert,"/// use bert::data_model::{HasInfo, System, Environment};"
+crates/facets-core/src/lib.rs,2395,upstream-bert,"/// use bert::data_model::{HasInfo, System};"
+crates/facets-core/src/lib.rs,2439,upstream-bert,"/// use bert::data_model::{HasSourcesAndSinks, ExternalEntity, System, Environment};"
+crates/facets-core/src/lib.rs,2481,upstream-bert,"/// use bert::data_model::{HasSourcesAndSinks, System};"
+crates/facets-core/src/lib.rs,2501,upstream-bert,"/// use bert::data_model::{HasSourcesAndSinks, ExternalEntity, System};"
+crates/facets-core/src/lib.rs,2521,upstream-bert,"/// use bert::data_model::{HasSourcesAndSinks, System};"
+crates/facets-core/src/lib.rs,2539,upstream-bert,"/// use bert::data_model::{HasSourcesAndSinks, ExternalEntity, System};"
 crates/facets-core/src/model_id.rs,1,issue-ref,//! Model self-identity — the stable name a whole model carries (bert-lenses#89
 crates/facets-core/src/operational.rs,20,issue-ref,"//! # Interface routing lowers, it does not refuse (bert#108)"
 crates/facets-core/src/operational.rs,23,issue-ref,"//! work-process mapping was an open question. bert#108 settled it (Option 3,"
 crates/facets-core/src/operational.rs,80,issue-ref,/// The stock's declared unit (bert-lenses#76). A stock accumulates a rate
-crates/facets-core/src/operational.rs,133,issue-ref,"/// flow is lowered for execution (bert#108). Mobus: every component, interfaces"
-crates/facets-core/src/operational.rs,141,issue-ref,/// A filter with back-pressure (Mobus). The bert#108 default.
-crates/facets-core/src/operational.rs,158,issue-ref,/// Availability assertion (bert-lenses#9) — see `Interaction::ample`.
-crates/facets-core/src/operational.rs,164,issue-ref,"/// `Some` iff this flow lowered from boundary-interface routing (bert#108),"
-crates/facets-core/src/operational.rs,171,issue-ref,/// Series forcing (bert-lenses#16): `Some` iff this flow carries an
-crates/facets-core/src/operational.rs,200,issue-ref,"/// Root-boundary porosity (B's P, bert-lenses#54) — the coefficient that"
-crates/facets-core/src/operational.rs,289,issue-ref,// The root system's boundary carries B's P (bert-lenses#54). Its porosity
-crates/facets-core/src/operational.rs,411,issue-ref,"// bert#108: interface routing lowers, it does not refuse. An interface"
-crates/facets-core/src/operational.rs,807,issue-ref,/// bert-lenses#54/#76: the root boundary's porosity and a stock's declared
-crates/facets-core/src/operational.rs,971,issue-ref,"/// bert#108: interface routing LOWERS, it does not refuse. A flow routed"
-crates/facets-core/src/operational.rs,990,issue-ref,/// Law: bert#108 — an interface-routed flow lowers to an Impeding work-process marker rather than being refused; an un-
-crates/facets-core/src/operational.rs,1011,issue-ref,".expect(""bert#108: interface routing lowers, it no longer refuses"");"
-crates/facets-core/src/operational.rs,1020,issue-ref,"""the flow records its bert#108 Impeding lowering"""
-crates/facets-core/src/operational.rs,1033,issue-ref,"/// Law: bert#108's identity default is observationally exact — stripped of its provenance marker, a routed and an unrou"
+crates/facets-core/src/operational.rs,150,issue-ref,"/// flow is lowered for execution (bert#108). Mobus: every component, interfaces"
+crates/facets-core/src/operational.rs,158,issue-ref,/// A filter with back-pressure (Mobus). The bert#108 default.
+crates/facets-core/src/operational.rs,175,issue-ref,/// Availability assertion (bert-lenses#9) — see `Interaction::ample`.
+crates/facets-core/src/operational.rs,181,issue-ref,"/// `Some` iff this flow lowered from boundary-interface routing (bert#108),"
+crates/facets-core/src/operational.rs,188,issue-ref,/// Series forcing (bert-lenses#16): `Some` iff this flow carries an
+crates/facets-core/src/operational.rs,217,issue-ref,"/// Root-boundary porosity (B's P, bert-lenses#54) — the coefficient that"
+crates/facets-core/src/operational.rs,307,issue-ref,// The root system's boundary carries B's P (bert-lenses#54). Its porosity
+crates/facets-core/src/operational.rs,433,issue-ref,"// bert#108: interface routing lowers, it does not refuse. An interface"
+crates/facets-core/src/operational.rs,881,issue-ref,/// bert-lenses#54/#76: the root boundary's porosity and a stock's declared
+crates/facets-core/src/operational.rs,1045,issue-ref,"/// bert#108: interface routing LOWERS, it does not refuse. A flow routed"
+crates/facets-core/src/operational.rs,1064,issue-ref,/// Law: bert#108 — an interface-routed flow lowers to an Impeding work-process marker rather than being refused; an un-
+crates/facets-core/src/operational.rs,1085,issue-ref,".expect(""bert#108: interface routing lowers, it no longer refuses"");"
+crates/facets-core/src/operational.rs,1094,issue-ref,"""the flow records its bert#108 Impeding lowering"""
+crates/facets-core/src/operational.rs,1107,issue-ref,"/// Law: bert#108's identity default is observationally exact — stripped of its provenance marker, a routed and an unrou"
 crates/facets-core/src/transition.rs,897,issue-ref,// `validate_operational` (bert#108). Two fixtures pin the two ways this
 crates/facets-core/src/transition.rs,975,issue-ref,/// Law: bert#108 — interface-routed flows are legal Operational structure at the transition layer; the routing lowers t
 crates/facets-core/src/transition.rs,980,issue-ref,"// Irreflexive). bert#108 4.2 has now shipped, so validate_operational no"
@@ -394,8 +394,8 @@ docs/decisions/0005-vocabulary-tiers.md,85,lineage,"`crates/bert-compose/src/ses
 docs/decisions/0006-closed-metric-verbs.md,80,lineage,`crates/bert-canvas/src/sl.rs` + `tests/sl_metrics.rs`. Evaluation:
 docs/decisions/0006-closed-metric-verbs.md,82,lineage,`crates/bert-compose/src/circuit.rs` (`wire_history`) →
 docs/decisions/0006-closed-metric-verbs.md,83,lineage,`crates/bert-tether/src/forcing.rs` (`FlowSeries`) → `RunResultRich.flows`.
-docs/decisions/0008-agent-layer.md,213,lineage,"reads what the tap reads; the session, tick log, recorder, `bert bench`,"
-docs/decisions/0008-agent-layer.md,245,lineage,"the command form: `TickLog.decisions`, `KnobEdit.by`, and `bert bench`"
+docs/decisions/0008-agent-layer.md,237,lineage,"reads what the tap reads; the session, tick log, recorder, `bert bench`,"
+docs/decisions/0008-agent-layer.md,269,lineage,"the command form: `TickLog.decisions`, `KnobEdit.by`, and `bert bench`"
 docs/design/README.md,35,upstream-bert,- [`sl2-authoring-language.md`](sl2-authoring-language.md) — the research foundation behind `../language/spec.md` (LIVE)
 docs/design/decomposition-foundations.md,185,issue-ref,whose `G′` is pre-filled from `flows(c)` (turns bert-lenses#5's
 docs/design/dynamics-coalgebra-halfa.md,18,upstream-bert,The 8-tuple's `T` (transform) is the **coalgebra structure map** `T : S → F(S)`; `H` (history) is its **final-coalgebra 
@@ -487,9 +487,9 @@ docs/language/README.md,167,upstream-bert,"SL stands in a line: Mobus's SL propo
 docs/language/README.md,167,upstream-bert,"SL stands in a line: Mobus's SL proposal (Ch. 4) → BERT SL v0.1 (`bert/docs/system-language-spec.md`, a lexicon and gram"
 docs/language/spec.md,67,upstream-bert,"| `description` | prose about a thing or a flow, in the author's own words — restored in v1.4 (#326) after the rebuild d"
 docs/language/spec.md,67,upstream-bert,"| `description` | prose about a thing or a flow, in the author's own words — restored in v1.4 (#326) after the rebuild d"
-docs/language/spec.md,239,upstream-bert,"`component Battery description ""the pack that rides out a cloudy week""` declares what the thing IS, in the author's own "
-docs/language/spec.md,565,upstream-bert,**BERT SL v0.1 (`bert/docs/system-language-spec.md`).** The prior spec in this lineage: a publication-grade lexicon and 
-docs/language/spec.md,565,upstream-bert,**BERT SL v0.1 (`bert/docs/system-language-spec.md`).** The prior spec in this lineage: a publication-grade lexicon and 
+docs/language/spec.md,241,upstream-bert,"`component Battery description ""the pack that rides out a cloudy week""` declares what the thing IS, in the author's own "
+docs/language/spec.md,569,upstream-bert,**BERT SL v0.1 (`bert/docs/system-language-spec.md`).** The prior spec in this lineage: a publication-grade lexicon and 
+docs/language/spec.md,569,upstream-bert,**BERT SL v0.1 (`bert/docs/system-language-spec.md`).** The prior spec in this lineage: a publication-grade lexicon and 
 docs/lean-manifest.json,229,issue-ref,"""title"": ""The decomposition seam (bert-lenses#89)"","
 docs/lean-provenance.md,99,issue-ref,### The decomposition seam (bert-lenses#89)
 docs/parked.md,336,upstream-bert,"From GSPS to Causal Models""*) and, more durably, give BERT a Reconstructability"

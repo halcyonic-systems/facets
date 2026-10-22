@@ -323,6 +323,12 @@ export interface Thing {
    *  Absent = the signal form; serde skip-if-None on the Rust side. A name
    *  no param declares is the required-param fault the Review panel names. */
   manages_param?: string;
+  /** The flow a feedforward agent reads instead of a stock's level (spec
+   *  v1.14, ADR 0008 D5; Mobus §12.3.2.3): `agent … watches flow <a> -> <b>`.
+   *  The relation id of a physical flow; the agent reads what it delivered on
+   *  the last completed tick. Absent = the level form, read over a tap;
+   *  serde skip-if-None on the Rust side. */
+  watches_flow?: number;
   /** Authored interface designation (I ⊆ C). Must carry a boundary-crossing flow —
    *  flowless is refused at Operational (`interfaces_carry_flow`, SSF #31). */
   interface?: boolean;

@@ -904,6 +904,7 @@ pub fn parse_sl_full(text: &str) -> Result<SlParse, Vec<SlError>> {
                     primitive: None,
                     rule: None,
                     manages_param: None,
+                    watches_flow: None,
                     interface: true,
                     passway: true,
                     protocol,
@@ -1907,6 +1908,7 @@ pub fn parse_sl_full(text: &str) -> Result<SlParse, Vec<SlError>> {
                     primitive,
                     rule: None,
                     manages_param: None,
+                    watches_flow: None,
                     interface,
                     passway: false,
                     protocol,
@@ -1926,9 +1928,11 @@ pub fn parse_sl_full(text: &str) -> Result<SlParse, Vec<SlError>> {
             "agent" => {
                 // agent <Name> watches <stock> rule proportional target <n> gain <n>
                 //       manages <process> [description "<prose>"]
+                // agent <Name> watches flow <a> -> <b> ["label"] rule … (v1.14)
                 //
                 // A decision-maker (facets#269, ADR 0008): a thing of its own
-                // kind that reads one stock's level, runs its rule, and
+                // kind that reads one stock's level (or one physical flow's
+                // last delivery, the feedforward form), runs its rule, and
                 // commands one work process that takes a control signal. The
                 // clauses are the four decisions an agent is, in order —
                 // watch, rule, goal, manage — and the compiler draws the
@@ -1938,7 +1942,8 @@ pub fn parse_sl_full(text: &str) -> Result<SlParse, Vec<SlError>> {
                 // signals command an actuator having the necessary power to
                 // affect changes on those conditions."
                 let syntax = "agent syntax: `agent <Name> watches <stock> rule <rule> … manages \
-                              <process>` or `… manages param \"<name>\"` — rules: \
+                              <process>` or `… manages param \"<name>\"`, and `watches flow <a> -> <b> \
+                              [\"label\"]` for a flow — rules: \
                               `proportional target <n> gain <n>`, \
                               `threshold above <n> [below <n>] emit <n> else <n>`, \
                               `table under <n> emit <n> [under <n> emit <n> …] else <n>`, \
@@ -1963,9 +1968,30 @@ pub fn parse_sl_full(text: &str) -> Result<SlParse, Vec<SlError>> {
                     fail(format!("`{name}` is already declared — names are unique"), &mut errors);
                     continue;
                 }
-                let (stock_name, tail) = match tail {
+                // `watches <stock>` reads a level; `watches flow <a> -> <b>
+                // ["label"]` reads what one physical flow delivered on the last
+                // completed tick (spec v1.14, ADR 0008 D5's feedforward form),
+                // the flow named as `param` and `metric` name one.
+                enum Watch {
+                    Stock(String),
+                    Flow { a: String, b: String, label: Option<String> },
+                }
+                let (watch, tail) = match tail {
+                    [Tok::Word(w), Tok::Word(f), a, Tok::Arrow, b, tail @ ..]
+                        if w.eq_ignore_ascii_case("watches")
+                            && f.eq_ignore_ascii_case("flow")
+                            && a.is_name()
+                            && b.is_name() =>
+                    {
+                        match tail {
+                            [Tok::Str(l), tail @ ..] => {
+                                (Watch::Flow { a: a.name(), b: b.name(), label: Some(l.clone()) }, tail)
+                            }
+                            _ => (Watch::Flow { a: a.name(), b: b.name(), label: None }, tail),
+                        }
+                    }
                     [Tok::Word(w), st, tail @ ..] if w.eq_ignore_ascii_case("watches") && st.is_name() => {
-                        (st.name(), tail)
+                        (Watch::Stock(st.name()), tail)
                     }
                     _ => {
                         fail(syntax.into(), &mut errors);
@@ -2244,26 +2270,100 @@ pub fn parse_sl_full(text: &str) -> Result<SlParse, Vec<SlError>> {
                         continue;
                     }
                 };
-                let Some(&si) = by_name.get(&stock_name) else {
-                    fail(
-                        format!("`{stock_name}` is not declared (declare the stock before the agent that watches it)"),
-                        &mut errors,
-                    );
-                    continue;
-                };
-                if things[si].role != Role::Component
-                    || things[si].primitive != Some(ProcessPrimitive::Buffering)
-                {
-                    fail(
-                        format!(
-                            "`{stock_name}` is not a Buffering component — an agent watches a \
-                             stock's level (Mobus: \"state information at time t\"); watching a \
-                             flow or another agent is a later rung (ADR 0008 D5)"
-                        ),
-                        &mut errors,
-                    );
-                    continue;
+                // What the agent reads: a stock's id (its tap is drawn below)
+                // or the id of the flow relation it watches.
+                enum Watched {
+                    Stock(u64),
+                    Flow(u64),
                 }
+                let watched = match &watch {
+                    Watch::Stock(stock_name) => {
+                        let Some(&si) = by_name.get(stock_name) else {
+                            fail(
+                                format!("`{stock_name}` is not declared (declare the stock before the agent that watches it)"),
+                                &mut errors,
+                            );
+                            continue;
+                        };
+                        if things[si].role != Role::Component
+                            || things[si].primitive != Some(ProcessPrimitive::Buffering)
+                        {
+                            fail(
+                                format!(
+                                    "`{stock_name}` is not a Buffering component — an agent watches a \
+                                     stock's level (Mobus: \"state information at time t\"), or a \
+                                     physical flow with `watches flow <a> -> <b>` (spec v1.14); \
+                                     watching another agent is a later rung (ADR 0008 D2)"
+                                ),
+                                &mut errors,
+                            );
+                            continue;
+                        }
+                        Watched::Stock(things[si].id)
+                    }
+                    Watch::Flow { a, b, label } => {
+                        let (Some(&ai), Some(&bi)) = (by_name.get(a), by_name.get(b)) else {
+                            let missing = if by_name.contains_key(a) { b } else { a };
+                            fail(
+                                format!("`{missing}` is not declared (declare the flow before the agent that watches it)"),
+                                &mut errors,
+                            );
+                            continue;
+                        };
+                        let (aid, bid) = (things[ai].id, things[bi].id);
+                        let candidates: Vec<&Relation> = relations
+                            .iter()
+                            .filter(|r| r.a == aid && r.b == bid && r.is_bond)
+                            .filter(|r| label.as_deref().is_none_or(|l| r.name == l))
+                            .collect();
+                        let rel = match candidates.as_slice() {
+                            [] => {
+                                let with = label.as_deref().map(|l| format!(" labeled \"{l}\"")).unwrap_or_default();
+                                fail(
+                                    format!(
+                                        "no flow `{a} -> {b}`{with} is declared above this line — an \
+                                         agent watches an existing declared flow"
+                                    ),
+                                    &mut errors,
+                                );
+                                continue;
+                            }
+                            [one] => *one,
+                            many => {
+                                let labels =
+                                    many.iter().map(|r| format!("\"{}\"", r.name)).collect::<Vec<_>>().join(", ");
+                                fail(
+                                    format!(
+                                        "{} flows run `{a} -> {b}` — disambiguate with the flow's label: {labels}",
+                                        many.len()
+                                    ),
+                                    &mut errors,
+                                );
+                                continue;
+                            }
+                        };
+                        // What a flow watch may read: a quantity delivered.
+                        // An informational flow is a signal, and reading
+                        // another node's signal is the agent-over-agent case
+                        // (ADR 0008 D2). In SL that one refusal covers the
+                        // rest: `ample` is informational-only, and every
+                        // relation touching an agent is its tap or command
+                        // wire. The seam refuses an ample or agent-touching
+                        // physical flow a kernel model can carry.
+                        if rel.kind == Kind::Informational {
+                            fail(
+                                format!(
+                                    "flow `{a} -> {b}` is informational — a signal, not a quantity \
+                                     delivered; watch the physical flow it reports, or the stock it \
+                                     reads (no agent watches another node's signal, ADR 0008 D2)"
+                                ),
+                                &mut errors,
+                            );
+                            continue;
+                        }
+                        Watched::Flow(rel.id)
+                    }
+                };
                 let proc_id: Option<u64> = match &managed {
                     Managed::Process(proc_name) => {
                 let Some(&pi) = by_name.get(proc_name) else {
@@ -2461,7 +2561,6 @@ pub fn parse_sl_full(text: &str) -> Result<SlParse, Vec<SlError>> {
                         None
                     }
                 };
-                let stock_id = things[si].id;
                 by_name.insert(name.clone(), things.len());
                 carrier = Some(Carrier::Thing(things.len()));
                 let cognitive_params: std::collections::HashMap<String, f64> = numbers.into_iter().collect();
@@ -2481,6 +2580,10 @@ pub fn parse_sl_full(text: &str) -> Result<SlParse, Vec<SlError>> {
                         Managed::Param(p) => Some(p.clone()),
                         Managed::Process(_) => None,
                     },
+                    watches_flow: match watched {
+                        Watched::Flow(relation) => Some(relation),
+                        Watched::Stock(_) => None,
+                    },
                     interface: false,
                     passway: false,
                     protocol: String::new(),
@@ -2497,8 +2600,13 @@ pub fn parse_sl_full(text: &str) -> Result<SlParse, Vec<SlError>> {
                 // The tap and the command wire, drawn from the line (ADR 0008
                 // D5). Both informational: a tap reads a level without draining
                 // it, and a command is a message the managed process gates on.
-                // The command form draws no wire: its command is a knob write.
-                let mut drawn = vec![(stock_id, agent_id, "reading")];
+                // The command form draws no wire: its command is a knob write,
+                // and a flow watch draws no tap: the flow it reads is already
+                // declared, and reading it takes nothing from it (spec v1.14).
+                let mut drawn = match watched {
+                    Watched::Stock(stock_id) => vec![(stock_id, agent_id, "reading")],
+                    Watched::Flow(_) => Vec::new(),
+                };
                 if let Some(proc_id) = proc_id {
                     drawn.push((agent_id, proc_id, "command"));
                 }
@@ -4192,12 +4300,23 @@ pub fn emit_sl_with(model: &CanvasModel, layout: Option<&SlLayout>) -> Result<St
     };
     // The command form (ADR 0008 D1) draws no command wire: `manages param`
     // names the knob, so only the tap is required of it.
-    let agent_wires = |t: &Thing| -> Result<(u64, Option<u64>), String> {
+    // What an agent line names: the stock its tap reads (`None` for a flow
+    // watch, spec v1.14, which draws no tap) and the process its command wire
+    // reaches (`None` for the command form, which draws no wire).
+    let agent_wires = |t: &Thing| -> Result<(Option<u64>, Option<u64>), String> {
         let tap = model.relations.iter().find(|r| r.is_bond && r.b == t.id);
         let cmd = model.relations.iter().find(|r| r.is_bond && r.a == t.id);
-        match (tap, cmd, t.manages_param.is_some()) {
-            (Some(tap), Some(cmd), false) => Ok((tap.a, Some(cmd.b))),
-            (Some(tap), _, true) => Ok((tap.a, None)),
+        match (tap, cmd, t.manages_param.is_some(), t.watches_flow.is_some()) {
+            (Some(tap), Some(cmd), false, false) => Ok((Some(tap.a), Some(cmd.b))),
+            (Some(tap), _, true, false) => Ok((Some(tap.a), None)),
+            (None, Some(cmd), false, true) => Ok((None, Some(cmd.b))),
+            (None, _, true, true) => Ok((None, None)),
+            (Some(_), _, _, true) => Err(format!(
+                "`{}` is an agent that watches a flow and also has an observation tap — an \
+                 agent reads one thing, so it is not expressible in SL; export the model as \
+                 kernel JSON instead",
+                t.name
+            )),
             _ => Err(format!(
                 "`{}` is an agent with no observation tap or no command wire — the agent \
                  line draws both, so it is not expressible in SL; export the model as kernel \
@@ -4209,7 +4328,10 @@ pub fn emit_sl_with(model: &CanvasModel, layout: Option<&SlLayout>) -> Result<St
     // A command-form agent names a param, and a param comes after the flows
     // it anchors, so the line is emitted after the params block (its own
     // field params, which name the agent, after it in turn).
-    let commands_a_param = |t: &Thing| t.rule.is_some() && t.manages_param.is_some();
+    // A flow-watching agent (spec v1.14) names a flow, which is declared
+    // after the things, so it waits for the same slot.
+    let commands_a_param =
+        |t: &Thing| t.rule.is_some() && (t.manages_param.is_some() || t.watches_flow.is_some());
     let order: Vec<&Thing> = {
         let mut emitted: std::collections::HashSet<u64> = std::collections::HashSet::new();
         let mut order: Vec<&Thing> = Vec::with_capacity(model.things.len());
@@ -4220,7 +4342,7 @@ pub fn emit_sl_with(model: &CanvasModel, layout: Option<&SlLayout>) -> Result<St
             }
             if t.rule.is_some() {
                 let (stock, proc) = agent_wires(t)?;
-                if emitted.contains(&stock) && proc.is_some_and(|p| emitted.contains(&p)) {
+                if stock.is_some_and(|s| emitted.contains(&s)) && proc.is_some_and(|p| emitted.contains(&p)) {
                     order.push(t);
                     emitted.insert(t.id);
                 } else {
@@ -4281,14 +4403,22 @@ pub fn emit_sl_with(model: &CanvasModel, layout: Option<&SlLayout>) -> Result<St
                 ));
             };
             lead(out, &anchor);
-            write!(
-                out,
-                "agent {} watches {} rule {}",
-                name_token(&t.name)?,
-                name_token(&name_of(stock)?)?,
-                rule.word()
-            )
-            .unwrap();
+            let watches = match (t.watches_flow, stock) {
+                (Some(relation), _) => {
+                    let r = model.relations.iter().find(|r| r.id == relation).ok_or_else(|| {
+                        format!("`{}` watches relation {relation}, which names no flow", t.name)
+                    })?;
+                    let mut w = format!("flow {} -> {}", name_token(&name_of(r.a)?)?, name_token(&name_of(r.b)?)?);
+                    if !r.name.is_empty() {
+                        w.push(' ');
+                        w.push_str(&quote(&r.name)?);
+                    }
+                    w
+                }
+                (None, Some(stock)) => name_token(&name_of(stock)?)?,
+                (None, None) => unreachable!("agent_wires requires a tap or a flow watch"),
+            };
+            write!(out, "agent {} watches {} rule {}", name_token(&t.name)?, watches, rule.word()).unwrap();
             for (w, v) in spelled {
                 // A table's bag words carry the bin's number; the line does not.
                 let w = w.trim_end_matches(|c: char| c.is_ascii_digit());

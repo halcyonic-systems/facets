@@ -52,6 +52,7 @@ fn thing(id: u64, name: &str, role: Role) -> Thing {
         primitive: None,
         rule: None,
         manages_param: None,
+        watches_flow: None,
         interface: false,
         passway: false,
         protocol: String::new(),

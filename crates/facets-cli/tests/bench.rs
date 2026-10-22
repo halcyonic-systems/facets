@@ -407,3 +407,47 @@ fn the_command_form_acts_one_day_after_the_signal_form_and_pins_to_its_controls(
     assert_eq!(d["written"], 1.0);
     assert!((d["reading"].as_f64().unwrap() - 0.413975).abs() < 1e-6);
 }
+
+/// The feedforward form (spec v1.14, ADR 0008 D5) from the terminal: the
+/// compensator watches the supply, not the room. A step in the supply at
+/// hour 12 reaches the room for exactly one hour (the reading is the last
+/// completed tick's delivery), then the switch halves and the room relaxes
+/// back toward its level; pinned open, the same room climbs toward twice
+/// it. The numbers are the README's.
+#[test]
+fn the_feedforward_compensator_reads_the_supply_and_holds_the_room() {
+    let run = |extra: &[&str]| -> serde_json::Value {
+        let mut args = vec![
+            "bench",
+            "assets/bench/thermostat-feedforward.sl",
+            "--t",
+            "24",
+            "--no-log",
+            "--set",
+            "electricity|Grid|Mains=4@12",
+        ];
+        args.extend_from_slice(extra);
+        let out = facets(&args);
+        assert_eq!(code(&out), 0, "{}", stderr(&out));
+        stdout_json(&out)
+    };
+    let series = |v: &serde_json::Value, name: &str| -> Vec<f64> {
+        v["trajectories"].as_array().unwrap().iter().find(|t| t["name"] == name).unwrap()["series"]
+            .as_array().unwrap().iter().map(|x| x.as_f64().unwrap()).collect()
+    };
+    let near = |a: f64, b: f64| (a - b).abs() < 1e-3;
+
+    let v = run(&[]);
+    assert_eq!(v["conserved"], true);
+    let cmd = series(&v, "Compensator");
+    assert!(cmd[..13].iter().all(|&x| x == 1.0) && cmd[13..].iter().all(|&x| x == 0.5), "{cmd:?}");
+    let room = series(&v, "Room");
+    assert!(room[..12].iter().all(|&r| r == 10.0), "{room:?}");
+    assert!(near(room[12], 12.0) && near(room[13], 11.6) && near(room[23], 10.1718), "{room:?}");
+
+    let v = run(&["--set", "Compensator.above=8"]);
+    assert_eq!(v["conserved"], true);
+    assert!(series(&v, "Compensator").iter().all(|&x| x == 1.0));
+    let room = series(&v, "Room");
+    assert!(near(room[12], 12.0) && near(room[13], 13.6) && near(room[23], 19.3132), "{room:?}");
+}
