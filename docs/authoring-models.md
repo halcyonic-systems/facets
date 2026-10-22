@@ -45,8 +45,13 @@ D1) writes a declared `param` of the same file at the end of each tick,
 which the next tick runs under, so the inputs rail shows that knob as set by
 the agent. The param is a flow amount with a range or the shares of a two-way
 split, declared before the agent, and the rule's commands must fit its range.
-The bench shelf carries one witness per rule against its control, and the
-quota fishery in both forms (`assets/bench/README.md`).
+An agent reads one of two things: `watches <stock>` reads the stock's level;
+`watches flow <a> -> <b> ["label"]` (spec v1.14) reads what that physical flow
+delivered on the last completed tick, the feedforward form, which measures an
+input before it reaches a level. The flow is declared above the agent, and the
+canvas draws the reading as a dotted line from the flow to the agent.
+The bench shelf carries one witness per rule against its control, the quota
+fishery in both forms, and the feedforward room (`assets/bench/README.md`).
 
 ## What actually makes a model run
 

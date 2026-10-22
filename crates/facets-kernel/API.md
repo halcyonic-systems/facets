@@ -929,3 +929,25 @@ old-tag file now runs on one kept copy, `fixtures/format-tag/steel-plant-level-2
 (the steel plant's level 2 as stored on 2026-10-11), through
 `crates/facets-kernel/tests/format_tag.rs` and `web/src/archiveTag.kernel.test.ts`.
 No signature changed.
+
+## SL surface, v1.14: an agent may watch a flow (appended 2026-10-21, #523)
+
+`compile_sl` / `emit_sl` gained, with no signature change, the feedforward
+reading (ADR 0008 D5; spec §4.7): `agent <name> watches flow <a> -> <b>
+["label"] rule <rule> manages …`. The agent reads what that physical flow
+delivered on the last completed tick, instead of a stock's level, and no tap
+is drawn. What crosses the boundary, every field optional and skipped when
+absent, so every earlier model and every golden is byte-identical:
+
+- `Thing.watches_flow?: number`, the relation id of the watched flow
+  (`web/src/kernel/types.ts`).
+- `AgentModel.observation`, `{"reads": "flow", "flow": <interaction id>}`, in
+  the kernel JSON a `project` returns and `to_canvas` reads back.
+- `OperationalAgent.observation`, the same resolved to a position in the
+  spec's `flows`, which is the wire the executor reads.
+
+The Review check `agent_unwired` counts a valid flow watch as the agent's
+reading, and reports a flow watch beside a stock tap as an Error ("an agent
+reads one thing"). `emit_sl` writes a flow-watching agent after the params that
+do not name it, where the command form already sits, since the flow it names
+is declared after the things.
