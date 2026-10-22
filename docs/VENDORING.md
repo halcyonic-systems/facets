@@ -1,4 +1,4 @@
-# Vendoring — where `bert-core` and `bert-compose` came from
+# Vendoring — where `facets-core` and `facets-compose` came from
 
 **Status: LIVE.** The provenance record for the two vendored crates: the branch point, what was changed on the way in, how far the copies have drifted, and what happens when upstream moves. Written to answer one question mechanically — *what here is ours?* (#234 F13.)
 
@@ -10,7 +10,7 @@
 | **Branch-point commit** | **`40de7a7203ef3aa6300f72d7f37bc5a2e93c70ee`** |
 | | *feat(compose): carry dt_stride across the seam — a slow channel's Δt survives to the wire […]* · 2026-07-14 17:06 −0400 |
 | **Vendored in** | `5175835eb486fca0deb023645698761676db59cb` — *feat: rebuild bert-lenses web-first — self-contained wasm kernel (Phase 0)* · 2026-07-14 19:56 −0400 |
-| **Crates taken** | `bert-core`, `bert-compose` |
+| **Crates taken** | `bert-core`, `bert-compose` (here `facets-core` and `facets-compose` since #541; below, the names are upstream's and the vendoring commit's) |
 
 **Established by content, not by timestamp.** Comparing the vendored `facets-compose/src/circuit.rs` against upstream candidates from that day: `40de7a7` and its parent differ by 12 lines, the commit before that by 79, and the one before that by 179. The minimal-diff commit that is also the last one touching either crate before the vendoring is the branch point. (`facets-core/src/lib.rs` was stable across all four candidates and cannot discriminate on its own — its constant 49-line delta is the vendoring edit, not upstream drift.)
 

@@ -23,7 +23,7 @@ const MODEL_OPTIONS: { label: string; value: string }[] = [
 ];
 
 type Coverage = { asks: number; kernel_findings: number; llm_findings: number };
-const COVERAGE_KEY = "bert-lenses.analysis-coverage";
+const COVERAGE_KEY = "facets.analysis-coverage";
 const ZERO_COVERAGE: Coverage = { asks: 0, kernel_findings: 0, llm_findings: 0 };
 
 function loadCoverage(): Coverage {

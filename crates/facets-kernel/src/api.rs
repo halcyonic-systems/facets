@@ -353,7 +353,7 @@ pub fn validate_mode(model_json: &str, mode: &str) -> Result<JsValue, JsError> {
     to_js(&facets_core::validate::validate_mode(&model, m))
 }
 
-/// Project the canvas editing model (lens/things/relations) into a bert-core
+/// Project the canvas editing model (lens/things/relations) into a facets-core
 /// `WorldModel`. The canvas never builds a WorldModel itself — it sends its
 /// editing model and the kernel constructs the projection.
 #[wasm_bindgen]
@@ -372,7 +372,7 @@ pub fn to_canvas(model_json: &str) -> Result<JsValue, JsError> {
     // Step 4 (bert-lenses#89) lifted the `assert_sl_expressible` guard that used
     // to refuse a decomposed model here: `to_canvas` now preserves `child_model`
     // as a `ChildRef`, and SL's `decomposes` clause expresses it, so the seam is
-    // no longer lossy. The predicate survives in bert-core for callers that want
+    // no longer lossy. The predicate survives in facets-core for callers that want
     // to test flatness.
     to_js(&facets_canvas::canvas::to_canvas(&model))
 }
@@ -792,7 +792,7 @@ mod tests {
 
     // ---- serde↔TS contract fixtures (run-family boundary DTOs) --------------
     //
-    // The canvas-family shapes are fixtured from bert-canvas (tests/contract.rs).
+    // The canvas-family shapes are fixtured from facets-canvas (tests/contract.rs).
     // These cover the DTOs that live HERE — the ones api.rs assembles as it
     // marshals a run back to JS. Each is built from a REAL kernel path (a forced
     // reservoir run, the runnable sample, a CSV parse), serialized to the
@@ -802,7 +802,7 @@ mod tests {
     // Regenerate after an intentional shape change:
     //   BLESS_FIXTURES=1 cargo test -p facets-kernel --lib
 
-    /// Write-or-assert a committed contract fixture (shared with bert-canvas's
+    /// Write-or-assert a committed contract fixture (shared with facets-canvas's
     /// tests/contract.rs). `BLESS_FIXTURES=1` rewrites; otherwise drift fails.
     fn check_fixture<T: Serialize>(name: &str, value: &T) {
         let dir = concat!(env!("CARGO_MANIFEST_DIR"), "/../../fixtures/contract");
@@ -1104,7 +1104,7 @@ mod tests {
     }
 
     // Mint a bundled EXECUTABLE sample model for the web smoke slice's run()
-    // demo, by round-tripping a bert-compose ladder circuit (built runnable) out
+    // demo, by round-tripping a facets-compose ladder circuit (built runnable) out
     // to a WorldModel. Run with:
     //   cargo test -p facets-kernel mint_runnable_sample -- --ignored --nocapture
     #[test]

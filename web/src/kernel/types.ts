@@ -27,7 +27,7 @@ declare const KERNEL_VERDICT: unique symbol;
 export interface VerdictFields {
   severity: Severity;
   /** The defect KIND this issue is one instance of, named by the kernel
-   *  (`bert_core::validate::ValidationIssue::code`, #319). Two issues share a
+   *  (`facets_core::validate::ValidationIssue::code`, #319). Two issues share a
    *  code iff the kernel says they are the same defect, which is what makes
    *  grouping repeats safe: the face groups on this and never on message text. */
   code: string;
@@ -36,7 +36,7 @@ export interface VerdictFields {
   suggestion: string | null;
   /** Stable doc anchor for the precondition this issue cites (#129): a
    *  repo-relative docs path + heading anchor, chosen by the kernel
-   *  (`bert_core::validate::doc`). The face only turns it into a link. */
+   *  (`facets_core::validate::doc`). The face only turns it into a link. */
   doc: string | null;
 }
 
@@ -195,7 +195,7 @@ export interface WireFlux {
 /** One agent's decision on one tick (ADR 0008's decisions column): the
  *  policy chose `output` from `reading`, and it landed on `knob` — a declared
  *  param in the command form, the managed process in the signal form — as
- *  `written`. Mirrors `DecisionLog` in bert-tether. */
+ *  `written`. Mirrors `DecisionLog` in facets-tether. */
 export interface DecisionLog {
   agent: string;
   reading: number;
@@ -431,7 +431,7 @@ export interface MilieuVar {
  *  `project` once a relation on the same environment thing, in the same
  *  direction, of the same kind exists. Never authored in SL: derived from the
  *  parent, listed by `emit_sl` as comments, carried by the editor across a
- *  text compile. Mirrors `bert_canvas::canvas::Crossing`. */
+ *  text compile. Mirrors `facets_canvas::canvas::Crossing`. */
 export interface Crossing {
   /** The environment thing standing in for the parent-side counterparty. */
   env: number;
@@ -698,7 +698,7 @@ export interface IssueTarget {
   relation: number | null;
   /** How many canvas relations touch `thing` that this verdict did not consider,
    *  because the author drew them `mere` and mere relations do not bond (#320).
-   *  Kernel-computed in `bert_canvas::lenses::analyze` off the same predicate
+   *  Kernel-computed in `facets_canvas::lenses::analyze` off the same predicate
    *  `EdgeFact.bond` carries; the face only says the number out loud. */
   disregarded_relations: number;
 }

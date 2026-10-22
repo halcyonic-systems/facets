@@ -68,7 +68,7 @@ mod exit {
     // through the `bert` alias (`src/bert_alias.rs`).
     bin_name = "facets",
     version,
-    about = "Ask the bert-lenses kernel about a model, from a shell.",
+    about = "Ask the facets kernel about a model, from a shell.",
     long_about = "Compile SL, read the verdict under any lens, typeset the formal object, \
                   run the trajectory, or read the layout — as JSON on stdout.\n\n\
                   Exit codes: 0 ok · 1 internal · 2 usage · 3 the input did not compile \

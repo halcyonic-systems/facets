@@ -1,4 +1,4 @@
-//! bert-compose — the executable dynamical face, vendored engine-only.
+//! facets-compose — the executable dynamical face, vendored engine-only.
 //!
 //! This is the self-contained web-first vendoring of the compose engine: the
 //! `circuit` physics (all conservation, no UI), the `export` JSON seam (both

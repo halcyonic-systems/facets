@@ -20,7 +20,7 @@
 //!   its computed/mean rate — a boundary condition, `F(t)` on the RHS. The
 //!   human-facing word for this is **"drive"** (the wizard checkbox, the blurbs);
 //!   the field stays `force` internally + in the manifest contract.
-//! - **Mobus `InteractionType::Force`** (bert-core): an *ontological* flow type —
+//! - **Mobus `InteractionType::Force`** (facets-core): an *ontological* flow type —
 //!   a flow whose rate is a potential gradient (`rate = k·Δ`, needs a
 //!   `conductance`). Nothing to do with the above. Never relabel this one.
 

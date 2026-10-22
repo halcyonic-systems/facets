@@ -18,7 +18,7 @@ export type ModelContext = {
   world: unknown | null;
   /** analyzeCanvas output, verbatim. The kernel's verdict IS the context. */
   analysis: CanvasAnalysis;
-  provenance: { generated_at: string; source: "bert-lenses" };
+  provenance: { generated_at: string; source: "facets" };
 };
 
 /** Pure assembly: one analyzeCanvas call + one guarded project call. */
@@ -36,7 +36,7 @@ export function buildModelContext(model: CanvasModel): ModelContext {
     system_type: model.system_type,
     world,
     analysis,
-    provenance: { generated_at: new Date().toISOString(), source: "bert-lenses" },
+    provenance: { generated_at: new Date().toISOString(), source: "facets" },
   };
 }
 

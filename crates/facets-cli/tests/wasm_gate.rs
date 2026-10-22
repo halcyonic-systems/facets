@@ -8,7 +8,7 @@
 //! gate now skips things" would arrive as a diff nobody read.
 //!
 //! So the exclusion is not a comment, it is a check. Both places that run the
-//! workspace wasm build must exclude `bert-cli` and NOTHING else, and every
+//! workspace wasm build must exclude `facets-cli` and NOTHING else, and every
 //! other workspace member must still be inside the gate.
 //!
 //! Separating instance: add a second `--exclude`, or drop the one that is

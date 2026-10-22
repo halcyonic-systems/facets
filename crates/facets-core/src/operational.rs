@@ -4,7 +4,7 @@
 //! [`OperationalError`]s. There is no partial projection: a model that loses
 //! information on the way to execution is rejected, not trimmed.
 //!
-//! This lifts the gate that previously lived implicitly in bert-compose's
+//! This lifts the gate that previously lived implicitly in facets-compose's
 //! `from_world_model` error paths into the kernel crate, so any executor
 //! (compose today, Mesa via the bridge, others later) checks the same
 //! contract. Representational modes fail loudly by design: Klir's Core and

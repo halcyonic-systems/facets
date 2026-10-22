@@ -1,4 +1,4 @@
-# bert-lenses tasks. Rust is the brain (wasm), web/ is the face.
+# facets tasks. Rust is the brain (wasm), web/ is the face.
 # A crate change must never silently serve stale wasm to web/ — `wasm` rebuilds
 # the pkg, and `check` runs the full gate suite the CI enforces.
 
@@ -20,7 +20,7 @@ preflight:
     ok()   { printf '  ok      %s\n' "$1"; }
     gone() { printf '  MISSING %s\n            %s\n' "$1" "$2"; missing=$((missing+1)); }
 
-    echo "bert-lenses preflight"
+    echo "facets preflight"
     echo
 
     have python3 && ok "python3          (doc_lint.py — the first step of \`just check\`)" \

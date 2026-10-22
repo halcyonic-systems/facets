@@ -34,7 +34,7 @@ MUTATIONS = [
         [("crates/facets-compose/src/circuit.rs",
           "NodeKind::Source => dt * self.source_emission(i) * bp_factor_of(i, &act),",
           "NodeKind::Source => self.source_emission(i) * bp_factor_of(i, &act),")],
-        ["-p", "bert-canvas", "--test", "dt_invariance"],
+        ["-p", "facets-canvas", "--test", "dt_invariance"],
         "per-tick flux consumption — a rate applied once per step regardless of Δt (#258)",
     ),
     (
@@ -42,7 +42,7 @@ MUTATIONS = [
         [("crates/facets-compose/src/circuit.rs",
           "let idx = ((self.time / stride) as usize).min(series.len() - 1);",
           "let idx = ((self.tick as f32 / stride) as usize).min(series.len() - 1);")],
-        ["-p", "bert-compose", "--lib", "forced_series_is_anchored_to_model_time"],
+        ["-p", "facets-compose", "--lib", "forced_series_is_anchored_to_model_time"],
         "forced series consumed per tick instead of per time unit (#258)",
     ),
     (
@@ -50,22 +50,22 @@ MUTATIONS = [
         [("crates/facets-compose/src/circuit.rs",
           "        let Ok(order) = self.eval_order() else {\n            return;\n        };",
           "        let order: Vec<usize> = (0..self.nodes.len()).collect();")],
-        ["-p", "bert-compose", "--lib", "relay_is_instantaneous_within_a_step"],
+        ["-p", "facets-compose", "--lib", "relay_is_instantaneous_within_a_step"],
         "index-order evaluation — the per-hop register delay wires never authored (#259)",
     ),
     (
         "amount-hardcode",
         [("crates/facets-canvas/src/canvas.rs",
-          "amount: r.amount.unwrap_or(bert_core::rust_decimal::Decimal::ONE),",
-          "amount: bert_core::rust_decimal::Decimal::ONE,")],
-        ["-p", "bert-canvas", "--test", "canvas_round_trip"],
+          "amount: r.amount.unwrap_or(facets_core::rust_decimal::Decimal::ONE),",
+          "amount: facets_core::rust_decimal::Decimal::ONE,")],
+        ["-p", "facets-canvas", "--test", "canvas_round_trip"],
         "project() dropping the authored flow magnitude (#216 B2 — the rate-1.0 cap)",
     ),
     (
         "bags-dropped",
         [("crates/facets-canvas/src/canvas.rs",
           "agent.cognitive_params = t.cognitive_params.clone();", "")],
-        ["-p", "bert-canvas", "--test", "canvas_round_trip"],
+        ["-p", "facets-canvas", "--test", "canvas_round_trip"],
         "the canvas discarding engine params on projection (#216 — reservoir loses release_rate)",
     ),
     (
@@ -73,7 +73,7 @@ MUTATIONS = [
         [("crates/facets-canvas/src/canvas.rs",
           "agency_capacity: s.agent.as_ref().map(|a| a.agency_capacity),",
           "agency_capacity: None,")],
-        ["-p", "bert-canvas", "--test", "canvas_round_trip"],
+        ["-p", "facets-canvas", "--test", "canvas_round_trip"],
         "to_canvas() reverting a Modulating factor to the 0.5 default (#216 — homeostat)",
     ),
     (
@@ -81,7 +81,7 @@ MUTATIONS = [
         [("crates/facets-canvas/src/sl.rs",
           "ENV_RADIUS.max(center_offset + membrane_max + NODE_R + CLEARANCE)",
           "ENV_RADIUS")],
-        ["-p", "bert-canvas", "--test", "layout_truthful"],
+        ["-p", "facets-canvas", "--test", "layout_truthful"],
         "the pinned env ring drawing environment nodes ON the membrane (#216 E1 — C ∩ E ≠ ∅ in pictures)",
     ),
     (
@@ -89,14 +89,14 @@ MUTATIONS = [
         [("crates/facets-canvas/src/sl.rs",
           "2 => ring(slot, 2, COMPONENT_RADIUS, PI),",
           "2 => ring(slot, 2, COMPONENT_RADIUS, -FRAC_PI_2),")],
-        ["-p", "bert-canvas", "--test", "layout_truthful"],
+        ["-p", "facets-canvas", "--test", "layout_truthful"],
         "two-component models collapsing to one vertical line (#216 E2)",
     ),
     (
         "directed-unasserted",
         [("assets/corpus/bunge/two-thing-ab.sl", "@directed 1\n@directed 2", ""),
          ("assets/corpus/bunge/two-thing-ba.sl", "@directed 1\n@directed 2", "")],
-        ["-p", "bert-canvas", "--test", "cross_lens", "entries_sharing"],
+        ["-p", "facets-canvas", "--test", "cross_lens", "entries_sharing"],
         "BOTH two-thing twins undirected — a▷b and b▷a collapse to one describe() output (#216 D1/G2)",
     ),
     (
@@ -104,7 +104,7 @@ MUTATIONS = [
         [("crates/facets-core/src/validate.rs",
           "if !enters && !leaves {",
           "if true {")],
-        ["-p", "bert-core", "--lib", "crossing_flow_without_interface"],
+        ["-p", "facets-core", "--lib", "crossing_flow_without_interface"],
         "the pre-#216 kernel, where a crossing flow could enter anywhere and I was inferred, not authored (A2)",
     ),
     (
@@ -112,7 +112,7 @@ MUTATIONS = [
         [("crates/facets-canvas/src/sl.rs",
           '(Role::Environment, EnvKind::Sink) => "sink",',
           '(Role::Environment, EnvKind::Sink) => "source",')],
-        ["-p", "bert-canvas", "--test", "environment_kind"],
+        ["-p", "facets-canvas", "--test", "environment_kind"],
         "emit_sl guessing the environment word from flow direction (#216 Wave 3 — `sink Drain` → `source Drain`)",
     ),
     (
@@ -120,7 +120,7 @@ MUTATIONS = [
         [("crates/facets-compose/src/export.rs",
           "            // stay the uniform split, byte-for-byte.\n            wire.rate = Some(f.amount as f32);",
           "            // stay the uniform split, byte-for-byte.\n            let _ = f.amount;")],
-        ["-p", "bert-canvas", "--test", "llm_market", "serving_shares_track_declared_weights"],
+        ["-p", "facets-canvas", "--test", "llm_market", "serving_shares_track_declared_weights"],
         "from_spec dropping process-outflow amounts — declared Splitting shares silently run uniform (llm-market)",
     ),
     (
@@ -128,7 +128,7 @@ MUTATIONS = [
         [("crates/facets-compose/src/circuit.rs",
           "            if matches!(sender.kind, NodeKind::Source) {\n                if let Some(r) = self.wire_declared_rate(k) {\n                    return self.crossing_factor(w.from) * r;\n                }\n            }\n            return sender_activity;",
           "            return sender_activity;")],
-        ["-p", "bert-canvas", "--test", "source_signal_rate"],
+        ["-p", "facets-canvas", "--test", "source_signal_rate"],
         "a multi-outflow Message source signaling at the default rate — its declared emission ignored (the two-rate rig; llm-market's signals are all ample, so its trace cannot see this)",
     ),
 ]

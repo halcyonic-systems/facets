@@ -114,7 +114,7 @@ describe("the choice persists and is announced", () => {
   });
 
   it("falls back to system when the stored value is not a choice", () => {
-    localStorage.setItem("bert-lenses.theme", "sepia");
+    localStorage.setItem("facets.theme", "sepia");
     expect(initTheme()).toBe("system");
     expect(documentElement.hasAttribute("data-theme")).toBe(false);
   });
@@ -153,7 +153,7 @@ describe("the choice holds when storage throws", () => {
     expect(documentElement.getAttribute("data-theme")).toBe("dark");
     expect(seen).toEqual(["dark"]);
     // Persistence is the one thing lost: a fresh session sees no stored choice.
-    expect(localStorage.getItem("bert-lenses.theme")).toBeNull();
+    expect(localStorage.getItem("facets.theme")).toBeNull();
     resetThemeForTest();
     expect(initTheme()).toBe("system");
   });

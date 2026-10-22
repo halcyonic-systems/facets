@@ -1,7 +1,7 @@
 {
   "name": "sl-language",
   "displayName": "SL (Systems Language)",
-  "description": "Syntax highlighting for SL, the bert-lenses systems language.",
+  "description": "Syntax highlighting for SL, the facets systems language.",
   "version": "0.1.0",
   "publisher": "halcyonic",
   "license": "MIT",

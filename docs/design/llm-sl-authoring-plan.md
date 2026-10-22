@@ -55,7 +55,7 @@ Sequence: **Rung 0 (canvas preview/accept) → Rung 1 (single draft) → [#148: 
 
 The goal is *make the model work as little as possible to do the job right* — push correctness into the harness so a small **local** model suffices, and only the plausibility is asked of the weights. Two findings and a stack.
 
-**Finding 1 — the best local model already clears the free-form bar.** A live probe (2026-07-23, `scratchpad/sl_probe.sh` → the headless `bert-canvas --example slcheck` legality checker) handed local models a *fresh* system not in the corpus (a thermostat/furnace control loop), the compact grammar, and the two teaching fixtures as few-shots. **`gemma4:12b` emitted valid SL first try** — `OK things=5 relations=4`, and *modeled it well*: Sensor as a `Sensing` primitive, informational flows for the control loop, `matter` for gas, `energy` for heat leakage. So the floor is met by a 7.6 GB local model with **few-shots + compact grammar alone** — no grammar-constrained decoding required to get a legal, sensible draft. (`ornith` returned empty/flaky; `qwen3:32b` = the heavier reasoner fallback.)
+**Finding 1 — the best local model already clears the free-form bar.** A live probe (2026-07-23, `scratchpad/sl_probe.sh` → the headless `facets-canvas --example slcheck` legality checker) handed local models a *fresh* system not in the corpus (a thermostat/furnace control loop), the compact grammar, and the two teaching fixtures as few-shots. **`gemma4:12b` emitted valid SL first try** — `OK things=5 relations=4`, and *modeled it well*: Sensor as a `Sensing` primitive, informational flows for the control loop, `matter` for gas, `energy` for heat leakage. So the floor is met by a 7.6 GB local model with **few-shots + compact grammar alone** — no grammar-constrained decoding required to get a legal, sensible draft. (`ornith` returned empty/flaky; `qwen3:32b` = the heavier reasoner fallback.)
 
 **Finding 2 — the kernel already carries the correctness the model would otherwise have to.** `parse_sl_full` is deterministic and its errors *name the fix* (`unknown keyword \`x\` (system, domain, time, component, source, sink, environment, flow, boundary)`). That turns robustness into a cheap loop, not a smarter model.
 
@@ -102,7 +102,7 @@ later upgrade once the one-shot loop is proven in daily use.
 
 **History persists across reloads:** `coauthorTurns` (description, SL,
 status: previewing/accepted/discarded/compile-error/network-error) is kept
-in `localStorage` (`bert-lenses.coauthor-turns`, `web/src/coauthor.ts`), no
+in `localStorage` (`facets.coauthor-turns`, `web/src/coauthor.ts`), no
 cap. A generous soft cap is a one-line addition if the list grows unwieldy;
 not needed yet.
 

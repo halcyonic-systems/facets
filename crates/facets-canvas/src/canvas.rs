@@ -1,5 +1,5 @@
 //! The canvas authoring seam — the lightweight editing model the canvas holds,
-//! and its projection into a bert-core `WorldModel` for validation.
+//! and its projection into a facets-core `WorldModel` for validation.
 //!
 //! Like the old egui app, the canvas keeps its OWN model (things/relations/lens)
 //! and holds zero formalism: the lens is a *view*, mere-relations (B̄) and
@@ -279,7 +279,7 @@ pub struct Thing {
     pub initial_state: std::collections::HashMap<String, serde_json::Value>,
     /// [`AgentModel::agency_capacity`], carried opaquely with the bags (#216):
     /// the operational spec reads it as the process's engine parameter
-    /// (`node.param` in bert-compose), so dropping it changed a Modulating
+    /// (`node.param` in facets-compose), so dropping it changed a Modulating
     /// valve's factor from an authored 0.2 to the 0.5 default and the run with
     /// it. `None` = unauthored; only projection supplies the kernel default.
     #[serde(default, skip_serializing_if = "Option::is_none")]
@@ -367,7 +367,7 @@ fn default_true() -> bool {
 
 /// Authored boundary properties — B's P = ⟨porosity, perceptive_fuzziness⟩ for
 /// the ROOT system's membrane (the canvas is single-root). 0.0 = unauthored,
-/// matching bert-core's defaults; the palette's boundary inspector writes these
+/// matching facets-core's defaults; the palette's boundary inspector writes these
 /// and `project` carries them into the root boundary instead of hardcoding 0.0.
 #[derive(Serialize, Deserialize, Clone, Copy, Debug, Default, PartialEq)]
 pub struct CanvasBoundaryProps {
@@ -856,7 +856,7 @@ fn info(id: Id, level: i32, name: &str) -> Info {
     described(id, level, name, "")
 }
 
-/// `Info` has carried a `description` since bert-core's first version, and
+/// `Info` has carried a `description` since facets-core's first version, and
 /// until #326 every one built here got an empty string — the kernel kept the
 /// slot and the authoring surface never reached it. This is the reaching.
 /// Structural nodes with no author behind them (the boundary, the environment
@@ -934,7 +934,7 @@ pub struct Projection {
     pub interaction_of: std::collections::HashMap<u64, Id>,
 }
 
-/// Project the canvas model into a bert-core `WorldModel`, mode-stamped by the
+/// Project the canvas model into a facets-core `WorldModel`, mode-stamped by the
 /// lens. Only bonds project to interactions; an environment thing projects only
 /// if a bond touches it (originates one → Source, else Sink). Port of the old
 /// `to_world_model_with` (structure only; CSV params are the tether's job).
@@ -1176,7 +1176,7 @@ pub fn project_with_map(model: &CanvasModel) -> Projection {
                 // — sources and sinks are separate arrays — so a mediator must still
                 // be filed on one side. Filing it is harmless; what was harmful was
                 // treating the filing as an authored claim and refusing flows that
-                // contradicted it. `check_flow_direction` in bert-core now gates on
+                // contradicted it. `check_flow_direction` in facets-core now gates on
                 // `authored_direction`, so a Neutral thing accepts both.
                 let is_source = match t.env_kind {
                     EnvKind::Source => true,

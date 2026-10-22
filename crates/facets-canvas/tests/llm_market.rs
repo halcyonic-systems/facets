@@ -37,7 +37,7 @@
 //! archived single-run witness of the roster split; it stays at the digest's
 //! level while the parent's amounts are minted from the routed sensor's
 //! vintage (#534), so the levels are compared as shares, not as Gtok/day. The
-//! seam contract itself is pinned by bert-lenses-kernel's llm_market_walkthrough.
+//! seam contract itself is pinned by facets-kernel's llm_market_walkthrough.
 
 use facets_canvas::canvas::project;
 use facets_canvas::sl::parse_sl;

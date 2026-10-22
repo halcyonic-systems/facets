@@ -21,7 +21,7 @@ Mobus does not have one formal theory of dynamics. He has:
    and elsewhere he flatly asserts, "without formal proof," that any system can be
    represented as "a flow network where the nodes are work processes that observe
    the laws of conservation (mass and energy)" (10-model-archetypes.md:35). This
-   is the sentence bert-lenses inherited. It is stated as an assertion, not derived
+   is the sentence facets inherited. It is stated as an assertion, not derived
    from the 8-tuple or from Principle 4.
 3. Explicit, un-integrated **acknowledgment of alternative dynamics formalisms**
    (FSM, Markov chains) as legitimate but treated as a footnote-level aside, never
@@ -33,7 +33,7 @@ Mobus does not have one formal theory of dynamics. He has:
    confirms: this is Mobus's *implementation choice* for a description language
    (SL/sysXML), not a theoretical requirement derivable from the 8-tuple.
 
-So: the conservation-flow reading that bert-lenses runs today is **one of
+So: the conservation-flow reading that facets runs today is **one of
 Mobus's own claims**, but it is asserted rather than derived, sits alongside an
 explicit acknowledgment that FSM/Markov dynamics exist and are used in the same
 kinds of systems he's modeling, and his actual implementation mechanism (T as
@@ -135,7 +135,7 @@ process rule," Fig. 4.5), and a sixth, **Copying**, is introduced separately in
 > the original input (think of it as a template) and a copy of the pattern in
 > the second output (plus some waste from imprinting the pattern)."
 
-This is the conservation-flow vocabulary bert-compose's circuit engine runs on.
+This is the conservation-flow vocabulary facets-compose's circuit engine runs on.
 It is real, formal, and Mobus commits to it explicitly for **material/energy**
 transformation. See (e) below for why Copying already breaks a naive
 conservation-only reading.
@@ -225,7 +225,7 @@ can be based on all previous states" (line 419) — i.e., H is not causally
 inert; it can parametrize the transfer function (this is how he'd represent
 non-Markovian / path-dependent dynamics within the same 8-tuple). But he gives
 no formal mechanism for *how* H parametrizes T beyond that one sentence — it's
-asserted, not specified. This is an opening for bert-lenses: H-conditioned T is
+asserted, not specified. This is an opening for facets: H-conditioned T is
 explicitly licensed by Mobus but never formalized by him, so a principled
 generalization (H as a queryable trace that a transition function can read)
 would be extending the theory in a direction he pointed at but didn't build.
@@ -281,7 +281,7 @@ formalized.
 
 ## (e) Conservation vs. non-conserved dynamics — does Mobus commit, and does he break his own commitment?
 
-**The explicit conservation commitment** (this is the sentence bert-lenses
+**The explicit conservation commitment** (this is the sentence facets
 inherited):
 
 > "It is asserted, without formal proof, that any system, no matter how
@@ -363,7 +363,7 @@ citation gap, not resolving it by inference.**
 ontological vocabulary (Copying as an atomic process, T's form-agnostic
 definition, the informational-content-vs-physical-signal distinction in Fig.
 3.3) already contains the seeds of a non-conservation-only account. He never
-reconciles these. This is exactly the gap bert-lenses needs to fill with
+reconciles these. This is exactly the gap facets needs to fill with
 argument rather than more assertion.
 
 ---
@@ -473,7 +473,7 @@ Three load-bearing facts from the read, for whoever writes the position:
    (DLG/FSA transition history, agent memory, Boolean-network state traces) —
    Mobus already licenses "T conditioned on H" in one sentence but never built
    it out. That's an open formal slot, not an invention from scratch.
-3. **Mobus's own text warns against exactly the trap bert-lenses is in**:
+3. **Mobus's own text warns against exactly the trap facets is in**:
    treating one dynamics facet (SD-style flow) as if it covers the whole
    territory (2-principles:110). The fix is textually authorized by Mobus
    himself, even though he didn't take it in his own worked examples.

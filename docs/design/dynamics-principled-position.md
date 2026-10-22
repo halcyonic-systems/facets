@@ -19,7 +19,7 @@ here is marked. Confidence ratings: **HIGH** (verified primary source + survived
    support, satisfying the semigroup composition axiom (Mesarovic–Takahara Def 2.7,
    1975). A dynamics-*kind* is the shape of that family's codomain (its endofunctor).
    **Conservation is not a property of dynamics at all — it is an invariant declared on
-   the state space by the model.** bert-lenses today implements one dynamics-kind
+   the state space by the model.** facets today implements one dynamics-kind
    (deterministic self-map on ℝⁿ stocks with an additive conservation invariant) and has
    been mistaking that special case for the category. (HIGH)
 
@@ -89,7 +89,7 @@ Why MT beats the rivals at Layer 1: time is only linearly ordered (not ℝ), so 
 event-indexed FSA run and a continuous flow are the same kind of object; "dynamical" is
 *added structure* on a time system — the exact formal home for "Run = a mode
 transition"; and the semigroup axiom (step t→t′ then t′→t″ = step t→t″) is a
-mechanically checkable acceptance test for every mode bert-lenses ever ships.
+mechanically checkable acceptance test for every mode facets ever ships.
 Zargham–Shorish 2022 (GDS = {h, X}) is the citable modern restatement for engineers.
 
 **Restored per the coverage critique (its two High-severity findings):**
@@ -97,7 +97,7 @@ Zargham–Shorish 2022 (GDS = {h, X}) is the citable modern restatement for engi
 - **Hybrid automata** (Alur–Henzinger; read-external §6, VERIFIED) — continuous flow
   *within* a mode plus discrete jumps *between* modes as one formal object, with
   invariant/guard apparatus. This is the closest match in the entire corpus to
-  bert-lenses' actual requirement (a conservation engine and an FSA in one tool) and
+  facets' actual requirement (a conservation engine and an FSA in one tool) and
   the synthesis dropped it. Cost stated honestly: general reachability is undecidable,
   but a forward-stepping simulator lives comfortably in the decidable-enough zone
   (timed / initialized-rectangular subclasses). It slots under Layer 1 as the
@@ -248,7 +248,7 @@ the engine assumes.** The argument, post-critique:
 ## 4. The dynamics contract (the rules everything else hangs on)
 
 1. **Semigroup axiom as the kernel's dynamics contract** (MT Def 2.7 β): for every
-   mode bert-lenses ships, φ_{t′t″} ∘ φ_{tt′} = φ_{tt″}, checkable per engine
+   mode facets ships, φ_{t′t″} ∘ φ_{tt′} = φ_{tt″}, checkable per engine
    (property test: step twice = step once with doubled span, for deterministic kinds;
    Chapman–Kolmogorov in the Kleisli category for `Dist(X)`).
 2. **H is a record, never an input to T.** Mobus licenses H feeding back into T
@@ -264,7 +264,7 @@ the engine assumes.** The argument, post-critique:
    slice, and for a horizon that bounds no finite sequence of transitions. This is a
    precondition on `(Δt, T)`, not a numerical safety check, so it is refused with a
    verdict rather than clamped, defaulted, or repaired. **Where it lives:** in the engine,
-   at the point the run is constructed (`bert_compose::ticks_over`, which `RecordedRun::record_over`
+   at the point the run is constructed (`facets_compose::ticks_over`, which `RecordedRun::record_over`
    calls to derive its tick count) — never in a particular caller, because every door
    into a run must meet it. Callers may ask early for a legible refusal; they may not be
    the only place that asks. (HIGH — direct consequence of the MT Def 2.7 account above)
@@ -294,7 +294,7 @@ We reject the mechanism while keeping the theory, and the rejection is not taste
    JS rejects an engineering guess Mobus himself hedged, not a theorem. (VERIFIED)
 2. **Embedded scripts destroy checkability.** A script is opaque to every validator:
    the semigroup axiom, conservation ledgers, mode-transition witnesses, and the Lean
-   structural theorems can say nothing about arbitrary code. The entire bert-lenses
+   structural theorems can say nothing about arbitrary code. The entire facets
    premise — a deterministic kernel owning truth (`llm-integration-research.md §2`) —
    dies at the first `eval`.
 3. **Declaration subsumes the need.** Everything a per-element script legitimately
@@ -372,7 +372,7 @@ spot-confirmed by the adversarial critique):
 ## 8. Roadmap consequence
 
 Arc 4 (`ROADMAP.md:69–`) currently frames dynamics as **plumbing**: "converge with
-bert-compose... Compose's conservation engine (`circuit.rs`, UI-free) is consumed as a
+facets-compose... Compose's conservation engine (`circuit.rs`, UI-free) is consumed as a
 crate." That silently re-installs the assumption this research dismantles: it makes
 *the conservation engine* the meaning of Run.
 

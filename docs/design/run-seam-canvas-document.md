@@ -12,7 +12,7 @@ previously guarded `runWith`.
 Every serious simulation tool shares one architecture: **one model document;
 parameters are part of the document; Run executes the current document;
 provenance is handled by stamping runs, never by refusing to run edits.**
-bert-lenses instead ran only the stored demo artifact (the minted projection
+facets instead ran only the stored demo artifact (the minted projection
 of the `.sl` + CSV + manifest), so canvas edits provably never reached the
 Run button — a flow amount edited in the editor changed nothing on re-run.
 The canvas was a viewer with editing affordances whose edits went nowhere at

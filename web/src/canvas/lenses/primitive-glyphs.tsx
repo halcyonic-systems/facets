@@ -1,4 +1,4 @@
-// The process-primitive glyph family — a bert-lenses stroke vocabulary IN THE
+// The process-primitive glyph family — a facets stroke vocabulary IN THE
 // SPIRIT of Mobus's atomic processes (Fig. 4.5) and derived work processes
 // (Fig. 4.12/4.13), NOT his printed iconography (the #100 honesty note: the
 // book's actual glyph artwork isn't reproduced here — these are our drawings;

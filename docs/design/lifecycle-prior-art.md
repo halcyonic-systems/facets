@@ -94,7 +94,7 @@ Three near-identical archive trees, **not equivalent**:
 
 ## 6. Dead ends, recorded so they are not re-walked
 
-- **Catlab / Topos line.** `process-primitives/future_research/catlab_roadmap.md` + `catlab_prototype.jl` + `phoenix_cycles.md`: a fully-scoped three-phase plan to re-implement Troncale/Giammarco's Monterey Phoenix "Cycles" in Catlab.jl, pitched as a lead-in to a Topos Institute meeting. No evidence it was executed or that the meeting happened. The idea survives only as competitive-landscape framing in `bert-compose/POSITIONING.md`.
+- **Catlab / Topos line.** `process-primitives/future_research/catlab_roadmap.md` + `catlab_prototype.jl` + `phoenix_cycles.md`: a fully-scoped three-phase plan to re-implement Troncale/Giammarco's Monterey Phoenix "Cycles" in Catlab.jl, pitched as a lead-in to a Topos Institute meeting. No evidence it was executed or that the meeting happened. The idea survives only as competitive-landscape framing in `facets-compose/POSITIONING.md`.
 - **The boundary-formation function.** Feb 2025 proposed dissolving `B` into a formation function over interface properties, moving `I` into `C`. Sidelined then as "promising but not prioritized" — and now **superseded**: `Tuple.lean`'s `interfaces_sub : boundary.interfaces ⊆ components` gets the insight (interfaces *are* components) without dissolving `B`. See [`mobus-lifecycle-formalization.md`](mobus-lifecycle-formalization.md) §1.
 
 ## 7. Not yet swept

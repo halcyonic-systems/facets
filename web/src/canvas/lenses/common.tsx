@@ -355,7 +355,7 @@ export function NodeBody({
       {/* Process-primitive glyph, centered (#100 phase 4, #81 harvest): the
           component IS the process, so the glyph is the body's face — not a
           corner medallion on an otherwise empty circle. The glyphs are a
-          bert-lenses stroke family in Mobus's spirit, not his printed icons. */}
+          facets stroke family in Mobus's spirit, not his printed icons. */}
       {badge && badgeCentered && (
         <g
           data-glyph="centered"

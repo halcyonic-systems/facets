@@ -132,7 +132,7 @@ fn typed_flow(idx: u64, source: &str, sink: &str) -> Value {
 }
 
 /// Concretize an abstract mode-ladder state (`mode_ladder.qnt`) into a real
-/// `WorldModel` the bert-core mode machine consumes. The Quint spec's state is
+/// `WorldModel` the facets-core mode machine consumes. The Quint spec's state is
 /// four kernel-level knobs; each maps to one structural lever, chosen so that
 /// exactly one of `validate_mode`/`validate_operational`'s gates flips per knob:
 ///

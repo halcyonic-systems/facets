@@ -98,7 +98,7 @@ export function newTurnId(): string {
 //     in the browser
 //
 // So this is an OVERLAY of client-only facts, not a duplicate of the ledger.
-const TURNS_KEY = "bert-lenses.coauthor-turns";
+const TURNS_KEY = "facets.coauthor-turns";
 
 export function loadCoauthorTurns(): CoauthorTurn[] {
   try {

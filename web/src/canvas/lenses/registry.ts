@@ -255,7 +255,7 @@ export const LensPalette: Record<Lens, LensPaletteSpec> = {
     ],
     // Work processes are Economy-side content (ch. 10: agents are the decision
     // ovals INSIDE process ovals; agency on a primitive was a category error,
-    // bert-compose circuit.rs). Agent designation is a future entry here.
+    // facets-compose circuit.rs). Agent designation is a future entry here.
     designate: [
       // The interface designation moved to the PLACE list (#226): an
       // interface is a thing you place in the membrane while constructing,
@@ -264,7 +264,7 @@ export const LensPalette: Record<Lens, LensPaletteSpec> = {
       // #100 phase 4 (#81 harvest): each primitive tool BOTH stamps an existing
       // leaf component AND places a new component that IS that process on an
       // empty-stage click — one gesture, glyph-first. The glyphs are a
-      // bert-lenses stroke family in the spirit of Mobus's process vocabulary,
+      // facets stroke family in the spirit of Mobus's process vocabulary,
       // not his printed iconography.
       ...PRIMITIVES.map((p) => ({
       verb: "designate" as const,
@@ -311,7 +311,7 @@ export const LensPalette: Record<Lens, LensPaletteSpec> = {
       },
     ],
     // Work processes carry declared dynamics — the CSV-forced conservation
-    // run (bert-compose circuit.rs).
+    // run (facets-compose circuit.rs).
     run: "conservation",
   },
 };

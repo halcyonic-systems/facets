@@ -9,10 +9,10 @@ of tested.
 
 ---
 
-# State/trace separation for `Circuit` — design for bert-lenses #112 (§1.6)
+# State/trace separation for `Circuit` — design for facets #112 (§1.6)
 
 Source measured: `docs/proposals/112-transition-functor.md` §1.6 (repo root
-`~/Desktop/halcyonic-projects/active/bert-lenses`, read in full). All line
+`~/Desktop/halcyonic-projects/active/facets`, read in full). All line
 numbers below are against that worktree as of this read.
 
 ## 0. Recommendation up front
@@ -31,16 +31,16 @@ changes zero numbers in any test — see §3's acceptance criterion.
 
 Grepped across all 26 files in the repo touching `history`, `ledger_history`,
 `wire_history`, or `.spark`:
-`bert-canvas/{src/canvas.rs,src/lenses.rs,tests/{canvas_round_trip,dt_invariance,llm_market,projection_ledger,sl_demos,sl_roundtrip}.rs}`,
-`bert-cli/{src/main.rs,tests/surface.rs}`,
+`facets-canvas/{src/canvas.rs,src/lenses.rs,tests/{canvas_round_trip,dt_invariance,llm_market,projection_ledger,sl_demos,sl_roundtrip}.rs}`,
+`facets-cli/{src/main.rs,tests/surface.rs}`,
 `facets-compose/src/{circuit.rs,export.rs,markov.rs,run.rs,lens.rs,examples.rs}`,
-`bert-core/{src/{decomposition.rs,lib.rs,operational.rs,transition.rs,validate.rs},tests/*}`,
+`facets-core/{src/{decomposition.rs,lib.rs,operational.rs,transition.rs,validate.rs},tests/*}`,
 `facets-kernel/src/api.rs`, `facets-tether/src/{forcing.rs,tether.rs}`.
 
 **One important false positive, ruled out:** `facets-core/src/transition.rs:248-255`
 and `validate.rs:434` touch `sys.history` — that's `System.history: String`,
 the authored 8-tuple η slot on `WorldModel`, a completely different field
-already correctly kept out of `bert-compose` per `run.rs:1-19`'s module doc
+already correctly kept out of `facets-compose` per `run.rs:1-19`'s module doc
 ("this trace is not the system's 'memory' … the two must not be conflated").
 Not part of this inventory.
 
@@ -86,7 +86,7 @@ production consumer reads a **finished** `RecordedRun`/`RunReport`:
 directly on `Circuit`, bypassing `RecordedRun`. Used only by tests:
 `lens.rs:289,300` (the lens-purity regression, which calls `c.step()` 200
 times then `c.csv()`) and `circuit.rs:2394` (`csv_records_every_tick`). Not
-called from `bert-cli` or the wasm boundary — CLI/wasm both go through
+called from `facets-cli` or the wasm boundary — CLI/wasm both go through
 `RunReport`/JSON, not this CSV path. This is the one place production code
 (well, test-exercised library code) genuinely wants "the trace, read off the
 thing I've been stepping," and it needs a mechanical rewrite (§3).

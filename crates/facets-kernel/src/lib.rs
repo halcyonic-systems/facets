@@ -1,4 +1,4 @@
-//! bert-lenses-kernel — the JS-facing wasm boundary. Marshaling only.
+//! facets-kernel — the JS-facing wasm boundary. Marshaling only.
 //!
 //! THE LOAD-BEARING INVARIANT: this crate is the *seam*, not the brain. Every
 //! `#[wasm_bindgen]` function in [`api`] follows one shape — deserialize JS input

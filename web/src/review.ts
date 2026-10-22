@@ -4,7 +4,7 @@
 // reorders a message so its plain sentence leads and its citation follows.
 import type { CanvasModel, IssueTarget, Lens, Severity, ValidationIssue, ValidationResult } from "./kernel/types";
 
-/** The kernel's own lens→mode gate (bert-canvas `Lens::mode`, canvas.rs). A
+/** The kernel's own lens→mode gate (facets-canvas `Lens::mode`, canvas.rs). A
  *  verdict without its mode is meaningless: Bunge runs Structural (bonding
  *  only) while Mobus runs Operational (self-loops, dead ends, reachability,
  *  stock dimensions), so the same model reads differently under each. */
@@ -103,7 +103,7 @@ export const SEVERITY_HEADING: Record<Severity, string> = {
 // the errors were even reporting correctly."
 //
 // What groups is a KERNEL judgment, not a text match. `ValidationIssue.code`
-// names the defect kind (`bert_core::validate`, required at every construction
+// names the defect kind (`facets_core::validate`, required at every construction
 // site), so two issues collapse into one entry iff the kernel says they are the
 // same defect. Nothing here reads the message to decide that, and no issue is
 // ever dropped: every instance stays listed under its group, individually

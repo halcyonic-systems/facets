@@ -60,7 +60,7 @@ export class KernelErrorBoundary extends Component<Props, State> {
     return (
       <Card
         title={trapped ? "The kernel aborted — this is a bug in the kernel" : "Kernel rejected this state"}
-        source="bert-core · wasm"
+        source="facets-core · wasm"
       >
         <p className="text-sm" style={{ color: "var(--verdict-error)" }}>
           {error.message ||

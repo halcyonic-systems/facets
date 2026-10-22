@@ -1,9 +1,9 @@
-//! bert-core — BERT's System Language kernel.
+//! facets-core — BERT's System Language kernel.
 //!
 //! The serialized model contract (`WorldModel` + the 8-tuple element types),
 //! the contract enums, smart-parameter data types, and the 4-layer validator —
 //! extracted from the app so every surface (Tauri editor, bert-typedb
-//! transpiler, bert-compose, generators) builds on one kernel without pulling
+//! transpiler, facets-compose, generators) builds on one kernel without pulling
 //! Bevy/Leptos/Tauri. This is the self-contained web-first vendoring: the
 //! optional `reflect` feature (bevy_reflect derives for the Bevy app) is
 //! dropped, since this copy compiles to wasm and carries no UI dependency.

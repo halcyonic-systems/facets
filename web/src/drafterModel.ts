@@ -56,7 +56,7 @@ export function drafterModelOptions(endpoint: string): DrafterModelOption[] {
   ];
 }
 
-const KEY = "bert-lenses.coauthor-model";
+const KEY = "facets.coauthor-model";
 
 let current = "";
 let loaded = false;

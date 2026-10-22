@@ -1,11 +1,11 @@
-# Running bert-lenses permanently
+# Running facets permanently
 
 **Status: LIVE.** This is the maintainer's macOS runbook: the launchd label and
 the `~/halcyonic-apps/bert-lenses` paths below are one machine's and predate the
 rename. Nothing in it is needed to develop or use Facets; `just dev` is the
 normal path.
 
-Runs bert-lenses as a background service on `http://127.0.0.1:5190` instead of
+Runs facets as a background service on `http://127.0.0.1:5190` instead of
 `npm run dev` on 5173. 5173 stays free for interactive dev.
 
 ## Why publish outside ~/Desktop
@@ -69,7 +69,7 @@ That rebuilds the wasm kernel, builds `web/dist`, and runs `cargo tauri build`.
 The artifact lands at:
 
 ```
-src-tauri/target/release/bundle/macos/bert-lenses.app
+src-tauri/target/release/bundle/macos/Facets.app
 ```
 
 Double-click it, or `open` it. ~5.4 MB, arm64, ad-hoc signed by the linker.
@@ -117,8 +117,8 @@ The app is not Developer-ID signed and not notarized. Consequences:
   notarization. That is env-vars-only in Tauri and needs zero rework here, so
   it can be added at any point.
 
-`xattr -p com.apple.quarantine bert-lenses.app` reports the flag if a copy ever
-picks one up; `xattr -dr com.apple.quarantine bert-lenses.app` clears it.
+`xattr -p com.apple.quarantine Facets.app` reports the flag if a copy ever
+picks one up; `xattr -dr com.apple.quarantine Facets.app` clears it.
 
 ### What is deliberately absent
 

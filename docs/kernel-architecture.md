@@ -1,4 +1,4 @@
-# The bert-lenses Kernel as a System
+# The facets Kernel as a System
 
 **Status: LIVE.**
 
@@ -25,12 +25,12 @@ Six crates:
 
 | Crate | Role |
 |---|---|
-| `bert-core` | The truth core: `WorldModel`, all validators, `project`, mode-gating (`validate.rs`, `lib.rs`) |
-| `bert-canvas` | The lens/authoring domain: `CanvasModel`, `lens_facts`, `describe`, `analyze` (`lenses.rs`, `canvas.rs`) |
-| `bert-tether` | Boundary interface: CSV import, run manifest, forcing |
-| `bert-compose` | The dynamical engine: a dynamics run under the model's declared invariant (current engine: one supported dynamics-kind — Id-functor over ℝⁿ stocks with an additive conservation invariant; engine-only, wasm-clean) |
-| `bert-lenses-kernel` | The JS↔wasm boundary — marshaling only; frozen append-only surface (`API.md`) |
-| `bert-cli` | The `facets` binary: a headless door onto the same library calls the wasm boundary marshals (compile, verdict, describe, run, bench, layout); native only, the one package excluded from the wasm build |
+| `facets-core` | The truth core: `WorldModel`, all validators, `project`, mode-gating (`validate.rs`, `lib.rs`) |
+| `facets-canvas` | The lens/authoring domain: `CanvasModel`, `lens_facts`, `describe`, `analyze` (`lenses.rs`, `canvas.rs`) |
+| `facets-tether` | Boundary interface: CSV import, run manifest, forcing |
+| `facets-compose` | The dynamical engine: a dynamics run under the model's declared invariant (current engine: one supported dynamics-kind — Id-functor over ℝⁿ stocks with an additive conservation invariant; engine-only, wasm-clean) |
+| `facets-kernel` | The JS↔wasm boundary — marshaling only; frozen append-only surface (`API.md`) |
+| `facets-cli` | The `facets` binary: a headless door onto the same library calls the wasm boundary marshals (compile, verdict, describe, run, bench, layout); native only, the one package excluded from the wasm build |
 
 ---
 

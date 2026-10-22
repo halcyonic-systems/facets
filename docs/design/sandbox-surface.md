@@ -27,7 +27,7 @@ The sandbox's defining interaction — a parameter tweaked mid-run without
 resetting stocks — cannot be expressed by the batch run seam
 (`RecordedRun::record` resets first and returns a finished trace). So the
 wasm boundary carries exactly one stateful class, `SandboxSession`, wrapping
-an engine-side `bert_compose::session::Session` (natively tested; the wasm
+an engine-side `facets_compose::session::Session` (natively tested; the wasm
 layer stays marshaling-only). The carve-out and its trap story are in
 API.md ("The sandbox seam"): a session is an instrument's live state, never
 the document of record.
@@ -97,7 +97,7 @@ SP-typology review).
 
 ## What this is not
 
-Not a third mode (#345); not a second engine (the vendored `bert-compose`
+Not a third mode (#345); not a second engine (the vendored `facets-compose`
 crate is the only stepper); not a new document format (a sandbox is a
 WorldModel); not a realtime/shared surface (#88 stays closed); not an
 upstream `bert` repo change.

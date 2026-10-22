@@ -28,7 +28,7 @@ export interface ReasonerConfigBackend {
   save(config: ReasonerConfig): Promise<void>;
 }
 
-const KEY = "bert-lenses.reasoner";
+const KEY = "facets.reasoner";
 
 function parse(raw: string | null): ReasonerConfig | null {
   if (!raw) return null;

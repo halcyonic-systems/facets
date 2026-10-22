@@ -200,23 +200,23 @@ function isTrap(e: unknown): boolean {
   return typeof WebAssembly !== "undefined" && e instanceof WebAssembly.RuntimeError;
 }
 
-/** 4-layer systemhood report — computed by bert-core in wasm. */
+/** 4-layer systemhood report — computed by facets-core in wasm. */
 export function validate(modelJson: string): ValidationResult {
   return call("validate", () => wasmValidate(modelJson));
 }
 
-/** Executable-projection gate — computed by bert-core in wasm. */
+/** Executable-projection gate — computed by facets-core in wasm. */
 export function validateOperational(modelJson: string): OperationalOutcome {
   return call("validate_operational", () => wasmValidateOperational(modelJson));
 }
 
-/** Simulate an authored model — computed by bert-compose in wasm. */
+/** Simulate an authored model — computed by facets-compose in wasm. */
 export function run(modelJson: string, dt: number, ticks: number): RunResult {
   return call("run", () => wasmRun(modelJson, dt, ticks));
 }
 
 /** Run a Klir state machine as a discrete-time Markov chain (#67) — the
- *  distribution `vₙ₊₁ = vₙ P` evolution, computed by bert-compose in wasm.
+ *  distribution `vₙ₊₁ = vₙ P` evolution, computed by facets-compose in wasm.
  *  Reads edge weights off the canvas model (uniform by default), starts from a
  *  point mass on the first state, and returns the `kind:"markov"` trajectory.
  *  Bypasses the Operational gate, so a state that stays put (a self-loop) is a
@@ -297,7 +297,7 @@ export function writeArchive(model: CanvasModel): ArchiveText {
   return call("write_archive", () => wasmWriteArchive(JSON.stringify(model))) as ArchiveText;
 }
 
-/** Project the canvas editing model into a bert-core WorldModel (JSON) — the
+/** Project the canvas editing model into a facets-core WorldModel (JSON) — the
  *  Mobus export and the executable projection `run` consumes. NOT the archive
  *  (#140): it is lossy on Bunge's `mere`/`field` and Klir's `@directed`. */
 export function project(model: CanvasModel): unknown {

@@ -38,7 +38,7 @@ free here and should land here, never on the goldens.
 
 ## Verification
 
-All four were checked against the real parser (`bert_canvas::sl::parse_sl`),
+All four were checked against the real parser (`facets_canvas::sl::parse_sl`),
 not by inspection: 01 and 02 parse and project clean at Core mode; 03 and 04
 fail with exactly the errors quoted in their footers. They are deliberately
 kept **out of the test suites** — they are learning material, not goldens, and

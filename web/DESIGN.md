@@ -1,15 +1,15 @@
-# bert-lenses — design
+# facets — design
 
 **The invariant is a design principle too:** the page's job is to make the
 kernel's verdicts legible, not to compute or embellish them. Every number shown
-is the kernel's. Labels name the source (`bert-core · wasm`, `bert-compose · wasm`)
+is the kernel's. Labels name the source (`facets-core · wasm`, `facets-compose · wasm`)
 so the brain/face split is visible in the UI itself.
 
 ## Halcyonic Frost
 
 Inherited from the fleet (trade-observatory, finance-app, germen) — a cool,
 faintly indigo-tinted surface (never flat grey) with one restrained accent.
-bert-lenses takes **teal** as its accent to distinguish the instrument within the
+facets takes **teal** as its accent to distinguish the instrument within the
 Frost family (slate / teal / indigo).
 
 - **Tokens** live in `src/index.css` as CSS custom properties on `:root`, each
@@ -39,7 +39,7 @@ Frost family (slate / teal / indigo).
   `prefers-color-scheme` natively; an explicit choice sets
   `data-theme="light" | "dark"` on `<html>`, which narrows `color-scheme` and
   therefore flips every `light-dark()` pair at once. `src/theme.ts` owns the
-  attribute and the stored choice (`bert-lenses.theme`); the control is the one
+  attribute and the stored choice (`facets.theme`); the control is the one
   quiet word in the menu bar's right-hand chrome cluster, beside the kernel chip.
   Bound by `src/theme.test.ts`, which also holds "the palette is stated once".
 - Light + dark are both first-class — and since 2026-08-12 dark has actually been

@@ -1,7 +1,7 @@
 # Three faithful palettes — Klir · Bunge · Mobus
 
 > **Status: LIVE** (implemented 2026-07-15, Phase 3 [#44](https://github.com/halcyonic-systems/facets/issues/44)). The two kernel
-> primitives are `bert-core::{boundary_components, edge_locus}` surfaced
+> primitives are `facets-core::{boundary_components, edge_locus}` surfaced
 > canvas-keyed via `crates/facets-canvas/src/lenses.rs` (`lens_facts`,
 > `describe`; the wasm boundary `facets-kernel/src/api.rs` only marshals); the renderings live in `web/src/canvas/Canvas.tsx` and the
 > formal face in `web/src/FormalPanel.tsx`. **The per-lens authoring palette is
@@ -13,7 +13,7 @@
 > designation as written in § Agents is superseded: the agent shipped
 > 2026-10-10 as a thing kind of its own, ADR 0008, see the note there),
 > and **P's dynamical semantics** (porosity is authored + rendered but does
-> not yet modulate crossing flows in bert-compose — structural-only today).
+> not yet modulate crossing flows in facets-compose — structural-only today).
 
 *Design reference for the canvas lens rendering. Grounded in the primary sources
 in the vault (not priors): Klir, *Facets of Systems Science*; Bunge, *Treatise on
@@ -293,7 +293,7 @@ in mind for anything public-facing.)
 | **Δt** | Time scale | per-node time unit |
 
 C, N, E, G, B carry the **structural** constraints; T, H, Δt are parametric /
-domain-specific by intent (bert-compose fills the open parameter slot — licensed,
+domain-specific by intent (facets-compose fills the open parameter slot — licensed,
 not a deviation).
 
 **What's NEW in the 8-tuple — ENVIRONMENT is first-class (the user's emphasis).**
@@ -529,7 +529,7 @@ on the component builds. There is no third node type to land on and no third hop
 in the result. A port with no crossing flow yet is drawn tethered to its
 component and labelled with its name, so the notch is never an anonymous mark
 floating on the ring.
-| work-process primitive | **DESIGNATE** | arm a primitive, click a leaf component | `bert-core` `Vec<ProcessPrimitive>`; `validate_operational` instantiates `.first()` |
+| work-process primitive | **DESIGNATE** | arm a primitive, click a leaf component | `facets-core` `Vec<ProcessPrimitive>`; `validate_operational` instantiates `.first()` |
 
 **Derived rows (shown greyed, never armable):** boundary ring + P rendering,
 Source/Sink identity, endo/exo edge classification, the aggregate verdict.
@@ -590,7 +590,7 @@ after this repo's pin — see the correction above). Design consequences:
    legal tuple. #219 already refuses it at Operational.
 4. This is **kernel-first work**: today `PortFact` is derived solely from exo
    bonds (`facets-canvas/src/lenses.rs`); authored designation needs the 8-step
-   checklist from step 1 (bert-core carries authored I; `PortFact` gains
+   checklist from step 1 (facets-core carries authored I; `PortFact` gains
    provenance authored|derived).
 
 ### Boundary-property authoring (Q4)
@@ -650,13 +650,13 @@ without conflating them with what it stamps today:
   engine + decision model + experiential memory (ch. 11), kinds
   Reactive / Anticipatory / Intentional, autonomy graded.
 - **Agency ≠ work process.** Work processes are Economy-side; agents MANAGE
-  them (Agency archetype). bert-compose already corrected one category error
+  them (Agency archetype). facets-compose already corrected one category error
   here ("agency on a primitive" — `facets-compose/src/circuit.rs`); the rail's
   stamp section therefore says **work process**, never agent. The standing
-  tension that `bert-core::AgentModel.primitives` carries Economy content
+  tension that `facets-core::AgentModel.primitives` carries Economy content
   under an Agency name is documented (run-surface-grounding.md, 2026-07-11)
   and stays deferred: document now, restructure on demand.
-- **The kernel is already agent-ready**: `bert-core` carries
+- **The kernel is already agent-ready**: `facets-core` carries
   `HcgsArchetype::Agent` + `AgentModel { kind, agency_capacity, primitives:
   Vec<ProcessPrimitive>, … }`; only the canvas seam lacks archetype exposure.
 - **How agents will enter the palette**: as a **DESIGNATE verb** on components

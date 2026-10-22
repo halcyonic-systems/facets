@@ -1,6 +1,6 @@
 //! Rung 1.5 of the lens-entry binding (bert-lenses#24): the subprocess oracle.
 //!
-//! Rung 1 (`gates_truth_table.rs`) checks the `bert-core` mode gates against a
+//! Rung 1 (`gates_truth_table.rs`) checks the `facets-core` mode gates against a
 //! committed fixture — but only on the n ≤ 2 rows someone thought to enumerate.
 //! This test removes that bound. It generates `(n, dep)` kernels PAST n = 2,
 //! shells out to the Lean `gates-oracle` executable (which evaluates the SAME
@@ -42,7 +42,7 @@ fn oracle_command() -> Option<Command> {
             return Some(c);
         }
     }
-    // Default: SSF checked out beside bert-lenses, oracle prebuilt by `lake build`.
+    // Default: SSF checked out beside facets, oracle prebuilt by `lake build`.
     let sibling_bin = PathBuf::from(env!("CARGO_MANIFEST_DIR"))
         .join("../../../systems-science-foundations/.lake/build/bin/gates-oracle");
     if sibling_bin.exists() {

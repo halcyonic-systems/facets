@@ -27,7 +27,7 @@ fn golden_with_a_reference_round_trips_byte_identical() {
     // one more attribute that must round-trip, and the pretty-printed golden is
     // exactly serde's canonical form.
     let reserialized = serde_json::to_string_pretty(&model).unwrap();
-    // Same bless convention as bert-canvas's contract.rs: after an INTENTIONAL
+    // Same bless convention as facets-canvas's contract.rs: after an INTENTIONAL
     // shape change, BLESS_FIXTURES=1 rewrites the golden; otherwise drift fails.
     if std::env::var_os("BLESS_FIXTURES").is_some() {
         std::fs::write(GOLDEN, format!("{reserialized}\n")).expect("bless golden");

@@ -2,7 +2,7 @@
 name = "facets-kernel"
 version = "0.1.0"
 edition = "2021"
-description = "The JS-facing wasm boundary: thin wasm-bindgen wrappers over bert-core + bert-compose + bert-canvas + bert-tether (the CSV tether). All truth, zero UI."
+description = "The JS-facing wasm boundary: thin wasm-bindgen wrappers over facets-core + facets-compose + facets-canvas + facets-tether (the CSV tether). All truth, zero UI."
 license = "MIT"
 # Not on crates.io. These five crates are vendored into this repository and
 # distributed only as the wasm kernel inside the app, never as separate
