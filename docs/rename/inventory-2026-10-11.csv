@@ -134,63 +134,63 @@ crates/facets-core/src/decomposition.rs,1050,issue-ref,"//! Boundary-fixture dis
 crates/facets-core/src/decomposition.rs,1494,issue-ref,// ── birth-name drift (bert-lenses#116) ──
 crates/facets-core/src/lib.rs,1,upstream-bert,//! facets-core — BERT's System Language kernel.
 crates/facets-core/src/lib.rs,14,doc-prose,// the semantic authority. Remove if bert-core is re-vendored lint-clean upstream.
-crates/facets-core/src/lib.rs,71,upstream-bert,/// use bert::InteractionUsability;
-crates/facets-core/src/lib.rs,125,upstream-bert,/// use bert::InteractionUsability;
-crates/facets-core/src/lib.rs,147,upstream-bert,/// use bert::InteractionUsability;
-crates/facets-core/src/lib.rs,169,upstream-bert,/// use bert::InteractionUsability;
-crates/facets-core/src/lib.rs,204,upstream-bert,"/// use bert::{SubstanceType, Theme};"
-crates/facets-core/src/lib.rs,371,upstream-bert,/// use bert::Parameter;
-crates/facets-core/src/lib.rs,460,upstream-bert,"// This module implements the persistence layer for BERT system models, providing"
-crates/facets-core/src/lib.rs,490,upstream-bert,"// use bert::data_model::{WorldModel, System, Environment};"
-crates/facets-core/src/lib.rs,541,upstream-bert,/// Root container representing a complete BERT system model for serialization.
-crates/facets-core/src/lib.rs,573,upstream-bert,"/// use bert::data_model::{WorldModel, Environment, CURRENT_FILE_VERSION};"
-crates/facets-core/src/lib.rs,608,issue-ref,"/// This model's stable self-identity (bert-lenses#89 step 2.5), the name by"
-crates/facets-core/src/lib.rs,668,issue-ref,/// The model's time-unit SYMBOL (bert-lenses#94): what one unit of model
-crates/facets-core/src/lib.rs,733,upstream-bert,"/// A multiset, not a set: BERT is a multigraph, so two distinct interactions"
-crates/facets-core/src/lib.rs,789,issue-ref,/// Historically (bert-lenses#89 step 3) this was the loud guard at the
-crates/facets-core/src/lib.rs,896,upstream-bert,/// Hierarchical identifier system for all entities in the BERT data model.
-crates/facets-core/src/lib.rs,927,upstream-bert,"/// use bert::data_model::{Id, IdType};"
-crates/facets-core/src/lib.rs,1071,upstream-bert,"/// use bert::data_model::{Id, IdType};"
-crates/facets-core/src/lib.rs,1160,upstream-bert,"/// use bert::data_model::{Info, Id, IdType};"
-crates/facets-core/src/lib.rs,1281,issue-ref,"/// decomposed component points at by reference (bert-lenses#89, §4 of"
-crates/facets-core/src/lib.rs,1358,issue-ref,/// (bert-lenses#89 step 3). `None` for every flat single-level model and
-crates/facets-core/src/lib.rs,1395,issue-ref,"/// (bert-lenses#5 collapse, 2026-07-11). Reads the legacy `primitives`"
-crates/facets-core/src/lib.rs,1448,issue-ref,/// A stock's declared unit (bert-lenses#76). A Buffering component's stock
-crates/facets-core/src/lib.rs,1993,issue-ref,/// `ample` (bert-lenses#9): an AVAILABILITY assertion on an informational
-crates/facets-core/src/lib.rs,2035,upstream-bert,/// and analyzed within BERT.
-crates/facets-core/src/lib.rs,2053,upstream-bert,/// use bert::data_model::Complexity;
-crates/facets-core/src/lib.rs,2128,upstream-bert,/// use bert::data_model::Complexity;
-crates/facets-core/src/lib.rs,2153,upstream-bert,/// use bert::data_model::Complexity;
-crates/facets-core/src/lib.rs,2174,upstream-bert,/// use bert::data_model::Complexity;
-crates/facets-core/src/lib.rs,2196,upstream-bert,/// use bert::data_model::Complexity;
-crates/facets-core/src/lib.rs,2224,upstream-bert,/// use bert::data_model::Complexity;
-crates/facets-core/src/lib.rs,2257,upstream-bert,/// use bert::data_model::Complexity;
-crates/facets-core/src/lib.rs,2290,upstream-bert,/// use bert::data_model::Complexity;
-crates/facets-core/src/lib.rs,2354,upstream-bert,"/// use bert::data_model::{HasInfo, System, Environment};"
-crates/facets-core/src/lib.rs,2395,upstream-bert,"/// use bert::data_model::{HasInfo, System};"
-crates/facets-core/src/lib.rs,2439,upstream-bert,"/// use bert::data_model::{HasSourcesAndSinks, ExternalEntity, System, Environment};"
-crates/facets-core/src/lib.rs,2481,upstream-bert,"/// use bert::data_model::{HasSourcesAndSinks, System};"
-crates/facets-core/src/lib.rs,2501,upstream-bert,"/// use bert::data_model::{HasSourcesAndSinks, ExternalEntity, System};"
-crates/facets-core/src/lib.rs,2521,upstream-bert,"/// use bert::data_model::{HasSourcesAndSinks, System};"
-crates/facets-core/src/lib.rs,2539,upstream-bert,"/// use bert::data_model::{HasSourcesAndSinks, ExternalEntity, System};"
+crates/facets-core/src/lib.rs,87,upstream-bert,/// use bert::InteractionUsability;
+crates/facets-core/src/lib.rs,141,upstream-bert,/// use bert::InteractionUsability;
+crates/facets-core/src/lib.rs,163,upstream-bert,/// use bert::InteractionUsability;
+crates/facets-core/src/lib.rs,185,upstream-bert,/// use bert::InteractionUsability;
+crates/facets-core/src/lib.rs,220,upstream-bert,"/// use bert::{SubstanceType, Theme};"
+crates/facets-core/src/lib.rs,387,upstream-bert,/// use bert::Parameter;
+crates/facets-core/src/lib.rs,476,upstream-bert,"// This module implements the persistence layer for BERT system models, providing"
+crates/facets-core/src/lib.rs,506,upstream-bert,"// use bert::data_model::{WorldModel, System, Environment};"
+crates/facets-core/src/lib.rs,557,upstream-bert,/// Root container representing a complete BERT system model for serialization.
+crates/facets-core/src/lib.rs,589,upstream-bert,"/// use bert::data_model::{WorldModel, Environment, CURRENT_FILE_VERSION};"
+crates/facets-core/src/lib.rs,624,issue-ref,"/// This model's stable self-identity (bert-lenses#89 step 2.5), the name by"
+crates/facets-core/src/lib.rs,684,issue-ref,/// The model's time-unit SYMBOL (bert-lenses#94): what one unit of model
+crates/facets-core/src/lib.rs,749,upstream-bert,"/// A multiset, not a set: BERT is a multigraph, so two distinct interactions"
+crates/facets-core/src/lib.rs,805,issue-ref,/// Historically (bert-lenses#89 step 3) this was the loud guard at the
+crates/facets-core/src/lib.rs,912,upstream-bert,/// Hierarchical identifier system for all entities in the BERT data model.
+crates/facets-core/src/lib.rs,943,upstream-bert,"/// use bert::data_model::{Id, IdType};"
+crates/facets-core/src/lib.rs,1087,upstream-bert,"/// use bert::data_model::{Id, IdType};"
+crates/facets-core/src/lib.rs,1176,upstream-bert,"/// use bert::data_model::{Info, Id, IdType};"
+crates/facets-core/src/lib.rs,1297,issue-ref,"/// decomposed component points at by reference (bert-lenses#89, §4 of"
+crates/facets-core/src/lib.rs,1374,issue-ref,/// (bert-lenses#89 step 3). `None` for every flat single-level model and
+crates/facets-core/src/lib.rs,1411,issue-ref,"/// (bert-lenses#5 collapse, 2026-07-11). Reads the legacy `primitives`"
+crates/facets-core/src/lib.rs,1464,issue-ref,/// A stock's declared unit (bert-lenses#76). A Buffering component's stock
+crates/facets-core/src/lib.rs,2009,issue-ref,/// `ample` (bert-lenses#9): an AVAILABILITY assertion on an informational
+crates/facets-core/src/lib.rs,2051,upstream-bert,/// and analyzed within BERT.
+crates/facets-core/src/lib.rs,2069,upstream-bert,/// use bert::data_model::Complexity;
+crates/facets-core/src/lib.rs,2144,upstream-bert,/// use bert::data_model::Complexity;
+crates/facets-core/src/lib.rs,2169,upstream-bert,/// use bert::data_model::Complexity;
+crates/facets-core/src/lib.rs,2190,upstream-bert,/// use bert::data_model::Complexity;
+crates/facets-core/src/lib.rs,2212,upstream-bert,/// use bert::data_model::Complexity;
+crates/facets-core/src/lib.rs,2240,upstream-bert,/// use bert::data_model::Complexity;
+crates/facets-core/src/lib.rs,2273,upstream-bert,/// use bert::data_model::Complexity;
+crates/facets-core/src/lib.rs,2306,upstream-bert,/// use bert::data_model::Complexity;
+crates/facets-core/src/lib.rs,2370,upstream-bert,"/// use bert::data_model::{HasInfo, System, Environment};"
+crates/facets-core/src/lib.rs,2411,upstream-bert,"/// use bert::data_model::{HasInfo, System};"
+crates/facets-core/src/lib.rs,2455,upstream-bert,"/// use bert::data_model::{HasSourcesAndSinks, ExternalEntity, System, Environment};"
+crates/facets-core/src/lib.rs,2497,upstream-bert,"/// use bert::data_model::{HasSourcesAndSinks, System};"
+crates/facets-core/src/lib.rs,2517,upstream-bert,"/// use bert::data_model::{HasSourcesAndSinks, ExternalEntity, System};"
+crates/facets-core/src/lib.rs,2537,upstream-bert,"/// use bert::data_model::{HasSourcesAndSinks, System};"
+crates/facets-core/src/lib.rs,2555,upstream-bert,"/// use bert::data_model::{HasSourcesAndSinks, ExternalEntity, System};"
 crates/facets-core/src/model_id.rs,1,issue-ref,//! Model self-identity — the stable name a whole model carries (bert-lenses#89
 crates/facets-core/src/operational.rs,20,issue-ref,"//! # Interface routing lowers, it does not refuse (bert#108)"
 crates/facets-core/src/operational.rs,23,issue-ref,"//! work-process mapping was an open question. bert#108 settled it (Option 3,"
-crates/facets-core/src/operational.rs,80,issue-ref,/// The stock's declared unit (bert-lenses#76). A stock accumulates a rate
-crates/facets-core/src/operational.rs,150,issue-ref,"/// flow is lowered for execution (bert#108). Mobus: every component, interfaces"
-crates/facets-core/src/operational.rs,158,issue-ref,/// A filter with back-pressure (Mobus). The bert#108 default.
-crates/facets-core/src/operational.rs,175,issue-ref,/// Availability assertion (bert-lenses#9) — see `Interaction::ample`.
-crates/facets-core/src/operational.rs,181,issue-ref,"/// `Some` iff this flow lowered from boundary-interface routing (bert#108),"
-crates/facets-core/src/operational.rs,188,issue-ref,/// Series forcing (bert-lenses#16): `Some` iff this flow carries an
-crates/facets-core/src/operational.rs,217,issue-ref,"/// Root-boundary porosity (B's P, bert-lenses#54) — the coefficient that"
-crates/facets-core/src/operational.rs,307,issue-ref,// The root system's boundary carries B's P (bert-lenses#54). Its porosity
-crates/facets-core/src/operational.rs,433,issue-ref,"// bert#108: interface routing lowers, it does not refuse. An interface"
-crates/facets-core/src/operational.rs,881,issue-ref,/// bert-lenses#54/#76: the root boundary's porosity and a stock's declared
-crates/facets-core/src/operational.rs,1045,issue-ref,"/// bert#108: interface routing LOWERS, it does not refuse. A flow routed"
-crates/facets-core/src/operational.rs,1064,issue-ref,/// Law: bert#108 — an interface-routed flow lowers to an Impeding work-process marker rather than being refused; an un-
-crates/facets-core/src/operational.rs,1085,issue-ref,".expect(""bert#108: interface routing lowers, it no longer refuses"");"
-crates/facets-core/src/operational.rs,1094,issue-ref,"""the flow records its bert#108 Impeding lowering"""
-crates/facets-core/src/operational.rs,1107,issue-ref,"/// Law: bert#108's identity default is observationally exact — stripped of its provenance marker, a routed and an unrou"
+crates/facets-core/src/operational.rs,81,issue-ref,/// The stock's declared unit (bert-lenses#76). A stock accumulates a rate
+crates/facets-core/src/operational.rs,151,issue-ref,"/// flow is lowered for execution (bert#108). Mobus: every component, interfaces"
+crates/facets-core/src/operational.rs,159,issue-ref,/// A filter with back-pressure (Mobus). The bert#108 default.
+crates/facets-core/src/operational.rs,176,issue-ref,/// Availability assertion (bert-lenses#9) — see `Interaction::ample`.
+crates/facets-core/src/operational.rs,182,issue-ref,"/// `Some` iff this flow lowered from boundary-interface routing (bert#108),"
+crates/facets-core/src/operational.rs,189,issue-ref,/// Series forcing (bert-lenses#16): `Some` iff this flow carries an
+crates/facets-core/src/operational.rs,218,issue-ref,"/// Root-boundary porosity (B's P, bert-lenses#54) — the coefficient that"
+crates/facets-core/src/operational.rs,308,issue-ref,// The root system's boundary carries B's P (bert-lenses#54). Its porosity
+crates/facets-core/src/operational.rs,434,issue-ref,"// bert#108: interface routing lowers, it does not refuse. An interface"
+crates/facets-core/src/operational.rs,882,issue-ref,/// bert-lenses#54/#76: the root boundary's porosity and a stock's declared
+crates/facets-core/src/operational.rs,1046,issue-ref,"/// bert#108: interface routing LOWERS, it does not refuse. A flow routed"
+crates/facets-core/src/operational.rs,1065,issue-ref,/// Law: bert#108 — an interface-routed flow lowers to an Impeding work-process marker rather than being refused; an un-
+crates/facets-core/src/operational.rs,1086,issue-ref,".expect(""bert#108: interface routing lowers, it no longer refuses"");"
+crates/facets-core/src/operational.rs,1095,issue-ref,"""the flow records its bert#108 Impeding lowering"""
+crates/facets-core/src/operational.rs,1108,issue-ref,"/// Law: bert#108's identity default is observationally exact — stripped of its provenance marker, a routed and an unrou"
 crates/facets-core/src/transition.rs,897,issue-ref,// `validate_operational` (bert#108). Two fixtures pin the two ways this
 crates/facets-core/src/transition.rs,975,issue-ref,/// Law: bert#108 — interface-routed flows are legal Operational structure at the transition layer; the routing lowers t
 crates/facets-core/src/transition.rs,980,issue-ref,"// Irreflexive). bert#108 4.2 has now shipped, so validate_operational no"

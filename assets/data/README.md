@@ -158,8 +158,11 @@ source.
    (`BLESS_CLI_GOLDEN=1`, `BLESS_SL_DEMOS=1`,
    `BLESS_LLM_MARKET_WALKTHROUGH=1`) together, so the model and the data it
    opens on never disagree silently (facets#534, found when #531 shipped a
-   vintage three times the declared 6000). The self-hosted placeholder is
-   not minted from anything and stays `unknown`.
+   vintage three times the declared 6000). Since #523 the split is minted in
+   two places: the Router's two weights, which split tick 0, and the routed
+   buyers' held share (`else 0.254` on their agent line, frontier over the
+   two), which the agent writes from then on; a refresh moves both. The
+   self-hosted placeholder is not minted from anything and stays `unknown`.
 5. **Resellers.** OpenRouter's own newsletter excludes reseller activity from
    its weekly totals; whether the Data API does the same is not stated on the
    pages read. The series is used as published and this uncertainty travels
