@@ -84,15 +84,15 @@ pub struct ImportedData {
     #[serde(default)]
     pub time: Vec<Option<f64>>,
     /// Flow magnitude series, keyed by the mapped `Relation` id.
-    #[serde(default)]
+    #[serde(serialize_with = "facets_core::sorted_map", default)]
     pub flow_series: HashMap<u64, ColumnSeries>,
     /// Stock level series, keyed by the mapped component `Thing` id.
-    #[serde(default)]
+    #[serde(serialize_with = "facets_core::sorted_map", default)]
     pub stock_series: HashMap<u64, ColumnSeries>,
     /// Parameter series, keyed by the mapped component `Thing` id. A parameter is
     /// a constant (contract §1) — the series is retained for comparison, but only
     /// its mean supplies the transfer characteristic.
-    #[serde(default)]
+    #[serde(serialize_with = "facets_core::sorted_map", default)]
     pub param_series: HashMap<u64, ColumnSeries>,
     /// Series forcing (bert-lenses#16): the relation ids whose flow series should
     /// be EMITTED tick by tick rather than collapsed to a mean — a source that
@@ -106,7 +106,7 @@ pub struct ImportedData {
     /// multiple of the base tick. A flow with stride `n>1` is sampled once every
     /// `n` ticks and zero-order-held between — a slower channel (e.g. annual over
     /// a monthly tick). Absent/1 = the base clock. Only meaningful with `forced`.
-    #[serde(default)]
+    #[serde(serialize_with = "facets_core::sorted_map", default)]
     pub stride: HashMap<u64, u32>,
 }
 
