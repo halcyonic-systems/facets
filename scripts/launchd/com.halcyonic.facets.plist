@@ -3,19 +3,19 @@
 <plist version="1.0">
 <dict>
     <key>Label</key>
-    <string>com.halcyonic.bert-lenses</string>
+    <string>com.halcyonic.facets</string>
 
-    <!-- Serves the published static build (~/halcyonic-apps/bert-lenses/dist) at
+    <!-- Serves the published static build (~/halcyonic-apps/facets/dist) at
          http://127.0.0.1:5190. The repo lives under ~/Desktop, and launchd jobs
          can't read TCC-protected dirs (no Full Disk Access), so the binary here
          is NOT the repo's web/node_modules/vite -- it's a standalone vite install
-         at ~/halcyonic-apps/bert-lenses/server/node_modules (outside ~/Desktop,
+         at ~/halcyonic-apps/facets/server/node_modules (outside ~/Desktop,
          created/updated by scripts/publish-app.sh) serving the published dist.
          Re-run publish-app.sh after any change; this service picks it up on the
          next restart (or `launchctl kickstart -k`). -->
     <key>ProgramArguments</key>
     <array>
-        <string>/Users/home/halcyonic-apps/bert-lenses/server/node_modules/.bin/vite</string>
+        <string>/Users/home/halcyonic-apps/facets/server/node_modules/.bin/vite</string>
         <string>preview</string>
         <string>--port</string>
         <string>5190</string>
@@ -24,7 +24,7 @@
         <string>127.0.0.1</string>
     </array>
     <key>WorkingDirectory</key>
-    <string>/Users/home/halcyonic-apps/bert-lenses</string>
+    <string>/Users/home/halcyonic-apps/facets</string>
 
     <!-- vite's shebang needs node; nvm's bin dir isn't on launchd's default PATH. -->
     <key>EnvironmentVariables</key>
@@ -39,8 +39,8 @@
     <true/>
 
     <key>StandardOutPath</key>
-    <string>/Users/home/halcyonic-apps/bert-lenses/web.log</string>
+    <string>/Users/home/halcyonic-apps/facets/web.log</string>
     <key>StandardErrorPath</key>
-    <string>/Users/home/halcyonic-apps/bert-lenses/web.log</string>
+    <string>/Users/home/halcyonic-apps/facets/web.log</string>
 </dict>
 </plist>
