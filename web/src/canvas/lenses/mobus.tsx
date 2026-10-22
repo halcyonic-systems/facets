@@ -240,7 +240,31 @@ function EdgeView({ model, relation, fact, ring, selected, driven, sim, crowded,
       </text>
     ) : null;
 
+  // A flow watch (spec v1.14, ADR 0008 D5): an agent that reads this flow
+  // instead of a stock. Its reading is drawn where it is taken — a dotted
+  // line in the reading style, from the flow to the agent's oval — since no
+  // tap relation exists to carry it.
+  const watchers = model.things.filter((t) => t.rule !== undefined && t.watches_flow === relation.id);
+  const watchLines = watchers.map((w) => (
+    <line
+      key={`watch-${w.id}`}
+      data-glyph="flow-watch"
+      x1={labelAt.x}
+      y1={labelAt.y}
+      x2={w.x}
+      y2={w.y}
+      stroke="var(--lens-accent)"
+      strokeWidth={STYLE.edge.info}
+      strokeDasharray="1 4"
+      opacity={0.95}
+    >
+      <title>{`reading · ${w.name} watches this flow: what it delivered on the last completed tick (the feedforward form, Mobus §12.3.2.3 "measuring the value of inputs")`}</title>
+    </line>
+  ));
+
   return (
+    <g>
+    {watchLines}
     <EdgeScaffold
       grounding={relation.grounding}
       labelAt={labelAt}
@@ -261,6 +285,7 @@ function EdgeView({ model, relation, fact, ring, selected, driven, sim, crowded,
           : title
       }
     />
+    </g>
   );
 }
 

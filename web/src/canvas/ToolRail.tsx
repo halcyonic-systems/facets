@@ -160,7 +160,7 @@ export function ToolRail({
                   ) : (
                     <>
                       <span className="font-semibold">{t.label}</span>
-                      <span style={{ color: "var(--text-secondary)" }}> · a decision maker · watches a stock, commands a process</span>
+                      <span style={{ color: "var(--text-secondary)" }}> · a decision maker · watches a stock or a flow, commands a process</span>
                       <br />
                       <span style={{ color: "var(--text-secondary)" }}>{t.tip}</span>
                     </>

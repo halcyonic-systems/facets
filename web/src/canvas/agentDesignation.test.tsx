@@ -6,6 +6,8 @@ import type { CanvasModel } from "../kernel/types";
 import { LensPalette } from "./lenses/registry";
 import { agentFields, stampPrimitiveAt } from "./useCanvasGestures";
 import { NodeBody } from "./lenses/common";
+import { Mobus } from "./lenses/mobus";
+import { NodeEditorRows } from "./NodeEditor";
 
 const empty: CanvasModel = { lens: "Mobus", things: [], relations: [], boundary: { porosity: 0, perceptive_fuzziness: 0 } };
 
@@ -55,5 +57,44 @@ describe("the agent designation", () => {
       </svg>,
     );
     expect(html).toContain('data-glyph="agent-oval"');
+  });
+});
+
+// Spec v1.14 (ADR 0008 D5): an agent that watches a flow has no tap, so its
+// reading is drawn from the flow it reads to its oval, and the inspector says
+// what it reads.
+describe("the flow watch", () => {
+  const model: CanvasModel = {
+    lens: "Mobus",
+    things: [
+      { id: 1, name: "Grid", x: 0, y: 0, role: "Environment" },
+      { id: 2, name: "Switch", x: 100, y: 0, role: "Component", primitive: "Modulating" },
+      { id: 3, name: "Compensator", x: 50, y: 80, role: "Component", rule: "threshold", watches_flow: 10, cognitive_params: { above: 3, emit: 0.5, else: 1 } },
+    ],
+    relations: [
+      { id: 10, a: 1, b: 2, name: "electricity", kind: "Energy", is_bond: true },
+      { id: 11, a: 3, b: 2, name: "command", kind: "Informational", is_bond: true },
+    ],
+    boundary: { porosity: 0, perceptive_fuzziness: 0 },
+  };
+  const edge = (m: CanvasModel, id: number) =>
+    renderToStaticMarkup(
+      <svg>
+        <Mobus.EdgeView model={m} relation={m.relations.find((r) => r.id === id)!} ring={null} sigIndex={0} selected={false} driven={false} />
+      </svg>,
+    );
+
+  it("draws the reading from the watched flow to the agent, and only there", () => {
+    expect(edge(model, 10)).toContain('data-glyph="flow-watch"');
+    expect(edge(model, 11)).not.toContain('data-glyph="flow-watch"');
+    const unwatched = { ...model, things: model.things.map((t) => (t.id === 3 ? { ...t, watches_flow: undefined } : t)) };
+    expect(edge(unwatched, 10)).not.toContain('data-glyph="flow-watch"');
+  });
+
+  it("says in the inspector what the agent reads", () => {
+    const rows = (t: CanvasModel["things"][number]) =>
+      renderToStaticMarkup(<NodeEditorRows thing={t} lens="Mobus" onUpdateThing={() => {}} onDelete={() => {}} onClose={null} />);
+    expect(rows(model.things[2])).toContain("the feedforward form, spec v1.14");
+    expect(rows({ ...model.things[2], watches_flow: undefined })).toContain("it watches a Buffering");
   });
 });

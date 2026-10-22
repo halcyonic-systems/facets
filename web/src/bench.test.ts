@@ -24,6 +24,7 @@ describe("the bench shelf", () => {
       "Thermostat Room",
       "Thermostat Room (agent)",
       "Thermostat Room (band)",
+      "Thermostat Room (feedforward)",
       "Thermostat Room (relay)",
       "Thermostat Room (trace)",
       "Traffic Bottleneck",
