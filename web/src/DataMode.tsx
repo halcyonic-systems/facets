@@ -32,6 +32,36 @@ function cellCompare(a: string, b: string): number {
 
 const HAIRLINE = "1px solid var(--hairline)";
 
+/**
+ * The mapping one binding choice writes (#535 item 1). A flow column carries
+ * the COLUMN's declared unit: the unit already on its mapping (a bundle's
+ * manifest says what its column measures, e.g. a routed-share `weight`) wins
+ * over the bound flow's `unit` clause, which is only the default for a column
+ * nothing has declared. Inheriting the flow's unit unconditionally made a
+ * weight column bound to a Router outwire read as Gtok/day, and the overlay
+ * compared unlike units (found in #530). A unitless flow and an undeclared
+ * column yield a unitless mapping, and Run refuses with the kernel's T2 reason.
+ */
+export function bindingEntry(
+  column: string,
+  value: string,
+  model: CanvasModel,
+  prior?: ColumnMapping,
+): ColumnMapping | null {
+  if (value === "time") return { column, as: "time" };
+  if (value.startsWith("stock:")) {
+    // A stock-level column: its t0 observation supplies the component's
+    // initial storage (the tether's carry layer — a MEASURED initial
+    // condition, not a declared one). Values are prefixed so a component
+    // and a flow sharing a name cannot collide in one dropdown.
+    return { column, as: "stock", element: value.slice("stock:".length) };
+  }
+  if (value === "ignore") return null;
+  const declared = prior?.as === "flow" ? prior.unit : undefined;
+  const unit = declared ?? model.relations.find((r) => r.name === value)?.unit;
+  return { column, as: "flow", element: value, force: true, ...(unit ? { unit } : {}) };
+}
+
 export function DataMode({
   model,
   modelName,
@@ -225,25 +255,21 @@ export function DataMode({
   const setBinding = (column: string, value: string) => {
     if (!onManifestChange) return;
     const base: Manifest = manifest ?? { model: "", data: "attached.csv", t: 12, mapping: [] };
+    const prior = base.mapping.find((m) => m.column === column);
     const rest = base.mapping.filter((m) => m.column !== column);
-    let entry: ColumnMapping | null = null;
-    if (value === "time") entry = { column, as: "time" };
-    else if (value.startsWith("stock:")) {
-      // A stock-level column: its t0 observation supplies the component's
-      // initial storage (the tether's carry layer — a MEASURED initial
-      // condition, not a declared one). Values are prefixed so a component
-      // and a flow sharing a name cannot collide in one dropdown.
-      entry = { column, as: "stock", element: value.slice("stock:".length) };
-    } else if (value !== "ignore") {
-      // The kernel's T2 gate requires a unit on every flow column, and the
-      // author already has one place to say it — the flow's own `unit`
-      // clause — so the binding inherits it rather than asking twice. A
-      // unitless flow yields a unitless mapping, and Run refuses with the
-      // kernel's own reason (declare the unit in SL, not here).
-      const unit = model.relations.find((r) => r.name === value)?.unit;
-      entry = { column, as: "flow", element: value, force: true, ...(unit ? { unit } : {}) };
-    }
+    const entry = bindingEntry(column, value, model, prior);
     onManifestChange({ ...base, mapping: entry ? [...rest, entry] : rest });
+  };
+
+  /** Change the declared unit of a bound flow column; blank clears it. */
+  const setUnit = (column: string, unit: string) => {
+    if (!onManifestChange || !manifest) return;
+    const mapping = manifest.mapping.map((m) => {
+      if (m.column !== column) return m;
+      const { unit: _old, ...bare } = m;
+      return unit.trim() ? { ...bare, unit: unit.trim() } : bare;
+    });
+    onManifestChange({ ...manifest, mapping });
   };
 
   const currentBinding = (column: string): string => {
@@ -309,6 +335,21 @@ export function DataMode({
                 </optgroup>
               )}
             </select>
+            {manifest?.mapping.find((m) => m.column === h && m.as === "flow") && (
+              <input
+                aria-label={`unit of ${h}`}
+                title="the column's unit: what this column measures (defaults to the flow's unit)"
+                value={manifest.mapping.find((m) => m.column === h)?.unit ?? ""}
+                placeholder="unit"
+                onChange={(e) => setUnit(h, e.target.value)}
+                className="w-16 border px-1 py-0.5 font-mono text-[11px]"
+                style={{
+                  borderColor: "var(--hairline)",
+                  background: "var(--bg-primary)",
+                  color: "var(--text-primary)",
+                }}
+              />
+            )}
           </li>
         ))}
       </ul>
