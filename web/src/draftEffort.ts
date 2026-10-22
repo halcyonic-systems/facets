@@ -40,7 +40,7 @@ export function effortOnWire(effort: DraftEffort | undefined): "low" | undefined
   return effort === "fast" ? "low" : undefined;
 }
 
-const KEY = "bert-lenses.coauthor-effort";
+const KEY = "facets.coauthor-effort";
 
 let current: DraftEffort = "careful";
 let loaded = false;

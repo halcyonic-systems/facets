@@ -370,7 +370,7 @@ export function ReviewPanel({
   return (
     <div className="grid gap-4">
       <div>
-        <BlockHeader label="Review" count="bert-core · wasm" />
+        <BlockHeader label="Review" count="facets-core · wasm" />
         <div
           className="border-x border-t border-b px-3 py-3"
           style={{ borderColor: "var(--border)", background: "var(--bg-primary)" }}

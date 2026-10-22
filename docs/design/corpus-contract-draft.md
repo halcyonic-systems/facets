@@ -1,4 +1,4 @@
-# The corpus contract (bert-lenses #132)
+# The corpus contract (facets #132)
 
 **Status: RESEARCH.** A plan of record — an execution record, carrying no normative weight (see [`README.md`](README.md), "Plans and drafts").
 

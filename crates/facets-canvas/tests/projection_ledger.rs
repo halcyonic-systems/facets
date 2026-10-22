@@ -162,7 +162,7 @@ fn struct_fields(src: &str, name: &str) -> BTreeSet<String> {
     let head = format!("pub struct {name} ");
     let start = src
         .find(&head)
-        .unwrap_or_else(|| panic!("`{head}{{` not found in bert-core — did the struct move or get renamed?"));
+        .unwrap_or_else(|| panic!("`{head}{{` not found in facets-core — did the struct move or get renamed?"));
     let body_start = src[start..]
         .find('{')
         .map(|i| start + i + 1)

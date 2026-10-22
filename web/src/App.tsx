@@ -1610,7 +1610,7 @@ function Workspace() {
     );
   }
 
-  // File → Save / Export: project the canvas editing model back to a bert-core
+  // File → Save / Export: project the canvas editing model back to a facets-core
   // WorldModel (the display-faithful inverse of toCanvas) and offer it as a
   // download. The run path uses the same projection when the canvas is dirty
   // (ADR run-seam-canvas-document); a clean canvas runs the stored artifact.
@@ -1767,7 +1767,7 @@ function Workspace() {
   async function confirmSave(name: string) {
     if (!canvasModel) return;
     const stem = name.trim().replace(/\.json$/i, "") || "untitled";
-    // Save-as-copy discipline (bert-core model_id contract): saving under a NEW
+    // Save-as-copy discipline (facets-core model_id contract): saving under a NEW
     // name is a copy, and a copy must not inherit its origin's identity — clear
     // it so a later decomposition mints a fresh one. Re-saving the same slot
     // keeps the id (that's what keeps a walked child's parent reference alive).
@@ -2541,7 +2541,7 @@ function Workspace() {
   // The decomposition door's case. It used to consult boundary membership and
   // refuse there: v1's contract covered a component's interior network only, so
   // a component touching the membrane had no checkable seam. SSF #43 extended
-  // the contract to the crossings themselves (bert-core decomposition.rs,
+  // the contract to the crossings themselves (facets-core decomposition.rs,
   // `comp_interface`), so every component offers the door and a seam that does
   // not hold is refused by the kernel, in its own words, where the verdict
   // belongs. One function, read by the NodePopover AND the Klir register's

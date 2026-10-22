@@ -61,15 +61,15 @@ Read these before touching the repo. #1 is load-bearing; the whole architecture
 exists to keep it true.
 
 1. **Rust is the brain (as WASM in the browser); React/Tailwind is the face.**
-   The kernel (`bert-core` + `bert-compose` engine → wasm) owns every systemhood
+   The kernel (`facets-core` + `facets-compose` engine → wasm) owns every systemhood
    verdict, all validation, and the entire simulation. The web layer holds ZERO
    formalism logic — presentation + ephemeral interaction state only. JS asks the
    wasm kernel for every verdict. **Any systems logic found in JS is a bug.**
 2. **`crates/` = truth, `web/` = face.** The directory boundary embodies #1. New
-   systems semantics go in a crate (default: `bert-core`, the semantic authority),
+   systems semantics go in a crate (default: `facets-core`, the semantic authority),
    consumed via the wasm boundary — never reimplemented in TS.
-3. **Self-contained. No cross-repo path deps.** `bert-core` and `bert-compose` are
-   vendored here. Do not re-introduce a `../bert` path dependency. `bert-compose`
+3. **Self-contained. No cross-repo path deps.** `facets-core` and `facets-compose` are
+   vendored here. Do not re-introduce a `../bert` path dependency. `facets-compose`
    is engine-only (circuit/export/run/examples/ladder/lens) — no native egui shell,
    so it stays wasm-clean.
 4. **The wasm API is frozen** (`crates/facets-kernel/API.md`). Add functions;
@@ -102,15 +102,15 @@ exists to keep it true.
   `canvas` (the serializable `CanvasModel`, `project` / `to_canvas` /
   `validate_connection`) + `lenses` (`lens_facts` — boundary identity set,
   edge ladder, ports, aggregate verdict, all canvas-keyed — and `describe`, the
-  formal face). Depends on bert-core.
+  formal face). Depends on facets-core.
 - `crates/facets-tether` — the boundary-interface subsystem, pure Rust (NO
   wasm-bindgen). The CSV import ritual (`tether`), the declarative run manifest
   (`manifest`), and the forced-run pipeline + `mapping_status` (`forcing`).
   Neither engine physics nor marshaling — the interface where empirical data
-  becomes forcing on a model. Depends on bert-core + bert-compose.
+  becomes forcing on a model. Depends on facets-core + facets-compose.
 - `crates/facets-kernel` — the wasm-bindgen boundary, MARSHALING ONLY
-  (`api.rs`): deserialize JS input → call bert-core / bert-compose / bert-canvas /
-  bert-tether (the truth) → serialize. Zero domain logic. Built to `pkg/` via
+  (`api.rs`): deserialize JS input → call facets-core / facets-compose / facets-canvas /
+  facets-tether (the truth) → serialize. Zero domain logic. Built to `pkg/` via
   wasm-pack (gitignored). Frozen surface: `API.md` (append-only).
 - `crates/facets-cli` — the `facets` binary, the workspace's only `[[bin]]`. A
   headless door onto the same library calls the wasm boundary marshals: compile,
@@ -230,13 +230,13 @@ argue.
 
 ### The same truth from inside Rust
 
-When you are already writing Rust, `bert_canvas::lenses::analyze(&CanvasModel, Lens)`
+When you are already writing Rust, `facets_canvas::lenses::analyze(&CanvasModel, Lens)`
 (`crates/facets-canvas/src/lenses.rs`) takes the lens as an **explicit argument and
 ignores `model.lens`** — the same cross-lens door the CLI's `--lens` exposes.
 
 ```rust
-let parsed = bert_canvas::sl::parse_sl_full(&text)?;           // compile
-let verdict = bert_canvas::lenses::analyze(&parsed.model, Lens::Mobus);
+let parsed = facets_canvas::sl::parse_sl_full(&text)?;           // compile
+let verdict = facets_canvas::lenses::analyze(&parsed.model, Lens::Mobus);
 let refused = verdict.validation.issues.iter().any(|i| i.severity == Severity::Error);
 ```
 
@@ -261,7 +261,7 @@ model that is not a system are different findings. A file argument is a path or
 `-` for stdin; `.sl` compiles, anything else opens through `archive::read`.
 Full treatment: README, "The `facets` CLI".
 
-`bert-cli` is the ONE package excluded from `cargo build --workspace --target
+`facets-cli` is the ONE package excluded from `cargo build --workspace --target
 wasm32-unknown-unknown` (argv + filesystem have no browser meaning). The
 exclusion is executed, not asserted: `crates/facets-cli/tests/wasm_gate.rs` goes
 red if the list grows, so the wasm gate cannot widen into one that skips things.
@@ -297,10 +297,10 @@ test: an entry's behaviour under the other two lenses is otherwise unexecuted.
 **Build the bundle. Never verify against `cargo tauri dev`.**
 
 ```bash
-cargo tauri build     # → src-tauri/target/release/bundle/macos/bert-lenses.app
-open src-tauri/target/release/bundle/macos/bert-lenses.app
-lsappinfo info -only bundleid $(pgrep -f bert-lenses-desktop | head -1)
-#   built .app  → "systems.halcyonic.bert-lenses"   ← addressable
+cargo tauri build     # → src-tauri/target/release/bundle/macos/Facets.app
+open src-tauri/target/release/bundle/macos/Facets.app
+lsappinfo info -only bundleid $(pgrep -f facets-desktop | head -1)
+#   built .app  → "systems.halcyonic.facets"        ← addressable
 #   tauri dev   → [ NULL ]                          ← invisible to Launch Services
 ```
 
@@ -313,7 +313,7 @@ computer-use MCP and not devtools. A WKWebView exposes its DOM to the a11y
 hierarchy, so elements come back **named** — the return value is the verification:
 
 ```bash
-osascript -e 'tell application "System Events" to tell process "bert-lenses-desktop"
+osascript -e 'tell application "System Events" to tell process "facets-desktop"
   get name of every button of UI element 1 of scroll area 1 of group 1 of group 1 of window 1
 end tell'
 # → HOME, Klir, Bunge, Mobus, REVIEW, SL, ▶ Run, thing, ≡ PROCESSES, RUN, FORMAL, ANALYST, TYPE
@@ -326,7 +326,7 @@ Gotchas, each hit in practice: `screencapture -x -o a.png b.png c.png` (it grabs
 only the current display set, and the window is often on another); divide
 screenshot coordinates by the backing scale factor before clicking (screenshots
 are 2× on Retina, `System Events` wants logical points); quit with
-`pkill -f bert-lenses-desktop` (`quit app` does not terminate it). The
+`pkill -f facets-desktop` (`quit app` does not terminate it). The
 procedure above is the whole of it; there is no fuller writeup in this repo.
 
 ### The standard a new check has to meet
@@ -349,12 +349,12 @@ verdict is born in Rust and only rendered in TS. Do the eight steps in order; th
 type is not "real" until every layer knows it. Skipping a step (e.g. rendering a
 type the kernel never validates) reintroduces systems logic in JS — invariant #1.
 
-1. **bert-core type** — add the variant to the domain type in `crates/facets-core`
+1. **facets-core type** — add the variant to the domain type in `crates/facets-core`
    (`src/lib.rs`). This is the semantic authority; the type exists here or nowhere.
 2. **`validate_mode` case** — teach `crates/facets-core/src/validate.rs`
    (`validate` / `validate_mode`) what makes the new type well-formed per mode.
    No verdict lives outside this crate.
-3. **bert-canvas projection** — map it across the canvas↔model seam in
+3. **facets-canvas projection** — map it across the canvas↔model seam in
    `crates/facets-canvas/src/canvas.rs` (`project` / `to_canvas`), so the authoring
    shape and the formal `WorldModel` stay in sync.
 4. **`lens_facts` field** — expose whatever the face needs to render as a

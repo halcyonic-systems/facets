@@ -29,7 +29,7 @@ describe("bill-broken rendered context (real kernel output)", () => {
       canvas,
       world: null,
       analysis,
-      provenance: { generated_at: "1970-01-01T00:00:00.000Z", source: "bert-lenses" },
+      provenance: { generated_at: "1970-01-01T00:00:00.000Z", source: "facets" },
     };
 
     const rendered = renderContextForPrompt(ctx);

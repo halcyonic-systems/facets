@@ -27,7 +27,7 @@ export const PRIMITIVES: ReadonlyArray<readonly [ProcessPrimitive, string]> = [
 ];
 
 /** Each primitive's per-tick rule, stated as the engine actually computes it
- *  (bert-compose circuit.rs activity pass — transcribed from the source, not
+ *  (facets-compose circuit.rs activity pass — transcribed from the source, not
  *  paraphrased; fresh-eyes pass 2026-08-18). One line each: what a click on a
  *  processor can honestly say is happening to the flow inside it. */
 export const PRIMITIVE_LAWS: Readonly<Record<ProcessPrimitive, string>> = {

@@ -1,11 +1,13 @@
-# Running bert-lenses permanently
+# Running facets permanently
 
 **Status: LIVE.** This is the maintainer's macOS runbook: the launchd label and
-the `~/halcyonic-apps/bert-lenses` paths below are one machine's and predate the
-rename. Nothing in it is needed to develop or use Facets; `just dev` is the
+the `~/halcyonic-apps/facets` paths below are one machine's (renamed from
+`com.halcyonic.bert-lenses` and `~/halcyonic-apps/bert-lenses` in #541; a
+service installed under the old label is booted out and reinstalled by the
+steps below). Nothing in it is needed to develop or use Facets; `just dev` is the
 normal path.
 
-Runs bert-lenses as a background service on `http://127.0.0.1:5190` instead of
+Runs facets as a background service on `http://127.0.0.1:5190` instead of
 `npm run dev` on 5173. 5173 stays free for interactive dev.
 
 ## Why publish outside ~/Desktop
@@ -14,9 +16,9 @@ This repo lives under `~/Desktop`, which macOS treats as TCC-protected: a
 launchd job has no Full Disk Access grant, so it can't read the repo (or the
 repo's `web/node_modules`) at all. The repo can't move (active dev, worktrees).
 So the build output moves instead: `scripts/publish-app.sh` builds `web/dist`
-inside the repo, then rsyncs it to `~/halcyonic-apps/bert-lenses/dist`, which
+inside the repo, then rsyncs it to `~/halcyonic-apps/facets/dist`, which
 launchd can read. The launchd job also runs a *standalone* vite install kept
-at `~/halcyonic-apps/bert-lenses/server` (its own throwaway `package.json`,
+at `~/halcyonic-apps/facets/server` (its own throwaway `package.json`,
 outside `~/Desktop`) purely to run `vite preview` against the published dist —
 it never touches the repo's own vite in `web/node_modules`.
 
@@ -24,8 +26,8 @@ it never touches the repo's own vite in `web/node_modules`.
 
 ```bash
 scripts/publish-app.sh
-cp scripts/launchd/com.halcyonic.bert-lenses.plist ~/Library/LaunchAgents/
-launchctl bootstrap gui/$(id -u) ~/Library/LaunchAgents/com.halcyonic.bert-lenses.plist
+cp scripts/launchd/com.halcyonic.facets.plist ~/Library/LaunchAgents/
+launchctl bootstrap gui/$(id -u) ~/Library/LaunchAgents/com.halcyonic.facets.plist
 ```
 
 Check it's up: `curl -sf http://127.0.0.1:5190/ | head`
@@ -38,22 +40,22 @@ After any change to the app, re-run:
 scripts/publish-app.sh
 ```
 
-The running service already points at `~/halcyonic-apps/bert-lenses/dist`, but
+The running service already points at `~/halcyonic-apps/facets/dist`, but
 vite preview only reads the files at process start, so kick it after
 publishing:
 
 ```bash
-launchctl kickstart -k gui/$(id -u)/com.halcyonic.bert-lenses
+launchctl kickstart -k gui/$(id -u)/com.halcyonic.facets
 ```
 
 ## Stop / uninstall
 
 ```bash
-launchctl bootout gui/$(id -u)/com.halcyonic.bert-lenses
-rm ~/Library/LaunchAgents/com.halcyonic.bert-lenses.plist
+launchctl bootout gui/$(id -u)/com.halcyonic.facets
+rm ~/Library/LaunchAgents/com.halcyonic.facets.plist
 ```
 
-The published copy (`~/halcyonic-apps/bert-lenses/`) is left on disk; delete
+The published copy (`~/halcyonic-apps/facets/`) is left on disk; delete
 it too if fully decommissioning.
 
 ## The desktop app
@@ -69,7 +71,7 @@ That rebuilds the wasm kernel, builds `web/dist`, and runs `cargo tauri build`.
 The artifact lands at:
 
 ```
-src-tauri/target/release/bundle/macos/bert-lenses.app
+src-tauri/target/release/bundle/macos/Facets.app
 ```
 
 Double-click it, or `open` it. ~5.4 MB, arm64, ad-hoc signed by the linker.
@@ -117,8 +119,8 @@ The app is not Developer-ID signed and not notarized. Consequences:
   notarization. That is env-vars-only in Tauri and needs zero rework here, so
   it can be added at any point.
 
-`xattr -p com.apple.quarantine bert-lenses.app` reports the flag if a copy ever
-picks one up; `xattr -dr com.apple.quarantine bert-lenses.app` clears it.
+`xattr -p com.apple.quarantine Facets.app` reports the flag if a copy ever
+picks one up; `xattr -dr com.apple.quarantine Facets.app` clears it.
 
 ### What is deliberately absent
 

@@ -4,7 +4,7 @@
 
 Entering a model *as* a lens (mode) is licensed by a precondition. Those
 preconditions are proved in `systems-science-foundations` (SSF), and enforced in
-`bert-core`. This document is the chain of custody between the two: which Lean
+`facets-core`. This document is the chain of custody between the two: which Lean
 declaration each Rust gate mirrors, and the CI mechanism that makes drift
 between them a build failure rather than a matter of trust.
 
@@ -70,7 +70,7 @@ gate function that mirrors it, the mode column it licenses, and a
 barely-passing / barely-failing fixture pair that pins exactly what the
 predicate means at its boundary.
 
-| Precondition | Lean (`ViewGeneration.lean`) | Plain statement | Rust gate (`bert-core`) | Mode column | Barely passes | Barely fails |
+| Precondition | Lean (`ViewGeneration.lean`) | Plain statement | Rust gate (`facets-core`) | Mode column | Barely passes | Barely fails |
 |---|---|---|---|---|---|---|
 | On-ness | `Kernel.dep_on` / `toKlir` (free) | every dependency endpoint is a thing | `validate::check_interaction_references` (via `validate_mode` Core) | `core` | holds by construction for every enumerated row | (unrepresentable here: `dep_on` is total) |
 | Bond | `Kernel.HasBond` | the dependency has a distinct, bonded pair | `validate::check_bond` (via `validate_mode` Structural) | `structural` | `n=2, dep=[[0,1]]` | `n=2, dep=[[0,0]]` — an edge exists but it is reflexive, so no *distinct* pair |
@@ -90,7 +90,7 @@ pair is bonded, so `HasBond` collapses to "the dependency contains a distinct
 pair" — precisely what `check_bond` computes. The fixture is generated against
 that instance, and the collapse is *proved*, not asserted, by
 `GatesTruthTable.hasBondB_iff`. This is the same pinning recorded in
-`bert-core::transition`'s correspondence table.
+`facets-core::transition`'s correspondence table.
 
 ## D. Vectors and CI
 

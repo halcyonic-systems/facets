@@ -71,7 +71,7 @@ structural model, many dynamics-kinds attachable, conservation as a declarable p
 rather than the engine's premise" — the sentence quoted above, word for word, applied
 to CRNs specifically.
 
-**This is not a minor omission.** bert-compose's own domain — a flow network of nodes
+**This is not a minor omission.** facets-compose's own domain — a flow network of nodes
 and edges carrying conserved and non-conserved substance — is structurally closer to a
 Petri net / CRN than to any of the six frameworks actually read (Willems, MT, Klir,
 Bunge, Bertalanffy, coalgebra). Petri nets in particular already unify **exactly** the
@@ -208,7 +208,7 @@ real*.
 ## 5. Does the taxonomy cut anything? Partially — two of six axes don't pull weight
 
 The synthesis states its own falsifiability test: axes were "chosen by the test 'does
-bert-lenses have to write different code if this varies.'" Applying that test to the
+facets have to write different code if this varies.'" Applying that test to the
 document's own "what each unsupported kind requires" table (§2):
 
 | Axis | Cited as differentiator in the "requires" table? |
@@ -285,7 +285,7 @@ conservation to one possible constraint on B rather than a definitional commitme
 and the Lean "no structural role" proof, while accurate, is an application of
 Reynolds/Wadler parametricity, not a systems-theoretic result. What's left after this
 correction is real and worth building: **the first application of an
-already-well-understood structure/dynamics separation to bert-lenses' specific Mobus/
+already-well-understood structure/dynamics separation to facets' specific Mobus/
 K≅2/Lean/circuit.rs kernel.** That is a legitimate, citable, defensible engineering
 contribution. It is not, as claimed, a property no existing framework has
 demonstrated — and the paper should say which is which before this goes anywhere

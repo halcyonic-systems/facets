@@ -2,9 +2,9 @@
 
 **Status: RESEARCH.**
 
-Research pass for bert-lenses dynamics generalization (issue #67 Markov/FSA sim, #54 porosity semantics,
+Research pass for facets dynamics generalization (issue #67 Markov/FSA sim, #54 porosity semantics,
 Boolean-network trajectory mode). Question: is there a substrate-neutral formal definition of "dynamical
-system" broad enough to cover conservation-flow ODEs (what bert-compose runs today), FSA/DLG state
+system" broad enough to cover conservation-flow ODEs (what facets-compose runs today), FSA/DLG state
 machines, Boolean-network trajectories, agent-based trajectories, and multi-timescale hierarchies —
 without picking flow-conservation as the one true answer the way Mobus's embedded-JS-per-element approach
 implicitly did (ch4 lines 509/535/560, UNVERIFIED here — not re-checked this pass, cited from standing
@@ -78,7 +78,7 @@ Trans. Automatic Control — also in Shingai's library at
 `/Users/home/Zotero/storage/NRXKIFUE/willems-1991-paradigms-puzzles.pdf`, **not opened this pass**) before
 relying on it.
 
-### Verdict for bert-lenses
+### Verdict for facets
 
 Behavior-as-trajectory-set is exactly general enough for the instrument's actual requirement: conservation
 flows are one behavior-generating mechanism (an ODE constraint on B), FSA/DLG transitions are another (a
@@ -134,7 +134,7 @@ years earlier (1975 vs. Willems' mature statements in the 1980s–2000s, though 
 papers on the behavioral approach also date to the late 1970s–80s per citation [5] in the 2007 article,
 **UNVERIFIED** exact date not checked this pass).
 
-The crucial move, and the one directly useful for bert-lenses, is that **"time system" and "dynamical
+The crucial move, and the one directly useful for facets, is that **"time system" and "dynamical
 system" are not the same thing** — dynamics is an *additional* structure imposed on a time system, not a
 synonym for it. Definition 2.7 (p. 21):
 
@@ -147,15 +147,15 @@ synonym for it. Definition 2.7 (p. 21):
 So on this account: a general system is just a relation; a time system is a relation on time-indexed
 functions (arbitrary ordered time, not necessarily ℝ or ℕ); and a *dynamical* system is a time system for
 which you can additionally exhibit a state object C and a state-transition family φ satisfying the
-semigroup/composition axiom. This is exactly the abstraction bert-lenses needs: **conservation flows,
+semigroup/composition axiom. This is exactly the abstraction facets needs: **conservation flows,
 FSA/DLG transitions, and Boolean-network updates are all "time systems," and all three become "dynamical
 systems" in this strict sense by exhibiting their own state-transition family** — an ODE flow, a
 transition-function δ, or a Boolean update function respectively — each satisfying the same semigroup
 composition law (do t→t' then t'→t'' = do t→t'' directly). The semigroup property is the one formal
-invariant that should hold across every mode bert-lenses runs, and it's a clean acceptance test: whatever
+invariant that should hold across every mode facets runs, and it's a clean acceptance test: whatever
 "Run" does per-mode, its state-transition family must compose.
 
-### Verdict for bert-lenses
+### Verdict for facets
 
 Best-documented case for splitting the kernel into two layers: (1) a *system* layer (K≅2's C,N,E,B,G —
 already just structure, no time), and (2) a *dynamical-system* layer that is *any* (state-object,
@@ -163,7 +163,7 @@ state-transition-family) pair satisfying the semigroup composition axiom over *s
 set — not necessarily ℝ, not necessarily requiring conservation. This directly licenses treating FSA
 transitions and Boolean-network updates as first-class dynamics rather than as a different kind of thing
 bolted alongside "real" (flow) dynamics. Mullin's warning stands, though: the definition alone proves
-nothing; whatever bert-lenses' engine does per-mode still has to be built, this only tells you the shape
+nothing; whatever facets' engine does per-mode still has to be built, this only tells you the shape
 the contract must have.
 
 **Additional related holding, not opened this pass:** `/Users/home/Zotero/storage/E2SDDQCQ/Cody - 2021 -
@@ -194,7 +194,7 @@ be easy to misattribute. Wendt gives a unified continuous/discrete state-machine
 - Discrete: Y(n) = ω[Z(n), X(n)], Z(n+1) = δ[Z(n), X(n)] — explicitly identified as "the so-called state
   machine model by Mealy."
 - Wendt is explicit that the two are the same formula family with t/τ (continuous index) swapped for n/j
-  (discrete index) — a direct, worked instance of the discrete/continuous unification bert-lenses needs,
+  (discrete index) — a direct, worked instance of the discrete/continuous unification facets needs,
   independent of whether it is faithful to Zadeh's original wording.
 
 **Verdict:** cite Wendt as a corroborating unified-state-machine account, not as Zadeh. The literature
@@ -235,7 +235,7 @@ formalization)
 > readout function."
 
 This is a Mealy-machine-shaped quintuple — states, inputs, outputs, next-state function, output/readout
-function — i.e., structurally identical to the FSA formalism bert-lenses' DLG mode already needs for
+function — i.e., structurally identical to the FSA formalism facets' DLG mode already needs for
 issue #67 (Markov/FSA simulation). The paper's whole thesis (title: "Conjoining Wymore's... and DEVS...")
 is that Wymore's system definition already underlies DEVS (Discrete Event System Specification, Zeigler),
 and the paper works to make that pairing rigorous: "the basis of DEVS on Wymore's system definition
@@ -278,14 +278,14 @@ A hybrid automaton H comprises:
 
 ### What it covers, and what it doesn't
 
-Covers exactly bert-lenses' actual requirement set: continuous flow *within* a mode (bert-compose's
+Covers exactly facets' actual requirement set: continuous flow *within* a mode (facets-compose's
 conservation ODEs) plus discrete mode-switching *between* modes (FSA/DLG transitions) as two halves of one
 formal object, with the mode-invariant/guard apparatus giving a principled place to put "when does this
 system stop being in Operational mode" logic. **Undecidability is the real cost**: reachability is
 undecidable for general hybrid automata (a straightforward reduction from counter machines using three
 continuous variables proves this); decidable subclasses exist (timed automata — uniform-rate variables;
 initialized rectangular automata; piecewise-constant-derivative systems) but they're restrictive. For an
-interactive authoring/simulation tool rather than a verifier this is likely an acceptable cost — bert-lenses
+interactive authoring/simulation tool rather than a verifier this is likely an acceptable cost — facets
 doesn't need to *prove* reachability properties, just *simulate* forward — but it's worth naming as the
 formal price of adopting the fully general hybrid-automaton account rather than a restricted decidable
 subclass.
@@ -334,7 +334,7 @@ of these systems can be any transformation from the state space to itself." Thei
 This is the Birkhoff-style "semigroup acting on a state space" definition, restated for arbitrary abstract
 data structures rather than smooth manifolds — and it's explicitly motivated (their intro, not re-quoted
 here in full) by wanting dynamics over things like governance contracts and agent decisions, i.e., exactly
-the non-continuous, non-conservation cases bert-lenses needs (Boolean networks: X = {0,1}ⁿ, h = the update
+the non-continuous, non-conservation cases facets needs (Boolean networks: X = {0,1}ⁿ, h = the update
 rule; ABM trajectories: X = joint agent-state space, h = one simulation step). This is a strong, directly
 citable, already-in-library answer to "the minimal classical account, modernized for arbitrary state
 structure."
@@ -348,17 +348,17 @@ Marchaud, Zaremba, and Barbashin, who is credited (§1, p. 191 of the extraction
 derivative ẋ = f(x,t) with a *set* of admissible tangent directions C(x,t) ⊆ X, so multiple trajectories
 can emanate from one point. **Relevance flagged but not oversold:** this is about existence/non-uniqueness
 of continuous trajectories, not about discrete/hybrid unification — it's the "generalized dynamical
-system" label attached to a different problem than the one bert-lenses has. Worth knowing the term is
+system" label attached to a different problem than the one facets has. Worth knowing the term is
 overloaded in the literature (Barbashin/Roxin's "generalized dynamical system" ≠ Zargham/Shorish's), so as
-to not conflate them when citing "generalized dynamical systems" in future bert-lenses docs.
+to not conflate them when citing "generalized dynamical systems" in future facets docs.
 
-### Verdict for bert-lenses
+### Verdict for facets
 
 Zargham & Shorish (2022) is the best already-verified, already-in-library instance of "dynamics = a
 self-map h: X → X of an arbitrary state space X, with trajectories as its orbits" — the classical
 semigroup-action idea stripped of any assumption that X is a manifold or that time is continuous. It is a
 clean, modern, directly citable formalization that a Boolean-network mode (X = {0,1}ⁿ) and an ABM mode
-(X = joint agent state) both instantiate exactly, with bert-compose's conservation-flow engine being the
+(X = joint agent state) both instantiate exactly, with facets-compose's conservation-flow engine being the
 special case where X carries a linear/vector-space structure and h arises by integrating a flow field.
 
 ---
@@ -391,7 +391,7 @@ functorial/compositional proof of well-definedness under gluing).
 
 ### What it covers, and — verified as an absence, not fabricated — what it doesn't
 
-Covers: exactly bert-compose's conservation-flow engine, formalized compositionally (diagrams glue, and
+Covers: exactly facets-compose's conservation-flow engine, formalized compositionally (diagrams glue, and
 gluing commutes with taking the ODE semantics — that commutation is the actual theorem, not the ODE
 translation itself, which was already standard practice). This is real, useful, on-topic, recent (2022)
 work directly validating that "stock-and-flow → ODE" is a mathematically principled special case, not an
@@ -401,16 +401,16 @@ Does **not** cover: I read the full paper (both the modeling section and the Alg
 implementation section) and found no discussion of discrete-event transitions, hybrid switching, or
 stochastic dynamics — `Open(Dynam)`'s objects are, by the definition actually stated (§3.4), continuous
 vector fields on ℝ^S. This is an absence I confirmed by reading the relevant section, not an inference from
-silence elsewhere in the paper. If bert-lenses wants a categorical account that also covers FSA/DLG or
+silence elsewhere in the paper. If facets wants a categorical account that also covers FSA/DLG or
 Boolean-network modes, this specific paper's `Open(Dynam)` is not it as written — though the broader
 AlgebraicJulia ecosystem the authors cite (Catlab, decorated/structured cospans generally) is
 substrate-agnostic in principle and *could* host a discrete-transition-system analogue; that would be new
 work, not something this paper already provides.
 
-### Verdict for bert-lenses
+### Verdict for facets
 
 Directly relevant precedent for "formalize the compositional/gluing structure of stock-flow diagrams
-categorically, get the ODE semantics as a theorem about a functor" — validates that bert-compose's engine
+categorically, get the ODE semantics as a theorem about a functor" — validates that facets-compose's engine
 sits on solid, actively-developed theoretical ground. Does not, by itself, extend to the FSA/Boolean/agent
 modes; those would need either a second semantics functor (discrete-transition-system valued) glued in
 alongside this one, or a hybrid-automaton-valued semantics functor covering both — which nothing found
@@ -445,7 +445,7 @@ this pass):**
 No hits at all for: "hybrid automata," "stock and flow," "Birkhoff," "Padulo." These four gaps are real —
 not a search-syntax failure (filenames were checked against straightforward substrings that would catch
 author-surname or short-title conventions used elsewhere in the library) — so if hybrid-automata or
-categorical-stock-flow theory becomes load-bearing for bert-lenses, that reading has to come from outside
+categorical-stock-flow theory becomes load-bearing for facets, that reading has to come from outside
 Shingai's existing collection; the arXiv/Wikipedia sources cited in §6 and §8 above are the current best
 available, already fetched.
 
@@ -461,7 +461,7 @@ VERIFIED, primary-or-near-primary depth.
 ## Cross-cutting synthesis (for whoever picks this up next)
 
 Three genuinely different formal moves are on offer, and they are not competitors — they answer different
-questions bert-lenses actually has:
+questions facets actually has:
 
 1. **"What is a system, prior to any dynamics?"** → Mesarovic-Takahara Definition 1.1: a relation on
    abstract sets. (Already effectively what K≅2's C,N,E,B,G give you, structurally.)
@@ -479,9 +479,9 @@ questions bert-lenses actually has:
    family — each is a different concrete answer to "how is φ specified," not a different definition of
    dynamics.
 
-The practical implication: bert-lenses' "Run = a mode transition" framing (Mobus-structural → Operational)
+The practical implication: facets' "Run = a mode transition" framing (Mobus-structural → Operational)
 already has the right shape at level #1–2; the actual engineering gap is that only one instance of #3
-(conservation-flow ODE, via bert-compose's circuit.rs) is implemented, and the kernel doesn't yet expose a
+(conservation-flow ODE, via facets-compose's circuit.rs) is implemented, and the kernel doesn't yet expose a
 seam for "state-transition family satisfying the semigroup axiom" as a pluggable thing FSA/DLG, Boolean
 networks, and ABM trajectories could each fill in as siblings of the flow engine rather than as
 bolted-on exceptions.

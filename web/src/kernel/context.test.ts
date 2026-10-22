@@ -95,7 +95,7 @@ function ctxOf(canvas: CanvasModel, analysis: CanvasAnalysis): ModelContext {
     canvas,
     world: null,
     analysis,
-    provenance: { generated_at: "2026-07-17T00:00:00.000Z", source: "bert-lenses" },
+    provenance: { generated_at: "2026-07-17T00:00:00.000Z", source: "facets" },
   };
 }
 
@@ -277,7 +277,7 @@ describe("renderContextForPrompt", () => {
     const a = renderContextForPrompt(mobusCtx);
     const b = renderContextForPrompt({
       ...mobusCtx,
-      provenance: { generated_at: "1999-01-01T00:00:00.000Z", source: "bert-lenses" },
+      provenance: { generated_at: "1999-01-01T00:00:00.000Z", source: "facets" },
     });
     expect(a).toBe(b);
   });
@@ -302,7 +302,7 @@ describe("buildModelContext", () => {
     expect(ctx.canvas).toBe(mobusCanvas);
     expect(ctx.analysis).toBe(mobusAnalysis);
     expect(ctx.world).toBe(world);
-    expect(ctx.provenance.source).toBe("bert-lenses");
+    expect(ctx.provenance.source).toBe("facets");
     expect(analyzeCanvas).toHaveBeenCalledTimes(1);
     expect(project).toHaveBeenCalledTimes(1);
   });

@@ -1,6 +1,6 @@
 # The rename ledger: bert → facets
 
-**Status: PROPOSED.** The ledger of the rename epic ([#541](https://github.com/halcyonic-systems/facets/issues/541)): the inventory of every occurrence of the old names, filed by class, the map the phases apply, and one dated entry per phase. Phase 1 renamed nothing; phase 2 renamed the crates; phase 3 renamed the wasm package, the web package and the saved-file format tag; phase 4 renamed the command-line program; phase 5 re-minted the goldens and the walkthrough archives (entries below). Each phase regenerates the inventory and shows its classes at zero; `python3 scripts/rename_inventory.py --check` fails whenever the tree and the inventory on disk disagree, so a phase cannot claim a count it did not produce.
+**Status: PROPOSED.** The ledger of the rename epic ([#541](https://github.com/halcyonic-systems/facets/issues/541)): the inventory of every occurrence of the old names, filed by class, the map the phases apply, and one dated entry per phase. Phase 1 renamed nothing; phase 2 renamed the crates; phase 3 renamed the wasm package, the web package and the saved-file format tag; phase 4 renamed the command-line program; phase 5 re-minted the goldens and the walkthrough archives; phase 6 renamed the prose and gates it; phase 7 renamed what lives outside the code (entries below). Each phase regenerates the inventory and shows its classes at zero; `python3 scripts/rename_inventory.py --check` fails whenever the tree and the inventory on disk disagree, so a phase cannot claim a count it did not produce.
 
 ## Files
 
@@ -45,8 +45,8 @@ Three files read in full on 2026-10-11, counting occurrences by the definition a
 
 | file | hand count | script | phase 1 reading |
 |---|---|---|---|
-| `crates/facets-kernel/src/lib.rs` | 1 (line 1: the old crate name in the header comment, `doc-prose`, phase 6) | 1 | 8 at `crates/bert-lenses-kernel/src/lib.rs` (line 1: 1 · line 5: 2 · line 6: 2 · line 11: 1 · line 12: 1 · line 54: 1) |
-| `docs/VENDORING.md` | 22 (lines 1, 13, 26, 27, 57: 2 each · lines 51, 54: 3 each · lines 9, 12, 35, 36, 46, 49: 1 each) | 22 | 25 (lines 1, 13, 15, 26, 27, 57: 2 each · lines 51, 54: 3 each · lines 9, 12, 35, 36, 46, 47, 49: 1 each) |
+| `crates/facets-kernel/src/lib.rs` | 0 (phase 6 renamed the header comment; re-read in full 2026-10-21) | 0 | 8 at `crates/bert-lenses-kernel/src/lib.rs` (line 1: 1 · line 5: 2 · line 6: 2 · line 11: 1 · line 12: 1 · line 54: 1) |
+| `docs/VENDORING.md` | 20 (lines 13, 26, 27, 57: 2 each · lines 51, 54: 3 each · lines 9, 12, 35, 36, 46, 49: 1 each; phase 6 renamed the title, re-read in full 2026-10-21) | 20 | 25 (lines 1, 13, 15, 26, 27, 57: 2 each · lines 51, 54: 3 each · lines 9, 12, 35, 36, 46, 47, 49: 1 each) |
 | `web/package.json` | 0 (phase 3 renamed the package names on lines 2 and 20; re-read in full) | 0 | 3 (line 2: 1 · line 20: 2) |
 
 ## What the classifier does not separate cleanly
@@ -247,13 +247,81 @@ python3 scripts/rename_inventory.py && python3 scripts/rename_inventory.py --che
 just check                                             # green: cargo 752 passed, 0 failed, 28 ignored; vitest 833 passed in 111 files (836 before: the web dual-reader test opens one file, not four); wasm-exec 209 checks
 ```
 
+## Phase 6 (2026-10-21): docs and prose
+
+The prose says `facets`: docs, READMEs, `AGENTS.md`, comments and strings that ship (including `facets --help`, which now says "Ask the facets kernel"). Classes moved: `doc-prose` 469 → 39, `deploy` 49 → 40, `upstream-bert` 138 → 139. `doc_lint` gains the gate the class table promised, so the prose cannot drift back.
+
+| class | before | after | what remains |
+|---|---|---|---|
+| `doc-prose` | 469 | 39 | **records (36):** `docs/VENDORING.md` (13: upstream's crate names and the vendoring commit's paths, which `git show <rev>:` must keep), `docs/audits/docs-staleness-2026-10-11.md` (6), `docs/design/hierarchical-decomposition-investigation.md` (9, HISTORICAL), the lineage sentence `README.md:13`, `crates/facets-core/src/lib.rs:14` (upstream's `bert-core`), `docs/theory-fidelity.md:87` (3: commits in the repository as then named), `web/src/canvas/geometry.ts:4` (the spike's own name), `docs/design/shape-vocabulary-research.md:40,64` (a file's name). **The gate's own table (3):** `scripts/doc_lint.py` quotes the records it allows |
+| `deploy` | 49 | 40 | phase 7: the launchd label and plist, `~/halcyonic-apps/bert-lenses`, `bert-lenses-serve`, `BERT_LENSES_*`, the pipeline user agent, `Documents/bert-lenses` |
+| `upstream-bert` | 138 | 139 | +1: the gate's comment names upstream BERT |
+| `cli-word` | 33 | 33 | kept, every row read: the alias until 2027-01-11 (12); records (6); the bare `bert` meaning upstream BERT or its repo (`lifecycle-prior-art.md:53`, `mobus-lifecycle-formalization.md:249,266`, `parked.md:835`, `projection_ledger.rs:85`); and the dated research notes `dynamics-research/read-klir.md` (7) and `read-mobus.md:190`, where `bert` can mean the project or the BERT modeling tradition, so a mechanical reading would guess |
+| every other class | unchanged | unchanged | `crate-dir` 6, `issue-ref` 160 (GitHub redirects `bert-lenses#N`; not rewritten), `lineage` 147, `format-tag` 8, `fixture` 1, `external-url` 2 |
+| **total** | **1013** | **575** | |
+
+**The rule for records.** A doc whose status is LIVE, ADOPTED, PROPOSED or RESEARCH was rewritten; a HISTORICAL doc and the dated audits were not, since they are the record of what was written under the old name. A line inside a live doc that pins a commit, names upstream's crate, or names a file kept its old name and is listed in the gate.
+
+**The map.** Twelve rows: each crate name, hyphenated and underscored, to its facets name in `doc-prose`, phase 6. `rename_apply.py --phase 6 --classes doc-prose` then rewrote 437 tokens on 394 lines, excluding `docs/audits/`, the HISTORICAL investigation and `docs/VENDORING.md`. Every replaced line was filtered for commit hashes, `git show`/`git -C`, "verbatim", "upstream", "vendored", `BERT`, URLs and "pinned"; the 19 lines that matched were read, and four were restored by hand (`facets-core/src/lib.rs:14`, `theory-fidelity.md:87`, `geometry.ts:4`, and `README.md:13`, which would have said the crates "still carry" the name `facets`).
+
+**The gate.** `doc_lint.py`'s `old_name_gate` walks the tree through `rename_inventory.inventory` and fails on any `doc-prose` row outside the records: `docs/audits/`, `docs/VENDORING.md`, a doc whose header carries HISTORICAL, and the lines `OLD_NAME_RECORD_LINES` names by a substring of the line (not by line number, so an edit above a record does not silently move the allowance). Made to fail on purpose, then restored: a line saying "the bert-compose engine" appended to `docs/kernel-architecture.md` (LIVE), and a comment naming `bert-lenses` appended to `crates/facets-tether/src/lib.rs`, each turned it red with the file and line.
+
+**Hand edits:** the `README.md` lineage sentence ("the code took the new name in October 2026", linking #541); the `VENDORING.md` title and its "Crates taken" row, which now say the crates are `facets-core` and `facets-compose` here and that the names below are upstream's; the stale bundle names in `AGENTS.md` and `docs/running-permanently.md` (`Facets.app`, `systems.halcyonic.facets`, `facets-desktop`, all three checked against `src-tauri`); the self-test's hand counts, which move with the two pinned files phase 6 changed (`facets-kernel/src/lib.rs` 1 → 0, `VENDORING.md` 22 → 20), each re-read in full.
+
+**Not touched, by design:** `bert-lenses#N` issue references (GitHub redirects them); `BERT` in capitals (upstream, or this project's BERT-format models); `docs/archive/`, `assets/archive/`, `docs/decisions/`; the deploy labels (phase 7).
+
+**Commands run**, in order, from the repo root:
+
+```
+python3 scripts/rename_inventory.py --check            # OK, 1013
+python3 scripts/rename_apply.py --phase 6 --classes doc-prose,deploy --dry-run
+python3 scripts/rename_apply.py --phase 6 --classes doc-prose --exclude docs/audits/ --exclude docs/design/hierarchical-decomposition-investigation.md --exclude docs/VENDORING.md --dry-run   # 437 tokens, 394 lines; 19 flagged lines read
+python3 scripts/rename_apply.py --phase 6 --classes doc-prose --exclude docs/audits/ --exclude docs/design/hierarchical-decomposition-investigation.md --exclude docs/VENDORING.md
+python3 scripts/rename_apply.py --phase 6 --classes deploy      # the three facets-desktop lines
+python3 scripts/doc_lint.py                            # red under each of the two injected lines above; green restored
+python3 scripts/rename_inventory.py && python3 scripts/rename_inventory.py --check && python3 scripts/rename_inventory.py --self-test
+just check                                             # green: cargo 752 passed, 0 failed, 28 ignored; vitest 833 passed in 111 files; wasm-exec 209 checks (rustc 1.99.1: `rustup update stable` was needed locally, since uuid 1.28.0 from #550 requires 1.89)
+```
+
+## Phase 7 (2026-10-21): outside the repository
+
+The launchd label is `com.halcyonic.facets`, the published copy is `~/halcyonic-apps/facets`, and the pipeline reads `FACETS_DATA_DIR`. `deploy` 40 → 14; every remaining row is the pipeline's data folder `~/Documents/bert-lenses/`, which stays where it is (decision 3), plus the one line in `docs/running-permanently.md` that names the old label so a service installed under it can be found.
+
+| class | before | after | what remains |
+|---|---|---|---|
+| `deploy` | 40 | 14 | `~/Documents/bert-lenses/{data,technical}` in `tools/pipeline/` (8), its README (1), two design docs (4); `docs/running-permanently.md:5` (the old label and path, named once) |
+| every other class | unchanged | unchanged | |
+| **total** | **575** | **549** | |
+
+**In the repository.** `scripts/launchd/com.halcyonic.bert-lenses.plist` moved with `git mv` to `com.halcyonic.facets.plist`; its label and every `~/halcyonic-apps/` path follow (`plutil -lint` OK). `scripts/publish-app.sh` publishes to `~/halcyonic-apps/facets` and writes `facets-serve` (`bash -n` OK). `docs/running-permanently.md` follows, and its status paragraph names the old label once. `tools/pipeline`: `BERT_LENSES_DATA_DIR` → `FACETS_DATA_DIR`, `BERT_LENSES_SCRATCH_DIR` → `FACETS_SCRATCH_DIR`, User-Agent `facets-pipeline/0.1`; neither variable was set on the maintainer's machine, so no fallback reads the old names.
+
+**Outside it, on the maintainer's machine (2026-10-21):** no launchd service was loaded under either label, so nothing was booted out; `~/halcyonic-apps/bert-lenses` was moved to `~/halcyonic-apps/facets` (`dist/`, `server/`, `web.log`). The launcher registry (`halcyonic-projects/projects.json`) had the key `bert-lenses` at the path `active/bert-lenses`, which had not existed since August; it is now `facets` at `active/facets`, and `launch status` lists it. The vault's launcher skill and `.claude/docs/desktop-app-automation.md` name `facets`, `systems.halcyonic.facets`, `facets-desktop` and the window title `Facets — Model`; dated proof lines there keep the old name.
+
+**Read, not changed:**
+- hal's `gates.py` already matches both names. Its eval data and the dated proxy comment are records.
+- general-systems-reasoner names `bert-lenses#N` issues and the old label in comments. Its CORS origins do not depend on the label.
+- Its SL authoring prompt says "the bert-lenses System Language". That string goes to the model and the drafter audits measure its output, so it changes in a measured PR of its own, not here.
+- The vault's `sysos.py` maps the old names to `facets` on purpose.
+- No GitHub label carries the old name. #365 (the ripple sweep) closes with this phase.
+
+**Commands run:**
+
+```
+git mv scripts/launchd/com.halcyonic.bert-lenses.plist scripts/launchd/com.halcyonic.facets.plist
+plutil -lint scripts/launchd/com.halcyonic.facets.plist && bash -n scripts/publish-app.sh && python3 -m py_compile tools/pipeline/common.py tools/pipeline/fetch_usage_openrouter.py
+launchctl list | grep -i -E 'bert|facets'              # nothing loaded
+mv ~/halcyonic-apps/bert-lenses ~/halcyonic-apps/facets
+launch status                                          # facets  5173  stopped
+python3 scripts/doc_lint.py && python3 scripts/rename_inventory.py && python3 scripts/rename_inventory.py --check
+```
+
 ## Phase ordering
 
 Phase 5 moves with phase 2: the Lean manifest's `stated_in` paths name `crates/bert-*` files and Gate A reads them, and the contract goldens embed a crate name in a lens note. The lists below are generated.
 
 <!-- rename-inventory:begin (generated by scripts/rename_inventory.py; do not edit) -->
 
-Occurrences: **1013** in **176** files (inventory of 2026-10-11, one row per occurrence).
+Occurrences: **549** in **115** files (inventory of 2026-10-11, one row per occurrence).
 
 ### By class
 
@@ -262,53 +330,52 @@ Occurrences: **1013** in **176** files (inventory of 2026-10-11, one row per occ
 | external-url | 2 | 1 |
 | format-tag | 8 | 6 |
 | lineage | 147 | 22 |
-| upstream-bert | 138 | 39 |
+| upstream-bert | 139 | 40 |
 | issue-ref | 160 | 47 |
-| deploy | 49 | 12 |
+| deploy | 14 | 8 |
 | crate-dir | 6 | 5 |
 | fixture | 1 | 1 |
 | cli-word | 33 | 15 |
-| doc-prose | 469 | 111 |
+| doc-prose | 39 | 9 |
 
 ### By top-level directory
 
 | directory | occurrences |
 |---|---|
-| docs/ | 519 |
-| crates/ | 270 |
-| web/ | 65 |
-| (root) | 62 |
-| scripts/ | 34 |
+| docs/ | 261 |
+| crates/ | 207 |
 | assets/ | 33 |
-| tools/ | 20 |
-| fixtures/ | 8 |
+| tools/ | 14 |
+| (root) | 11 |
+| web/ | 10 |
+| scripts/ | 7 |
+| fixtures/ | 5 |
 | .vscode/ | 1 |
-| editors/ | 1 |
 
 ### Files with the most occurrences
 
 | file | occurrences |
 |---|---|
-| crates/facets-core/src/lib.rs | 43 |
-| AGENTS.md | 29 |
+| crates/facets-core/src/lib.rs | 41 |
 | docs/design/hierarchical-decomposition-investigation.md | 29 |
-| docs/design/dynamics-research/read-external.md | 27 |
 | docs/archive/roadmap-pre-web-rebuild.md | 26 |
-| docs/design/dynamics-research/read-category-theory.md | 26 |
-| crates/facets-compose/src/circuit.rs | 25 |
-| docs/design/dynamics-research/read-klir.md | 25 |
-| docs/design/shape-vocabulary-research.md | 25 |
-| README.md | 24 |
 | docs/archive/canvas-architecture.md | 24 |
-| crates/facets-core/src/validate.rs | 23 |
-| crates/facets-canvas/src/canvas.rs | 22 |
-| docs/VENDORING.md | 22 |
+| crates/facets-compose/src/circuit.rs | 22 |
 | assets/archive/README.md | 20 |
+| crates/facets-core/src/validate.rs | 20 |
+| docs/VENDORING.md | 20 |
 | docs/archive/arc2-authoring-design.md | 20 |
-| crates/facets-core/src/operational.rs | 18 |
-| docs/language/spec.md | 18 |
-| docs/design/sl2-authoring-language.md | 17 |
-| docs/parked.md | 16 |
+| crates/facets-core/src/operational.rs | 17 |
+| crates/facets-canvas/src/canvas.rs | 16 |
+| crates/facets-compose/src/export.rs | 10 |
+| docs/archive/on-the-word-ladder.md | 10 |
+| docs/audits/docs-staleness-2026-10-11.md | 10 |
+| crates/facets-core/src/decomposition.rs | 9 |
+| docs/decisions/0002-web-first-rebuild.md | 9 |
+| docs/decisions/0005-vocabulary-tiers.md | 9 |
+| docs/design/educational-model-suite.md | 9 |
+| crates/facets-tether/src/forcing.rs | 7 |
+| docs/design/dynamics-research/read-klir.md | 7 |
 
 ### Phase 5: goldens and fixtures to re-bless
 

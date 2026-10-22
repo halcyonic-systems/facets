@@ -11,7 +11,7 @@ record. §3's two productions landed as `stock <unit> initial <n>` and
 `crates/facets-canvas/tests/sl_stock_dynamics.rs`). §4's Lean instantiation and
 §5's openness frontier remain open under #112.
 
-**Original status:** proposal. This document measures the shipping `bert-compose` stepper
+**Original status:** proposal. This document measures the shipping `facets-compose` stepper
 against the coalgebraic dynamics-semantics adopted for #112 (Rutten 2000,
 load-bearing per the 2026-07-21 call) and the typed transition already landed
 in `systems-science-foundations` (`Systems/Dynamics/Transition.lean`, #112
@@ -34,20 +34,20 @@ A run is `WorldModel → OperationalSpec → Circuit → RecordedRun`:
   `AgentModel.cognitive_params` verbatim into
   `OperationalProcess.cognitive_params: HashMap<String, f64>`
   (`operational.rs:319-327`).
-- `bert_compose::export::from_spec` builds a `Circuit` from the spec
+- `facets_compose::export::from_spec` builds a `Circuit` from the spec
   (`crates/facets-compose/src/export.rs:370`), setting
   `node.initial_storage = s as f32; node.storage = s as f32;` from
   `p.initial_storage` (`export.rs:401-404`) and
   `node.release_rate = r as f32;` from
   `p.cognitive_params.get("release_rate")` (`export.rs:405-406`).
-- `bert-cli`'s `run` subcommand calls `validate_operational`, then
-  `bert_compose::from_spec`, then
-  `bert_compose::RecordedRun::record_over(&mut circuit, &spec, dt, t)`
+- `facets-cli`'s `run` subcommand calls `validate_operational`, then
+  `facets_compose::from_spec`, then
+  `facets_compose::RecordedRun::record_over(&mut circuit, &spec, dt, t)`
   (`crates/facets-cli/src/main.rs:345-360`), which derives a tick count from
   `(Δt, T)` via `ticks_over` (`crates/facets-compose/src/run.rs:163-187`) and
   calls `circuit.step_dt(dt as f32)` in a loop after `circuit.reset()`
   (`crates/facets-compose/src/run.rs:71-84`).
-- `bert-tether`'s forcing path writes the same two fields by a second route:
+- `facets-tether`'s forcing path writes the same two fields by a second route:
   `apply_params` (`crates/facets-tether/src/forcing.rs:151-197`) sets
   `s.agent.initial_state["storage"]` from `params.stock_initial` (a column's
   first present observation, "the value at t0" — `crates/facets-tether/src/

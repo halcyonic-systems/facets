@@ -175,7 +175,7 @@ Before a change lands, it must clear the gate and keep the docs honest:
   | the design tokens have not drifted; TS type-checks; the bundle builds | `check:tokens` · `tsc --noEmit` · `vite build` |
   | **the canonical six still read the same way through the CLI** — every word of the verdict under each of the three lenses, the formal object, the layout, the trajectory | `cargo test -p facets-cli`, against `fixtures/cli/canonical.json` |
   | **every other bundled model still parses and the door still answers** — exit code and shape only, no content snapshot, so a rename costs no re-bless | `crates/facets-cli/tests/library_survey.rs` |
-  | **the wasm gate has not widened** — `bert-cli` is the only package excluded from the workspace `wasm32` build, in both `justfile` and `ci.yml` | `crates/facets-cli/tests/wasm_gate.rs` |
+  | **the wasm gate has not widened** — `facets-cli` is the only package excluded from the workspace `wasm32` build, in both `justfile` and `ci.yml` | `crates/facets-cli/tests/wasm_gate.rs` |
 
   **Two gates run in CI only**, because they cannot run everywhere: `desktop.yml`
   bundles the macOS `.app` (needs macOS), and `deny.yml` checks licences and

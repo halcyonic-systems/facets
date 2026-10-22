@@ -1,7 +1,7 @@
-//! bert-canvas — the canvas/lens domain, pure Rust (no wasm-bindgen).
+//! facets-canvas — the canvas/lens domain, pure Rust (no wasm-bindgen).
 //!
 //! Owns the lightweight editing model the canvas holds ([`canvas::CanvasModel`]),
-//! its projection into a bert-core [`facets_core::WorldModel`] for validation
+//! its projection into a facets-core [`facets_core::WorldModel`] for validation
 //! ([`canvas::project`]), and the faithful lens palettes ([`lenses::lens_facts`],
 //! [`lenses::describe`]). This is TRUTH, not marshaling: every systemhood verdict
 //! routes through a fresh projection the kernel validates. The wasm boundary

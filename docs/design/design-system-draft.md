@@ -1,4 +1,4 @@
-# bert-lenses — design system (DRAFT / sketch to react to)
+# facets — design system (DRAFT / sketch to react to)
 
 > **Status: RESEARCH** — a sketch to react to, not committed and not a spec. Builds on
 > `web/DESIGN.md` (Halcyonic Frost) and `web/src/tokens.ts` + `web/src/index.css`
@@ -20,14 +20,14 @@ serves that. A visual that carries ontology reads a kernel fact; it never invent
 - **Tri-source tokens with a hard drift-gate.** `DESIGN.md` (portable brand spec) ↔
   `web/src/index.css` (`:root` vars components consume) ↔ `web/src/tokens.ts` (typed
   JS mirror for SVG/canvas), kept in lockstep by `npm run check:tokens`, which *fails
-  the build on drift*. bert-lenses already has the three files (`DESIGN.md`,
+  the build on drift*. facets already has the three files (`DESIGN.md`,
   `index.css`, `tokens.ts`) but **no gate** — the tokens.ts header just says "keep in
   sync" by hand. Adopt the gate. (See §3.)
 - **Accent discipline as a written law.** Exactly two saturated accents, each
   meaning-bearing: "if everything is indigo, nothing is" (`DESIGN.md`). We have one
   (teal) plus slate/indigo support — keep it that tight.
 - **A reserved semantic color channel.** pullback's orb-precision greens/ambers
-  (`--orb-exact #059669` …) are contractually *never decorative*. bert-lenses already
+  (`--orb-exact #059669` …) are contractually *never decorative*. facets already
   has the exact analogue: `canvas/types.ts` `KIND_COLOR` (Matter `#5a7a4f`, Energy
   `#b06a1f`, Informational `#8a5a9c`, Field `#3f6f8f`). Name it a reserved channel and
   protect it the same way — substance color means substance type, nowhere else.

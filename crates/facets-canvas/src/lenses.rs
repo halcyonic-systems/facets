@@ -12,7 +12,7 @@
 //!    Bunge connection-kind + bond-vs-mere + endo/exo (= N/G, computed), Klir
 //!    arity ± direction.
 //!
-//! The semantic predicates live in `bert-core` (`boundary_components`,
+//! The semantic predicates live in `facets-core` (`boundary_components`,
 //! `edge_locus`); this module projects the canvas editing model
 //! (`project_with_map`) and translates the verdicts back to canvas ids so the
 //! face can render them. Mere relations (`is_bond: false`) are Bunge's B̄ — a
@@ -147,7 +147,7 @@ fn substance_word(k: Kind) -> &'static str {
 /// (gated relation ids, receives?, exports?, protocol labels).
 type PortAccum = (Vec<u64>, bool, bool, Vec<String>);
 
-/// Compute the lens facts for a canvas model: project, ask bert-core, translate
+/// Compute the lens facts for a canvas model: project, ask facets-core, translate
 /// the verdicts back to canvas ids.
 pub fn lens_facts(model: &CanvasModel) -> LensFacts {
     let p = project_with_map(model);
@@ -335,7 +335,7 @@ pub fn lens_facts(model: &CanvasModel) -> LensFacts {
 // ---- The residue register: what this lens is NOT showing --------------------
 //
 // The render guarantee's third clause (#100): totality and fidelity hold by
-// construction; residue makes the read-side loss loud. `bert-core`'s
+// construction; residue makes the read-side loss loud. `facets-core`'s
 // `transition.rs` `LossWitness` is the write-side analog (what a mode descent
 // shears off); this is the read-side enumeration (what a lens view leaves
 // undrawn). Two flavors, rendered distinctly and never mixed:

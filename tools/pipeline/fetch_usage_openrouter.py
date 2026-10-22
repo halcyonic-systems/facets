@@ -62,7 +62,7 @@ def fetch_rankings(api_key: str, start_date: str, end_date: str):
     url = f"{API_URL}?start_date={start_date}&end_date={end_date}&period=day"
     req = urllib.request.Request(url, headers={
         "Authorization": f"Bearer {api_key}",
-        "User-Agent": "bert-lenses-pipeline/0.1",
+        "User-Agent": "facets-pipeline/0.1",
     })
     with urllib.request.urlopen(req) as resp:
         return json.load(resp)

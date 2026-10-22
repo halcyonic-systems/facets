@@ -1,60 +1,11 @@
 path,line,class,text
 .vscode/tasks.json,5,issue-ref,"// messages, no paraphrase. (The LSP tier of bert-lenses#353 supersedes"
 AGENTS.md,3,lineage,The agent runbook for the `facets` repository (named `bert-lenses` until
-AGENTS.md,64,doc-prose,The kernel (`bert-core` + `bert-compose` engine → wasm) owns every systemhood
-AGENTS.md,64,doc-prose,The kernel (`bert-core` + `bert-compose` engine → wasm) owns every systemhood
-AGENTS.md,69,doc-prose,"systems semantics go in a crate (default: `bert-core`, the semantic authority),"
-AGENTS.md,71,doc-prose,3. **Self-contained. No cross-repo path deps.** `bert-core` and `bert-compose` are
-AGENTS.md,71,doc-prose,3. **Self-contained. No cross-repo path deps.** `bert-core` and `bert-compose` are
-AGENTS.md,72,upstream-bert,vendored here. Do not re-introduce a `../bert` path dependency. `bert-compose`
-AGENTS.md,72,doc-prose,vendored here. Do not re-introduce a `../bert` path dependency. `bert-compose`
-AGENTS.md,105,doc-prose,formal face). Depends on bert-core.
-AGENTS.md,110,doc-prose,becomes forcing on a model. Depends on bert-core + bert-compose.
-AGENTS.md,110,doc-prose,becomes forcing on a model. Depends on bert-core + bert-compose.
-AGENTS.md,112,doc-prose,(`api.rs`): deserialize JS input → call bert-core / bert-compose / bert-canvas /
-AGENTS.md,112,doc-prose,(`api.rs`): deserialize JS input → call bert-core / bert-compose / bert-canvas /
-AGENTS.md,112,doc-prose,(`api.rs`): deserialize JS input → call bert-core / bert-compose / bert-canvas /
-AGENTS.md,113,doc-prose,bert-tether (the truth) → serialize. Zero domain logic. Built to `pkg/` via
+AGENTS.md,72,upstream-bert,vendored here. Do not re-introduce a `../bert` path dependency. `facets-compose`
 AGENTS.md,122,upstream-bert,**canonical epitome of old-bert's STRUCTURAL/diagramming peak** — kept for
 AGENTS.md,123,upstream-bert,reference and future revamp (old bert peaked as a structure visual tool; its
-AGENTS.md,233,doc-prose,"When you are already writing Rust, `bert_canvas::lenses::analyze(&CanvasModel, Lens)`"
-AGENTS.md,238,doc-prose,let parsed = bert_canvas::sl::parse_sl_full(&text)?;           // compile
-AGENTS.md,239,doc-prose,"let verdict = bert_canvas::lenses::analyze(&parsed.model, Lens::Mobus);"
-AGENTS.md,264,doc-prose,`bert-cli` is the ONE package excluded from `cargo build --workspace --target
-AGENTS.md,300,deploy,cargo tauri build     # → src-tauri/target/release/bundle/macos/bert-lenses.app
-AGENTS.md,301,deploy,open src-tauri/target/release/bundle/macos/bert-lenses.app
-AGENTS.md,302,deploy,lsappinfo info -only bundleid $(pgrep -f bert-lenses-desktop | head -1)
-AGENTS.md,303,deploy,"#   built .app  → ""systems.halcyonic.bert-lenses""   ← addressable"
-AGENTS.md,316,deploy,"osascript -e 'tell application ""System Events"" to tell process ""bert-lenses-desktop"""
-AGENTS.md,329,deploy,`pkill -f bert-lenses-desktop` (`quit app` does not terminate it). The
-AGENTS.md,352,doc-prose,1. **bert-core type** — add the variant to the domain type in `crates/facets-core`
-AGENTS.md,357,doc-prose,3. **bert-canvas projection** — map it across the canvas↔model seam in
-CONTRIBUTING.md,178,doc-prose,"| **the wasm gate has not widened** — `bert-cli` is the only package excluded from the workspace `wasm32` build, in both"
-Cargo.toml,1,doc-prose,# bert-lenses — web-first systems-modeling instrument.
-README.md,13,doc-prose,"`bert-lenses`, and the kernel crates still carry that name."
-README.md,84,doc-prose,"that compiles five crates to wasm (`bert-cli`, the native binary, is the one"
-README.md,247,doc-prose,"KERNEL[""bert-lenses-kernel<br/>JS ↔ wasm boundary""]"
-README.md,248,doc-prose,"CANVAS[""bert-canvas<br/>lenses: describe · lens_facts · analyze""]"
-README.md,249,doc-prose,"COMPOSE[""bert-compose<br/>dynamical engine: run under a declared invariant""]"
-README.md,250,doc-prose,"TETHER[""bert-tether<br/>boundary: CSV import · forcing""]"
-README.md,251,doc-prose,"CORE[""bert-core<br/>semantic authority: WorldModel · validators · projection""]"
-README.md,267,doc-prose,"bert-core/                #   semantic authority: WorldModel, validators, projection"
-README.md,268,doc-prose,bert-compose/             #   executable dynamical engine: circuit / export / run
-README.md,269,doc-prose,"bert-canvas/              #   canvas/lens domain: CanvasModel, lens_facts, describe"
-README.md,270,doc-prose,"bert-tether/              #   boundary interface: CSV import, run manifest, forcing"
-README.md,271,doc-prose,bert-lenses-kernel/       #   JS-facing wasm-bindgen boundary (marshaling only)
-README.md,272,doc-prose,"bert-cli/                 #   the `facets` binary: the same truth, from a shell (native only)"
+README.md,13,doc-prose,"`bert-lenses`, and the code took the new name in October 2026 ([#541](https://github.com/halcyonic-systems/facets/issues"
 README.md,287,upstream-bert,assets/models/              # sample BERT models (demos + blockchain examples)
-README.md,303,doc-prose,"`bert-core`, `bert-compose`, `bert-canvas`, and `bert-tether` are **vendored**"
-README.md,303,doc-prose,"`bert-core`, `bert-compose`, `bert-canvas`, and `bert-tether` are **vendored**"
-README.md,303,doc-prose,"`bert-core`, `bert-compose`, `bert-canvas`, and `bert-tether` are **vendored**"
-README.md,303,doc-prose,"`bert-core`, `bert-compose`, `bert-canvas`, and `bert-tether` are **vendored**"
-README.md,304,doc-prose,"(self-contained, no cross-repo path deps). The `bert-compose` copy is engine-only:"
-README.md,424,doc-prose,"arguments, calls `bert-canvas` / `bert-core` / `bert-compose`, and prints what"
-README.md,424,doc-prose,"arguments, calls `bert-canvas` / `bert-core` / `bert-compose`, and prints what"
-README.md,424,doc-prose,"arguments, calls `bert-canvas` / `bert-core` / `bert-compose`, and prints what"
-README.md,504,doc-prose,`bert-cli` is the one package excluded from the workspace `wasm32-unknown-unknown`
-README.md,555,doc-prose,"(author/validate) and the *dynamical* face (`bert-compose`, run), united here in"
 THIRD_PARTY_NOTICES.md,18,lineage,"*Lineage, not an obligation: Facets (bert-lenses until 2026-08-27) grew out of the BERT project"
 THIRD_PARTY_NOTICES.md,18,upstream-bert,"*Lineage, not an obligation: Facets (bert-lenses until 2026-08-27) grew out of the BERT project"
 THIRD_PARTY_NOTICES.md,19,upstream-bert,(`halcyonic-systems/bert`). The kernel crates here were written for this
@@ -91,51 +42,31 @@ assets/archive/demos/reservoir-model.json,38,lineage,"""description"": ""bert-co
 assets/archive/demos/reservoir-model.json,60,lineage,"""description"": ""Built in bert-compose: process primitives wired into a working circuit (composition is unconditional — S"
 assets/corpus/README.md,73,issue-ref,The corpus is the **empirical arm** of the formalization. You cannot find that `Tuple.lean` under-constrains `I` by read
 assets/examples/translation-apparatus.sl,140,issue-ref,# Mobus ch. 4 (bert-lenses#260): environmental entities are unmodeled
-crates/facets-canvas/Cargo.toml,5,doc-prose,"description = ""The canvas/lens domain: the serializable CanvasModel, its projection into a bert-core WorldModel, and the"
-crates/facets-canvas/Cargo.toml,19,doc-prose,# `initial_state` values are arbitrary JSON — same Value type bert-core uses.
-crates/facets-canvas/Cargo.toml,26,doc-prose,# that let a 22% trajectory change ship green (#216). No cycle: bert-compose
-crates/facets-canvas/Cargo.toml,27,doc-prose,# depends on bert-core only.
-crates/facets-canvas/Cargo.toml,31,doc-prose,# CI instead of at GUI runtime. No cycle: bert-tether depends on core+compose.
-crates/facets-canvas/src/canvas.rs,2,doc-prose,//! and its projection into a bert-core `WorldModel` for validation.
 crates/facets-canvas/src/canvas.rs,143,issue-ref,/// `decomposes` clause; bert-lenses#89 step 4). Two halves: a human `name` label
 crates/facets-canvas/src/canvas.rs,208,issue-ref,"/// Authored interface protocol (bert-lenses#333, Mobus Listing 4.2): the"
 crates/facets-canvas/src/canvas.rs,216,issue-ref,/// `decomposes`; bert-lenses#89 step 4). `None` for atomic components and
 crates/facets-canvas/src/canvas.rs,222,issue-ref,/// The stock's declared unit (bert-lenses#76/#94) — meaningful on a
 crates/facets-canvas/src/canvas.rs,230,issue-ref,"/// What this thing IS, in the author's own words (bert-lenses#326). The"
 crates/facets-canvas/src/canvas.rs,231,upstream-bert,"/// original BERT carried one on every entity and the rebuild dropped it,"
-crates/facets-canvas/src/canvas.rs,282,doc-prose,"/// (`node.param` in bert-compose), so dropping it changed a Modulating"
-crates/facets-canvas/src/canvas.rs,370,doc-prose,/// matching bert-core's defaults; the palette's boundary inspector writes these
 crates/facets-canvas/src/canvas.rs,779,issue-ref,"/// (bert-lenses#89 step 5b) — without this, every edit-and-save of a child"
 crates/facets-canvas/src/canvas.rs,826,issue-ref,/// The model's time-unit symbol (bert-lenses#94) — what one unit of model
-crates/facets-canvas/src/canvas.rs,859,doc-prose,"/// `Info` has carried a `description` since bert-core's first version, and"
-crates/facets-canvas/src/canvas.rs,937,doc-prose,"/// Project the canvas model into a bert-core `WorldModel`, mode-stamped by the"
 crates/facets-canvas/src/canvas.rs,985,issue-ref,"// set, and its interior legs vanish. bert#108 then guarantees the run is"
 crates/facets-canvas/src/canvas.rs,1080,issue-ref,"// own doctrine (bert#108, `operational.rs`): an interface sited"
 crates/facets-canvas/src/canvas.rs,1123,issue-ref,// A declared stock unit rides the agent record (bert-lenses#76/#94).
-crates/facets-canvas/src/canvas.rs,1179,doc-prose,// contradicted it. `check_flow_direction` in bert-core now gates on
 crates/facets-canvas/src/canvas.rs,1292,upstream-bert,// the original BERT settled on — and the crossing flows re-anchor to the
 crates/facets-canvas/src/canvas.rs,1557,issue-ref,/// Decomposition (`System::child_model`) is now PRESERVED (bert-lenses#89 step
 crates/facets-canvas/src/canvas.rs,1868,issue-ref,/// canvas half (bert-lenses#89 step 5b). Projects the editing model and hands
 crates/facets-canvas/src/canvas.rs,2308,issue-ref,/// The fusion law (#226 + bert#108): a pure pass-way with one processor
 crates/facets-canvas/src/canvas.rs,2345,upstream-bert,// The processor claims it — the old-BERT back-pointer.
-crates/facets-canvas/src/lenses.rs,15,doc-prose,"//! The semantic predicates live in `bert-core` (`boundary_components`,"
-crates/facets-canvas/src/lenses.rs,150,doc-prose,"/// Compute the lens facts for a canvas model: project, ask bert-core, translate"
-crates/facets-canvas/src/lenses.rs,338,doc-prose,// construction; residue makes the read-side loss loud. `bert-core`'s
 crates/facets-canvas/src/lenses.rs,784,issue-ref,/// (bert-lenses#320).
 crates/facets-canvas/src/lenses.rs,870,issue-ref,"/// The decomposition seam verdict, canvas-keyed (bert-lenses#89 step 5b): the"
-crates/facets-canvas/src/lib.rs,1,doc-prose,"//! bert-canvas — the canvas/lens domain, pure Rust (no wasm-bindgen)."
-crates/facets-canvas/src/lib.rs,4,doc-prose,//! its projection into a bert-core [`facets_core::WorldModel`] for validation
 crates/facets-canvas/src/sl.rs,1111,upstream-bert,// rides ENVIRONMENT lines too: old-bert's descriptions are
-crates/facets-canvas/src/sl.rs,1746,doc-prose,// bert-core::decomposition. `interface` + `decomposes` on one
 crates/facets-canvas/src/sl.rs,3586,issue-ref,/// to right the way the flows run (bert-lenses#309). A lone component sits at
 crates/facets-canvas/src/sl.rs,5688,issue-ref,/// The container label's rename round trip (bert-lenses#116): the canvas
 crates/facets-canvas/src/sl.rs,5830,upstream-bert,// ── descriptions: restoring what old-bert had (#326) ────────────────
 crates/facets-canvas/src/sl.rs,5844,upstream-bert,"/// Environment lines take it too, and that is deliberate: old-bert's"
-crates/facets-canvas/tests/llm_market.rs,40,doc-prose,//! seam contract itself is pinned by bert-lenses-kernel's llm_market_walkthrough.
 crates/facets-canvas/tests/projection_ledger.rs,85,upstream-bert,"(""WorldModel"", ""hidden_entities"", Ontology(""a LOST old-bert capability, not a Mobus slot: hiding elements on a crowded c"
 crates/facets-canvas/tests/projection_ledger.rs,85,cli-word,"(""WorldModel"", ""hidden_entities"", Ontology(""a LOST old-bert capability, not a Mobus slot: hiding elements on a crowded c"
-crates/facets-canvas/tests/projection_ledger.rs,165,doc-prose,".unwrap_or_else(|| panic!(""`{head}{{` not found in bert-core — did the struct move or get renamed?""));"
-crates/facets-canvas/tests/sl_ample.rs,18,doc-prose,//! equivalence test in bert-compose.
 crates/facets-canvas/tests/sl_roundtrip.rs,164,issue-ref,/// Law (bert-lenses#94 tail): the model's time-unit symbol and a declared stock
 crates/facets-canvas/tests/sl_roundtrip.rs,215,issue-ref,/// Law (bert-lenses#154): a component's Klir source-system metadata — the
 crates/facets-canvas/tests/sl_roundtrip.rs,252,issue-ref,/// Law (bert-lenses#154 revision): the source-system metadata rides ENVIRONMENT
@@ -148,17 +79,12 @@ crates/facets-cli/src/bert_alias.rs,19,cli-word,/// and `bert` is no longer buil
 crates/facets-cli/src/bert_alias.rs,24,cli-word,"eprintln!(""bert: renamed to facets; this alias retires {RETIRES}"");"
 crates/facets-cli/src/main.rs,68,cli-word,// through the `bert` alias (`src/bert_alias.rs`).
 crates/facets-cli/src/main.rs,68,cli-word,// through the `bert` alias (`src/bert_alias.rs`).
-crates/facets-cli/src/main.rs,71,doc-prose,"about = ""Ask the bert-lenses kernel about a model, from a shell."","
 crates/facets-cli/tests/alias.rs,1,cli-word,//! The `bert` alias (#541 phase 4): the old name runs the same program.
 crates/facets-cli/tests/alias.rs,19,cli-word,"const NOTE: &str = ""bert: renamed to facets; this alias retires 2027-01-11\n"";"
 crates/facets-cli/tests/alias.rs,47,cli-word,"let old = run(env!(""CARGO_BIN_EXE_bert""), args, stdin);"
-crates/facets-cli/tests/library_survey.rs,208,doc-prose,"let dir = std::env::temp_dir().join(""bert-cli-survey"");"
-crates/facets-cli/tests/surface.rs,49,doc-prose,"let dir = std::env::temp_dir().join(""bert-cli-surface"");"
-crates/facets-cli/tests/wasm_gate.rs,11,doc-prose,"//! workspace wasm build must exclude `bert-cli` and NOTHING else, and every"
 crates/facets-compose/src/circuit.rs,3,upstream-bert,//! Transfer functions are ports of BERT's verified implementations
 crates/facets-compose/src/circuit.rs,200,upstream-bert,"/// along into the BERT JSON (`Substance.sub_type`, `Interaction.unit`)."
 crates/facets-compose/src/circuit.rs,356,issue-ref,/// A stock's declared unit (bert-lenses#76). A Buffering stock accumulates
-crates/facets-compose/src/circuit.rs,414,doc-prose,"/// Potential Fields enter bert-compose: a field is a flow MODE, not a node."
 crates/facets-compose/src/circuit.rs,437,issue-ref,/// them onto the node loses all but one (bert#111). `None` falls back to
 crates/facets-compose/src/circuit.rs,441,issue-ref,/// Series forcing (bert-lenses#16): a forced source outwire emits an
 crates/facets-compose/src/circuit.rs,451,issue-ref,/// Availability assertion (bert-lenses#9): this informational wire carries
@@ -175,9 +101,7 @@ crates/facets-compose/src/circuit.rs,1446,issue-ref,"// (bert-lenses#54), mirror
 crates/facets-compose/src/circuit.rs,1616,issue-ref,"// (bert#111), param when none are declared — throttled to what"
 crates/facets-compose/src/circuit.rs,2312,issue-ref,"/// bert#111 fixture: a source with two outflows, one carrying a declared"
 crates/facets-compose/src/circuit.rs,2357,issue-ref,/// bert-lenses#16: a forced source wire emits an OBSERVED series tick by
-crates/facets-compose/src/circuit.rs,2457,doc-prose,/// Law (#261): the validate-side consumes table (bert-core) and the
 crates/facets-compose/src/circuit.rs,2731,issue-ref,"/// bert#111 back-compat: with no declared rates anywhere, a two-outflow"
-crates/facets-compose/src/circuit.rs,4499,doc-prose,"/// Def 2.7 β; position §4 rule 1): ""for every mode bert-lenses ships,"
 crates/facets-compose/src/circuit.rs,4632,issue-ref,/// bert-lenses#54: an authored NONZERO porosity scales a boundary-crossing
 crates/facets-compose/src/circuit.rs,4683,issue-ref,"/// The convention, made explicit (bert-lenses#54): porosity `0.0` is the"
 crates/facets-compose/src/export.rs,1,upstream-bert,//! Circuit ↔ BERT JSON: the canvas saves as an ordinary WorldModel that the
@@ -190,12 +114,9 @@ crates/facets-compose/src/export.rs,622,issue-ref,// Root-boundary porosity ride
 crates/facets-compose/src/export.rs,628,upstream-bert,"/// BERT JSON → Circuit: the inverse of [`to_world_model`], routed through the"
 crates/facets-compose/src/export.rs,695,issue-ref,/// bert#111: per-flow amounts survive the seam INTO EXECUTION. A source
 crates/facets-compose/src/export.rs,883,issue-ref,"/// bert-lenses#16, the seam hop: a forced flow's observed series survives"
-crates/facets-compose/src/export.rs,1127,doc-prose,"/// Law: every exported model satisfies bert-core's operational contract,"
-crates/facets-compose/src/export.rs,1131,doc-prose,"/// bert-core's `validate_operational`, the two gates agree on refusals,"
 crates/facets-compose/src/ladder.rs,127,issue-ref,"provenance: ""predator-prey; the sweep's sharpest boundary (bert#85)"","
 crates/facets-compose/src/ladder.rs,138,issue-ref,"provenance: ""predator-prey, resolved — first-order drain (τ) lifted bert#85"","
 crates/facets-compose/src/ladder.rs,240,issue-ref,/// (proportional) death isn't expressible here — bert#85.
-crates/facets-compose/src/lib.rs,1,doc-prose,"//! bert-compose — the executable dynamical face, vendored engine-only."
 crates/facets-compose/src/run.rs,234,issue-ref,/// bert#108 4.2. The interface is attached so it resolves (a dangling id
 crates/facets-compose/src/run.rs,267,issue-ref,/// THE bert#108 4.2 acceptance test (this IS the contract): a model that
 crates/facets-compose/src/run.rs,279,issue-ref,".expect(""bert#108 4.2: an interface-routed model is runnable input, unedited"");"
@@ -211,9 +132,7 @@ crates/facets-core/src/decomposition.rs,458,issue-ref,/// door (bert-lenses#89 s
 crates/facets-core/src/decomposition.rs,1015,issue-ref,// Birth-name drift (bert-lenses#116): the door names the child's root after
 crates/facets-core/src/decomposition.rs,1050,issue-ref,"//! Boundary-fixture discipline (bert-lenses#24): for EACH contract property, a"
 crates/facets-core/src/decomposition.rs,1494,issue-ref,// ── birth-name drift (bert-lenses#116) ──
-crates/facets-core/src/lib.rs,1,doc-prose,//! bert-core — BERT's System Language kernel.
-crates/facets-core/src/lib.rs,1,upstream-bert,//! bert-core — BERT's System Language kernel.
-crates/facets-core/src/lib.rs,6,doc-prose,"//! transpiler, bert-compose, generators) builds on one kernel without pulling"
+crates/facets-core/src/lib.rs,1,upstream-bert,//! facets-core — BERT's System Language kernel.
 crates/facets-core/src/lib.rs,14,doc-prose,// the semantic authority. Remove if bert-core is re-vendored lint-clean upstream.
 crates/facets-core/src/lib.rs,71,upstream-bert,/// use bert::InteractionUsability;
 crates/facets-core/src/lib.rs,125,upstream-bert,/// use bert::InteractionUsability;
@@ -255,7 +174,6 @@ crates/facets-core/src/lib.rs,2473,upstream-bert,"/// use bert::data_model::{Has
 crates/facets-core/src/lib.rs,2493,upstream-bert,"/// use bert::data_model::{HasSourcesAndSinks, System};"
 crates/facets-core/src/lib.rs,2511,upstream-bert,"/// use bert::data_model::{HasSourcesAndSinks, ExternalEntity, System};"
 crates/facets-core/src/model_id.rs,1,issue-ref,//! Model self-identity — the stable name a whole model carries (bert-lenses#89
-crates/facets-core/src/operational.rs,7,doc-prose,//! This lifts the gate that previously lived implicitly in bert-compose's
 crates/facets-core/src/operational.rs,20,issue-ref,"//! # Interface routing lowers, it does not refuse (bert#108)"
 crates/facets-core/src/operational.rs,23,issue-ref,"//! work-process mapping was an open question. bert#108 settled it (Option 3,"
 crates/facets-core/src/operational.rs,80,issue-ref,/// The stock's declared unit (bert-lenses#76). A stock accumulates a rate
@@ -285,10 +203,8 @@ crates/facets-core/src/validate.rs,3,upstream-bert,"//! `bert/tools/bert-typedb/
 crates/facets-core/src/validate.rs,15,issue-ref,/// Stable doc anchors for surfaced refusals (bert-lenses#129). Each is a
 crates/facets-core/src/validate.rs,74,issue-ref,/// chooses for the check that produced it (bert-lenses#319). Two issues
 crates/facets-core/src/validate.rs,86,issue-ref,/// (bert-lenses#129). Kernel judgment: which entry a refusal teaches is
-crates/facets-core/src/validate.rs,91,doc-prose,/// IN-PROCESS handle for callers holding id maps (bert-canvas resolves it
 crates/facets-core/src/validate.rs,191,issue-ref,"/// Intrinsic-shape check for a declared stock unit (bert-lenses#76, upgraded to"
 crates/facets-core/src/validate.rs,234,issue-ref,/// Derived-vs-declared dimensional consistency (bert-lenses#94). Where
-crates/facets-core/src/validate.rs,519,doc-prose,/// The validate-side twin of `bert-compose`'s `NodeKind::consumes`
 crates/facets-core/src/validate.rs,1120,issue-ref,// `check_orphan_interfaces` was removed in bert-lenses#220. It warned when an
 crates/facets-core/src/validate.rs,1163,issue-ref,/// out of the connection gesture (bert-lenses#213).
 crates/facets-core/src/validate.rs,1288,issue-ref,"/// model (bert-lenses#212, #213)."
@@ -299,54 +215,28 @@ crates/facets-core/src/validate.rs,1601,upstream-bert,"({}), or re-export the mo
 crates/facets-core/src/validate.rs,1736,upstream-bert,/// legacy BERT models.
 crates/facets-core/src/validate.rs,1898,issue-ref,/// bert-lenses#76: a stock that declares a RATE-like unit gets a
 crates/facets-core/src/validate.rs,2655,issue-ref,// ---- Mode lattice (bert#88) ------------------------------------------
-crates/facets-core/src/validate.rs,2753,doc-prose,/// the engine-table lockstep is bert-compose's
 crates/facets-core/src/validate.rs,2969,issue-ref,// ---- Kernel projection round trip (bert#88 Part 3) -------------------
 crates/facets-core/src/validate.rs,3967,issue-ref,// ---- The firing audit and its gate (bert-lenses#220) -----------------
 crates/facets-core/src/validate.rs,4128,upstream-bert,"by another version of BERT"","
 crates/facets-core/tests/common/mod.rs,1,issue-ref,//! Shared model construction for the lens-entry binding tests (bert-lenses#24).
 crates/facets-core/tests/common/mod.rs,21,upstream-bert,/// self-loops (Operational/Full). The root S0 is BERT's required container; the
-crates/facets-core/tests/common/mod.rs,135,doc-prose,/// `WorldModel` the bert-core mode machine consumes. The Quint spec's state is
 crates/facets-core/tests/decomposition_serialization.rs,1,issue-ref,//! Decomposition reference serialization + round-trip (bert-lenses#89 step 3).
-crates/facets-core/tests/decomposition_serialization.rs,30,doc-prose,// Same bless convention as bert-canvas's contract.rs: after an INTENTIONAL
 crates/facets-core/tests/gates_oracle.rs,1,issue-ref,//! Rung 1.5 of the lens-entry binding (bert-lenses#24): the subprocess oracle.
-crates/facets-core/tests/gates_oracle.rs,3,doc-prose,//! Rung 1 (`gates_truth_table.rs`) checks the `bert-core` mode gates against a
-crates/facets-core/tests/gates_oracle.rs,45,doc-prose,"// Default: SSF checked out beside bert-lenses, oracle prebuilt by `lake build`."
 crates/facets-core/tests/gates_truth_table.rs,1,issue-ref,//! Rung 1 of the lens-entry binding (bert-lenses#24): the Lean side enumerates
 crates/facets-core/tests/model_identity.rs,1,issue-ref,//! Model self-identity serialization (bert-lenses#89 step 2.5): a model without
 crates/facets-core/tests/quint_replay.rs,1,issue-ref,//! Quint Connect trace-replay harness (bert-lenses#17).
-crates/facets-kernel/API.md,1,doc-prose,# bert-lenses-kernel — frozen wasm API
-crates/facets-kernel/API.md,6,doc-prose,answer below is delegated to `bert-core` (semantic authority) or `bert-compose`
-crates/facets-kernel/API.md,6,doc-prose,answer below is delegated to `bert-core` (semantic authority) or `bert-compose`
 crates/facets-kernel/API.md,9,upstream-bert,All functions are synchronous (the wasm runs in the page). Model input is BERT
-crates/facets-kernel/API.md,49,doc-prose,`OperationalSpec` / `OperationalError` are bert-core's serde shapes (see the
 crates/facets-kernel/API.md,129,issue-ref,"its inflow integrated over Δt (bert-lenses#94: `ML/mo` → `ML`, in the author's own"
-crates/facets-kernel/API.md,157,doc-prose,Project the canvas editing model into a bert-core `WorldModel` (mode-stamped by
-crates/facets-kernel/API.md,178,doc-prose,`WorldModel`. Internally each projects (`project_with_map`) and reads bert-core
 crates/facets-kernel/API.md,418,upstream-bert,"This is a restoration, not an addition: the original BERT carried a description"
-crates/facets-kernel/API.md,517,doc-prose,"`bert-lenses-kernel` api.rs test module (the run-family DTOs: `CsvParse`,"
-crates/facets-kernel/API.md,559,doc-prose,"(`bert-canvas`, `bert-tether`) are audited to contain no panic sites on"
-crates/facets-kernel/API.md,559,doc-prose,"(`bert-canvas`, `bert-tether`) are audited to contain no panic sites on"
 crates/facets-kernel/API.md,599,format-tag,"The text to persist: the neutral model plus `""format"": ""bert-lenses/canvas@1""`."
-crates/facets-kernel/API.md,827,doc-prose,`web/src/kernel/types.ts`. Kept this way so `bert-core` carries no wasm/tsify
 crates/facets-kernel/API.md,912,format-tag,"`""bert-lenses/canvas@1""` named under ""The archive seam"" above is the tag every"
-crates/facets-kernel/Cargo.toml,5,doc-prose,"description = ""The JS-facing wasm boundary: thin wasm-bindgen wrappers over bert-core + bert-compose + bert-canvas + ber"
-crates/facets-kernel/Cargo.toml,5,doc-prose,"description = ""The JS-facing wasm boundary: thin wasm-bindgen wrappers over bert-core + bert-compose + bert-canvas + ber"
-crates/facets-kernel/Cargo.toml,5,doc-prose,"description = ""The JS-facing wasm boundary: thin wasm-bindgen wrappers over bert-core + bert-compose + bert-canvas + ber"
-crates/facets-kernel/Cargo.toml,5,doc-prose,"description = ""The JS-facing wasm boundary: thin wasm-bindgen wrappers over bert-core + bert-compose + bert-canvas + ber"
 crates/facets-kernel/src/api.rs,35,upstream-bert,"/// Parse a BERT `WorldModel` from its JSON text, or a JS error naming the fault."
 crates/facets-kernel/src/api.rs,274,issue-ref,/// The decomposition door (bert-lenses#89 step 5b): derive the newborn child of
-crates/facets-kernel/src/api.rs,356,doc-prose,/// Project the canvas editing model (lens/things/relations) into a bert-core
 crates/facets-kernel/src/api.rs,372,issue-ref,// Step 4 (bert-lenses#89) lifted the `assert_sl_expressible` guard that used
-crates/facets-kernel/src/api.rs,375,doc-prose,// no longer lossy. The predicate survives in bert-core for callers that want
 crates/facets-kernel/src/api.rs,574,issue-ref,/// bert-lenses#94: `unit` was derived from the inflow (inflow × Δt) rather than
-crates/facets-kernel/src/api.rs,795,doc-prose,// The canvas-family shapes are fixtured from bert-canvas (tests/contract.rs).
-crates/facets-kernel/src/api.rs,805,doc-prose,/// Write-or-assert a committed contract fixture (shared with bert-canvas's
-crates/facets-kernel/src/api.rs,1107,doc-prose,"// demo, by round-tripping a bert-compose ladder circuit (built runnable) out"
 crates/facets-kernel/src/archive.rs,1,issue-ref,"//! The archive seam (bert-lenses#140, ADR 0004): what a saved model IS on disk."
 crates/facets-kernel/src/archive.rs,38,format-tag,"pub const FORMAT_RETIRING: &str = ""bert-lenses/canvas@1"";"
-crates/facets-kernel/src/lib.rs,1,doc-prose,//! bert-lenses-kernel — the JS-facing wasm boundary. Marshaling only.
 crates/facets-kernel/tests/format_tag.rs,4,format-tag,//! carries `bert-lenses/canvas@1`. Phase 5 re-minted the four walkthrough
-crates/facets-tether/src/forcing.rs,23,doc-prose,//! - **Mobus `InteractionType::Force`** (bert-core): an *ontological* flow type —
 crates/facets-tether/src/forcing.rs,316,issue-ref,"/// inflow × Δt, bert-lenses#94), not read from an author-declared stock unit —"
 crates/facets-tether/src/forcing.rs,380,issue-ref,"// (bert-lenses#76). Otherwise, for a Buffering stock, it DERIVES a display unit"
 crates/facets-tether/src/forcing.rs,381,issue-ref,"// from the inflow's unit × Δt (bert-lenses#94, THE ruling 2026-07-20: the"
@@ -354,23 +244,17 @@ crates/facets-tether/src/forcing.rs,635,issue-ref,"/// bert-lenses#76: when a st
 crates/facets-tether/src/forcing.rs,680,issue-ref,/// bert-lenses#94 (display slice): an undeclared Buffering stock fed by a
 crates/facets-tether/src/forcing.rs,734,issue-ref,"/// bert-lenses#94 acceptance: a kW-fed stock displays ENERGY, not power,"
 crates/facets-tether/src/forcing.rs,784,issue-ref,"/// bert-lenses#94 tail: the same kW-fed stock, in a model that DECLARES its"
-crates/facets-tether/src/lib.rs,1,doc-prose,"//! bert-tether — the boundary-interface subsystem, pure Rust (no wasm-bindgen)."
 crates/facets-tether/src/manifest.rs,1,issue-ref,//! The run manifest (bert-lenses#38): a declarative record of everything that
 crates/facets-tether/src/manifest.rs,58,issue-ref,"/// Series forcing (bert-lenses#16): a `flow` column with `""force"": true`"
 crates/facets-tether/src/tether.rs,1,issue-ref,//! The CSV tether (bert-lenses#7/#13) — the reality interface. A model authored
 crates/facets-tether/src/tether.rs,97,issue-ref,/// Series forcing (bert-lenses#16): the relation ids whose flow series should
-crates/facets-tether/tests/adversarial.rs,1,doc-prose,//! Adversarial inputs across the bert-tether boundary paths (issue #47).
 crates/facets-tether/tests/adversarial.rs,164,issue-ref,// rather than the float property (bert-lenses#231).
-docs/README.md,31,doc-prose,- [`VENDORING.md`](VENDORING.md) — **LIVE** — where `bert-core` and `bert-compose` came from: the branch point (`40de7a7
-docs/README.md,31,doc-prose,- [`VENDORING.md`](VENDORING.md) — **LIVE** — where `bert-core` and `bert-compose` came from: the branch point (`40de7a7
 docs/README.md,58,upstream-bert,- [`design/sl2-authoring-language.md`](design/sl2-authoring-language.md) — **RESEARCH** — the foundation behind `languag
 docs/README.md,82,cli-word,- [`rename/README.md`](rename/README.md) — **PROPOSED** ([#541](https://github.com/halcyonic-systems/facets/issues/541))
-docs/VENDORING.md,1,doc-prose,# Vendoring — where `bert-core` and `bert-compose` came from
-docs/VENDORING.md,1,doc-prose,# Vendoring — where `bert-core` and `bert-compose` came from
 docs/VENDORING.md,9,upstream-bert,| **Upstream** | `halcyonic-systems/bert` |
 docs/VENDORING.md,12,doc-prose,| **Vendored in** | `5175835eb486fca0deb023645698761676db59cb` — *feat: rebuild bert-lenses web-first — self-contained w
-docs/VENDORING.md,13,doc-prose,"| **Crates taken** | `bert-core`, `bert-compose` |"
-docs/VENDORING.md,13,doc-prose,"| **Crates taken** | `bert-core`, `bert-compose` |"
+docs/VENDORING.md,13,doc-prose,"| **Crates taken** | `bert-core`, `bert-compose` (here `facets-core` and `facets-compose` since #541; below, the names a"
+docs/VENDORING.md,13,doc-prose,"| **Crates taken** | `bert-core`, `bert-compose` (here `facets-core` and `facets-compose` since #541; below, the names a"
 docs/VENDORING.md,26,doc-prose,git -C bert-lenses show 5175835:crates/bert-compose/src/circuit.rs > /tmp/vendored.rs
 docs/VENDORING.md,26,crate-dir,git -C bert-lenses show 5175835:crates/bert-compose/src/circuit.rs > /tmp/vendored.rs
 docs/VENDORING.md,27,upstream-bert,git -C bert     show 40de7a7:bert-compose/src/circuit.rs         > /tmp/upstream.rs
@@ -513,155 +397,35 @@ docs/decisions/0006-closed-metric-verbs.md,83,lineage,`crates/bert-tether/src/fo
 docs/decisions/0008-agent-layer.md,213,lineage,"reads what the tap reads; the session, tick log, recorder, `bert bench`,"
 docs/decisions/0008-agent-layer.md,245,lineage,"the command form: `TickLog.decisions`, `KnobEdit.by`, and `bert bench`"
 docs/design/README.md,35,upstream-bert,- [`sl2-authoring-language.md`](sl2-authoring-language.md) — the research foundation behind `../language/spec.md` (LIVE)
-docs/design/corpus-contract-draft.md,1,doc-prose,# The corpus contract (bert-lenses #132)
 docs/design/decomposition-foundations.md,185,issue-ref,whose `G′` is pre-filled from `flows(c)` (turns bert-lenses#5's
-docs/design/design-system-draft.md,1,doc-prose,# bert-lenses — design system (DRAFT / sketch to react to)
-docs/design/design-system-draft.md,23,doc-prose,"the build on drift*. bert-lenses already has the three files (`DESIGN.md`,"
-docs/design/design-system-draft.md,30,doc-prose,(`--orb-exact #059669` …) are contractually *never decorative*. bert-lenses already
 docs/design/dynamics-coalgebra-halfa.md,18,upstream-bert,The 8-tuple's `T` (transform) is the **coalgebra structure map** `T : S → F(S)`; `H` (history) is its **final-coalgebra 
 docs/design/dynamics-coalgebra-halfa.md,24,upstream-bert,| `DynamicsKind` | Closed functor `F(X)` | Open (Mealy) form `F(X)` | BERT target |
 docs/design/dynamics-coalgebra-halfa.md,79,upstream-bert,"Half A alone is a typing discipline plus two lens readouts — real, but modest. It is *not* an execution technology (the "
-docs/design/dynamics-coalgebra-halfa.md,86,doc-prose,"1. `kindCodomain` + `Transition` (the typed transition over the descriptor) — SSF, or bert-core. **Done in SSF** (`Syste"
-docs/design/dynamics-halfb-open-composition.md,24,doc-prose,"to decide how bert-lenses should relate to an open problem, not to solve it. Its"
 docs/design/dynamics-halfb-open-composition.md,56,upstream-bert,the right frame for BERT's descriptor rather than a restatement of it.
 docs/design/dynamics-halfb-open-composition.md,61,upstream-bert,"every position, `A`-many directions (the same `A` at each position, since BERT's ports"
-docs/design/dynamics-halfb-open-composition.md,78,doc-prose,the homogeneous and (eventually) heterogeneous composition operators bert-lenses needs
 docs/design/dynamics-halfb-open-composition.md,79,upstream-bert,"— they are not bespoke machinery to invent, only to instantiate against BERT's own"
-docs/design/dynamics-halfb-open-composition.md,116,doc-prose,most bert-compose models are in today (parallel conservation-flow elements sharing a
-docs/design/dynamics-halfb-open-composition.md,166,doc-prose,"A discrete controller (`nondeterministic`-or-`deterministic` kind, e.g. bert-lenses'"
 docs/design/dynamics-halfb-open-composition.md,289,upstream-bert,"not the fixed-`A` monomial §1 used). Does BERT's port model need this, or is it a"
-docs/design/dynamics-halfb-open-composition.md,290,doc-prose,Poly-theoretic nicety with no bert-lenses instance yet?
 docs/design/dynamics-halfb-open-composition.md,293,upstream-bert,been checked against BERT's `kindCodomain` table.
 docs/design/dynamics-halfb-open-composition.md,321,upstream-bert,- §3's theorem is scoped for a standalone Lean file (a `BERT.Interop` or research-note
-docs/design/dynamics-principled-position.md,22,doc-prose,the state space by the model.** bert-lenses today implements one dynamics-kind
-docs/design/dynamics-principled-position.md,92,doc-prose,mechanically checkable acceptance test for every mode bert-lenses ever ships.
-docs/design/dynamics-principled-position.md,100,doc-prose,bert-lenses' actual requirement (a conservation engine and an FSA in one tool) and
-docs/design/dynamics-principled-position.md,251,doc-prose,"mode bert-lenses ships, φ_{t′t″} ∘ φ_{tt′} = φ_{tt″}, checkable per engine"
-docs/design/dynamics-principled-position.md,267,doc-prose,"at the point the run is constructed (`bert_compose::ticks_over`, which `RecordedRun::record_over`"
-docs/design/dynamics-principled-position.md,297,doc-prose,structural theorems can say nothing about arbitrary code. The entire bert-lenses
-docs/design/dynamics-principled-position.md,375,doc-prose,"bert-compose... Compose's conservation engine (`circuit.rs`, UI-free) is consumed as a"
-docs/design/dynamics-research/critique-coverage.md,17,doc-prose,"structure) and states plainly: it covers ""exactly bert-lenses' actual requirement"
-docs/design/dynamics-research/critique-coverage.md,18,doc-prose,set: continuous flow *within* a mode (bert-compose's conservation ODEs) plus
-docs/design/dynamics-research/critique-coverage.md,41,doc-prose,This is not a minor omission. Hybrid automata is a closer match to bert-lenses'
-docs/design/dynamics-research/critique-coverage.md,90,doc-prose,parameter)? Apply that test to the actual porosity model in bert-lenses and record
-docs/design/dynamics-research/critique-novelty.md,74,doc-prose,**This is not a minor omission.** bert-compose's own domain — a flow network of nodes
-docs/design/dynamics-research/critique-novelty.md,211,doc-prose,"bert-lenses have to write different code if this varies.'"" Applying that test to the"
-docs/design/dynamics-research/critique-novelty.md,288,doc-prose,already-well-understood structure/dynamics separation to bert-lenses' specific Mobus/
-docs/design/dynamics-research/read-bertalanffy.md,68,doc-prose,"2. *""In a closed system, some function of the elements — e.g., total mass or energy — is by definition a constant... M, "
-docs/design/dynamics-research/read-bertalanffy.md,68,doc-prose,"2. *""In a closed system, some function of the elements — e.g., total mass or energy — is by definition a constant... M, "
-docs/design/dynamics-research/read-bertalanffy.md,125,doc-prose,"- **No native symbolic/discrete state.** (3.1) is built on continuous, differentiable Qᵢ. He never extends it to a discr"
-docs/design/dynamics-research/read-bertalanffy.md,128,doc-prose,"- **Growth/competition equations (section d) are all continuous-state, continuous-time, and (with the exception of the c"
-docs/design/dynamics-research/read-bunge.md,77,doc-prose,"The Ch.1 §2.2 apparatus is built with real-valued codomains (`𝔽: A → ℝⁿ`, line 631) and continuous-time examples through"
-docs/design/dynamics-research/read-bunge.md,94,doc-prose,**Honest assessment**: Bunge's state-space/event/process/history apparatus (Ch.1 §2.2) is genuinely substrate-neutral *i
-docs/design/dynamics-research/read-category-theory.md,5,doc-prose,"*Research memo — 2026-07-18. Assesses Shingai's question (""Does category theory come into play here? Perhaps."") against "
-docs/design/dynamics-research/read-category-theory.md,5,doc-prose,"*Research memo — 2026-07-18. Assesses Shingai's question (""Does category theory come into play here? Perhaps."") against "
-docs/design/dynamics-research/read-category-theory.md,13,doc-prose,"**Yes, with a specific, nameable mechanism — and it is not new.** The general theory is **F-coalgebra** (Rutten, *Univer"
-docs/design/dynamics-research/read-category-theory.md,13,doc-prose,"**Yes, with a specific, nameable mechanism — and it is not new.** The general theory is **F-coalgebra** (Rutten, *Univer"
-docs/design/dynamics-research/read-category-theory.md,15,doc-prose,"So there are really **two separate categorical answers** bert-lenses needs, not one:"
-docs/design/dynamics-research/read-category-theory.md,19,doc-prose,"Neither is aspirational hand-waving — both have working formal definitions below, verified against primary or near-prima"
-docs/design/dynamics-research/read-category-theory.md,27,doc-prose,"Spivak independently builds most of the coalgebraic pattern without ever using the word ""coalgebra."" This matters: it me"
-docs/design/dynamics-research/read-category-theory.md,30,doc-prose,"- **Finite state machines as monoid actions** — §4.1.2.10, line 2891 ff. `δ: Σ × S → S` (the FSA transition function) is"
-docs/design/dynamics-research/read-category-theory.md,71,doc-prose,"**What this buys, concretely, for bert-lenses' zoo**:"
-docs/design/dynamics-research/read-category-theory.md,72,doc-prose,| Dynamics kind | Functor `F(X)` | bert-lenses target |
-docs/design/dynamics-research/read-category-theory.md,75,doc-prose,"| Conservation flow, discretized (`Δt` stepping) | `X` (identity, if treated as a DDS on a continuous/real state space) "
-docs/design/dynamics-research/read-category-theory.md,80,doc-prose,"**Caveat, stated honestly**: treating bert-compose's conservation-flow stepping as a bare DDS-coalgebra (`F=Id`) is tech"
-docs/design/dynamics-research/read-category-theory.md,91,doc-prose,"- This is squarely aspirational-but-real research literature: 2020–2025, unfinished book draft (`davidjaz.com/Papers/Dyn"
-docs/design/dynamics-research/read-category-theory.md,97,doc-prose,"- **Relevance to bert-lenses**: this is a *third* generic account, orthogonal-ish to coalgebra — behavior-first (what tr"
-docs/design/dynamics-research/read-category-theory.md,114,doc-prose,"3. **Composition gets a genuine calculus, separate from the transition-shape question.** The operad/double-category half"
-docs/design/dynamics-research/read-category-theory.md,118,doc-prose,"1. Calling bert-compose's current Euler-stepped conservation flow ""a coalgebra of the identity functor"" is true but adds"
-docs/design/dynamics-research/read-category-theory.md,120,doc-prose,"3. The double-category/operadic-open-systems literature (Myers, Vagner-Spivak-Lerman, Schultz-Spivak-Vasilakopoulos) is "
-docs/design/dynamics-research/read-category-theory.md,120,doc-prose,"3. The double-category/operadic-open-systems literature (Myers, Vagner-Spivak-Lerman, Schultz-Spivak-Vasilakopoulos) is "
-docs/design/dynamics-research/read-category-theory.md,134,doc-prose,"`H` is then, in every case, the coinductive unfolding of `T` — literally what Rutten's framework calls the **final coalg"
-docs/design/dynamics-research/read-category-theory.md,137,doc-prose,"- **Does it demand a rewrite? No, not to adopt as classification.** Nothing above requires touching circuit.rs, bert-cor"
-docs/design/dynamics-research/read-category-theory.md,137,doc-prose,"- **Does it demand a rewrite? No, not to adopt as classification.** Nothing above requires touching circuit.rs, bert-cor"
-docs/design/dynamics-research/read-category-theory.md,139,doc-prose,"- **What it does NOT license**: claiming today that bert-lenses ""is"" a coalgebraic or operadic tool, or that adopting th"
-docs/design/dynamics-research/read-category-theory.md,139,doc-prose,"- **What it does NOT license**: claiming today that bert-lenses ""is"" a coalgebraic or operadic tool, or that adopting th"
-docs/design/dynamics-research/read-category-theory.md,140,doc-prose,"- **Biggest concrete unresolved gap for bert-lenses specifically**: the operadic/wiring-diagram literature (§2b, §2c) th"
-docs/design/dynamics-research/read-category-theory.md,140,doc-prose,"- **Biggest concrete unresolved gap for bert-lenses specifically**: the operadic/wiring-diagram literature (§2b, §2c) th"
-docs/design/dynamics-research/read-category-theory.md,146,doc-prose,"Category theory does come into play — but as **two separable, well-defined technical answers** (coalgebra for ""what shap"
-docs/design/dynamics-research/read-external.md,5,doc-prose,"Research pass for bert-lenses dynamics generalization (issue #67 Markov/FSA sim, #54 porosity semantics,"
-docs/design/dynamics-research/read-external.md,7,doc-prose,"system"" broad enough to cover conservation-flow ODEs (what bert-compose runs today), FSA/DLG state"
-docs/design/dynamics-research/read-external.md,81,doc-prose,### Verdict for bert-lenses
 docs/design/dynamics-research/read-external.md,91,upstream-bert,"the kernel: a BERT model's Mobus state (stocks) is *a* choice of latent variable, not *the* definition of"
-docs/design/dynamics-research/read-external.md,137,doc-prose,"The crucial move, and the one directly useful for bert-lenses, is that **""time system"" and ""dynamical"
-docs/design/dynamics-research/read-external.md,150,doc-prose,"semigroup/composition axiom. This is exactly the abstraction bert-lenses needs: **conservation flows,"
-docs/design/dynamics-research/read-external.md,155,doc-prose,"invariant that should hold across every mode bert-lenses runs, and it's a clean acceptance test: whatever"
-docs/design/dynamics-research/read-external.md,158,doc-prose,### Verdict for bert-lenses
-docs/design/dynamics-research/read-external.md,166,doc-prose,"nothing; whatever bert-lenses' engine does per-mode still has to be built, this only tells you the shape"
-docs/design/dynamics-research/read-external.md,197,doc-prose,"(discrete index) — a direct, worked instance of the discrete/continuous unification bert-lenses needs,"
-docs/design/dynamics-research/read-external.md,238,doc-prose,"function — i.e., structurally identical to the FSA formalism bert-lenses' DLG mode already needs for"
-docs/design/dynamics-research/read-external.md,281,doc-prose,Covers exactly bert-lenses' actual requirement set: continuous flow *within* a mode (bert-compose's
-docs/design/dynamics-research/read-external.md,281,doc-prose,Covers exactly bert-lenses' actual requirement set: continuous flow *within* a mode (bert-compose's
-docs/design/dynamics-research/read-external.md,288,doc-prose,interactive authoring/simulation tool rather than a verifier this is likely an acceptable cost — bert-lenses
-docs/design/dynamics-research/read-external.md,337,doc-prose,"the non-continuous, non-conservation cases bert-lenses needs (Boolean networks: X = {0,1}ⁿ, h = the update"
-docs/design/dynamics-research/read-external.md,351,doc-prose,"system"" label attached to a different problem than the one bert-lenses has. Worth knowing the term is"
-docs/design/dynamics-research/read-external.md,353,doc-prose,"to not conflate them when citing ""generalized dynamical systems"" in future bert-lenses docs."
-docs/design/dynamics-research/read-external.md,355,doc-prose,### Verdict for bert-lenses
-docs/design/dynamics-research/read-external.md,361,doc-prose,"(X = joint agent state) both instantiate exactly, with bert-compose's conservation-flow engine being the"
-docs/design/dynamics-research/read-external.md,394,doc-prose,"Covers: exactly bert-compose's conservation-flow engine, formalized compositionally (diagrams glue, and"
-docs/design/dynamics-research/read-external.md,404,doc-prose,silence elsewhere in the paper. If bert-lenses wants a categorical account that also covers FSA/DLG or
-docs/design/dynamics-research/read-external.md,410,doc-prose,### Verdict for bert-lenses
-docs/design/dynamics-research/read-external.md,413,doc-prose,"categorically, get the ODE semantics as a theorem about a functor"" — validates that bert-compose's engine"
-docs/design/dynamics-research/read-external.md,448,doc-prose,"categorical-stock-flow theory becomes load-bearing for bert-lenses, that reading has to come from outside"
-docs/design/dynamics-research/read-external.md,464,doc-prose,questions bert-lenses actually has:
-docs/design/dynamics-research/read-external.md,482,doc-prose,"The practical implication: bert-lenses' ""Run = a mode transition"" framing (Mobus-structural → Operational)"
-docs/design/dynamics-research/read-external.md,484,doc-prose,"(conservation-flow ODE, via bert-compose's circuit.rs) is implemented, and the kernel doesn't yet expose a"
-docs/design/dynamics-research/read-klir.md,12,doc-prose,"bert-lenses today assumes ONE answer to ""what is dynamics"" — conservation flow over"
-docs/design/dynamics-research/read-klir.md,13,doc-prose,Mobus work processes (bert-compose's `circuit.rs`) — without ever arguing for it. Issue
 docs/design/dynamics-research/read-klir.md,51,cli-word,"here. This is the bare state-space + support scaffold: in bert terms, C/N/E (components,"
-docs/design/dynamics-research/read-klir.md,59,doc-prose,still no generating law. In bert-lenses terms: a completed simulation run's H (History) IS
-docs/design/dynamics-research/read-klir.md,75,doc-prose,is the single strongest finding for bert-lenses: Klir's hierarchy already places
-docs/design/dynamics-research/read-klir.md,76,doc-prose,"conservation-flow ODEs (bert-compose today), FSA/DLG transitions (issue #67), and Markov"
 docs/design/dynamics-research/read-klir.md,84,cli-word,"source/data/generative systems) (klir-facets.md:4371-4416, VERIFIED). This is bert's"
-docs/design/dynamics-research/read-klir.md,118,doc-prose,**Assessment of whether metasystem is the right home for bert-lenses's mode-transition
-docs/design/dynamics-research/read-klir.md,119,doc-prose,"(Mobus-structural → Operational)**: yes, structurally. A mode transition in bert-compose is"
 docs/design/dynamics-research/read-klir.md,130,cli-word,"Caveat, UNVERIFIED as applied to bert: Klir gives no worked example of adaptation/evolution"
-docs/design/dynamics-research/read-klir.md,133,doc-prose,a discrete generation index). Whether bert-lenses's multi-timescale hierarchy
-docs/design/dynamics-research/read-klir.md,167,doc-prose,Practical read for bert-lenses: a **mask + behavior function pair is Klir's general schema
-docs/design/dynamics-research/read-klir.md,168,doc-prose,"for ""one step of a run.""** bert-compose's circuit-stepping conservation engine, an FSA"
-docs/design/dynamics-research/read-klir.md,214,doc-prose,"*shape*,"" not ""same engine."" For bert-lenses that's actually the right level of claim: a"
-docs/design/dynamics-research/read-klir.md,230,doc-prose,This matters for bert-lenses directly: an FSA/DLG (issue #67) and a deterministic Boolean
 docs/design/dynamics-research/read-klir.md,234,cli-word,level; the difference bert cares about (probabilistic branching vs. forced single successor)
-docs/design/dynamics-research/read-klir.md,239,doc-prose,useful machinery for any future bert-lenses feature that collapses/abstracts a state machine.
-docs/design/dynamics-research/read-klir.md,243,doc-prose,## 5. Does Klir's hierarchy already give bert-lenses its dynamics taxonomy?
 docs/design/dynamics-research/read-klir.md,250,cli-word,"network, ABM) belong in **one category** — generative system — rather than requiring bert"
-docs/design/dynamics-research/read-klir.md,255,doc-prose,implement. bert-lenses could define a `Mask` + `BehaviorFunction` trait pair once and
-docs/design/dynamics-research/read-klir.md,260,doc-prose,bert-lenses's Mobus-structural → Operational transition a formal name and a family of
-docs/design/dynamics-research/read-klir.md,271,doc-prose,"computation."" bert-lenses still needs to build (or already has, for flow) a separate"
 docs/design/dynamics-research/read-klir.md,287,cli-word,which slot is correct for bert's domain.
-docs/design/dynamics-research/read-klir.md,291,doc-prose,"That's bert-lenses's problem to solve, informed by but not answered by Klir."
 docs/design/dynamics-research/read-klir.md,298,cli-word,discrete-event/hybrid simulation — closer to bert's actual engineering need than Klir's more
-docs/design/dynamics-research/read-mobus.md,24,doc-prose,"is the sentence bert-lenses inherited. It is stated as an assertion, not derived"
-docs/design/dynamics-research/read-mobus.md,36,doc-prose,So: the conservation-flow reading that bert-lenses runs today is **one of
-docs/design/dynamics-research/read-mobus.md,138,doc-prose,This is the conservation-flow vocabulary bert-compose's circuit engine runs on.
 docs/design/dynamics-research/read-mobus.md,190,cli-word,"plant, §4.5) always instantiating T as a material/energy transformation. bert"
-docs/design/dynamics-research/read-mobus.md,228,doc-prose,"asserted, not specified. This is an opening for bert-lenses: H-conditioned T is"
-docs/design/dynamics-research/read-mobus.md,284,doc-prose,**The explicit conservation commitment** (this is the sentence bert-lenses
-docs/design/dynamics-research/read-mobus.md,366,doc-prose,reconciles these. This is exactly the gap bert-lenses needs to fill with
-docs/design/dynamics-research/read-mobus.md,476,doc-prose,3. **Mobus's own text warns against exactly the trap bert-lenses is in**:
-docs/design/dynamics-research/synthesis.md,24,doc-prose,"1. bert-lenses' current engine does not implement ""dynamics."" It implements **one"
-docs/design/dynamics-research/synthesis.md,67,doc-prose,"precise formal home for bert-lenses' ""Run = a mode transition"" framing: the"
-docs/design/dynamics-research/synthesis.md,70,doc-prose,t→t' then t'→t'' must equal stepping t→t'' directly. Every mode bert-lenses ever
 docs/design/dynamics-research/synthesis.md,106,upstream-bert,"would hard-code Mobus stocks into the kernel: under Willems, **a BERT model's stocks"
-docs/design/dynamics-research/synthesis.md,146,doc-prose,"level*. It is the argument bert-lenses has never made, already written down in 1991."
-docs/design/dynamics-research/synthesis.md,185,doc-prose,"Six axes. They were chosen by the test ""does bert-lenses have to write different code"
-docs/design/dynamics-research/synthesis.md,282,doc-prose,"T — with a small, closed, enumerable answer set. Without this, bert-lenses would"
-docs/design/dynamics-research/synthesis.md,308,doc-prose,in one diagram is precisely bert-lenses' problem and precisely what no source
-docs/design/dynamics-research/synthesis.md,325,doc-prose,pattern.* Do **not** describe bert-lenses as a categorical tool. Do not restructure the
-docs/design/dynamics-research/synthesis.md,495,doc-prose,exhibit equifinality on its conserved measures. Any future claim bert-lenses makes about
-docs/design/educational-model-suite.md,19,doc-prose,"things involved, but already understands the roles."" bert-lenses' job is not"
 docs/design/educational-model-suite.md,59,issue-ref,don't force a conservation run onto a state machine. Ties to bert-lenses#14
 docs/design/educational-model-suite.md,61,deploy,- `~/Documents/bert-lenses/technical/hal-projection.json` /
 docs/design/educational-model-suite.md,75,deploy,"- `~/Documents/bert-lenses/technical/{llm-market-target4*,rung2-alloc*,"
 docs/design/educational-model-suite.md,77,issue-ref,"demos (bert-lenses#14 target 4), tether-driven, real dynamical runs against"
-docs/design/educational-model-suite.md,174,doc-prose,dynamical face doesn't map onto `bert-compose`'s conservation semantics)
 docs/design/educational-model-suite.md,185,issue-ref,Ties to bert-lenses#14 target 3 (Penland DLG/FSM). Effort: **zero new
 docs/design/educational-model-suite.md,205,issue-ref,below the LLM-market capstone. Bridges toward bert-lenses#14 target 4
 docs/design/educational-model-suite.md,222,deploy,Domain: **already built and running** at `~/Documents/bert-lenses/technical/
 docs/design/educational-model-suite.md,225,issue-ref,"data, and the ""able to be wrong"" criterion (bert-lenses#14: ""the simulation"
 docs/design/educational-model-suite.md,291,crate-dir,"Doc: `~/Desktop/halcyonic-projects/active/bert-lenses/docs/design/educational-model-suite.md` (this file, uncommitted pe"
-docs/design/educational-model-suite.md,322,doc-prose,"bert-lenses today, with higher confidence than the traffic-light idea**: a"
-docs/design/educational-model-suite.md,373,doc-prose,"is the strongest hook in the suite**: bert-lenses' Klir lens — `S = (T, R)`,"
 docs/design/hierarchical-decomposition-investigation.md,1,doc-prose,# Hierarchical Decomposition in bert-lenses — Investigation & Design Options
 docs/design/hierarchical-decomposition-investigation.md,10,upstream-bert,"wholesale from old BERT: `Id.indices`, `IdType::Subsystem`, `Info.level`,"
 docs/design/hierarchical-decomposition-investigation.md,12,doc-prose,bert-lenses is flat by construction**: the canvas authoring model is a single
@@ -691,253 +455,80 @@ docs/design/hierarchical-decomposition-investigation.md,353,doc-prose,> **Ground
 docs/design/hierarchical-decomposition-investigation.md,356,upstream-bert,> old BERT). But every active path is **flat**:
 docs/design/hierarchical-decomposition-investigation.md,367,upstream-bert,> So recursive decomposition — old BERT's defining feature (SOI → subsystem
 docs/design/hierarchical-decomposition-investigation.md,392,upstream-bert,> abandons the feature]; (C) revive old BERT's in-place nested tree [highest
-docs/design/issue-154-plan.md,68,doc-prose,**(2) Env variables now carry source-system characteristics (guard lifted).** The first cut emitted/parsed `scale`/`stat
 docs/design/kernel-seam.md,40,upstream-bert,3. The model app asks GSR to generate a BERT/canvas skeleton from that
-docs/design/lens-palettes.md,4,doc-prose,"> primitives are `bert-core::{boundary_components, edge_locus}` surfaced"
-docs/design/lens-palettes.md,16,doc-prose,> not yet modulate crossing flows in bert-compose — structural-only today).
 docs/design/lens-palettes.md,33,upstream-bert,> `bert/docs/mobus-reference.md`.
 docs/design/lens-palettes.md,278,upstream-bert,machine-checked in `systems-science-foundations/Systems/Mobus/Tuple.lean` (BERT
 docs/design/lens-palettes.md,279,upstream-bert,element table: `bert/docs/mobus-reference.md`). **Use this 8-tuple; do NOT
-docs/design/lens-palettes.md,296,doc-prose,"domain-specific by intent (bert-compose fills the open parameter slot — licensed,"
-docs/design/lens-palettes.md,532,doc-prose,"| work-process primitive | **DESIGNATE** | arm a primitive, click a leaf component | `bert-core` `Vec<ProcessPrimitive>`"
 docs/design/lens-palettes.md,566,upstream-bert,"- BERT's applied doc is already interface-first: ""Subsystems MUST attach to"
 docs/design/lens-palettes.md,567,upstream-bert,"existing interfaces"" (`bert/docs/mobus-reference.md:82`)."
-docs/design/lens-palettes.md,593,doc-prose,checklist from step 1 (bert-core carries authored I; `PortFact` gains
-docs/design/lens-palettes.md,653,doc-prose,them (Agency archetype). bert-compose already corrected one category error
-docs/design/lens-palettes.md,656,doc-prose,tension that `bert-core::AgentModel.primitives` carries Economy content
-docs/design/lens-palettes.md,659,doc-prose,- **The kernel is already agent-ready**: `bert-core` carries
 docs/design/lifecycle-prior-art.md,22,upstream-bert,"**George's own words on H**, recovered from the archive and matching what `bert/docs/h-element-theory.md` §1.4 attribute"
 docs/design/lifecycle-prior-art.md,30,upstream-bert,⚠️ **This has never been reconciled with this repo's settled H position.** `bert/docs/h-element-theory.md` §10 lands on 
 docs/design/lifecycle-prior-art.md,53,cli-word,"The phase-function formalism (`φ : S → {0..4}`, phase-specific constraint sets `F_φ(S)`, transition predicates `τ_{i,j}`"
 docs/design/lifecycle-prior-art.md,53,upstream-bert,"The phase-function formalism (`φ : S → {0..4}`, phase-specific constraint sets `F_φ(S)`, transition predicates `τ_{i,j}`"
 docs/design/lifecycle-prior-art.md,73,upstream-bert,The error was caught and fixed exactly once — during the 2026-05 migration into `bert/docs/lifecycle-dynamics.md` — and 
 docs/design/lifecycle-prior-art.md,89,upstream-bert,**Chain of custody:** `boundary-refinement.md` + PDF (Feb 17 2025) → `revising-system.md` (a word-for-word draft of Geor
-docs/design/lifecycle-prior-art.md,97,doc-prose,- **Catlab / Topos line.** `process-primitives/future_research/catlab_roadmap.md` + `catlab_prototype.jl` + `phoenix_cyc
-docs/design/llm-integration-research.md,6,doc-prose,*Context · Authoring · Analysis in bert-lenses. Research only — no implementation. Written 2026-07-16 as the foundation 
-docs/design/llm-integration-research.md,12,doc-prose,"1. **The bet is sound and field-validated.** ""LLM proposes a candidate, a deterministic checker owns truth"" is convergen"
-docs/design/llm-integration-research.md,109,doc-prose,"> **Amended 2026-07-17 (analysis rung shipped; see `operations/sessions/2026-07-17/references/{llm-analysis-rung-plan,wp"
 docs/design/llm-integration-research.md,114,upstream-bert,"| `bert-generator-core` (deterministic compiler) | `general-systems-reasoner/core/` | **LIVE**, mature, documented (`ber"
 docs/design/llm-integration-research.md,115,upstream-bert,"| BERT desktop chat→generate flow | `bert/src-tauri/src/chat_service.rs`, `bin/bert-generate.rs` | **LIVE** — but target"
 docs/design/llm-integration-research.md,115,upstream-bert,"| BERT desktop chat→generate flow | `bert/src-tauri/src/chat_service.rs`, `bin/bert-generate.rs` | **LIVE** — but target"
-docs/design/llm-integration-research.md,116,doc-prose,"| bert-lenses kernel (validate/project/toCanvas/analyze_canvas) | `web/src/kernel/index.ts`, `crates/facets-kernel/API.m"
-docs/design/llm-integration-research.md,117,doc-prose,"| GSR/LLM call *inside* bert-lenses web | — | **MISSING** (grepped clean; the ""open_model GSR-sniff"" from the earlier vi"
-docs/design/llm-integration-research.md,124,doc-prose,Every surveyed category independently converged on bert-lenses' shape — *LLM proposes into a structured intermediate → a
-docs/design/llm-integration-research.md,146,doc-prose,"**bert-lenses meets half of that, and the split is worth stating plainly rather than blurring:**"
-docs/design/llm-integration-research.md,214,doc-prose,Germen (`active/germen/`) is not just an analogy; it is a **working system that already implements the exact posture thi
-docs/design/llm-integration-research.md,218,doc-prose,| bert-lenses need | Germen's realized pattern | Lesson |
-docs/design/llm-integration-research.md,221,doc-prose,"| LLM proposes, kernel disposes | The **propose tap** (`--features llm`, `germen-core::propose`, `Drafter`/`HalDrafter` "
-docs/design/llm-integration-research.md,226,doc-prose,**The reframe germen gives the whole plan:** the bert-lenses LLM layer is *germen's posture applied to a visual authorin
-docs/design/llm-integration-research.md,226,doc-prose,**The reframe germen gives the whole plan:** the bert-lenses LLM layer is *germen's posture applied to a visual authorin
-docs/design/llm-sl-authoring-plan.md,58,doc-prose,"**Finding 1 — the best local model already clears the free-form bar.** A live probe (2026-07-23, `scratchpad/sl_probe.sh"
-docs/design/llm-sl-authoring-plan.md,105,doc-prose,"in `localStorage` (`bert-lenses.coauthor-turns`, `web/src/coauthor.ts`), no"
-docs/design/mobus-lifecycle-formalization.md,135,doc-prose,"**Verdict: an extension of bert-lenses.** Not a compose feature, not a third face, not a kernel change."
-docs/design/mobus-lifecycle-formalization.md,137,doc-prose,"**The decisive evidence against ""structure is just more state"" is empirical, not abstract.** bert-compose *already* meet"
-docs/design/mobus-lifecycle-formalization.md,149,doc-prose,"Two corroborations: [`dynamics-principled-position.md`](dynamics-principled-position.md) already lists, under *explicitl"
-docs/design/mobus-lifecycle-formalization.md,249,doc-prose,"2. **Therefore it belongs in bert-lenses, not `bert`** — even though both theory docs live in `bert`. `bert`'s storage i"
-docs/design/mobus-lifecycle-formalization.md,249,cli-word,"2. **Therefore it belongs in bert-lenses, not `bert`** — even though both theory docs live in `bert`. `bert`'s storage i"
-docs/design/mobus-lifecycle-formalization.md,249,cli-word,"2. **Therefore it belongs in bert-lenses, not `bert`** — even though both theory docs live in `bert`. `bert`'s storage i"
-docs/design/mobus-lifecycle-formalization.md,249,cli-word,"2. **Therefore it belongs in bert-lenses, not `bert`** — even though both theory docs live in `bert`. `bert`'s storage i"
-docs/design/mobus-lifecycle-formalization.md,249,doc-prose,"2. **Therefore it belongs in bert-lenses, not `bert`** — even though both theory docs live in `bert`. `bert`'s storage i"
-docs/design/mobus-lifecycle-formalization.md,249,doc-prose,"2. **Therefore it belongs in bert-lenses, not `bert`** — even though both theory docs live in `bert`. `bert`'s storage i"
+docs/design/mobus-lifecycle-formalization.md,249,cli-word,"2. **Therefore it belongs in facets, not `bert`** — even though both theory docs live in `bert`. `bert`'s storage is `Wo"
+docs/design/mobus-lifecycle-formalization.md,249,cli-word,"2. **Therefore it belongs in facets, not `bert`** — even though both theory docs live in `bert`. `bert`'s storage is `Wo"
+docs/design/mobus-lifecycle-formalization.md,249,cli-word,"2. **Therefore it belongs in facets, not `bert`** — even though both theory docs live in `bert`. `bert`'s storage is `Wo"
 docs/design/mobus-lifecycle-formalization.md,266,cli-word,"- **A governance gap, worth fixing independently:** neither `bert` doc is status-marked or indexed against this repo's d"
-docs/design/neutral-interchange.md,29,doc-prose,"What it *does* give us now [PAPER-SAYS, high]: peer-reviewed backing for `bert-compose`'s ""sum contributions at shared n"
-docs/design/run-seam-canvas-document.md,15,doc-prose,bert-lenses instead ran only the stored demo artifact (the minted projection
-docs/design/sandbox-surface.md,30,doc-prose,an engine-side `bert_compose::session::Session` (natively tested; the wasm
 docs/design/sandbox-surface.md,88,issue-ref,pushed Source outwires surface in the wire inspector (bert#111 — rate is an
-docs/design/sandbox-surface.md,100,doc-prose,Not a third mode (#345); not a second engine (the vendored `bert-compose`
 docs/design/sandbox-surface.md,103,upstream-bert,upstream `bert` repo change.
-docs/design/shape-vocabulary-research.md,5,doc-prose,"*Research for bert-lenses #81 (palette shape vocabulary). Precedent-gathering only — no code changed, nothing posted to "
-docs/design/shape-vocabulary-research.md,9,doc-prose,"bert-lenses' whole differentiator is **lens fidelity**: Klir, Bunge, and Mobus are not three skins on one shape set, the"
-docs/design/shape-vocabulary-research.md,9,doc-prose,"bert-lenses' whole differentiator is **lens fidelity**: Klir, Bunge, and Mobus are not three skins on one shape set, the"
-docs/design/shape-vocabulary-research.md,11,doc-prose,## 2. What bert-lenses renders today (ground truth)
-docs/design/shape-vocabulary-research.md,34,doc-prose,| Tradition | Glyph set | Ontological distinction each shape carries | What bert-lenses should take |
-docs/design/shape-vocabulary-research.md,36,doc-prose,"| **Mobus's own SL icon set** (Ch. 4, Figs. 4.5, 4.9–4.10, 4.13) | Rounded rectangles for interfaces ""penetrating"" the b"
-docs/design/shape-vocabulary-research.md,36,doc-prose,"| **Mobus's own SL icon set** (Ch. 4, Figs. 4.5, 4.9–4.10, 4.13) | Rounded rectangles for interfaces ""penetrating"" the b"
-docs/design/shape-vocabulary-research.md,36,doc-prose,"| **Mobus's own SL icon set** (Ch. 4, Figs. 4.5, 4.9–4.10, 4.13) | Rounded rectangles for interfaces ""penetrating"" the b"
-docs/design/shape-vocabulary-research.md,36,doc-prose,"| **Mobus's own SL icon set** (Ch. 4, Figs. 4.5, 4.9–4.10, 4.13) | Rounded rectangles for interfaces ""penetrating"" the b"
-docs/design/shape-vocabulary-research.md,37,doc-prose,"| **Stella / Forrester system dynamics** | Stock = rectangle (""container,"" the noun). Flow = thick directed pipe with a "
-docs/design/shape-vocabulary-research.md,38,doc-prose,"| **Odum's energy systems language** | A full glyph alphabet keyed to ontological *function*, not just role: producer (a"
-docs/design/shape-vocabulary-research.md,38,doc-prose,"| **Odum's energy systems language** | A full glyph alphabet keyed to ontological *function*, not just role: producer (a"
-docs/design/shape-vocabulary-research.md,38,doc-prose,"| **Odum's energy systems language** | A full glyph alphabet keyed to ontological *function*, not just role: producer (a"
-docs/design/shape-vocabulary-research.md,39,doc-prose,| **SysML block/port notation** | Block = rectangle with `«block»` keyword stereotype. Port = a small square **straddlin
-docs/design/shape-vocabulary-research.md,39,doc-prose,| **SysML block/port notation** | Block = rectangle with `«block»` keyword stereotype. Port = a small square **straddlin
 docs/design/shape-vocabulary-research.md,40,doc-prose,| **Automata (DFA/NFA) convention** | States = circles. Accepting states = **double circles** (concentric ring). Start s
-docs/design/shape-vocabulary-research.md,40,doc-prose,| **Automata (DFA/NFA) convention** | States = circles. Accepting states = **double circles** (concentric ring). Start s
-docs/design/shape-vocabulary-research.md,41,doc-prose,| **Petri nets** (brief) | Places = circles (state/resource holder). Transitions = bars/rectangles (action that changes 
-docs/design/shape-vocabulary-research.md,41,doc-prose,| **Petri nets** (brief) | Places = circles (state/resource holder). Transitions = bars/rectangles (action that changes 
-docs/design/shape-vocabulary-research.md,41,doc-prose,| **Petri nets** (brief) | Places = circles (state/resource holder). Transitions = bars/rectangles (action that changes 
-docs/design/shape-vocabulary-research.md,42,doc-prose,"| **Circuit notation** (brief, for completeness) | Component-specific glyphs (resistor zigzag, capacitor parallel bars, "
-docs/design/shape-vocabulary-research.md,42,doc-prose,"| **Circuit notation** (brief, for completeness) | Component-specific glyphs (resistor zigzag, capacitor parallel bars, "
 docs/design/shape-vocabulary-research.md,64,doc-prose,"3. **(Contested — needs the design session, not this brief)** Whether ""component that owns one or more interfaces"" deser"
-docs/design/shape-vocabulary-research.md,82,doc-prose,"5. **Env-object category coloring**: Mobus Fig. 4.7 colors sources/sinks by category (energy source, material source, pr"
-docs/design/shape-vocabulary-research.md,100,doc-prose,"- bert-lenses source: `web/src/canvas/lenses/{common,klir,bunge,mobus}.tsx` (read in full for this brief)"
-docs/design/sl2-authoring-language.md,1,doc-prose,# SL 2.0 — A Language for Authoring System Models in bert-lenses
-docs/design/sl2-authoring-language.md,5,doc-prose,*Research & first-principles foundation. Research + design only — NO implementation. Written 2026-07-18 as the foundatio
-docs/design/sl2-authoring-language.md,21,doc-prose,"5. **The MVP that clears Stella's bar is a *text surface over the same model the canvas already edits*, giving the map/e"
 docs/design/sl2-authoring-language.md,25,upstream-bert,"7. **What to reuse, not build:** the abstract syntax (`CanvasModel`), the compiler (`project`/`toCanvas`), the validator"
-docs/design/sl2-authoring-language.md,39,doc-prose,"**Claim 2 — the lexicon comes from the ontology, and syntax is enforced by structure.** ""The syntax of SL is two-dimensi"
-docs/design/sl2-authoring-language.md,55,doc-prose,"bert-lenses already satisfies F2, F3, F5 in the graphical surface (`lens-palettes.md`). SL 2.0's job is to add F1, F4, F"
-docs/design/sl2-authoring-language.md,75,doc-prose,IDs · positions · wiring                       live bert-lenses model
-docs/design/sl2-authoring-language.md,81,doc-prose,- **The compiler already exists and is already deterministic.** `project(CanvasModel) → WorldModel` (in `bert-canvas`) c
-docs/design/sl2-authoring-language.md,81,upstream-bert,- **The compiler already exists and is already deterministic.** `project(CanvasModel) → WorldModel` (in `bert-canvas`) c
-docs/design/sl2-authoring-language.md,148,doc-prose,"| **Embedded JavaScript behaviors** (`:533-535`) | **SHED** | Dynamics = `bert-compose` (conservation-faithful, typed), "
-docs/design/sl2-authoring-language.md,151,doc-prose,"| **""System → Agent class"" execution mapping** | **SHED** | Was SL 1.0's weakest section (7.5/10 review, `bert-system-la"
-docs/design/sl2-authoring-language.md,177,doc-prose,"**Stella / STELLA (isee systems), system dynamics — the bar the MVP must clear. VERIFIED.** Barry Richmond's tool ""for t"
-docs/design/sl2-authoring-language.md,181,doc-prose,"**SysML v2 (KerML + textual notation) — the closest existing precedent to ""three surfaces over one spec."" VERIFIED.** Tw"
-docs/design/sl2-authoring-language.md,195,doc-prose,"The bar (from Stella, VERIFIED): a modeling *language* feels like one when you have **two coequal views of one model, st"
-docs/design/sl2-authoring-language.md,211,doc-prose,"**Rung 4 (post-MVP) — decomposition + the dynamical face.** *(Landed since: decomposition by reference, `decomposes ""lab"
-docs/design/sl2-authoring-language.md,211,doc-prose,"**Rung 4 (post-MVP) — decomposition + the dynamical face.** *(Landed since: decomposition by reference, `decomposes ""lab"
+docs/design/sl2-authoring-language.md,81,upstream-bert,- **The compiler already exists and is already deterministic.** `project(CanvasModel) → WorldModel` (in `facets-canvas`)
 docs/design/sl2-authoring-language.md,228,upstream-bert,"*Cross-refs: `llm-integration-research.md` (the LLM-assist story SL 2.0's words-surface leans on), `lens-palettes.md` (t"
-docs/kernel-architecture.md,1,doc-prose,# The bert-lenses Kernel as a System
-docs/kernel-architecture.md,28,doc-prose,"| `bert-core` | The truth core: `WorldModel`, all validators, `project`, mode-gating (`validate.rs`, `lib.rs`) |"
-docs/kernel-architecture.md,29,doc-prose,"| `bert-canvas` | The lens/authoring domain: `CanvasModel`, `lens_facts`, `describe`, `analyze` (`lenses.rs`, `canvas.rs"
-docs/kernel-architecture.md,30,doc-prose,"| `bert-tether` | Boundary interface: CSV import, run manifest, forcing |"
-docs/kernel-architecture.md,31,doc-prose,| `bert-compose` | The dynamical engine: a dynamics run under the model's declared invariant (current engine: one suppor
-docs/kernel-architecture.md,32,doc-prose,| `bert-lenses-kernel` | The JS↔wasm boundary — marshaling only; frozen append-only surface (`API.md`) |
-docs/kernel-architecture.md,33,doc-prose,"| `bert-cli` | The `facets` binary: a headless door onto the same library calls the wasm boundary marshals (compile, ver"
-docs/language/README.md,1,doc-prose,# SL — the bert-lenses system language
 docs/language/README.md,144,upstream-bert,"**Interoperability: a hint, not a promise.** The posture is export-not-import, already practiced in `bert/sysml-interop/"
 docs/language/README.md,151,upstream-bert,| 2 | [`../design/sl2-authoring-language.md`](../design/sl2-authoring-language.md) | The research foundation behind the 
 docs/language/README.md,167,upstream-bert,"SL stands in a line: Mobus's SL proposal (Ch. 4) → BERT SL v0.1 (`bert/docs/system-language-spec.md`, a lexicon and gram"
 docs/language/README.md,167,upstream-bert,"SL stands in a line: Mobus's SL proposal (Ch. 4) → BERT SL v0.1 (`bert/docs/system-language-spec.md`, a lexicon and gram"
-docs/language/spec.md,1,doc-prose,"# SL — The bert-lenses System Language, v1.13"
-docs/language/spec.md,5,doc-prose,SL is a human-writable textual notation that compiles deterministically into a bert-lenses model. It is the third concre
 docs/language/spec.md,67,upstream-bert,"| `description` | prose about a thing or a flow, in the author's own words — restored in v1.4 (#326) after the rebuild d"
-docs/language/spec.md,67,doc-prose,"| `description` | prose about a thing or a flow, in the author's own words — restored in v1.4 (#326) after the rebuild d"
 docs/language/spec.md,67,upstream-bert,"| `description` | prose about a thing or a flow, in the author's own words — restored in v1.4 (#326) after the rebuild d"
-docs/language/spec.md,67,doc-prose,"| `description` | prose about a thing or a flow, in the author's own words — restored in v1.4 (#326) after the rebuild d"
-docs/language/spec.md,237,doc-prose,"`component Furnace primitive Combining decomposes ""furnace-interior"" @Hrs6K91KnZZsiPcWzftv8U` designates the component a"
 docs/language/spec.md,239,upstream-bert,"`component Battery description ""the pack that rides out a cloudy week""` declares what the thing IS, in the author's own "
-docs/language/spec.md,239,doc-prose,"`component Battery description ""the pack that rides out a cloudy week""` declares what the thing IS, in the author's own "
-docs/language/spec.md,270,doc-prose,**`ample` (#9)** takes the amount slot and asserts *availability* instead of a magnitude: the signal is present and neve
-docs/language/spec.md,481,doc-prose,"- **A bypass exists, and it is a defect rather than a second path (#216).** `bert-compose`'s exporter writes `AgentModel"
-docs/language/spec.md,490,doc-prose,"| The Mobus system | the structure inside the boundary: components, flows, interfaces, the recursive decomposition | `be"
-docs/language/spec.md,491,doc-prose,"| The coalgebra | the behaviour read on the boundary: a state and a rule for what comes next, `X → F(X)`, with `F` the d"
-docs/language/spec.md,492,doc-prose,"| The ledger | the conservation bookkeeping across the boundary: emitted, stored, sunk, dissipated | `bert-core`'s typed"
-docs/language/spec.md,492,doc-prose,"| The ledger | the conservation bookkeeping across the boundary: emitted, stored, sunk, dissipated | `bert-core`'s typed"
 docs/language/spec.md,565,upstream-bert,**BERT SL v0.1 (`bert/docs/system-language-spec.md`).** The prior spec in this lineage: a publication-grade lexicon and 
 docs/language/spec.md,565,upstream-bert,**BERT SL v0.1 (`bert/docs/system-language-spec.md`).** The prior spec in this lineage: a publication-grade lexicon and 
-docs/language/spec.md,567,doc-prose,**SL v2.0 addendum (`system-language-spec-v2-addendum.md`).** Contributed the kernel re-founding (the 8-tuple as a gener
 docs/lean-manifest.json,229,issue-ref,"""title"": ""The decomposition seam (bert-lenses#89)"","
 docs/lean-provenance.md,99,issue-ref,### The decomposition seam (bert-lenses#89)
-docs/parked.md,58,doc-prose,**What it is.** An R&D investigation into whether bert-lenses could go
-docs/parked.md,77,doc-prose,`bert-core` natively) already delivers the core property — server-side refusal
-docs/parked.md,82,doc-prose,"bert-core natively""* is a sentence, not a scope — auth, session lifecycle,"
-docs/parked.md,115,doc-prose,"- **COINCIDENCE DRESSED AS DESTINY: ""bert-core is already SpacetimeDB-shaped.""** A"
-docs/parked.md,147,doc-prose,- **UUID minting out of `bert-core`** — correct independently; a kernel that
 docs/parked.md,336,upstream-bert,"From GSPS to Causal Models""*) and, more durably, give BERT a Reconstructability"
-docs/parked.md,343,doc-prose,"1. **Ensemble sampling, not trajectory sampling.** N independent bert-compose"
-docs/parked.md,375,doc-prose,"Checked against bert-compose. The headless engine already exists (`circuit.rs`,"
 docs/parked.md,388,upstream-bert,"structural sampling from the authored BERT coupling graph — SCM-style,"
-docs/parked.md,467,doc-prose,bert-lenses is a **visual instrument whose quickstart is text-only**. The
-docs/parked.md,670,doc-prose,"**Verdict: a bert-lenses extension** — not compose, not a third face, not a kernel"
-docs/parked.md,674,doc-prose,bert-compose already meets structural change at runtime and its considered
 docs/parked.md,759,upstream-bert,"`H` opaque, require only that `F` may depend on `H`), BERT (one line). **George"
 docs/parked.md,835,cli-word,"- **Route internally, not to Mobus:** two defects in `bert` docs, both predating"
-docs/parked.md,849,doc-prose,"the paper. If it resumes, it resumes as a bert-lenses extension per the"
 docs/parked.md,947,upstream-bert,"objects (wanted in earlier BERT), and systems-of-systems, where relationships"
-docs/proposals/112-transition-functor.md,14,doc-prose,**Original status:** proposal. This document measures the shipping `bert-compose` stepper
-docs/proposals/112-transition-functor.md,37,doc-prose,- `bert_compose::export::from_spec` builds a `Circuit` from the spec
-docs/proposals/112-transition-functor.md,43,doc-prose,"- `bert-cli`'s `run` subcommand calls `validate_operational`, then"
-docs/proposals/112-transition-functor.md,44,doc-prose,"`bert_compose::from_spec`, then"
-docs/proposals/112-transition-functor.md,45,doc-prose,"`bert_compose::RecordedRun::record_over(&mut circuit, &spec, dt, t)`"
-docs/proposals/112-transition-functor.md,50,doc-prose,- `bert-tether`'s forcing path writes the same two fields by a second route:
 docs/proposals/112-transition-functor.md,562,upstream-bert,"the general existence result at BERT's concrete state type — is future work,"
-docs/proposals/trace-separation.md,12,doc-prose,# State/trace separation for `Circuit` — design for bert-lenses #112 (§1.6)
-docs/proposals/trace-separation.md,15,doc-prose,"`~/Desktop/halcyonic-projects/active/bert-lenses`, read in full). All line"
-docs/proposals/trace-separation.md,34,doc-prose,"`bert-canvas/{src/canvas.rs,src/lenses.rs,tests/{canvas_round_trip,dt_invariance,llm_market,projection_ledger,sl_demos,s"
-docs/proposals/trace-separation.md,35,doc-prose,"`bert-cli/{src/main.rs,tests/surface.rs}`,"
-docs/proposals/trace-separation.md,37,doc-prose,"`bert-core/{src/{decomposition.rs,lib.rs,operational.rs,transition.rs,validate.rs},tests/*}`,"
-docs/proposals/trace-separation.md,43,doc-prose,already correctly kept out of `bert-compose` per `run.rs:1-19`'s module doc
-docs/proposals/trace-separation.md,89,doc-prose,called from `bert-cli` or the wasm boundary — CLI/wasm both go through
-docs/running-permanently.md,1,doc-prose,# Running bert-lenses permanently
-docs/running-permanently.md,4,deploy,the `~/halcyonic-apps/bert-lenses` paths below are one machine's and predate the
-docs/running-permanently.md,8,doc-prose,Runs bert-lenses as a background service on `http://127.0.0.1:5190` instead of
-docs/running-permanently.md,17,deploy,"inside the repo, then rsyncs it to `~/halcyonic-apps/bert-lenses/dist`, which"
-docs/running-permanently.md,19,deploy,"at `~/halcyonic-apps/bert-lenses/server` (its own throwaway `package.json`,"
-docs/running-permanently.md,27,deploy,cp scripts/launchd/com.halcyonic.bert-lenses.plist ~/Library/LaunchAgents/
-docs/running-permanently.md,28,deploy,launchctl bootstrap gui/$(id -u) ~/Library/LaunchAgents/com.halcyonic.bert-lenses.plist
-docs/running-permanently.md,41,deploy,"The running service already points at `~/halcyonic-apps/bert-lenses/dist`, but"
-docs/running-permanently.md,46,deploy,launchctl kickstart -k gui/$(id -u)/com.halcyonic.bert-lenses
-docs/running-permanently.md,52,deploy,launchctl bootout gui/$(id -u)/com.halcyonic.bert-lenses
-docs/running-permanently.md,53,deploy,rm ~/Library/LaunchAgents/com.halcyonic.bert-lenses.plist
-docs/running-permanently.md,56,deploy,The published copy (`~/halcyonic-apps/bert-lenses/`) is left on disk; delete
-docs/running-permanently.md,72,deploy,src-tauri/target/release/bundle/macos/bert-lenses.app
-docs/running-permanently.md,120,deploy,`xattr -p com.apple.quarantine bert-lenses.app` reports the flag if a copy ever
-docs/running-permanently.md,121,deploy,picks one up; `xattr -dr com.apple.quarantine bert-lenses.app` clears it.
+docs/running-permanently.md,5,deploy,`com.halcyonic.bert-lenses` and `~/halcyonic-apps/bert-lenses` in #541; a
+docs/running-permanently.md,5,deploy,`com.halcyonic.bert-lenses` and `~/halcyonic-apps/bert-lenses` in #541; a
 docs/shelf-fidelity.md,9,cli-word,"| bitcoin.sl | 0 | flow_not_consumed×2, interface_does_work×3 | 3 → 0 | 0/3 | 0/0 | 0 | 8 | yes | no:bert: assets/exampl"
 docs/shelf-fidelity.md,11,cli-word,"| hal-harness.sl | 0 | flow_not_consumed×8, interface_does_work | 3 → 0 | 0/3 | 0/0 | 0 | 2 | yes | no:bert: assets/exam"
 docs/shelf-fidelity.md,18,cli-word,"| organic-universal-health-cover.sl | 0 | flow_not_consumed×2, interface_does_work×3 | 7 → 0 | 0/10 | 0/0 | 0 | 18 | yes"
-docs/spec/LENS_ENTRY_SPEC.md,7,doc-prose,`bert-core`. This document is the chain of custody between the two: which Lean
 docs/spec/LENS_ENTRY_SPEC.md,11,issue-ref,Rungs 1 and 1.5 of the escalation ladder (bert-lenses#24) are shipped and
-docs/spec/LENS_ENTRY_SPEC.md,73,doc-prose,| Precondition | Lean (`ViewGeneration.lean`) | Plain statement | Rust gate (`bert-core`) | Mode column | Barely passes 
-docs/spec/LENS_ENTRY_SPEC.md,93,doc-prose,`bert-core::transition`'s correspondence table.
 docs/spec/LENS_ENTRY_SPEC.md,109,crate-dir,> ../bert-lenses/fixtures/gates_truth_table.json
 docs/spec/LENS_ENTRY_SPEC.md,151,issue-ref,"The binding is a staged program (bert-lenses#24 comments, 2026-07-11 research)."
 docs/spec/LENS_ENTRY_SPEC.md,166,issue-ref,The provenance complement to this ladder (bert-lenses#128): which SSF commit
 docs/theory-fidelity.md,87,doc-prose,"GitHub issue #5 (bert-lenses) decided how a component carries a Mobus work-process primitive, shipped 2026-07-11 (bert-c"
 docs/theory-fidelity.md,87,doc-prose,"GitHub issue #5 (bert-lenses) decided how a component carries a Mobus work-process primitive, shipped 2026-07-11 (bert-c"
 docs/theory-fidelity.md,87,doc-prose,"GitHub issue #5 (bert-lenses) decided how a component carries a Mobus work-process primitive, shipped 2026-07-11 (bert-c"
-docs/theory-fidelity.md,109,doc-prose,The model carries an author-asserted `system_type` (`CanvasModel.system_type` in `bert-canvas`): a **kingdom** (Conceptu
-docs/wellformedness-mapping.md,41,doc-prose,"**1 — `internal_lawful`, edges land on vertices.** The Lean requires an internal edge's endpoints to be members of `N.no"
-editors/vscode/package.json,4,doc-prose,"""description"": ""Syntax highlighting for SL, the bert-lenses systems language."","
 fixtures/format-tag/steel-plant-level-2.json,2,format-tag,"""format"": ""bert-lenses/canvas@1"","
 fixtures/gates_truth_table.json,4,crate-dir,"""command"": ""lake env lean --run Systems/Klir/GatesTruthTable.lean > ../bert-lenses/fixtures/gates_truth_table.json"","
 fixtures/gates_truth_table.json,6,fixture,"""acts_on_pinning"": ""HasBond is computed under the total action instance, where every distinct pair is bonded; this is th"
 fixtures/quint/README.md,1,issue-ref,# Quint mode-ladder trace fixtures (bert-lenses#17)
-fixtures/quint/README.md,4,doc-prose,against the real bert-core mode machine by `crates/facets-core/tests/quint_replay.rs`.
-fixtures/quint/README.md,43,doc-prose,header for the concretization mapping (spec knob → bert-core structural lever).
 fixtures/sl/decomposition.sl,1,issue-ref,# Decomposition by reference (bert-lenses#89 step 4): a component carries a
-fixtures/sl/teaching/README.md,41,doc-prose,"All four were checked against the real parser (`bert_canvas::sl::parse_sl`),"
-justfile,1,doc-prose,"# bert-lenses tasks. Rust is the brain (wasm), web/ is the face."
-justfile,23,doc-prose,"echo ""bert-lenses preflight"""
 justfile,100,cli-word,"# The old recipe name, kept with the `bert` binary alias (#541 phase 4); both"
 justfile,102,cli-word,alias bert := facets
-scripts/doc_lint.py,132,doc-prose,"#   - the compose ""dependency ladder"" (bert-compose) and per-edge ""edge ladder"""
-scripts/doc_lint.py,133,doc-prose,"#     classification (bert-canvas) — real orderings, correctly named;"
-scripts/doc_lint.py,152,doc-prose,"r""|examples/ladder/lens""          # the bert-compose module path, printed bare"
+scripts/doc_lint.py,535,upstream-bert,"# matched below. Lineage, issue references, upstream BERT, the retiring format"
+scripts/doc_lint.py,542,doc-prose,"""docs/theory-fidelity.md"": ""GitHub issue #5 (bert-lenses)"",  # commits in the repo as then named"
+scripts/doc_lint.py,543,doc-prose,"""web/src/canvas/geometry.ts"": ""bert-lenses-spike-svg"",  # the spike's own name"
+scripts/doc_lint.py,544,doc-prose,"""docs/design/shape-vocabulary-research.md"": ""project_bert_lenses_llm_integration.md"",  # a file's name"
 scripts/gen_notices.py,103,lineage,"*Lineage, not an obligation: Facets (bert-lenses until 2026-08-27) grew out of the BERT project"
 scripts/gen_notices.py,103,upstream-bert,"*Lineage, not an obligation: Facets (bert-lenses until 2026-08-27) grew out of the BERT project"
 scripts/gen_notices.py,104,upstream-bert,(`halcyonic-systems/bert`). The kernel crates here were written for this
-scripts/launchd/com.halcyonic.bert-lenses.plist,6,deploy,<string>com.halcyonic.bert-lenses</string>
-scripts/launchd/com.halcyonic.bert-lenses.plist,8,deploy,<!-- Serves the published static build (~/halcyonic-apps/bert-lenses/dist) at
-scripts/launchd/com.halcyonic.bert-lenses.plist,12,deploy,"at ~/halcyonic-apps/bert-lenses/server/node_modules (outside ~/Desktop,"
-scripts/launchd/com.halcyonic.bert-lenses.plist,18,deploy,<string>/Users/home/halcyonic-apps/bert-lenses/server/node_modules/.bin/vite</string>
-scripts/launchd/com.halcyonic.bert-lenses.plist,27,deploy,<string>/Users/home/halcyonic-apps/bert-lenses</string>
-scripts/launchd/com.halcyonic.bert-lenses.plist,42,deploy,<string>/Users/home/halcyonic-apps/bert-lenses/web.log</string>
-scripts/launchd/com.halcyonic.bert-lenses.plist,44,deploy,<string>/Users/home/halcyonic-apps/bert-lenses/web.log</string>
-scripts/mutation_check.py,37,doc-prose,"[""-p"", ""bert-canvas"", ""--test"", ""dt_invariance""],"
-scripts/mutation_check.py,45,doc-prose,"[""-p"", ""bert-compose"", ""--lib"", ""forced_series_is_anchored_to_model_time""],"
-scripts/mutation_check.py,53,doc-prose,"[""-p"", ""bert-compose"", ""--lib"", ""relay_is_instantaneous_within_a_step""],"
-scripts/mutation_check.py,59,doc-prose,"""amount: r.amount.unwrap_or(bert_core::rust_decimal::Decimal::ONE),"","
-scripts/mutation_check.py,60,doc-prose,"""amount: bert_core::rust_decimal::Decimal::ONE,"")],"
-scripts/mutation_check.py,61,doc-prose,"[""-p"", ""bert-canvas"", ""--test"", ""canvas_round_trip""],"
-scripts/mutation_check.py,68,doc-prose,"[""-p"", ""bert-canvas"", ""--test"", ""canvas_round_trip""],"
-scripts/mutation_check.py,76,doc-prose,"[""-p"", ""bert-canvas"", ""--test"", ""canvas_round_trip""],"
-scripts/mutation_check.py,84,doc-prose,"[""-p"", ""bert-canvas"", ""--test"", ""layout_truthful""],"
-scripts/mutation_check.py,92,doc-prose,"[""-p"", ""bert-canvas"", ""--test"", ""layout_truthful""],"
-scripts/mutation_check.py,99,doc-prose,"[""-p"", ""bert-canvas"", ""--test"", ""cross_lens"", ""entries_sharing""],"
-scripts/mutation_check.py,107,doc-prose,"[""-p"", ""bert-core"", ""--lib"", ""crossing_flow_without_interface""],"
-scripts/mutation_check.py,115,doc-prose,"[""-p"", ""bert-canvas"", ""--test"", ""environment_kind""],"
-scripts/mutation_check.py,123,doc-prose,"[""-p"", ""bert-canvas"", ""--test"", ""llm_market"", ""serving_shares_track_declared_weights""],"
-scripts/mutation_check.py,131,doc-prose,"[""-p"", ""bert-canvas"", ""--test"", ""source_signal_rate""],"
-scripts/publish-app.sh,3,deploy,"# ~/halcyonic-apps/bert-lenses/dist, outside ~/Desktop's TCC sandbox so"
-scripts/publish-app.sh,4,deploy,# launchd (com.halcyonic.bert-lenses) can serve it. Repo stays put; only
-scripts/publish-app.sh,11,deploy,"PUBLISH_DIR=""$HOME/halcyonic-apps/bert-lenses"""
-scripts/publish-app.sh,50,deploy,"""name"": ""bert-lenses-serve"","
-scripts/publish-app.sh,53,doc-prose,"""description"": ""Standalone vite install (outside ~/Desktop's TCC sandbox) used only to run `vite preview` against the pu"
-scripts/publish-app.sh,63,deploy,"echo ""==> Published. Serve permanently via scripts/launchd/com.halcyonic.bert-lenses.plist,"""
 tools/pipeline/README.md,21,deploy,`/Users/home/Documents/bert-lenses/data/` (override with the
-tools/pipeline/README.md,22,deploy,`BERT_LENSES_DATA_DIR` env var). Nothing under that path is committed.
 tools/pipeline/README.md,130,upstream-bert,"Derived leg — no external source, reshapes leg 4's output. The BERT import"
 tools/pipeline/README.md,135,upstream-bert,target for the target-4 LLM competitive-market BERT model — depends on
 tools/pipeline/README.md,157,upstream-bert,"(integers, not shares — the BERT model computes shares itself)."
-tools/pipeline/common.py,4,deploy,code repos). Override with the BERT_LENSES_DATA_DIR env var if needed.
-tools/pipeline/common.py,12,deploy,"DATA_DIR = Path(os.environ.get(""BERT_LENSES_DATA_DIR"", ""/Users/home/Documents/bert-lenses/data""))"
-tools/pipeline/common.py,12,deploy,"DATA_DIR = Path(os.environ.get(""BERT_LENSES_DATA_DIR"", ""/Users/home/Documents/bert-lenses/data""))"
-tools/pipeline/common.py,14,deploy,"""BERT_LENSES_SCRATCH_DIR"","
-tools/pipeline/common.py,26,deploy,"req = urllib.request.Request(url, headers={""User-Agent"": ""bert-lenses-pipeline/0.1""})"
-tools/pipeline/fetch_usage_openrouter.py,65,deploy,"""User-Agent"": ""bert-lenses-pipeline/0.1"","
+tools/pipeline/common.py,12,deploy,"DATA_DIR = Path(os.environ.get(""FACETS_DATA_DIR"", ""/Users/home/Documents/bert-lenses/data""))"
 tools/pipeline/rung2_allocation.py,18,deploy,"DATA = Path.home() / ""Documents/bert-lenses/data"""
 tools/pipeline/rung2_allocation.py,19,deploy,"OUT = Path.home() / ""Documents/bert-lenses/technical"""
 tools/pipeline/rung3_enterprise.py,17,deploy,"DATA = Path.home() / ""Documents/bert-lenses/data"""
@@ -947,68 +538,13 @@ tools/pipeline/rung3_staircase.py,19,deploy,"OUT = Path.home() / ""Documents/ber
 tools/pipeline/target4_dev_wide.py,3,upstream-bert,BERT model (bert-lenses#14 target 4).
 tools/pipeline/target4_dev_wide.py,3,issue-ref,BERT model (bert-lenses#14 target 4).
 tools/pipeline/target4_dev_wide.py,5,upstream-bert,The BERT import wizard refuses long-format panels (needs unique time
-web/DESIGN.md,1,doc-prose,# bert-lenses — design
-web/DESIGN.md,5,doc-prose,"is the kernel's. Labels name the source (`bert-core · wasm`, `bert-compose · wasm`)"
-web/DESIGN.md,5,doc-prose,"is the kernel's. Labels name the source (`bert-core · wasm`, `bert-compose · wasm`)"
-web/DESIGN.md,12,doc-prose,bert-lenses takes **teal** as its accent to distinguish the instrument within the
-web/DESIGN.md,42,doc-prose,attribute and the stored choice (`bert-lenses.theme`); the control is the one
 web/DESIGN.md,67,upstream-bert,"(Phase 2+) will harvest old BERT's curved-flow polish, but the token system stays."
-web/src/AnalystPanel.tsx,26,doc-prose,"const COVERAGE_KEY = ""bert-lenses.analysis-coverage"";"
-web/src/App.tsx,1613,doc-prose,// File → Save / Export: project the canvas editing model back to a bert-core
-web/src/App.tsx,1770,doc-prose,// Save-as-copy discipline (bert-core model_id contract): saving under a NEW
-web/src/App.tsx,2544,doc-prose,"// the contract to the crossings themselves (bert-core decomposition.rs,"
-web/src/InspectorDock.tsx,449,doc-prose,"<Card title=""Kernel rejected this state"" source=""bert-core · wasm"">"
-web/src/KernelErrorBoundary.tsx,63,doc-prose,"source=""bert-core · wasm"""
-web/src/Readouts.tsx,125,doc-prose,"<Card title=""Result"" source=""bert-compose · wasm"">"
-web/src/ReviewPanel.tsx,373,doc-prose,"<BlockHeader label=""Review"" count=""bert-core · wasm"" />"
-web/src/RunPanel.tsx,854,doc-prose,"<Card title=""Result"" source=""bert-compose · wasm"">"
-web/src/RunPanel.tsx,866,doc-prose,"<Card title=""State occupancy"" source=""bert-compose · wasm"">"
-web/src/RunPanel.tsx,904,doc-prose,"<Card title={at === steps - 1 ? ""Final distribution"" : `Distribution at step ${at}`} source=""bert-compose · wasm"">"
 web/src/archiveTag.kernel.test.ts,2,format-tag,// saved before the rename carry `bert-lenses/canvas@1`; the kernel now writes
 web/src/archiveTag.kernel.test.ts,19,format-tag,"const OLD_TAG = ""bert-lenses/canvas@1"";"
-web/src/buildInfo.ts,68,doc-prose,"{ label: ""Built from"", value: info.gitSha, note: ""commit in halcyonic-systems/bert-lenses"" },"
 web/src/canvas/NodeEditor.tsx,111,upstream-bert,"{/* #326: prose about this thing, restored from the original BERT. It sits"
 web/src/canvas/ProcessReference.tsx,8,upstream-bert,// BERT's extensions in the same register. Descriptors are terse by design — this is a
-web/src/canvas/ProcessReference.tsx,30,doc-prose,"*  (bert-compose circuit.rs activity pass — transcribed from the source, not"
 web/src/canvas/geometry.ts,4,doc-prose,// Lifted verbatim from the bert-lenses-spike-svg canvas spike.
-web/src/canvas/lenses/common.tsx,358,doc-prose,"bert-lenses stroke family in Mobus's spirit, not his printed icons. */}"
-web/src/canvas/lenses/primitive-glyphs.tsx,1,doc-prose,// The process-primitive glyph family — a bert-lenses stroke vocabulary IN THE
 web/src/canvas/lenses/registry.ts,246,issue-ref,// interface-routed interaction (bert#108).
-web/src/canvas/lenses/registry.ts,258,doc-prose,// bert-compose circuit.rs). Agent designation is a future entry here.
-web/src/canvas/lenses/registry.ts,267,doc-prose,"// bert-lenses stroke family in the spirit of Mobus's process vocabulary,"
-web/src/canvas/lenses/registry.ts,314,doc-prose,// run (bert-compose circuit.rs).
-web/src/coauthor.test.ts,74,doc-prose,"""bert-lenses.coauthor-turns"","
 web/src/coauthor.test.ts,193,cli-word,"// draft, copied from `bert verdict --lens mobus` on 2026-09-08 — the mock"
-web/src/coauthor.ts,101,doc-prose,"const TURNS_KEY = ""bert-lenses.coauthor-turns"";"
-web/src/draftEffort.test.ts,42,doc-prose,"localStorage.setItem(""bert-lenses.coauthor-effort"", ""turbo"");"
-web/src/draftEffort.ts,43,doc-prose,"const KEY = ""bert-lenses.coauthor-effort"";"
-web/src/drafterModel.ts,59,doc-prose,"const KEY = ""bert-lenses.coauthor-model"";"
-web/src/index.css,5,doc-prose,* bert-lenses — Halcyonic Frost design tokens.
-web/src/index.css,9,doc-prose,* bert-lenses takes TEAL as its accent to distinguish the instrument within the
-web/src/kernel/bill_render.harness.test.ts,32,doc-prose,"provenance: { generated_at: ""1970-01-01T00:00:00.000Z"", source: ""bert-lenses"" },"
-web/src/kernel/context.test.ts,98,doc-prose,"provenance: { generated_at: ""2026-07-17T00:00:00.000Z"", source: ""bert-lenses"" },"
-web/src/kernel/context.test.ts,280,doc-prose,"provenance: { generated_at: ""1999-01-01T00:00:00.000Z"", source: ""bert-lenses"" },"
-web/src/kernel/context.test.ts,305,doc-prose,"expect(ctx.provenance.source).toBe(""bert-lenses"");"
-web/src/kernel/context.ts,21,doc-prose,"provenance: { generated_at: string; source: ""bert-lenses"" };"
-web/src/kernel/context.ts,39,doc-prose,"provenance: { generated_at: new Date().toISOString(), source: ""bert-lenses"" },"
-web/src/kernel/index.ts,203,doc-prose,/** 4-layer systemhood report — computed by bert-core in wasm. */
-web/src/kernel/index.ts,208,doc-prose,/** Executable-projection gate — computed by bert-core in wasm. */
-web/src/kernel/index.ts,213,doc-prose,/** Simulate an authored model — computed by bert-compose in wasm. */
-web/src/kernel/index.ts,219,doc-prose,"*  distribution `vₙ₊₁ = vₙ P` evolution, computed by bert-compose in wasm."
-web/src/kernel/index.ts,300,doc-prose,/** Project the canvas editing model into a bert-core WorldModel (JSON) — the
-web/src/kernel/types.ts,30,doc-prose,"*  (`bert_core::validate::ValidationIssue::code`, #319). Two issues share a"
-web/src/kernel/types.ts,39,doc-prose,*  (`bert_core::validate::doc`). The face only turns it into a link. */
-web/src/kernel/types.ts,198,doc-prose,*  `written`. Mirrors `DecisionLog` in bert-tether. */
-web/src/kernel/types.ts,434,doc-prose,*  text compile. Mirrors `bert_canvas::canvas::Crossing`. */
-web/src/kernel/types.ts,701,doc-prose,*  Kernel-computed in `bert_canvas::lenses::analyze` off the same predicate
-web/src/library.ts,4,doc-prose,"// (modelStore.ts), because the app runs in a browser tab. bert-lenses is"
 web/src/libraryTree.test.ts,60,format-tag,"rec(""old-tag-parent"", 2, archiveJson(""OP"", [""NC""], ""bert-lenses/canvas@1"")),"
-web/src/modelStore.ts,15,doc-prose,"const DB_NAME = ""bert-lenses"";"
-web/src/reasoner.ts,31,doc-prose,"const KEY = ""bert-lenses.reasoner"";"
-web/src/review.ts,7,doc-prose,"/** The kernel's own lens→mode gate (bert-canvas `Lens::mode`, canvas.rs). A"
-web/src/review.ts,106,doc-prose,"// names the defect kind (`bert_core::validate`, required at every construction"
 web/src/sandbox/SandboxInspector.tsx,132,issue-ref,"title=""rate is an edge attribute in Mobus's formalism (Eq. 4.5) — a source with several outflows carries one rate PER FL"
-web/src/theme.test.ts,117,doc-prose,"localStorage.setItem(""bert-lenses.theme"", ""sepia"");"
-web/src/theme.test.ts,156,doc-prose,"expect(localStorage.getItem(""bert-lenses.theme"")).toBeNull();"
-web/src/theme.ts,29,doc-prose,"const KEY = ""bert-lenses.theme"";"
-web/src/workbench.ts,34,doc-prose,"const STORAGE_KEY = ""bert-lenses.workbench.pins"";"

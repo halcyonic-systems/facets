@@ -15,7 +15,7 @@
 //! contradiction — each refusal below is a separating instance (SSF #35). It
 //! projects to `Interaction::ample` and stops there structurally; what the
 //! ENGINE does with it (the min's signal limb never binds) is held by the
-//! equivalence test in bert-compose.
+//! equivalence test in facets-compose.
 
 use facets_canvas::canvas::project;
 use facets_canvas::sl::{emit_sl, parse_sl};

@@ -9,8 +9,8 @@ are `klir-facets.md:<line>`, VERIFIED means I read the passage directly.*
 
 ## 0. What this file is for
 
-bert-lenses today assumes ONE answer to "what is dynamics" — conservation flow over
-Mobus work processes (bert-compose's `circuit.rs`) — without ever arguing for it. Issue
+facets today assumes ONE answer to "what is dynamics" — conservation flow over
+Mobus work processes (facets-compose's `circuit.rs`) — without ever arguing for it. Issue
 #67 wants Markov/FSA simulation (not conservation). #54 asks what porosity-modulated
 crossing flows *mean* (a run-semantics question). A random-Boolean-network model has no
 trajectory mode at all. This doc mines Klir's GSPS epistemological hierarchy — source →
@@ -56,7 +56,7 @@ network, environment) before any T is attached.
 Source system + actual data (a function from support set to variable states) = a data
 system (klir-facets.md:3890-3894, VERIFIED). "In general, every time series qualifies as a
 data set" (klir-facets.md:3898). This is a *recorded trajectory* — a run's output log — but
-still no generating law. In bert-lenses terms: a completed simulation run's H (History) IS
+still no generating law. In facets terms: a completed simulation run's H (History) IS
 a data system over the source system's C/N/E. Important: a data system is evidence dynamics
 occurred, not a specification of dynamics.
 
@@ -72,8 +72,8 @@ not time-privileged.
 Named examples, VERIFIED, klir-facets.md:4043-4045: **finite-state machines (deterministic
 or probabilistic), Markov chains, and differential equations with constant coefficients**
 are all, by Klir's own account, generative systems — the *same epistemological level*. This
-is the single strongest finding for bert-lenses: Klir's hierarchy already places
-conservation-flow ODEs (bert-compose today), FSA/DLG transitions (issue #67), and Markov
+is the single strongest finding for facets: Klir's hierarchy already places
+conservation-flow ODEs (facets-compose today), FSA/DLG transitions (issue #67), and Markov
 chains in one undifferentiated category, distinguished only by *what kind* of time-invariant
 relation generates the trajectory, not by level.
 
@@ -115,8 +115,8 @@ klir-facets.md:4642-4924):
 - Lindenmayer/L-systems: production-rule string rewriting as a metasystem over data systems
   (klir-facets.md:4856-4923)
 
-**Assessment of whether metasystem is the right home for bert-lenses's mode-transition
-(Mobus-structural → Operational)**: yes, structurally. A mode transition in bert-compose is
+**Assessment of whether metasystem is the right home for facets's mode-transition
+(Mobus-structural → Operational)**: yes, structurally. A mode transition in facets-compose is
 exactly "replace the generative system that's running" — swap out one T (transformation law
 + support) for another, per an invariant procedure. Klir's second worked example (the
 kidney/dialysis frame swap, triggered by a state variable crossing a threshold) is close
@@ -130,7 +130,7 @@ porosity operates at, not a vague semantics question.
 Caveat, UNVERIFIED as applied to bert: Klir gives no worked example of adaptation/evolution
 *within* one continuous run at the same timescale as the base dynamics — his metasystem
 examples all have replacement keyed to a coarser support (clock time, a threshold crossing,
-a discrete generation index). Whether bert-lenses's multi-timescale hierarchy
+a discrete generation index). Whether facets's multi-timescale hierarchy
 (`project_multitimescale_architecture.md`, UNVERIFIED cross-reference, not read this
 session) maps cleanly onto nested metasystem orders, or needs its own machinery, is open —
 flagging rather than asserting.
@@ -164,8 +164,8 @@ relation is expressible as such a function, the system is **deterministic**; oth
 **nondeterministic**, with uncertainty expressed as conditional "behavior probabilities"
 `P(g|g̅)` (klir-facets.md:4240-4246, VERIFIED).
 
-Practical read for bert-lenses: a **mask + behavior function pair is Klir's general schema
-for "one step of a run."** bert-compose's circuit-stepping conservation engine, an FSA
+Practical read for facets: a **mask + behavior function pair is Klir's general schema
+for "one step of a run."** facets-compose's circuit-stepping conservation engine, an FSA
 transition table, and a Boolean-network update rule are all specific instances of "mask
 picks (present, and maybe past) states of some variables; behavior function computes the
 generated (future) states." This gives a literal, implementable common interface: *any*
@@ -211,7 +211,7 @@ uniformity, not a computational one. Klir gives no unified *algorithm* — the c
 needs a differential-equation solver, the discrete case needs table lookup or matrix
 multiplication (Markov), and he says so implicitly by using different generating mechanisms
 for each example. The uniformity is "same epistemological slot, same mask/behavior-function
-*shape*," not "same engine." For bert-lenses that's actually the right level of claim: a
+*shape*," not "same engine." For facets that's actually the right level of claim: a
 common *interface* (mask + behavior function) that different *engines* (ODE stepper, FSA
 transition table, Boolean-network update, ABM rule) implement — not a single numerical
 method that swallows all four.
@@ -227,7 +227,7 @@ states, `R ⊂ X×X` a transition relation. Weak homomorphism: `h: X→Y` onto s
 "Such systems could be described, more precisely, as special generative systems, possibly
 nondeterministic" (klir-facets.md:5347-5348).
 
-This matters for bert-lenses directly: an FSA/DLG (issue #67) and a deterministic Boolean
+This matters for facets directly: an FSA/DLG (issue #67) and a deterministic Boolean
 network (out-degree-1 state graph) are BOTH literally `(X,R)` generative systems in Klir's
 sense — the FSA has a possibly-nondeterministic `R`, the Boolean network has a functional
 (deterministic, single-next-state) `R`. They are the same object type at the generative
@@ -236,11 +236,11 @@ is exactly Klir's deterministic/nondeterministic behavior-function distinction f
 different category of dynamics. Klir also gives, for free, the right notion of "is this
 smaller/coarser FSA a valid reduction of that larger one" — homomorphism, with strong vs.
 weak flavors depending on whether you need exact converse-preservation. That is potentially
-useful machinery for any future bert-lenses feature that collapses/abstracts a state machine.
+useful machinery for any future facets feature that collapses/abstracts a state machine.
 
 ---
 
-## 5. Does Klir's hierarchy already give bert-lenses its dynamics taxonomy?
+## 5. Does Klir's hierarchy already give facets its dynamics taxonomy?
 
 **Partially, and the part it gives is real and load-bearing. The part it doesn't give is
 also real, and matters more for engineering than for theory.**
@@ -252,12 +252,12 @@ What it DOES give, VERIFIED from the above:
    sampling variables drawn from a mask, evaluated via a behavior function/probability."
 2. A genuine engineering interface, not just a philosophical label: mask (which variables,
    which offsets) + behavior function/probabilities = the shape every dynamics engine must
-   implement. bert-lenses could define a `Mask` + `BehaviorFunction` trait pair once and
+   implement. facets could define a `Mask` + `BehaviorFunction` trait pair once and
    have circuit.rs (continuous flow), an FSA stepper, a Boolean-network updater, and an ABM
    step function all be *instances*, not siblings needing separate architectures.
 3. A principled home for mode-transitions and adaptation: **metasystem** — one order above
    generative, "replace the generative system per an invariant procedure." This gives
-   bert-lenses's Mobus-structural → Operational transition a formal name and a family of
+   facets's Mobus-structural → Operational transition a formal name and a family of
    precedents (scheduled mode-switch, threshold-triggered frame-swap, CA neighborhood rule,
    L-system rewrite) to draw implementation patterns from, and gives #54 a crisp question:
    is porosity a metasystem-replacement trigger or a behavior-function parameter?
@@ -268,7 +268,7 @@ What it DOES give, VERIFIED from the above:
 
 What it does NOT give (gaps, flagged not glossed over):
 1. **No algorithm/engine unification** — as noted in §3, "same shape" is not "same
-   computation." bert-lenses still needs to build (or already has, for flow) a separate
+   computation." facets still needs to build (or already has, for flow) a separate
    stepper per behavior-function kind. Klir tells you *where the seam is*, not how to write
    the four steppers.
 2. **No multi-timescale nesting worked example** at odds-of-magnitude timescales within one
@@ -288,7 +288,7 @@ What it does NOT give (gaps, flagged not glossed over):
 4. Klir's own hierarchy is a **classification of systems as objects**, not a runtime
    specification for an interactive tool — it says nothing about UI/mode-transition triggers,
    real-time stepping, or how a user should observe/interrupt a running generative system.
-   That's bert-lenses's problem to solve, informed by but not answered by Klir.
+   That's facets's problem to solve, informed by but not answered by Klir.
 
 **Bottom line for the K≅2 kernel work**: Klir's generative/metasystem split is a strong
 candidate for the missing "why flow-conservation is not privileged" argument, and the

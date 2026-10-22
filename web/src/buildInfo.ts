@@ -65,7 +65,7 @@ export function provenanceLines(info: BuildInfo = buildInfo): { label: string; v
       value: `facets-kernel ${info.kernelVersion} · facets-core ${info.coreVersion}`,
       note: "every verdict on this canvas comes from here",
     },
-    { label: "Built from", value: info.gitSha, note: "commit in halcyonic-systems/bert-lenses" },
+    { label: "Built from", value: info.gitSha, note: "commit in halcyonic-systems/facets" },
     {
       label: "Proof base",
       value: info.ssfCommit,

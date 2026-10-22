@@ -31,7 +31,7 @@ export interface WorkbenchEntry {
   detail: string;
 }
 
-const STORAGE_KEY = "bert-lenses.workbench.pins";
+const STORAGE_KEY = "facets.workbench.pins";
 
 export function loadPins(): Pin[] {
   try {

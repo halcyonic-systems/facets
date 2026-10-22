@@ -14,8 +14,8 @@ bite an actual decision (#67, #54, the RBN model), not by theoretical interest.*
 
 **VERIFIED.** `read-external.md` §6 (lines 259–298) reads the Alur–Henzinger hybrid
 automaton formalism directly (cross-checked against the LICS 1996 paper's known
-structure) and states plainly: it covers "exactly bert-lenses' actual requirement
-set: continuous flow *within* a mode (bert-compose's conservation ODEs) plus
+structure) and states plainly: it covers "exactly facets' actual requirement
+set: continuous flow *within* a mode (facets-compose's conservation ODEs) plus
 discrete mode-switching *between* modes (FSA/DLG transitions) as two halves of one
 formal object, with the mode-invariant/guard apparatus giving a principled place to
 put 'when does this system stop being in Operational mode' logic." It even notes
@@ -38,7 +38,7 @@ anywhere" to agent trajectories citing `read-category-theory §4, read-external 
 running conservation engine) has a citable, verified, directly-on-point candidate
 one section away.
 
-This is not a minor omission. Hybrid automata is a closer match to bert-lenses'
+This is not a minor omission. Hybrid automata is a closer match to facets'
 existing "Run = a mode transition (Mobus-structural → Operational)" framing than
 anything the synthesis actually adopts — MT's Def 2.7 and Willems' (T,W,B) are both
 more abstract than the working engineer needs, and Klir's metasystem-swap is a
@@ -87,7 +87,7 @@ system (a single φ valid over its whole state-space) versus a metasystem
 equation undefined or discontinuous in a way that requires substituting a
 different φ (metasystem) — or does it only rescale a coefficient continuously
 inside one φ that stays valid across the whole porosity range (generative
-parameter)? Apply that test to the actual porosity model in bert-lenses and record
+parameter)? Apply that test to the actual porosity model in facets and record
 the answer with the reasoning, not just the category chosen.
 
 ---

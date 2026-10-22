@@ -16,7 +16,7 @@ side-effect of use, not a separate curriculum bolted on.*
 Mobus's systemese hypothesis (Ch.4 §4.2.4) claims humans have innate
 recognizers for source, sink, flow, interface, protocol, and container —
 "a toddler observing [a catch] does not necessarily know the names of the
-things involved, but already understands the roles." bert-lenses' job is not
+things involved, but already understands the roles." facets' job is not
 to teach these concepts from nothing; it's to give the already-innate concepts
 their formal names and show the learner that what they authored *is* the
 concept, verified by a kernel that refuses when the concept is violated. Every
@@ -171,7 +171,7 @@ categorically distinct from flow modeling — states/transitions ≈ things/
 relations (Klir's bare kernel), no conserved substance, so **no run**.
 **Discovery:** the learner tries to "run" it and the honesty discipline
 (the same one `bill.json` already demonstrates — a structural model with no
-dynamical face doesn't map onto `bert-compose`'s conservation semantics)
+dynamical face doesn't map onto `facets-compose`'s conservation semantics)
 teaches the boundary between structural and dynamical modes directly.
 Precursor to a Markov-mode payoff once #67 ships (probabilities on
 transitions → absorption/expected-time questions). Effort: trivial,
@@ -319,7 +319,7 @@ interest. An RBN (Methods §"Random Boolean Networks") is `N` nodes, each
 with a Boolean update rule over a fixed in-neighborhood; the classical
 (deterministic, synchronous) case is *exactly* a function on a `2^N`-state
 space — every state has precisely one successor. **This is authorable in
-bert-lenses today, with higher confidence than the traffic-light idea**: a
+facets today, with higher confidence than the traffic-light idea**: a
 tiny instance (N=3, 8 states) is a set of things (states) plus a directed
 relation where every node has out-degree 1 — literally Klir's `S=(T,R)`,
 no bond declaration, no flow typing, no engine dependency. It needs no new
@@ -370,7 +370,7 @@ himself (verified: Wikipedia + profile). Works in order/lattice theory,
 hypergraph analytics, and generalized information theory, including a
 proven isomorphism between a hypergraph's intersection complex and the
 concept lattice of its incidence matrix (verified: research summary). **This
-is the strongest hook in the suite**: bert-lenses' Klir lens — `S = (T, R)`,
+is the strongest hook in the suite**: facets' Klir lens — `S = (T, R)`,
 relations as subsets of a Cartesian product — is a direct instantiation of
 the formalism Joslyn's own advisor originated and that Joslyn has spent a
 career extending into order theory. Lessons that best showcase the Klir

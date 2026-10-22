@@ -19,7 +19,7 @@ interfaces (`assets/examples/llm-market.sl`, `assets/data/README.md`), and
 reads the developer and enterprise channels below as pipeline history, not as
 its interfaces. Data lives **outside this repo**, in
 `/Users/home/Documents/bert-lenses/data/` (override with the
-`BERT_LENSES_DATA_DIR` env var). Nothing under that path is committed.
+`FACETS_DATA_DIR` env var). Nothing under that path is committed.
 
 ## Setup
 

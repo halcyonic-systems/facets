@@ -1,4 +1,4 @@
-//! bert-tether — the boundary-interface subsystem, pure Rust (no wasm-bindgen).
+//! facets-tether — the boundary-interface subsystem, pure Rust (no wasm-bindgen).
 //!
 //! The import ritual that couples empirical data to the executable model. It is
 //! neither engine physics (that is [`facets_compose`]) nor marshaling (that is the

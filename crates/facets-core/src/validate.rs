@@ -88,7 +88,7 @@ pub struct ValidationIssue {
     #[serde(default)]
     pub doc: Option<String>,
     /// The kernel entity this issue is about, when a check knows one — an
-    /// IN-PROCESS handle for callers holding id maps (bert-canvas resolves it
+    /// IN-PROCESS handle for callers holding id maps (facets-canvas resolves it
     /// to canvas ids for click-to-navigate). `serde(skip)`: the wire shape is
     /// unchanged; `location` remains the serialized coordinate.
     #[serde(skip)]
@@ -516,7 +516,7 @@ fn check_duplicate_edges(model: &WorldModel, issues: &mut Vec<ValidationIssue>) 
 /// Operational/Full observation: a node with incoming flows but none outgoing.
 /// As often a legitimate terminal/absorbing state as a modeling gap, so it is a
 /// Can primitive `p` turn an incoming flow of substance `s` into output?
-/// The validate-side twin of `bert-compose`'s `NodeKind::consumes`
+/// The validate-side twin of `facets-compose`'s `NodeKind::consumes`
 /// (circuit.rs) — kept in lockstep by a full cartesian drift test there
 /// (`validate_consumes_table_matches_engine`). Grounded in Mobus Figs
 /// 3.18–3.19: signal processors read Message only; Sensing is the crossing
@@ -2750,7 +2750,7 @@ mod tests {
     /// warns at Operational — the supply-chain demo's original inert feedback
     /// (informational order into a Combining factory), reduced to two nodes.
     /// The full matrix and the matter-tap hint live in tests/flows_consumed.rs;
-    /// the engine-table lockstep is bert-compose's
+    /// the engine-table lockstep is facets-compose's
     /// `validate_consumes_table_matches_engine`.
     #[test]
     fn unconsumed_flow_is_warning() {

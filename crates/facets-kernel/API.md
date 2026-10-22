@@ -1,9 +1,9 @@
-# bert-lenses-kernel — frozen wasm API
+# facets-kernel — frozen wasm API
 
 **Status: FROZEN (Phase 0).** This is the JS↔wasm boundary the web face calls.
 The kernel is the brain; the face only marshals input in and renders the result.
 No systemhood verdict, validation, or simulation is ever computed in JS — every
-answer below is delegated to `bert-core` (semantic authority) or `bert-compose`
+answer below is delegated to `facets-core` (semantic authority) or `facets-compose`
 (the engine). Changing a signature here is an API break; add, don't mutate.
 
 All functions are synchronous (the wasm runs in the page). Model input is BERT
@@ -46,7 +46,7 @@ type OperationalOutcome =
   | { ok: OperationalSpec }        // executable — the projection
   | { errors: OperationalError[] } // refused — why, with seam locations
 ```
-`OperationalSpec` / `OperationalError` are bert-core's serde shapes (see the
+`OperationalSpec` / `OperationalError` are facets-core's serde shapes (see the
 crate). Throws only on unparseable input.
 
 ### `run(model_json: string, dt: number, ticks: number) → RunResult`
@@ -154,7 +154,7 @@ gate (the Structural bond rule / Operational irreflexivity come for free). Same
 `ValidationResult` shape as `validate`.
 
 ### `project(canvas_json) → WorldModel`
-Project the canvas editing model into a bert-core `WorldModel` (mode-stamped by
+Project the canvas editing model into a facets-core `WorldModel` (mode-stamped by
 the lens; only bonds project; touched environment things → Source/Sink by
 direction). The canvas never builds a WorldModel itself.
 
@@ -175,7 +175,7 @@ the candidate INTRODUCED (empty = legal). E.g. a self-loop is rejected at Mobus
 
 Both functions take **canvas JSON**, not model JSON — a deliberate deviation:
 mere relations (Bunge's B̄) exist only in the editing model, never in a
-`WorldModel`. Internally each projects (`project_with_map`) and reads bert-core
+`WorldModel`. Internally each projects (`project_with_map`) and reads facets-core
 verdicts (`boundary_components`, `edge_locus`, the Structural gate), so the
 math is still the kernel's; the canvas keys are translated at the seam.
 
@@ -514,7 +514,7 @@ Every serde type that crosses this wasm edge ships a committed JSON fixture in
   canvas-family shapes: `CanvasModel`, `LensFacts` + `EdgeFact`/`PortFact`,
   `LensDescription` ×3, `ValidationResult`, `CanvasAnalysis`,
   `DecompositionReport`) and the
-  `bert-lenses-kernel` api.rs test module (the run-family DTOs: `CsvParse`,
+  `facets-kernel` api.rs test module (the run-family DTOs: `CsvParse`,
   `Targets`, `MappingStatus`, `RunResult`, `RunResultRich`). Drift fails the
   test; regenerate an intentional change with `BLESS_FIXTURES=1`.
 - The web validates the SAME files against `web/src/kernel/types.ts`:
@@ -556,7 +556,7 @@ and exactly one of them is allowed:
    `JsError`, never an abort.
 
 **Where the guarantee is enforced.** The domain crates reachable from `api.rs`
-(`bert-canvas`, `bert-tether`) are audited to contain no panic sites on
+(`facets-canvas`, `facets-tether`) are audited to contain no panic sites on
 parseable input, and the property is locked by adversarial tests that push
 weird-but-parseable models through *every* boundary function:
 `crates/facets-canvas/tests/adversarial.rs` (the canvas family: `project`,
@@ -824,7 +824,7 @@ declares and decides nothing. Fixtures `sandbox_palette` / `ladder_stamps`.
   artifact, gitignored). `--release` for the shipped bundle; `--dev` while iterating.
 - Typed boundary (tsify-generated `.d.ts`) is a Phase-1 refinement; today the
   results are `any` at the wasm edge and typed by the hand-written mirrors in
-  `web/src/kernel/types.ts`. Kept this way so `bert-core` carries no wasm/tsify
+  `web/src/kernel/types.ts`. Kept this way so `facets-core` carries no wasm/tsify
   dependency and stays a pure kernel.
 
 ## Exports present in `api.rs` / `bench.rs` and undocumented above (appended 2026-10-11)

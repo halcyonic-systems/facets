@@ -1,4 +1,4 @@
-# bert-lenses — web-first systems-modeling instrument.
+# facets — web-first systems-modeling instrument.
 #
 # THE LOAD-BEARING INVARIANT: Rust is the brain, running as WASM in the browser;
 # React/Tailwind is the face. Everything under crates/ is TRUTH (the kernel that

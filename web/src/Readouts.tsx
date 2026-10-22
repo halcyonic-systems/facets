@@ -122,7 +122,7 @@ export function Readouts({
 
   const readout = runError ? (
     <div className="p-4">
-      <Card title="Result" source="bert-compose · wasm">
+      <Card title="Result" source="facets-compose · wasm">
         <p className="text-sm" style={{ color: "var(--verdict-error)" }}>
           {runError}
         </p>

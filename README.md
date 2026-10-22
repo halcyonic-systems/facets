@@ -10,7 +10,7 @@ asks questions of the systems-science corpus through the [General Systems Reason
 (client in [`chat/`](chat/)), and [**Model**](https://facets.systems/model/) — most
 of this repository — builds and runs the models. The reference layer behind both
 is at [facets.systems/docs](https://facets.systems/docs/). The name changed in August 2026; this codebase was
-`bert-lenses`, and the kernel crates still carry that name.
+`bert-lenses`, and the code took the new name in October 2026 ([#541](https://github.com/halcyonic-systems/facets/issues/541)).
 
 [![License: MIT](https://img.shields.io/badge/License-MIT-informational.svg)](LICENSE)
 [![CI](https://github.com/halcyonic-systems/facets/actions/workflows/ci.yml/badge.svg)](https://github.com/halcyonic-systems/facets/actions/workflows/ci.yml)
@@ -81,7 +81,7 @@ just dev              # builds the wasm kernel, installs web deps, opens the app
 
 `just preflight` names what a cold machine still needs: Rust stable with the
 `wasm32` target, `wasm-pack`, and Node 22 or newer. The first `just dev` after
-that compiles five crates to wasm (`bert-cli`, the native binary, is the one
+that compiles five crates to wasm (`facets-cli`, the native binary, is the one
 excluded) and installs the web dependencies, so budget a
 few minutes once; every run after it is seconds. The full prerequisite table is
 under [Prerequisites](#prerequisites).
@@ -244,11 +244,11 @@ flowchart TB
         UI["canvas · audit · run · Analyst panels"]
     end
     subgraph TRUTH["crates/ · the truth (Rust, compiled to WASM)"]
-        KERNEL["bert-lenses-kernel<br/>JS ↔ wasm boundary"]
-        CANVAS["bert-canvas<br/>lenses: describe · lens_facts · analyze"]
-        COMPOSE["bert-compose<br/>dynamical engine: run under a declared invariant"]
-        TETHER["bert-tether<br/>boundary: CSV import · forcing"]
-        CORE["bert-core<br/>semantic authority: WorldModel · validators · projection"]
+        KERNEL["facets-kernel<br/>JS ↔ wasm boundary"]
+        CANVAS["facets-canvas<br/>lenses: describe · lens_facts · analyze"]
+        COMPOSE["facets-compose<br/>dynamical engine: run under a declared invariant"]
+        TETHER["facets-tether<br/>boundary: CSV import · forcing"]
+        CORE["facets-core<br/>semantic authority: WorldModel · validators · projection"]
     end
     GSR["GSR /analyze<br/>read-only LLM narration"]
     UI -->|asks for every verdict| KERNEL
@@ -264,12 +264,12 @@ The crate layout on disk:
 
 ```
 crates/                     # TRUTH — the kernel, self-contained + wasm-ready
-  bert-core/                #   semantic authority: WorldModel, validators, projection
-  bert-compose/             #   executable dynamical engine: circuit / export / run
-  bert-canvas/              #   canvas/lens domain: CanvasModel, lens_facts, describe
-  bert-tether/              #   boundary interface: CSV import, run manifest, forcing
-  bert-lenses-kernel/       #   JS-facing wasm-bindgen boundary (marshaling only)
-  bert-cli/                 #   the `facets` binary: the same truth, from a shell (native only)
+  facets-core/                #   semantic authority: WorldModel, validators, projection
+  facets-compose/             #   executable dynamical engine: circuit / export / run
+  facets-canvas/              #   canvas/lens domain: CanvasModel, lens_facts, describe
+  facets-tether/              #   boundary interface: CSV import, run manifest, forcing
+  facets-kernel/       #   JS-facing wasm-bindgen boundary (marshaling only)
+  facets-cli/                 #   the `facets` binary: the same truth, from a shell (native only)
 web/                        # FACE — React 19 + TS + Vite 6 + Tailwind 4 (Halcyonic Frost)
 src-tauri/                  # the macOS host: the same web/dist in a window (own workspace)
 fixtures/                   # serde↔TS contract goldens (fixtures/contract/)
@@ -300,8 +300,8 @@ assets/examples-data/       # an invented tether CSV for the CSV import path (no
 tools/pipeline/             # OPTIONAL Python data-prep — off the product path, not in CI
 ```
 
-`bert-core`, `bert-compose`, `bert-canvas`, and `bert-tether` are **vendored**
-(self-contained, no cross-repo path deps). The `bert-compose` copy is engine-only:
+`facets-core`, `facets-compose`, `facets-canvas`, and `facets-tether` are **vendored**
+(self-contained, no cross-repo path deps). The `facets-compose` copy is engine-only:
 the native egui shell it had upstream is dropped, so it carries no native
 dependency and compiles clean to `wasm32-unknown-unknown`. Node geometry uses
 `glam::Vec2` in place of `egui::Pos2`, so the engine pulls in no UI crate at all.
@@ -421,7 +421,7 @@ python3 scripts/doc_lint.py
 
 Every verdict the app shows is a library call, and until #315 the only door onto
 those calls was a browser. `facets` is the door. It decides nothing: it parses
-arguments, calls `bert-canvas` / `bert-core` / `bert-compose`, and prints what
+arguments, calls `facets-canvas` / `facets-core` / `facets-compose`, and prints what
 comes back. A verdict computed in the CLI would be the same bug as a verdict
 computed in JS.
 
@@ -501,7 +501,7 @@ pinned lens shows up in the test output, which is how `bitcoin` was found (#316)
 — because freezing a refusal as expected behaviour would make its repair look
 like a regression.
 
-`bert-cli` is the one package excluded from the workspace `wasm32-unknown-unknown`
+`facets-cli` is the one package excluded from the workspace `wasm32-unknown-unknown`
 build (`--exclude facets-cli` in `justfile` and `ci.yml`) — a native binary of argv
 and the filesystem has nothing to do in a browser. The exclusion is *checked*,
 not merely commented: `crates/facets-cli/tests/wasm_gate.rs` fails if the list ever
@@ -552,5 +552,5 @@ tag.
 **Live status and roadmap → [Facets Roadmap board](https://github.com/orgs/halcyonic-systems/projects/12).**
 
 The instrument is one of the two faces of the K≅2 kernel: the *structural* face
-(author/validate) and the *dynamical* face (`bert-compose`, run), united here in
+(author/validate) and the *dynamical* face (`facets-compose`, run), united here in
 one self-contained tool.

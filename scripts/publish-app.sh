@@ -1,14 +1,14 @@
 #!/bin/bash
 # Builds the wasm kernel + web frontend and rsyncs the static output to
-# ~/halcyonic-apps/bert-lenses/dist, outside ~/Desktop's TCC sandbox so
-# launchd (com.halcyonic.bert-lenses) can serve it. Repo stays put; only
+# ~/halcyonic-apps/facets/dist, outside ~/Desktop's TCC sandbox so
+# launchd (com.halcyonic.facets) can serve it. Repo stays put; only
 # the built dist moves. See docs/running-permanently.md for the full story.
 set -euo pipefail
 
 REPO_ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
 KERNEL_DIR="$REPO_ROOT/crates/facets-kernel"
 WEB_DIR="$REPO_ROOT/web"
-PUBLISH_DIR="$HOME/halcyonic-apps/bert-lenses"
+PUBLISH_DIR="$HOME/halcyonic-apps/facets"
 SERVER_DIR="$PUBLISH_DIR/server"
 PORT=5190
 
@@ -47,10 +47,10 @@ if [ ! -x "$SERVER_DIR/node_modules/.bin/vite" ]; then
   if [ ! -f "$SERVER_DIR/package.json" ]; then
     cat > "$SERVER_DIR/package.json" <<'PKGJSON'
 {
-  "name": "bert-lenses-serve",
+  "name": "facets-serve",
   "private": true,
   "version": "0.0.0",
-  "description": "Standalone vite install (outside ~/Desktop's TCC sandbox) used only to run `vite preview` against the published bert-lenses dist. Not the app's real package.json.",
+  "description": "Standalone vite install (outside ~/Desktop's TCC sandbox) used only to run `vite preview` against the published facets dist. Not the app's real package.json.",
   "devDependencies": {
     "vite": "^6.0.3"
   }
@@ -60,5 +60,5 @@ PKGJSON
   (cd "$SERVER_DIR" && npm install)
 fi
 
-echo "==> Published. Serve permanently via scripts/launchd/com.halcyonic.bert-lenses.plist,"
+echo "==> Published. Serve permanently via scripts/launchd/com.halcyonic.facets.plist,"
 echo "    or check it now: http://127.0.0.1:$PORT/ (once the launchd service is loaded)"
