@@ -1420,6 +1420,15 @@ pub struct AgentModel {
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub command: Option<AgentCommand>,
 
+    /// What this agent reads when it is not a stock's level over an
+    /// observation flow: the feedforward reading (ADR 0008 D5, spec v1.14;
+    /// Mobus §12.3.2.3, "measuring the value of inputs as compared with ideal
+    /// values"). `None` is the level form, where the reading is the stock the
+    /// agent's informational inflow comes from. Read only beside a `policy`;
+    /// `skip` when `None` so every earlier model is byte-identical.
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub observation: Option<AgentObservation>,
+
     /// Domain-agnostic cognitive parameters (e.g., "fee_threshold": 50.0)
     #[serde(default, skip_serializing_if = "HashMap::is_empty")]
     pub cognitive_params: HashMap<String, f64>,
@@ -1489,6 +1498,7 @@ impl Default for AgentModel {
             primitive: None,
             policy: None,
             command: None,
+            observation: None,
             cognitive_params: HashMap::new(),
             process_configs: Vec::new(),
             initial_state: HashMap::new(),
@@ -1526,7 +1536,8 @@ pub enum ProcessPrimitive {
 
 /// An agent's decision model (facets#269, ADR 0008): the rule a thing of the
 /// agent kind runs once per tick, reading the level of the stock it watches
-/// and emitting a command signal to the work process it manages. Mobus
+/// (or, spec v1.14, what the flow it watches delivered on the last completed
+/// tick) and emitting a command signal to the work process it manages. Mobus
 /// §11.3.4.1 splits the goal from the mechanism — "the set point represents
 /// the ideal value … the procedures are embodied in the response mechanisms"
 /// — so the numbers here are the policy the author declares and the arm in
@@ -1765,6 +1776,23 @@ impl Default for Policy {
             gain: 1.0,
         }
     }
+}
+
+/// What an agent reads in place of a stock's level (ADR 0008 D5, spec v1.14).
+/// `Flow` is the feedforward reading: the amount one physical flow delivered
+/// on the last completed tick, the number the run surface draws for that
+/// flow. Mobus §12.3.2.3 names the case ("measuring the value of inputs as
+/// compared with ideal values") and §12.2.3.2 the tactical agent that watches
+/// "the behaviors of the external agents" through what crosses the boundary.
+/// The reading comes from committed state, as a level does, so the step stays
+/// read-before-write and one deterministic transition (D6). The flow is named
+/// by its interaction id; the seam checks it exists, is physical and carries
+/// a quantity.
+#[derive(Serialize, Deserialize, Clone, Debug, PartialEq)]
+#[serde(tag = "reads", rename_all = "lowercase")]
+pub enum AgentObservation {
+    /// The amount `flow` delivered on the last completed tick.
+    Flow { flow: Id },
 }
 
 /// The knob an agent in the command form writes (ADR 0008 D1; Mobus

@@ -165,6 +165,7 @@ pub fn to_world_model(circuit: &Circuit, name: &str) -> WorldModel {
                         primitive: None,
                         policy: Some(node.policy.clone()),
                         command: None,
+                        observation: None,
                         cognitive_params: HashMap::new(),
                         process_configs: Vec::new(),
                         initial_state: HashMap::new(),
@@ -210,6 +211,7 @@ pub fn to_world_model(circuit: &Circuit, name: &str) -> WorldModel {
                         primitive: Some(primitive),
                         policy: None,
                         command: None,
+                        observation: None,
                         // Compose knobs with no canonical home ride in the
                         // extensible params so the round-trip is lossless.
                         cognitive_params: {
@@ -343,6 +345,16 @@ pub fn to_world_model(circuit: &Circuit, name: &str) -> WorldModel {
         let Some(sid) = node_id.get(&i) else { continue };
         if let Some(agent) = systems.iter_mut().find(|s| s.info.id == *sid).and_then(|s| s.agent.as_mut()) {
             agent.command = command;
+        }
+    }
+    // A flow-watching agent's reading (spec v1.14) rides back the same way,
+    // named by the interaction its wire became.
+    for (i, node) in circuit.nodes.iter().enumerate() {
+        let Some(k) = node.watch else { continue };
+        let Some(flow) = interactions.get(k).map(|ix| ix.info.id.clone()) else { continue };
+        let Some(sid) = node_id.get(&i) else { continue };
+        if let Some(agent) = systems.iter_mut().find(|s| s.info.id == *sid).and_then(|s| s.agent.as_mut()) {
+            agent.observation = Some(facets_core::AgentObservation::Flow { flow });
         }
     }
 
@@ -519,6 +531,11 @@ pub fn from_spec(spec: &facets_core::operational::OperationalSpec) -> Circuit {
             facets_core::operational::OperationalCommand::Share { param, first, second } => {
                 crate::circuit::AgentKnob::Share { param: param.clone(), first: *first, second: *second }
             }
+        });
+        // The watched flow, like the knob, is a `flows` position and so a
+        // wire index (spec v1.14).
+        node.watch = a.observation.as_ref().map(|o| match o {
+            facets_core::operational::OperationalObservation::Flow { flow } => *flow,
         });
         ids.push((a.id.clone(), c.nodes.len()));
         c.nodes.push(node);
