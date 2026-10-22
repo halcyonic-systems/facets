@@ -498,16 +498,8 @@ docs/parked.md,759,upstream-bert,"`H` opaque, require only that `F` may depend o
 docs/parked.md,835,cli-word,"- **Route internally, not to Mobus:** two defects in `bert` docs, both predating"
 docs/parked.md,947,upstream-bert,"objects (wanted in earlier BERT), and systems-of-systems, where relationships"
 docs/proposals/112-transition-functor.md,562,upstream-bert,"the general existence result at BERT's concrete state type — is future work,"
-docs/running-permanently.md,4,deploy,the `~/halcyonic-apps/bert-lenses` paths below are one machine's and predate the
-docs/running-permanently.md,17,deploy,"inside the repo, then rsyncs it to `~/halcyonic-apps/bert-lenses/dist`, which"
-docs/running-permanently.md,19,deploy,"at `~/halcyonic-apps/bert-lenses/server` (its own throwaway `package.json`,"
-docs/running-permanently.md,27,deploy,cp scripts/launchd/com.halcyonic.bert-lenses.plist ~/Library/LaunchAgents/
-docs/running-permanently.md,28,deploy,launchctl bootstrap gui/$(id -u) ~/Library/LaunchAgents/com.halcyonic.bert-lenses.plist
-docs/running-permanently.md,41,deploy,"The running service already points at `~/halcyonic-apps/bert-lenses/dist`, but"
-docs/running-permanently.md,46,deploy,launchctl kickstart -k gui/$(id -u)/com.halcyonic.bert-lenses
-docs/running-permanently.md,52,deploy,launchctl bootout gui/$(id -u)/com.halcyonic.bert-lenses
-docs/running-permanently.md,53,deploy,rm ~/Library/LaunchAgents/com.halcyonic.bert-lenses.plist
-docs/running-permanently.md,56,deploy,The published copy (`~/halcyonic-apps/bert-lenses/`) is left on disk; delete
+docs/running-permanently.md,5,deploy,`com.halcyonic.bert-lenses` and `~/halcyonic-apps/bert-lenses` in #541; a
+docs/running-permanently.md,5,deploy,`com.halcyonic.bert-lenses` and `~/halcyonic-apps/bert-lenses` in #541; a
 docs/shelf-fidelity.md,9,cli-word,"| bitcoin.sl | 0 | flow_not_consumed×2, interface_does_work×3 | 3 → 0 | 0/3 | 0/0 | 0 | 8 | yes | no:bert: assets/exampl"
 docs/shelf-fidelity.md,11,cli-word,"| hal-harness.sl | 0 | flow_not_consumed×8, interface_does_work | 3 → 0 | 0/3 | 0/0 | 0 | 2 | yes | no:bert: assets/exam"
 docs/shelf-fidelity.md,18,cli-word,"| organic-universal-health-cover.sl | 0 | flow_not_consumed×2, interface_does_work×3 | 7 → 0 | 0/10 | 0/0 | 0 | 18 | yes"
@@ -532,29 +524,11 @@ scripts/doc_lint.py,544,doc-prose,"""docs/design/shape-vocabulary-research.md"":
 scripts/gen_notices.py,103,lineage,"*Lineage, not an obligation: Facets (bert-lenses until 2026-08-27) grew out of the BERT project"
 scripts/gen_notices.py,103,upstream-bert,"*Lineage, not an obligation: Facets (bert-lenses until 2026-08-27) grew out of the BERT project"
 scripts/gen_notices.py,104,upstream-bert,(`halcyonic-systems/bert`). The kernel crates here were written for this
-scripts/launchd/com.halcyonic.bert-lenses.plist,6,deploy,<string>com.halcyonic.bert-lenses</string>
-scripts/launchd/com.halcyonic.bert-lenses.plist,8,deploy,<!-- Serves the published static build (~/halcyonic-apps/bert-lenses/dist) at
-scripts/launchd/com.halcyonic.bert-lenses.plist,12,deploy,"at ~/halcyonic-apps/bert-lenses/server/node_modules (outside ~/Desktop,"
-scripts/launchd/com.halcyonic.bert-lenses.plist,18,deploy,<string>/Users/home/halcyonic-apps/bert-lenses/server/node_modules/.bin/vite</string>
-scripts/launchd/com.halcyonic.bert-lenses.plist,27,deploy,<string>/Users/home/halcyonic-apps/bert-lenses</string>
-scripts/launchd/com.halcyonic.bert-lenses.plist,42,deploy,<string>/Users/home/halcyonic-apps/bert-lenses/web.log</string>
-scripts/launchd/com.halcyonic.bert-lenses.plist,44,deploy,<string>/Users/home/halcyonic-apps/bert-lenses/web.log</string>
-scripts/publish-app.sh,3,deploy,"# ~/halcyonic-apps/bert-lenses/dist, outside ~/Desktop's TCC sandbox so"
-scripts/publish-app.sh,4,deploy,# launchd (com.halcyonic.bert-lenses) can serve it. Repo stays put; only
-scripts/publish-app.sh,11,deploy,"PUBLISH_DIR=""$HOME/halcyonic-apps/bert-lenses"""
-scripts/publish-app.sh,50,deploy,"""name"": ""bert-lenses-serve"","
-scripts/publish-app.sh,63,deploy,"echo ""==> Published. Serve permanently via scripts/launchd/com.halcyonic.bert-lenses.plist,"""
 tools/pipeline/README.md,21,deploy,`/Users/home/Documents/bert-lenses/data/` (override with the
-tools/pipeline/README.md,22,deploy,`BERT_LENSES_DATA_DIR` env var). Nothing under that path is committed.
 tools/pipeline/README.md,130,upstream-bert,"Derived leg — no external source, reshapes leg 4's output. The BERT import"
 tools/pipeline/README.md,135,upstream-bert,target for the target-4 LLM competitive-market BERT model — depends on
 tools/pipeline/README.md,157,upstream-bert,"(integers, not shares — the BERT model computes shares itself)."
-tools/pipeline/common.py,4,deploy,code repos). Override with the BERT_LENSES_DATA_DIR env var if needed.
-tools/pipeline/common.py,12,deploy,"DATA_DIR = Path(os.environ.get(""BERT_LENSES_DATA_DIR"", ""/Users/home/Documents/bert-lenses/data""))"
-tools/pipeline/common.py,12,deploy,"DATA_DIR = Path(os.environ.get(""BERT_LENSES_DATA_DIR"", ""/Users/home/Documents/bert-lenses/data""))"
-tools/pipeline/common.py,14,deploy,"""BERT_LENSES_SCRATCH_DIR"","
-tools/pipeline/common.py,26,deploy,"req = urllib.request.Request(url, headers={""User-Agent"": ""bert-lenses-pipeline/0.1""})"
-tools/pipeline/fetch_usage_openrouter.py,65,deploy,"""User-Agent"": ""bert-lenses-pipeline/0.1"","
+tools/pipeline/common.py,12,deploy,"DATA_DIR = Path(os.environ.get(""FACETS_DATA_DIR"", ""/Users/home/Documents/bert-lenses/data""))"
 tools/pipeline/rung2_allocation.py,18,deploy,"DATA = Path.home() / ""Documents/bert-lenses/data"""
 tools/pipeline/rung2_allocation.py,19,deploy,"OUT = Path.home() / ""Documents/bert-lenses/technical"""
 tools/pipeline/rung3_enterprise.py,17,deploy,"DATA = Path.home() / ""Documents/bert-lenses/data"""
