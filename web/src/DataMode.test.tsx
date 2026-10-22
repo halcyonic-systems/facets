@@ -15,7 +15,7 @@ vi.mock("./kernel", () => ({
   },
 }));
 
-import { DataMode } from "./DataMode";
+import { DataMode, bindingEntry } from "./DataMode";
 
 const model: CanvasModel = {
   lens: "Mobus",
@@ -175,5 +175,42 @@ describe("Data mode (#304 M1)", () => {
     // The dropdown for the bound column shows the stock as selected — the
     // prefixed value survives currentBinding's read-back.
     expect(html).toContain('value="stock:Reserve"');
+  });
+});
+
+// #535 item 1 (found in #530): a bound column carries the COLUMN's unit.
+describe("binding a column keeps its declared unit (#535 item 1)", () => {
+  const routed: CanvasModel = {
+    ...model,
+    relations: [{ id: 20, a: 1, b: 2, name: "Router -> Open", kind: "Matter", is_bond: true, unit: "Gtok/day" }],
+  };
+
+  it("a column already declared `weight` stays `weight` when bound to a Gtok/day flow", () => {
+    const prior = { column: "open_weight", as: "flow" as const, element: "Router -> Open", unit: "weight", force: true };
+    expect(bindingEntry("open_weight", "Router -> Open", routed, prior)?.unit).toBe("weight");
+  });
+
+  it("a column nothing has declared takes the flow's unit as its default", () => {
+    expect(bindingEntry("open_tok", "Router -> Open", routed)?.unit).toBe("Gtok/day");
+  });
+
+  it("a column that was time and is now bound does not carry a stale unit", () => {
+    const prior = { column: "month", as: "time" as const };
+    expect(bindingEntry("month", "Router -> Open", routed, prior)?.unit).toBe("Gtok/day");
+  });
+
+  it("time, stock and ignore write no unit", () => {
+    expect(bindingEntry("month", "time", routed)).toEqual({ column: "month", as: "time" });
+    expect(bindingEntry("x", "ignore", routed)).toBeNull();
+    expect(bindingEntry("lvl", "stock:Balance Sheet", routed)).toEqual({ column: "lvl", as: "stock", element: "Balance Sheet" });
+  });
+
+  it("the binding row shows the column's unit, editable", () => {
+    const m: Manifest = { ...manifest, mapping: [{ column: "tga", as: "flow", element: "TGA deposits", unit: "weight", force: true }] };
+    const html = renderToStaticMarkup(
+      <DataMode model={model} modelName="Federal Reserve" csv={csv} manifest={m} onManifestChange={() => {}} />,
+    );
+    expect(html).toContain('aria-label="unit of tga"');
+    expect(html).toContain('value="weight"');
   });
 });
