@@ -4534,12 +4534,7 @@
         "issue_targets": [],
         "residue": {
           "hidden": [],
-          "unspecified": [
-            {
-              "count": 1,
-              "label": "process primitive"
-            }
-          ]
+          "unspecified": []
         },
         "validation": {
           "issues": []
