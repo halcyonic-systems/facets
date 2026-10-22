@@ -37,9 +37,10 @@
 # vintage (../data/openrouter-routed-share-monthly-vintage-2026-10-10.csv),
 # latest full month 2026-09: the routed level is that month's tokens
 # per observed day, and the Router's split is its classified frontier
-# and open tokens as relative weights. A vintage refresh re-mints them
-# in the same PR (../data/README.md), so the model never contradicts
-# the series it opens on (#534). The self-hosted placeholder is not
+# and open tokens as relative weights; the routed buyers below hold the
+# same split as their share (frontier 0.254). A vintage refresh re-mints
+# all three in the same PR (../data/README.md), so the model never
+# contradicts the series it opens on (#534). The self-hosted placeholder is not
 # minted from anything: it stays at 3000 Gtok/day, now small against
 # the routed level rather than half of it, and is still a placeholder
 # until a sensor exists.
@@ -172,6 +173,20 @@ flow "Serving endpoint" -> Customers : informational "tokens served" substance t
 param "Routed workload" : flow "Routed demand" -> Router "routed workload" range 0..40000
 param "Self-hosted workload" : flow "Self-hosted demand" -> Self-hosting "self-hosted workload" range 0..12000
 param shares "Routed split, frontier against open weight" : from Router
+
+# ── The buyers: one aggregate agent (#523) ───────────────────────────
+# The routed buyers as ONE agent standing for the population, decided
+# 2026-10-21; a population comes later and only as a case where it
+# predicts what the aggregate cannot. It reads the routed workload as it
+# arrives (the feedforward form, spec v1.14) and writes the router's
+# split. Under the bound it holds the split the vintage observed
+# (frontier 0.254 of classified routed tokens, 2026-09), so the run is
+# the declared one. The bound and the split above it are the author's
+# placeholder: no vintage observes how buyers answer volume or price, and
+# price needs the money plane this model does not draw.
+agent "Routed buyers" watches flow "Routed demand" -> Router "routed workload" rule threshold above 30000 emit 0.2 else 0.254 manages param "Routed split, frontier against open weight"
+    description "The routed buyers as one aggregate: they read the routed workload and set the frontier share of the router's split."
+    grounding unknown "placeholder rule: the split under the bound is frontier_tokens of 2026-09 (0.254, vintage 2026-10-10); the bound 30000 Gtok/day and the 0.2 above it are not observed; replace before any finding quotes them"
 
 # ── Declared metrics: the readouts the question is measured on ───────
 # The first two are the hypothesis's own variable. Tokens served are

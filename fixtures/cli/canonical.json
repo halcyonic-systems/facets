@@ -3471,85 +3471,92 @@
         "env_kind": "Source",
         "name": "Routed demand",
         "role": "Environment",
-        "x": 289.0,
-        "y": -11.0
+        "x": 198.0,
+        "y": -168.0
       },
       {
         "env_kind": "Source",
         "name": "Self-hosted demand",
         "role": "Environment",
-        "x": 121.0,
-        "y": 189.0
+        "x": -50.0,
+        "y": 127.0
       },
       {
         "env_kind": "Source",
         "name": "Frontier labs",
         "role": "Environment",
-        "x": 121.0,
-        "y": 451.0
+        "x": -50.0,
+        "y": 513.0
       },
       {
         "env_kind": "Source",
         "name": "Open-weight labs",
         "role": "Environment",
-        "x": 289.0,
-        "y": 651.0
+        "x": 198.0,
+        "y": 808.0
       },
       {
         "env_kind": "Sink",
         "name": "Customers",
         "role": "Environment",
-        "x": 863.0,
+        "x": 1044.0,
         "y": 320.0
       },
       {
         "env_kind": "Neutral",
         "name": "Router",
         "role": "Component",
-        "x": 390.0,
-        "y": 164.0
+        "x": 342.0,
+        "y": 60.0
       },
       {
         "env_kind": "Neutral",
         "name": "Self-hosting",
         "role": "Component",
-        "x": 311.0,
-        "y": 258.0
+        "x": 215.0,
+        "y": 202.0
       },
       {
         "env_kind": "Neutral",
         "name": "Frontier release",
         "role": "Component",
-        "x": 311.0,
-        "y": 382.0
+        "x": 231.0,
+        "y": 388.0
       },
       {
         "env_kind": "Neutral",
         "name": "Open-weight release",
         "role": "Component",
-        "x": 390.0,
-        "y": 476.0
+        "x": 360.0,
+        "y": 503.0
       },
       {
         "env_kind": "Neutral",
         "name": "Serving endpoint",
         "role": "Component",
-        "x": 660.0,
-        "y": 320.0
+        "x": 757.0,
+        "y": 298.0
       },
       {
         "env_kind": "Neutral",
         "name": "Frontier serving",
         "role": "Component",
-        "x": 558.0,
-        "y": 242.0
+        "x": 480.0,
+        "y": 150.0
       },
       {
         "env_kind": "Neutral",
         "name": "Open-weight serving",
         "role": "Component",
-        "x": 402.0,
-        "y": 398.0
+        "x": 627.0,
+        "y": 405.0
+      },
+      {
+        "env_kind": "Neutral",
+        "name": "Routed buyers",
+        "role": "Component",
+        "x": 333.0,
+        "y": 405.0
       }
     ],
     "pins": "Mobus",
@@ -3587,6 +3594,9 @@
             0.0,
             17320.96,
             0.0,
+            0.0,
+            0.254,
+            0.0,
             0.0
           ],
           [
@@ -3616,6 +3626,9 @@
             0.0,
             0.0,
             17320.96,
+            0.0,
+            0.0,
+            0.254,
             0.0,
             0.0
           ],
@@ -3647,6 +3660,9 @@
             0.0,
             17320.96,
             0.0,
+            0.0,
+            0.254,
+            0.0,
             0.0
           ],
           [
@@ -3676,6 +3692,9 @@
             0.0,
             0.0,
             17320.96,
+            0.0,
+            0.0,
+            0.254,
             0.0,
             0.0
           ]
@@ -3709,7 +3728,7 @@
       },
       "outcome": "runs"
     },
-    "things": 12,
+    "things": 13,
     "verdict_under": {
       "bunge": {
         "description": {
@@ -3727,7 +3746,8 @@
             "Open-weight release",
             "Serving endpoint",
             "Frontier serving",
-            "Open-weight serving"
+            "Open-weight serving",
+            "Routed buyers"
           ],
           "endo_bonds": [
             "Frontier release — Frontier serving",
@@ -4025,7 +4045,7 @@
           "note": "a system is what is distinguished as a system by the investigator; the distinction frame is the observer's act, not a boundary",
           "question": "what does the data commit me to? — the behavior function answers, and deliberately refuses to say what is behind it",
           "relations": 12,
-          "things": 12
+          "things": 13
         },
         "facts": {
           "aggregate": false,
@@ -4279,7 +4299,8 @@
             "Open-weight release",
             "Serving endpoint",
             "Frontier serving",
-            "Open-weight serving"
+            "Open-weight serving",
+            "Routed buyers"
           ],
           "dt_note": "Δt: time scale — a parametric field on the system",
           "e_objects": [
@@ -4513,7 +4534,12 @@
         "issue_targets": [],
         "residue": {
           "hidden": [],
-          "unspecified": []
+          "unspecified": [
+            {
+              "count": 1,
+              "label": "process primitive"
+            }
+          ]
         },
         "validation": {
           "issues": []

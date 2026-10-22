@@ -23,8 +23,8 @@
         "type": "Source",
         "transform": {
           "translation": [
-            288.72083,
-            -11.305328
+            198.02829,
+            -168.38947
           ],
           "rotation": 0.0
         },
@@ -47,8 +47,8 @@
         "type": "Source",
         "transform": {
           "translation": [
-            120.512695,
-            189.15723
+            -49.933533,
+            127.11981
           ],
           "rotation": 0.0
         },
@@ -67,8 +67,8 @@
         "type": "Source",
         "transform": {
           "translation": [
-            120.512695,
-            450.8427
+            -49.933594,
+            512.8801
           ],
           "rotation": 0.0
         },
@@ -87,8 +87,8 @@
         "type": "Source",
         "transform": {
           "translation": [
-            288.72076,
-            651.3053
+            198.0282,
+            808.3894
           ],
           "rotation": 0.0
         },
@@ -109,7 +109,7 @@
         "type": "Sink",
         "transform": {
           "translation": [
-            862.5584,
+            1043.9436,
             320.0
           ],
           "rotation": 0.0
@@ -259,8 +259,8 @@
       "radius": 34.0,
       "transform": {
         "translation": [
-          390.00003,
-          164.11543
+          342.4184,
+          59.938522
         ],
         "rotation": 0.0
       },
@@ -302,8 +302,8 @@
       "radius": 34.0,
       "transform": {
         "translation": [
-          660.0,
-          320.0
+          757.2358,
+          298.3931
         ],
         "rotation": 0.0
       },
@@ -345,8 +345,8 @@
       "radius": 34.0,
       "transform": {
         "translation": [
-          557.78174,
-          242.21826
+          480.0,
+          150.0
         ],
         "rotation": 0.0
       },
@@ -389,8 +389,8 @@
       "radius": 34.0,
       "transform": {
         "translation": [
-          402.21826,
-          397.78174
+          627.2243,
+          405.0
         ],
         "rotation": 0.0
       },
@@ -406,6 +406,72 @@
         "primitive": "Amplifying"
       },
       "child_model": "pWAnTptPXdKY3x38yXpLn"
+    },
+    {
+      "info": {
+        "id": "C0.4",
+        "level": 1,
+        "name": "Routed buyers",
+        "description": "The routed buyers as one aggregate: they read the routed workload and set the frontier share of the router's split.",
+        "grounding": {
+          "grade": "unknown",
+          "reference": "placeholder rule: the split under the bound is frontier_tokens of 2026-09 (0.254, vintage 2026-10-10); the bound 30000 Gtok/day and the 0.2 above it are not observed; replace before any finding quotes them"
+        }
+      },
+      "sources": [],
+      "sinks": [],
+      "parent": "S0",
+      "complexity": "Atomic",
+      "boundary": {
+        "info": {
+          "id": "B0.4",
+          "level": 1,
+          "name": "",
+          "description": ""
+        },
+        "porosity": 0.0,
+        "perceptive_fuzziness": 0.0,
+        "interfaces": [],
+        "parent_interface": null
+      },
+      "radius": 34.0,
+      "transform": {
+        "translation": [
+          332.7757,
+          405.0
+        ],
+        "rotation": 0.0
+      },
+      "equivalence": "",
+      "history": "",
+      "transformation": "",
+      "member_autonomy": 1.0,
+      "time_constant": "",
+      "agent": {
+        "kind": "Reactive",
+        "agency_capacity": 0.5,
+        "policy": {
+          "rule": "threshold",
+          "above": 30000.0,
+          "emit": 0.2,
+          "else": 0.254
+        },
+        "command": {
+          "form": "share",
+          "param": "Routed split, frontier against open weight",
+          "of": "C0.0",
+          "first": "F6"
+        },
+        "observation": {
+          "reads": "flow",
+          "flow": "F0"
+        },
+        "cognitive_params": {
+          "above": 30000.0,
+          "else": 0.254,
+          "emit": 0.2
+        }
+      }
     }
   ],
   "interactions": [

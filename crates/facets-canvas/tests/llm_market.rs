@@ -207,18 +207,22 @@ fn all_compute_dissipates_as_heat() {
     );
 }
 
-/// Law 3 (mutation): a declared weight is load-bearing. Doubling the Router's
-/// open-weight share must raise open-weight serving and lower frontier
-/// serving (its share of the same split shrinks as the weight pool grows) — a
-/// declared value nothing responds to is the "asserted-but-unhonored" defect
+/// Law 3 (mutation): the router's split is load-bearing. Since #523 the split
+/// is the routed buyers' command (one aggregate agent writing the `shares`
+/// param at the end of every tick), so the number the run honors is the
+/// share the buyers hold under their bound, and the declared weights are the
+/// split of tick 0 only, before the agent's first write. Lowering the held
+/// frontier share to what a doubled open-weight weight would give (254 of
+/// 1746, 0.1455) must raise open-weight serving and lower frontier serving —
+/// a held value nothing responds to is the "asserted-but-unhonored" defect
 /// class. The self-hosted flow does not pass through the Router, so the open
 /// subsystem's gain is bounded by the routed workload alone.
 #[test]
-fn weights_are_load_bearing() {
+fn the_split_the_buyers_hold_is_load_bearing() {
     let text = source_text(PARENT);
-    let needle = "Router -> \"Open-weight serving\" : energy \"routed open-weight workload\" substance compute amount 746";
-    assert!(text.contains(needle), "calibration moved — update this mutation");
-    let mutated = text.replace(needle, &needle.replace("amount 746", "amount 1492"));
+    let held = "rule threshold above 30000 emit 0.2 else 0.254 manages param";
+    assert!(text.contains(held), "the buyers' line moved — update this mutation");
+    let mutated = text.replace(held, &held.replace("else 0.254", "else 0.1455"));
 
     let (c0, r0) = run_sl(&text);
     let (c1, r1) = run_sl(&mutated);
@@ -232,7 +236,7 @@ fn weights_are_load_bearing() {
     );
     assert!(
         open.1 > open.0 * 1.1,
-        "doubling the open-weight routed weight barely moved it: {} → {}",
+        "lowering the held frontier share barely moved open-weight serving: {} → {}",
         open.0,
         open.1
     );
@@ -248,6 +252,28 @@ fn weights_are_load_bearing() {
         "the open subsystem gained more than the routed workload can supply: {} → {}",
         open.0,
         open.1
+    );
+}
+
+/// The declared weights are tick 0's split and nothing after: doubling the
+/// open-weight weight moves the first tick and leaves the final one where the
+/// buyers hold it. Pinned so the change the agent made to what a declared
+/// weight means is a test, not a surprise.
+#[test]
+fn the_declared_weights_split_tick_zero_only() {
+    let text = source_text(PARENT);
+    let needle = "Router -> \"Open-weight serving\" : energy \"routed open-weight workload\" substance compute amount 746";
+    assert!(text.contains(needle), "calibration moved — update this mutation");
+    let mutated = text.replace(needle, &needle.replace("amount 746", "amount 1492"));
+    let (c0, r0) = run_sl(&text);
+    let (c1, r1) = run_sl(&mutated);
+    let i = node_index(&c0, "Open-weight serving");
+    let first = |r: &RecordedRun| r.history[0][1 + 3 * i];
+    assert!(first(&r1) > first(&r0) * 1.1, "tick 0 did not take the declared weight: {} → {}", first(&r0), first(&r1));
+    assert_eq!(
+        final_activity(&c0, &r0, "Open-weight serving"),
+        final_activity(&c1, &r1, "Open-weight serving"),
+        "after tick 0 the buyers' command, not the declared weight, sets the split"
     );
 }
 
@@ -437,4 +463,35 @@ fn child_sources_are_the_parents_realized_flows() {
             "{child}: its {source} source declares {declared}, the parent realizes {realized}"
         );
     }
+}
+
+/// The routed buyers (#523): one aggregate agent that watches the routed
+/// workload and writes the Router's split. Under its bound it holds the
+/// vintage's split, so every tick of the shipped model is the tick of the
+/// same model without the agent; with the workload above the bound the
+/// split moves to the placeholder share, frontier 0.2 of the routed
+/// workload, two ticks after the workload does (one to read it, one for the
+/// command to land).
+#[test]
+fn the_routed_buyers_hold_the_observed_split_under_their_bound() {
+    let text = source_text(PARENT);
+    let start = text.find("agent \"Routed buyers\"").expect("the buyers' line");
+    let end = text[start..].find("\n\n").map(|n| start + n).expect("the buyers' block ends");
+    let without = format!("{}{}", &text[..start], &text[end..]);
+
+    let (c0, r0) = run_sl(&without);
+    let (c1, r1) = run_sl(&text);
+    let cols = |c: &Circuit, name: &str| 1 + 3 * node_index(c, name);
+    for name in ["Router", "Frontier serving", "Open-weight serving"] {
+        let (i0, i1) = (cols(&c0, name), cols(&c1, name));
+        let a: Vec<f32> = r0.history.iter().map(|row| row[i0]).collect();
+        let b: Vec<f32> = r1.history.iter().map(|row| row[i1]).collect();
+        assert_eq!(a, b, "{name}: the buyers moved the run under their bound");
+    }
+
+    let above = text.replace("substance compute amount 19197", "substance compute amount 35000");
+    assert_ne!(above, text, "the routed level moved — update this mutation");
+    let (c2, r2) = run_sl(&above);
+    let frontier = final_activity(&c2, &r2, "Frontier serving");
+    assert!((frontier - 7000.0).abs() < 0.01, "frontier {frontier}, expected 0.2 of 35000");
 }

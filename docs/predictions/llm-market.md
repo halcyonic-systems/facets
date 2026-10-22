@@ -208,6 +208,18 @@ sensor is not: `assets/data/README.md`, "OpenRouter routed-share vintages".
   file, by lab in the by-lab file) rather than awaited; the enterprise-spend
   sentence names a channel the model no longer carries.
 
+**Note 2026-10-21 (#523): the shipped model gained the routed buyers.** One
+aggregate agent watches the routed workload as it arrives (spec v1.14) and
+writes the Router's split. Under its bound it holds the vintage's frontier
+share, 0.254, so the run of the shipped model is the run P-0001 was made on,
+flow for flow and tick for tick. The spec is new all the same, and its
+content hash is `3827070971861594749`; P-0001 stays keyed to
+`2992006368205948209`, the model it was made on, which the ledger's rule
+exists to keep (the projection minted before this change still hashes to it,
+recomputed 2026-10-21). The buyers' bound (30,000 Gtok/day) and the split
+above it (0.2) are a placeholder graded `unknown` in the file; no entry here
+may rest on them until a vintage observes buyers answering volume or price.
+
 ## Ledger
 
 ### P-0001 — Open-weight share of routed tokens stays at or above 0.60 through 2027-03
