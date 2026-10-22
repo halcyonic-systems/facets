@@ -15,7 +15,7 @@ vi.mock("./kernel", () => ({
   },
 }));
 
-import { DataMode, bindingEntry } from "./DataMode";
+import { DataMode, bindingEntry, proposeBindings } from "./DataMode";
 
 const model: CanvasModel = {
   lens: "Mobus",
@@ -212,5 +212,69 @@ describe("binding a column keeps its declared unit (#535 item 1)", () => {
     );
     expect(html).toContain('aria-label="unit of tga"');
     expect(html).toContain('value="weight"');
+  });
+});
+
+describe("bindings proposed by name (#535 item 2, #339)", () => {
+  const stockModel: CanvasModel = {
+    ...model,
+    things: [
+      ...model.things,
+      { id: 3, name: "Reserves", x: 2, y: 0, role: "Component", primitive: "Buffering" },
+    ],
+  };
+
+  it("proposes a flow, a stock level and the support from matching names, case-insensitively", () => {
+    const p = proposeBindings(["Week", "tga deposits", "RESERVES", "Date"], stockModel);
+    expect(Object.fromEntries(p)).toEqual({
+      "tga deposits": "TGA deposits",
+      RESERVES: "stock:Reserves",
+      Date: "time",
+    });
+  });
+
+  it("proposes nothing for a column matching nothing, or matching more than one target", () => {
+    const twin: CanvasModel = {
+      ...model,
+      relations: [...model.relations, { id: 12, a: 1, b: 2, name: "tga deposits", kind: "Matter", is_bond: true }],
+    };
+    expect(proposeBindings(["noise", "TGA deposits"], twin).size).toBe(0);
+  });
+
+  it("leaves a bound column, a bound target and a held support alone", () => {
+    const mapping = [
+      { column: "week", as: "time" as const },
+      { column: "tga", as: "flow" as const, element: "TGA deposits", force: true },
+    ];
+    const p = proposeBindings(["week", "date", "tga", "TGA deposits", "remittances"], model, mapping);
+    expect(Object.fromEntries(p)).toEqual({ remittances: "remittances" });
+  });
+
+  it("shows proposals distinct from bindings and writes nothing until confirmed", () => {
+    const onManifestChange = vi.fn();
+    const html = renderToStaticMarkup(
+      <DataMode
+        model={model}
+        modelName="Federal Reserve"
+        csv={"date,remittances\n2023-01-04,1\n"}
+        manifest={null}
+        onAttachCsv={() => {}}
+        onManifestChange={onManifestChange}
+      />,
+    );
+    expect(html).toContain("confirm 2 proposed by name");
+    expect(html).toContain('data-proposed="remittances"');
+    expect(html).toContain('data-proposed="time"');
+    expect(onManifestChange).not.toHaveBeenCalled();
+  });
+
+  it("a confirmed proposal is the binding the dropdown would write", () => {
+    const value = proposeBindings(["remittances"], model).get("remittances")!;
+    expect(bindingEntry("remittances", value, model)).toEqual({
+      column: "remittances",
+      as: "flow",
+      element: "remittances",
+      force: true,
+    });
   });
 });
