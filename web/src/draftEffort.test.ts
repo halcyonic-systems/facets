@@ -39,7 +39,7 @@ describe("the Careful / Fast preference", () => {
   });
 
   it("reads anything it does not recognise in storage as Careful", () => {
-    localStorage.setItem("bert-lenses.coauthor-effort", "turbo");
+    localStorage.setItem("facets.coauthor-effort", "turbo");
     expect(draftEffort()).toBe("careful");
   });
 

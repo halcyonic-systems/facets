@@ -50,7 +50,7 @@ if [ ! -x "$SERVER_DIR/node_modules/.bin/vite" ]; then
   "name": "bert-lenses-serve",
   "private": true,
   "version": "0.0.0",
-  "description": "Standalone vite install (outside ~/Desktop's TCC sandbox) used only to run `vite preview` against the published bert-lenses dist. Not the app's real package.json.",
+  "description": "Standalone vite install (outside ~/Desktop's TCC sandbox) used only to run `vite preview` against the published facets dist. Not the app's real package.json.",
   "devDependencies": {
     "vite": "^6.0.3"
   }

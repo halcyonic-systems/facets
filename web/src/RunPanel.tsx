@@ -851,7 +851,7 @@ export function DtmcPanel({
   const shown = run.history[at] ?? [];
   return (
     <div className="grid gap-5">
-      <Card title="Result" source="bert-compose · wasm">
+      <Card title="Result" source="facets-compose · wasm">
         <div className="mb-4">
           <Verdict tone="ok">Ran the state machine as a Markov chain</Verdict>
         </div>
@@ -863,7 +863,7 @@ export function DtmcPanel({
         </div>
       </Card>
 
-      <Card title="State occupancy" source="bert-compose · wasm">
+      <Card title="State occupancy" source="facets-compose · wasm">
         <RunChart
           data={data}
           n={steps}
@@ -901,7 +901,7 @@ export function DtmcPanel({
         </div>
       </Card>
 
-      <Card title={at === steps - 1 ? "Final distribution" : `Distribution at step ${at}`} source="bert-compose · wasm">
+      <Card title={at === steps - 1 ? "Final distribution" : `Distribution at step ${at}`} source="facets-compose · wasm">
         <div className="grid gap-1.5">
           {run.states.map((s, i) => (
             <div key={s} className="flex items-baseline justify-between gap-3 text-sm">

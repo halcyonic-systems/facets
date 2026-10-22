@@ -350,10 +350,11 @@ def cmd_check(root: Path) -> int:
 # revision-pinned show commands on lines 26 and 27 keep their revisions' paths)
 # and the pkg path in web/package.json (line 20; the package names on lines 2
 # and 20 are phase 3): both re-read in full. Phase 3 renamed those two
-# package names; web/package.json re-read in full, none left.
+# package names; web/package.json re-read in full, none left. Phase 6 renamed
+# the header line of lib.rs and the title of VENDORING.md; both re-read in full.
 HAND_COUNTS = {
-    "crates/facets-kernel/src/lib.rs": 1,
-    "docs/VENDORING.md": 22,
+    "crates/facets-kernel/src/lib.rs": 0,
+    "docs/VENDORING.md": 20,
     "web/package.json": 0,
 }
 

@@ -1743,7 +1743,7 @@ pub fn parse_sl_full(text: &str) -> Result<SlParse, Vec<SlError>> {
                 // merged) covers membrane-crossing flows through the
                 // decomposed component, and the seam check carries the
                 // crossing half (γsrc/γsnk + counterparty preservation) in
-                // bert-core::decomposition. `interface` + `decomposes` on one
+                // facets-core::decomposition. `interface` + `decomposes` on one
                 // component is now a legal, checked authoring move.
                 // `release` names the Buffering arm's drain and nothing else
                 // reads it (#112 separating rule): on any other primitive the

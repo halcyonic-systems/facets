@@ -1,7 +1,7 @@
 // "My library" — the user's own saved models, behind ONE interface.
 //
 // Why this module exists: today a saved model is an IndexedDB record
-// (modelStore.ts), because the app runs in a browser tab. bert-lenses is
+// (modelStore.ts), because the app runs in a browser tab. facets is
 // heading for a Tauri desktop shell, where a saved model should be a real file
 // on disk. The storage backend WILL change. Everything above this module talks
 // to `library.*` and never to modelStore directly, so that change is a backend

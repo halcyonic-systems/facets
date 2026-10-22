@@ -205,7 +205,7 @@ fn the_weak_check_catches_a_crash_and_a_broken_answer() {
         "the survey would fail if it ever asked the door a question it cannot answer"
     );
 
-    let dir = std::env::temp_dir().join("bert-cli-survey");
+    let dir = std::env::temp_dir().join("facets-cli-survey");
     std::fs::create_dir_all(&dir).expect("scratch dir");
     let broken = dir.join("not-a-model.sl");
     std::fs::write(&broken, "component A\nflwo A -> B\n").expect("write scratch SL");

@@ -21,7 +21,7 @@ Half B is the other half of the split `read-category-theory.md` found: **how do 
 transitions become the whole's transition when the parts are different kinds** — a
 conservation-flow element and an FSA element in one composite. The survey found this
 open in the categorical literature itself (§3, §4 of that memo); the council's job was
-to decide how bert-lenses should relate to an open problem, not to solve it. Its
+to decide how facets should relate to an open problem, not to solve it. Its
 answer, restated as the plan this doc executes:
 
 1. **Substrate: Poly**, referenced by comment, never imported.
@@ -75,7 +75,7 @@ section only says what category that sketch already lives in.
 (lenses) compose associatively and its monomials have both a **parallel** product (`×`,
 independent systems side by side, no wiring) and a **composition product** (`◁` /
 substitution, output of one plugged into input of another). Those two operations *are*
-the homogeneous and (eventually) heterogeneous composition operators bert-lenses needs
+the homogeneous and (eventually) heterogeneous composition operators facets needs
 — they are not bespoke machinery to invent, only to instantiate against BERT's own
 types. §2 does that for the homogeneous case.
 
@@ -113,7 +113,7 @@ well-defined answer: iterate the composition product over the diagram's edges.
 For elements that are wired **without** a shared port — independent, run side by side,
 no signal crossing — the operator is Poly's **parallel product** (`×`), which is just
 `S_A × S_B` with each half stepping on its own `step_A`, `step_B`. This is the case
-most bert-compose models are in today (parallel conservation-flow elements sharing a
+most facets-compose models are in today (parallel conservation-flow elements sharing a
 tick, no cross-signal) and it requires no new theory — it is stated here mainly so the
 *wired* case (composition product) has a contrast to be defined against.
 
@@ -163,7 +163,7 @@ the kernel (§5), not folded into `Transition`/`kindCodomain`.
 
 *Pointer (2026-10-11): one instance of the controller → plant coupling this section asks for has shipped as the agent layer ([ADR 0008](../decisions/0008-agent-layer.md); `dynamics-principled-position.md`, addendum 2026-10-10): a deterministic agent is a coordinate added to the carrier, not a second functor (SSF `agent_step_is_product`), and a sampling agent is the Markov functor and cannot share a run with it. The heterogeneous composition below remains open.*
 
-A discrete controller (`nondeterministic`-or-`deterministic` kind, e.g. bert-lenses'
+A discrete controller (`nondeterministic`-or-`deterministic` kind, e.g. facets'
 FSA/DLG element from #67) whose current state determines a **mode**, wired to a
 conservation-flow element (`deterministic` kind, `F = Id`) whose **active equation set**
 is selected by that mode. This is the canonical switched-system / hybrid-automaton
@@ -287,7 +287,7 @@ silently drop them:
    direction set (`A` is fixed across all of `B`). Real heterogeneous wiring may need
    directions to depend on the specific output chosen (a genuine dependent polynomial,
    not the fixed-`A` monomial §1 used). Does BERT's port model need this, or is it a
-   Poly-theoretic nicety with no bert-lenses instance yet?
+   Poly-theoretic nicety with no facets instance yet?
 2. **What functor does a mixed `Dist`/`List`/`Id` composite have?** §3.5's gap 2. Poly's
    own machinery (Kleisli-lifted composition) may answer this directly, but it has not
    been checked against BERT's `kindCodomain` table.

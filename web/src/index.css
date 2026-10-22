@@ -2,11 +2,11 @@
 @import "./fonts.css";
 
 /*
- * bert-lenses — Halcyonic Frost design tokens.
+ * facets — Halcyonic Frost design tokens.
  *
  * Inherited from the fleet (trade-observatory / finance-app / germen): a cool,
  * faintly indigo-tinted surface, never flat grey, with one restrained accent.
- * bert-lenses takes TEAL as its accent to distinguish the instrument within the
+ * facets takes TEAL as its accent to distinguish the instrument within the
  * Frost family (slate / teal / indigo). Components consume these via var(--x);
  * the JS mirror lives in src/tokens.ts. Any change is mirrored in web/DESIGN.md.
  *

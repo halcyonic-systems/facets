@@ -132,9 +132,9 @@ The semigroup contract is discharged by Kleisli composition in the powerset mona
 
 ## 5a. Where it belongs: a lenses extension, and the paper's two halves
 
-**Verdict: an extension of bert-lenses.** Not a compose feature, not a third face, not a kernel change.
+**Verdict: an extension of facets.** Not a compose feature, not a third face, not a kernel change.
 
-**The decisive evidence against "structure is just more state" is empirical, not abstract.** bert-compose *already* meets structural change at runtime, and its considered answer is to destroy the history:
+**The decisive evidence against "structure is just more state" is empirical, not abstract.** facets-compose *already* meets structural change at runtime, and its considered answer is to destroy the history:
 
 ```rust
 // Record the tick. A topology change invalidates prior columns.
@@ -146,7 +146,7 @@ if self.history.last().map(|r| r.len()) != Some(width) {
 
 The history row is **indexed by node count**; `balance()` says the same for the ledger ("editing a stock mid-run moves the baseline; Reset re-baselines"). A user dragging a node onto a running canvas *is* ΔC, and the engine's answer is "this is a different system, start over." That is correct under the semigroup contract, already implemented, and a flat refutation of structure-as-more-state.
 
-Two corroborations: [`dynamics-principled-position.md`](dynamics-principled-position.md) already lists, under *explicitly out of scope*, "state-space dimensionality change mid-run… neither axis D nor E covers a carrier changing shape." And bert-compose's own Troncale sweep has a bucket for "structural/relational, not flow-dynamical" — hierarchy went there, and the life cycle goes there by the same test.
+Two corroborations: [`dynamics-principled-position.md`](dynamics-principled-position.md) already lists, under *explicitly out of scope*, "state-space dimensionality change mid-run… neither axis D nor E covers a carrier changing shape." And facets-compose's own Troncale sweep has a bucket for "structural/relational, not flow-dynamical" — hierarchy went there, and the life cycle goes there by the same test.
 
 ### ⚠️ The paper's two halves have opposite epistemic status
 
@@ -246,7 +246,7 @@ Take two saved versions of a model we already have and ask whether the diff is s
 ### 7c. Three constraints on any design here
 
 1. **ADR 0004 is a hard precondition, and it is a sequencing signal worth stating.** Before 2026-07-22 the archive was `project(canvasModel)` — the lossy Mobus projection, dropping `mere`, `: field`, `@directed`, and `system_type`. A sequence of saved models on the old archive would have destroyed Bunge and Klir content **at every step, compounding once per stage.** This capability was impossible to build honestly two months ago.
-2. **Therefore it belongs in bert-lenses, not `bert`** — even though both theory docs live in `bert`. `bert`'s storage is `WorldModel`-based, i.e. exactly the lossy projection ADR 0004 moved off; building it there would construct the compounding-loss defect ADR 0004 exists to eliminate. The only archive that can hold a sequence losslessly across three lenses is `CanvasModel`. (And bert-lenses has already vendored bert-compose, so "two faces, one instrument" is now literally one repo — don't split it back.)
+2. **Therefore it belongs in facets, not `bert`** — even though both theory docs live in `bert`. `bert`'s storage is `WorldModel`-based, i.e. exactly the lossy projection ADR 0004 moved off; building it there would construct the compounding-loss defect ADR 0004 exists to eliminate. The only archive that can hold a sequence losslessly across three lenses is `CanvasModel`. (And facets has already vendored facets-compose, so "two faces, one instrument" is now literally one repo — don't split it back.)
 3. **The storage collision, which does not bite Increment 1 but bites the moment there is a UI.** `fsAccess.ts` resolves a child reference by reading **every file in the picked folder** and calling `modelIdentity` on each — there is no index, and that indexlessness is ADR 0004's *deciding* argument for JSON over SL. A history multiplies files-per-model by step count, so decompose-reference resolution degrades **linearly in history length**. Worse, a chain's ordering has nowhere to live but a predecessor pointer inside each file, so a move or rename can orphan a chain with no index to repair it. **Chain repair must therefore be an explicit, visible operation, never a silent re-link.** Also say plainly in any new ADR that a history is *instances of one generation*, so ADR 0004's write seal and single-reader guarantee carry over unchanged — and note that hierarchy (`child_model`) and time (`succeeds`) are two axes now crossing in the library tree: forty versions must not render as forty library entries.
 4. **The git test.** Without stage semantics, ΔS *is* `git diff`. The three things git does not give: a diff **typed by tuple coordinate** rather than by line, **checked against the five coherence constraints**, and **readable in three traditions' vocabularies**. If a design does not deliver all three, don't build it — use git.
 

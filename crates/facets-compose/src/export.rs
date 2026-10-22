@@ -1124,11 +1124,11 @@ mod tests {
         assert_eq!(src_flow.unit, "L", "declared unit on the interaction");
     }
 
-    /// Law: every exported model satisfies bert-core's operational contract,
+    /// Law: every exported model satisfies facets-core's operational contract,
     /// the two validation gates agree on refusals, and representational
     /// (Klir/Bunge) rungs always refuse execution.
     /// The seam as a contract: every model compose exports satisfies
-    /// bert-core's `validate_operational`, the two gates agree on refusals,
+    /// facets-core's `validate_operational`, the two gates agree on refusals,
     /// and the projected spec drives a circuit whose ledger balances.
     #[test]
     fn export_satisfies_the_seam_contract() {

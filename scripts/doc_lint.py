@@ -129,8 +129,8 @@ def check_file(path: Path) -> list[str]:
 #     the lowercase project-phase phrases ("analysis rung", "rung plan",
 #     "staged rung", "first rung") were retired from LIVE prose 2026-10-11 and
 #     are no longer exempt — say "seam" or "stage";
-#   - the compose "dependency ladder" (bert-compose) and per-edge "edge ladder"
-#     classification (bert-canvas) — real orderings, correctly named;
+#   - the compose "dependency ladder" (facets-compose) and per-edge "edge ladder"
+#     classification (facets-canvas) — real orderings, correctly named;
 #   - code identifiers: a backticked token carrying the word (`ladder.rs`,
 #     `ladder_stamps`, `KlirLadder`, the `ladder` module) and the module path
 #     "examples/ladder/lens" AGENTS.md prints bare;
@@ -149,7 +149,7 @@ SURVIVING_SENSE = re.compile(
     r"|edge ladder"
     r"|compose ladder"
     r"|`[^`]*(?:ladder|rung|climb)[^`]*`"  # a code identifier in backticks
-    r"|examples/ladder/lens"          # the bert-compose module path, printed bare
+    r"|examples/ladder/lens"          # the facets-compose module path, printed bare
     r"|\bGSPS\b"
     r"|on-the-word-ladder"            # references to the archived concordance file
     r"|ladder/rung"                   # meta-quotation of the retired term-set
@@ -528,6 +528,47 @@ def status_gate() -> list[str]:
     return violations
 
 
+# --- the old name in prose (issue #541, phase 6) -----------------------------
+# The project and its crates are named facets. An old name in prose (what the
+# rename inventory files as `doc-prose`) stands only where the old name is the
+# record: a HISTORICAL doc, the dated audits, the vendoring record, and the lines
+# matched below. Lineage, issue references, upstream BERT, the retiring format
+# tag and the deploy labels are other classes and are not checked here.
+# This file is listed too: the table below quotes the records it allows.
+OLD_NAME_RECORD_PREFIXES = ("docs/audits/", "docs/VENDORING.md", "scripts/doc_lint.py")
+OLD_NAME_RECORD_LINES = {
+    "README.md": "and the code took the new name in October 2026",  # the lineage line
+    "crates/facets-core/src/lib.rs": "re-vendored lint-clean upstream",  # upstream's crate
+    "docs/theory-fidelity.md": "GitHub issue #5 (bert-lenses)",  # commits in the repo as then named
+    "web/src/canvas/geometry.ts": "bert-lenses-spike-svg",  # the spike's own name
+    "docs/design/shape-vocabulary-research.md": "project_bert_lenses_llm_integration.md",  # a file's name
+}
+
+
+def historical(path: Path) -> bool:
+    if path.suffix != ".md" or not path.is_file():
+        return False
+    head = header_region(path.read_text(encoding="utf-8"))
+    return any((m := STATUS_CARRIER.search(l)) and m.group(1) == "HISTORICAL" for _, l in head)
+
+
+def old_name_gate() -> list[str]:
+    sys.path.insert(0, str(Path(__file__).resolve().parent))
+    import rename_inventory as ri
+
+    violations: list[str] = []
+    for rel, line_no, cls, text in ri.inventory(REPO):
+        if cls != "doc-prose" or rel.startswith(OLD_NAME_RECORD_PREFIXES):
+            continue
+        marker = OLD_NAME_RECORD_LINES.get(rel)
+        if marker and marker in (REPO / rel).read_text(encoding="utf-8").splitlines()[line_no - 1]:
+            continue
+        if historical(REPO / rel):
+            continue
+        violations.append(f"{rel}:{line_no}: {text}")
+    return violations
+
+
 def main() -> int:
     all_violations: list[str] = []
     for doc in live_docs():
@@ -537,6 +578,7 @@ def main() -> int:
     hedge_violations = hedge_vocab()
     provenance_violations = provenance_gates()
     status_violations = status_gate()
+    old_name_violations = old_name_gate()
     broken_links, orphans, unindexed = ia_gates()
 
     if status_violations:
@@ -549,6 +591,18 @@ def main() -> int:
             "shapes: `**Status: WORD**` (prose) or `status: **WORD**` (the ADR "
             "byline). Six words, uppercase: LIVE, ADOPTED, PROPOSED, "
             "CONTINGENT(#N), RESEARCH, HISTORICAL.",
+            file=sys.stderr,
+        )
+
+    if old_name_violations:
+        print("\ndoc-lint: the old name in prose (issue #541)\n", file=sys.stderr)
+        for v in old_name_violations:
+            print(f"  {v}", file=sys.stderr)
+        print(
+            "\nThe project and its crates are facets: facets-core, facets-compose, "
+            "facets-canvas, facets-tether, facets-kernel, facets-cli. The old names "
+            "stay in the lineage line, docs/archive/, docs/decisions/, HISTORICAL "
+            "docs and the records listed in OLD_NAME_RECORD_LINES.",
             file=sys.stderr,
         )
 
@@ -595,6 +649,7 @@ def main() -> int:
         or hedge_violations
         or provenance_violations
         or status_violations
+        or old_name_violations
         or broken_links
         or orphans
         or unindexed
@@ -626,7 +681,7 @@ def main() -> int:
         f"vocabulary clean ({len(vocab_scope())} files incl. entry points); provenance tables match the manifest; {gate_a}; "
         f"{len(indexed_docs())} indexed docs all reachable, linked, and link-resolving; "
         f"{len(status_scope())} docs/ files each carry exactly one "
-        f"status word{exempt_note}"
+        f"status word{exempt_note}; no old name in prose outside the records"
     )
     return 0
 

@@ -21,7 +21,7 @@ declared on the state space by the model.**
 
 Three consequences, and they are the whole paper:
 
-1. bert-lenses' current engine does not implement "dynamics." It implements **one
+1. facets' current engine does not implement "dynamics." It implements **one
    dynamics-kind** (deterministic self-map on a vector-space state carrying an
    additive conservation invariant) and has been mistaking a special case for the
    category.
@@ -64,10 +64,10 @@ Why this wins Layer 1 over every rival:
 - **Dynamics is an added structure, not a synonym for time-indexing.** MT separate
   "time system" (a relation on time-indexed functions) from "dynamical system" (a
   time system *for which you can exhibit* a state-transition family). This is the
-  precise formal home for bert-lenses' "Run = a mode transition" framing: the
+  precise formal home for facets' "Run = a mode transition" framing: the
   structural model is a time system; **running it is exhibiting a φ**.
 - **The semigroup axiom is a real acceptance test**, not vocabulary. Stepping
-  t→t' then t'→t'' must equal stepping t→t'' directly. Every mode bert-lenses ever
+  t→t' then t'→t'' must equal stepping t→t'' directly. Every mode facets ever
   ships must satisfy it, and it is mechanically checkable per-engine. This is the
   single most valuable engineering artifact in the entire six-reader corpus.
 
@@ -143,7 +143,7 @@ decides two live issues. Klir's hierarchy places **finite-state machines
 equations in one undifferentiated category** — generative systems — named together in
 a single sentence (klir-facets.md:4043–4045). That is a citable, textual, pre-existing
 statement that conservation-flow ODEs and FSA transitions are the *same epistemological
-level*. It is the argument bert-lenses has never made, already written down in 1991.
+level*. It is the argument facets has never made, already written down in 1991.
 
 One level up, a **metasystem** specifies a support-invariant replacement procedure that
 swaps one generative system for another. Klir's worked kidney/dialysis example — frame
@@ -182,7 +182,7 @@ in a named, separately-varying parameter of that sentence.
 
 ## 2. The taxonomy
 
-Six axes. They were chosen by the test "does bert-lenses have to write different code
+Six axes. They were chosen by the test "does facets have to write different code
 if this varies" — axes that fail that test are ontology, not engineering.
 
 - **A. Support structure.** Discrete (ℕ) / dense (ℝ) / arbitrary linear order /
@@ -279,7 +279,7 @@ re-description. Three concrete returns:
 1. **It collapses three ad-hoc axes into one.** Deterministic-vs-stochastic,
    autonomous-vs-input-driven, silent-vs-emitting are not three independent design
    questions to be argued separately. They are one question — what is the codomain of
-   T — with a small, closed, enumerable answer set. Without this, bert-lenses would
+   T — with a small, closed, enumerable answer set. Without this, facets would
    grow a boolean flag per distinction and the combinations would be unmanageable.
 2. **It converts "is X a generalization of Y" from an argument into a computation.**
    Is a deterministic system a degenerate Markov chain? The question becomes: is there
@@ -305,7 +305,7 @@ Three reasons, all sourced:
    `Open(Dynam)` is continuous vector fields on ℝ^S with *no* discrete-event, hybrid,
    or stochastic treatment — an absence VERIFIED by reading the relevant section, not
    inferred (`read-external §8`). Wiring a conservation-flow element to an FSA element
-   in one diagram is precisely bert-lenses' problem and precisely what no source
+   in one diagram is precisely facets' problem and precisely what no source
    solves. Myers' double-categorical synthesis is the closest, and its own author
    calls the book a "0th draft" (`read-category-theory §2c`).
 2. **ABM is the weakest link.** The only categorical treatment of agent trajectories
@@ -322,7 +322,7 @@ Adopt CT as the **classification vocabulary for axis C** and cite it that way, w
 honest framing already drafted in `read-category-theory §4`: *dynamics-kind is
 classified by the codomain functor of the transformation map, following Rutten;
 heterogeneous open-system composition is an active unsettled frontier, not an adopted
-pattern.* Do **not** describe bert-lenses as a categorical tool. Do not restructure the
+pattern.* Do **not** describe facets as a categorical tool. Do not restructure the
 kernel. Revisit implementation only if and when the heterogeneous-wiring problem
 (axis F) becomes the binding constraint — at which point we would be doing original
 research, not adoption, and should know that going in.
@@ -492,7 +492,7 @@ Bertalanffy's second theorem (GST pp. 132–133, VERIFIED, `read-bertalanffy §c
 quantity makes the asymptote depend on initial conditions. **Conservation and
 equifinality are in structural tension.** Today's engine simulates conservation-faithful
 flow, which means it is running the one class of system that *structurally cannot*
-exhibit equifinality on its conserved measures. Any future claim bert-lenses makes about
+exhibit equifinality on its conserved measures. Any future claim facets makes about
 attractors, robustness, or convergence has to be scoped against that theorem. This is a
 free, cheap, load-bearing constraint we would otherwise have discovered by being wrong.
 

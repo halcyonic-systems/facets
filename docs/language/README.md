@@ -1,4 +1,4 @@
-# SL — the bert-lenses system language
+# SL — the facets system language
 
 **Status: LIVE.** SL is specified and shipped at v1.13 (v1.0 on 2026-07-18; each additive revision since is marked in the spec and rowed in its §11). Write SL in the app's text pane, compile, and the model renders and is judged like any other. Round-trip goldens pass. The language is under active development; §"Known gaps" in the spec lists what the next revision owes.
 

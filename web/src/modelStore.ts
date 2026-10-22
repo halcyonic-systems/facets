@@ -12,7 +12,7 @@
 import { modelIdentity } from "./kernel";
 import type { ArchiveText } from "./kernel";
 
-const DB_NAME = "bert-lenses";
+const DB_NAME = "facets";
 const STORE = "models";
 
 export interface ModelRecord {

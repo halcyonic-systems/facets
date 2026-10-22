@@ -71,7 +71,7 @@ describe("coauthor turn persistence", () => {
 
   it("falls back to an empty history on corrupt stored JSON, not a throw", () => {
     (globalThis as unknown as { localStorage: MemoryStorage }).localStorage.setItem(
-      "bert-lenses.coauthor-turns",
+      "facets.coauthor-turns",
       "{not json",
     );
     expect(() => loadCoauthorTurns()).not.toThrow();

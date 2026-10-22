@@ -1,4 +1,4 @@
-//! Adversarial inputs across the bert-tether boundary paths (issue #47).
+//! Adversarial inputs across the facets-tether boundary paths (issue #47).
 //!
 //! `parse_csv`, `mapping_status`, and `force_and_run` are reachable from the
 //! wasm boundary (`api.rs`), and the tether wizard feeds them partially-valid,

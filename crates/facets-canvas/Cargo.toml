@@ -2,7 +2,7 @@
 name = "facets-canvas"
 version = "0.1.0"
 edition = "2021"
-description = "The canvas/lens domain: the serializable CanvasModel, its projection into a bert-core WorldModel, and the faithful lens palettes (lens_facts + describe). Pure Rust, no wasm-bindgen — truth the kernel marshals."
+description = "The canvas/lens domain: the serializable CanvasModel, its projection into a facets-core WorldModel, and the faithful lens palettes (lens_facts + describe). Pure Rust, no wasm-bindgen — truth the kernel marshals."
 license = "MIT"
 # Not on crates.io. These five crates are vendored into this repository and
 # distributed only as the wasm kernel inside the app, never as separate
@@ -16,17 +16,17 @@ publish = false
 facets-core = { path = "../facets-core" }
 serde = { version = "1", features = ["derive"] }
 # `Thing` carries AgentModel's engine-parameter maps opaquely (#216), and
-# `initial_state` values are arbitrary JSON — same Value type bert-core uses.
+# `initial_state` values are arbitrary JSON — same Value type facets-core uses.
 serde_json = "1"
 
 [dev-dependencies]
 facets-core = { path = "../facets-core" }
 # Test-only. `canvas_round_trip.rs` has to RUN a demo before and after a canvas
 # round-trip, because "still projects to an executable model" was the assertion
-# that let a 22% trajectory change ship green (#216). No cycle: bert-compose
-# depends on bert-core only.
+# that let a 22% trajectory change ship green (#216). No cycle: facets-compose
+# depends on facets-core only.
 facets-compose = { path = "../facets-compose" }
 # Test-only. `sl_demos.rs` runs the SL-authored demos' ACTUAL gallery bundles
 # through the forced path, so a bad element name or unit in a bundle fails in
-# CI instead of at GUI runtime. No cycle: bert-tether depends on core+compose.
+# CI instead of at GUI runtime. No cycle: facets-tether depends on core+compose.
 facets-tether = { path = "../facets-tether" }

@@ -26,7 +26,7 @@ export const THEME_LABEL: Record<ThemeChoice, string> = {
   dark: "dark",
 };
 
-const KEY = "bert-lenses.theme";
+const KEY = "facets.theme";
 
 function isChoice(v: unknown): v is ThemeChoice {
   return v === "system" || v === "light" || v === "dark";

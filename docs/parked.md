@@ -55,7 +55,7 @@ entry for the reasoning.
 
 *Opened 2026-07-18 · closed 2026-07-26 · the precedent this file is modelled on.*
 
-**What it is.** An R&D investigation into whether bert-lenses could go
+**What it is.** An R&D investigation into whether facets could go
 realtime-collaborative on SpacetimeDB without compromising the architecture. It
 is the model entry for this file because it states three things: what was
 decided, what evidence settled it, and **which half of its own findings was not
@@ -74,12 +74,12 @@ sharper forms of the same point:
   would sit downstream of an unverified third-party concurrency contract.
 - A spike whose best outcome is *"works, but we probably shouldn't ship it"* **is
   not a spike, it's an attractive nuisance.** The fallback (a relay running
-  `bert-core` natively) already delivers the core property — server-side refusal
+  `facets-core` natively) already delivers the core property — server-side refusal
   plus ordered SL replay — so the vendor spike answers a question we do not have.
 
 The seam design is retained, and a **relay is pre-designated** as the answer if
 realtime is ever unparked. It is not built now: *"a plain WebSocket relay running
-bert-core natively"* is a sentence, not a scope — auth, session lifecycle,
+facets-core natively"* is a sentence, not a scope — auth, session lifecycle,
 presence, reconnect/backfill, persistence, deploy, ops surface. That is the
 substrate SpacetimeDB exists to sell, which is the tell that it is a product, not
 a weekend.
@@ -112,7 +112,7 @@ replaced by an unpark trigger.
   library, which is why it survives parking. One arm noted it is *itself an
   argument against the vendor*: the harder our own semantics carry the load, the
   less SpacetimeDB contributes.
-- **COINCIDENCE DRESSED AS DESTINY: "bert-core is already SpacetimeDB-shaped."** A
+- **COINCIDENCE DRESSED AS DESTINY: "facets-core is already SpacetimeDB-shaped."** A
   pure Rust crate with no I/O and no async runtime compiles into *any* WASM host
   — that is what purity buys, and it is true of every well-factored pure crate.
   It is the *absence* of coupling reading as the *presence* of destiny.
@@ -144,7 +144,7 @@ not by multiplayer:
   accept/reject of agent proposals, and a replayable provenance trail — all
   single-player, all wanted regardless of a second user, and all the same work
   realtime would need later.
-- **UUID minting out of `bert-core`** — correct independently; a kernel that
+- **UUID minting out of `facets-core`** — correct independently; a kernel that
   mints identifiers is a kernel with a hidden clock. Also required for
   reproducible replay.
 - **CI property test: `replay(log) == model`, bit-for-bit.** The cheap binary
@@ -340,7 +340,7 @@ Analysis bridge. Plan: halcyonic vault,
 **The core capability — RA-ready ensemble export.** Given an authored model,
 generate a multivariate categorical dataset with known ground-truth structure:
 
-1. **Ensemble sampling, not trajectory sampling.** N independent bert-compose
+1. **Ensemble sampling, not trajectory sampling.** N independent facets-compose
    runs with exogenous inputs/parameters drawn from documented distributions;
    record designated variables at steady state (or a fixed horizon); one row per
    run, giving iid-ish rows — which is what RA's sampling frame assumes.
@@ -372,7 +372,7 @@ instrument first — a CLI/script plus notebooks is enough, no UI work implied.
 
 ### The feasibility check, and what it changed (2026-07-21)
 
-Checked against bert-compose. The headless engine already exists (`circuit.rs`,
+Checked against facets-compose. The headless engine already exists (`circuit.rs`,
 UI-free; operational gate plus 30-tick conservation proven in tests since 7/09),
 and the Troncale sweep is an in-repo precedent for programmatic headless runs with
 artifact emission — ensemble export is *"sweep, but emitting rows."* Two
@@ -464,7 +464,7 @@ the Lean identifiers. **No unpark trigger — retired.**
 
 ### The finding
 
-bert-lenses is a **visual instrument whose quickstart is text-only**. The
+facets is a **visual instrument whose quickstart is text-only**. The
 product's core idea — a verdict panel refusing loudly and citing the formal
 precondition it rests on — is conveyed only in prose, and no paragraph
 communicates it as fast as one annotated image.
@@ -667,11 +667,11 @@ shapes; fitness-directed decline (that is `Evolution.lean`'s territory).
 
 ### The architecture pass, and three corrections it forced (`860efc7`)
 
-**Verdict: a bert-lenses extension** — not compose, not a third face, not a kernel
+**Verdict: a facets extension** — not compose, not a third face, not a kernel
 change.
 
 - **The decisive evidence against "structure is just more state" is empirical.**
-  bert-compose already meets structural change at runtime and its considered
+  facets-compose already meets structural change at runtime and its considered
   answer is to *destroy the history* — history rows are indexed by node count and
   cleared on topology change. Dragging a node onto a running canvas *is* ΔC, and
   the engine says "this is a different system, start over." Corroborated by this
@@ -846,7 +846,7 @@ No unpark trigger, and it does not need one: **the live work is the paper, and i
 lives in SSF.** That plan's gate was "only results that are done or directly
 entailed"; §4 was the unmet one and is now met, so **the next move is drafting §5,
 not more formalization.** The Increment 1/2 work is deliberately *after* George has
-the paper. If it resumes, it resumes as a bert-lenses extension per the
+the paper. If it resumes, it resumes as a facets extension per the
 architecture pass, starting from the typed structural diff.
 
 ---

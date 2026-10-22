@@ -46,7 +46,7 @@ fn every_subcommand_answers_in_json_on_stdout() {
 /// author mistyped a keyword" from "this is not a system".
 #[test]
 fn a_parse_fault_and_a_kernel_refusal_have_different_codes() {
-    let dir = std::env::temp_dir().join("bert-cli-surface");
+    let dir = std::env::temp_dir().join("facets-cli-surface");
     std::fs::create_dir_all(&dir).expect("scratch dir");
     let bad = dir.join("typo.sl");
     std::fs::write(&bad, "component A\nflwo A -> B\n").expect("write scratch SL");

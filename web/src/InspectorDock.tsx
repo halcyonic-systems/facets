@@ -446,7 +446,7 @@ function HostFailureCard({ message }: { message: string }) {
 // same projection, so a rejection blanks both).
 function RejectedCard({ message }: { message: string }) {
   return (
-    <Card title="Kernel rejected this state" source="bert-core · wasm">
+    <Card title="Kernel rejected this state" source="facets-core · wasm">
       <p className="text-sm" style={{ color: "var(--verdict-error)" }}>
         {message}
       </p>

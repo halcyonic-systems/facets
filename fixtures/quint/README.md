@@ -1,7 +1,7 @@
 # Quint mode-ladder trace fixtures (bert-lenses#17)
 
 Committed ITF (Informal Trace Format) traces of the mode-ladder spec, replayed
-against the real bert-core mode machine by `crates/facets-core/tests/quint_replay.rs`.
+against the real facets-core mode machine by `crates/facets-core/tests/quint_replay.rs`.
 
 The traces are generated **offline** with the Quint CLI and committed here, so CI
 replays them with nothing but `serde` — no Quint, no Java, no Apalache. The
@@ -40,4 +40,4 @@ Regenerate all four with `quint-lab/scripts/gen_mode_ladder_traces.sh`.
 are `{"#bigint":"n"}`. The replay harness reads `mode`, `hasBond`, `irreflexive`,
 `executable`, `running`, `hRecorded`, `hValid`, `downgradedSinceRecord`,
 `editedSinceDowngrade`, `witnessIntact`, `edits` from each state. See the harness
-header for the concretization mapping (spec knob → bert-core structural lever).
+header for the concretization mapping (spec knob → facets-core structural lever).
