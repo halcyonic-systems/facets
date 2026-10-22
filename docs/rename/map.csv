@@ -35,6 +35,18 @@ bert,facets,rust-ident,4,the bert() test helper in crates/bert-cli/tests/support
 *,*,fixture,5,hand-edited with the diff read; assets/models/runnable-sample.json is re-minted by mint_runnable_sample
 docs/lean-manifest.json stated_in,crates/facets-*,crate-dir,5,moves with phase 2 or Gate A breaks; then just provenance regenerates docs/lean-provenance.md
 *,*,doc-prose,6,the map applied to docs/ and READMEs and AGENTS.md and comments and strings that are prose; doc_lint gains the check that bert-lenses appears only in the lineage line and docs/archive/ and ADR history
+bert-lenses-kernel,facets-kernel,doc-prose,6,the crate name in prose and comments
+bert_lenses_kernel,facets_kernel,doc-prose,6,the crate name in prose and comments
+bert-core,facets-core,doc-prose,6,the crate name in prose and comments
+bert_core,facets_core,doc-prose,6,the crate name in prose and comments
+bert-compose,facets-compose,doc-prose,6,the crate name in prose and comments
+bert_compose,facets_compose,doc-prose,6,the crate name in prose and comments
+bert-canvas,facets-canvas,doc-prose,6,the crate name in prose and comments
+bert_canvas,facets_canvas,doc-prose,6,the crate name in prose and comments
+bert-tether,facets-tether,doc-prose,6,the crate name in prose and comments
+bert_tether,facets_tether,doc-prose,6,the crate name in prose and comments
+bert-cli,facets-cli,doc-prose,6,the crate name in prose and comments
+bert_cli,facets_cli,doc-prose,6,the crate name in prose and comments
 bert-lenses,facets,doc-prose,6,the project name in prose
 bert-lenses.app,Facets.app,deploy,6,already true in src-tauri (productName Facets); AGENTS.md and docs/running-permanently.md are stale
 bert-lenses-desktop,facets-desktop,deploy,6,already true (src-tauri/Cargo.toml name); AGENTS.md is stale
