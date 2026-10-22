@@ -1,6 +1,6 @@
 # The rename ledger: bert → facets
 
-**Status: PROPOSED.** The ledger of the rename epic ([#541](https://github.com/halcyonic-systems/facets/issues/541)): the inventory of every occurrence of the old names, filed by class, the map the phases apply, and one dated entry per phase. Phase 1 renamed nothing; phase 2 renamed the crates; phase 3 renamed the wasm package, the web package and the saved-file format tag; phase 4 renamed the command-line program; phase 5 re-minted the goldens and the walkthrough archives; phase 6 renamed the prose and gates it (entries below). Each phase regenerates the inventory and shows its classes at zero; `python3 scripts/rename_inventory.py --check` fails whenever the tree and the inventory on disk disagree, so a phase cannot claim a count it did not produce.
+**Status: PROPOSED.** The ledger of the rename epic ([#541](https://github.com/halcyonic-systems/facets/issues/541)): the inventory of every occurrence of the old names, filed by class, the map the phases apply, and one dated entry per phase. Phase 1 renamed nothing; phase 2 renamed the crates; phase 3 renamed the wasm package, the web package and the saved-file format tag; phase 4 renamed the command-line program; phase 5 re-minted the goldens and the walkthrough archives; phase 6 renamed the prose and gates it; phase 7 renamed what lives outside the code (entries below). Each phase regenerates the inventory and shows its classes at zero; `python3 scripts/rename_inventory.py --check` fails whenever the tree and the inventory on disk disagree, so a phase cannot claim a count it did not produce.
 
 ## Files
 
@@ -283,13 +283,45 @@ python3 scripts/rename_inventory.py && python3 scripts/rename_inventory.py --che
 just check                                             # green: cargo 752 passed, 0 failed, 28 ignored; vitest 833 passed in 111 files; wasm-exec 209 checks (rustc 1.99.1: `rustup update stable` was needed locally, since uuid 1.28.0 from #550 requires 1.89)
 ```
 
+## Phase 7 (2026-10-21): outside the repository
+
+The launchd label is `com.halcyonic.facets`, the published copy is `~/halcyonic-apps/facets`, and the pipeline reads `FACETS_DATA_DIR`. `deploy` 40 → 14; every remaining row is the pipeline's data folder `~/Documents/bert-lenses/`, which stays where it is (decision 3), plus the one line in `docs/running-permanently.md` that names the old label so a service installed under it can be found.
+
+| class | before | after | what remains |
+|---|---|---|---|
+| `deploy` | 40 | 14 | `~/Documents/bert-lenses/{data,technical}` in `tools/pipeline/` (8), its README (1), two design docs (4); `docs/running-permanently.md:5` (the old label and path, named once) |
+| every other class | unchanged | unchanged | |
+| **total** | **575** | **549** | |
+
+**In the repository.** `scripts/launchd/com.halcyonic.bert-lenses.plist` moved with `git mv` to `com.halcyonic.facets.plist`; its label and every `~/halcyonic-apps/` path follow (`plutil -lint` OK). `scripts/publish-app.sh` publishes to `~/halcyonic-apps/facets` and writes `facets-serve` (`bash -n` OK). `docs/running-permanently.md` follows, and its status paragraph names the old label once. `tools/pipeline`: `BERT_LENSES_DATA_DIR` → `FACETS_DATA_DIR`, `BERT_LENSES_SCRATCH_DIR` → `FACETS_SCRATCH_DIR`, User-Agent `facets-pipeline/0.1`; neither variable was set on the maintainer's machine, so no fallback reads the old names.
+
+**Outside it, on the maintainer's machine (2026-10-21):** no launchd service was loaded under either label, so nothing was booted out; `~/halcyonic-apps/bert-lenses` was moved to `~/halcyonic-apps/facets` (`dist/`, `server/`, `web.log`). The launcher registry (`halcyonic-projects/projects.json`) had the key `bert-lenses` at the path `active/bert-lenses`, which had not existed since August; it is now `facets` at `active/facets`, and `launch status` lists it. The vault's launcher skill and `.claude/docs/desktop-app-automation.md` name `facets`, `systems.halcyonic.facets`, `facets-desktop` and the window title `Facets — Model`; dated proof lines there keep the old name.
+
+**Read, not changed:**
+- hal's `gates.py` already matches both names. Its eval data and the dated proxy comment are records.
+- general-systems-reasoner names `bert-lenses#N` issues and the old label in comments. Its CORS origins do not depend on the label.
+- Its SL authoring prompt says "the bert-lenses System Language". That string goes to the model and the drafter audits measure its output, so it changes in a measured PR of its own, not here.
+- The vault's `sysos.py` maps the old names to `facets` on purpose.
+- No GitHub label carries the old name. #365 (the ripple sweep) closes with this phase.
+
+**Commands run:**
+
+```
+git mv scripts/launchd/com.halcyonic.bert-lenses.plist scripts/launchd/com.halcyonic.facets.plist
+plutil -lint scripts/launchd/com.halcyonic.facets.plist && bash -n scripts/publish-app.sh && python3 -m py_compile tools/pipeline/common.py tools/pipeline/fetch_usage_openrouter.py
+launchctl list | grep -i -E 'bert|facets'              # nothing loaded
+mv ~/halcyonic-apps/bert-lenses ~/halcyonic-apps/facets
+launch status                                          # facets  5173  stopped
+python3 scripts/doc_lint.py && python3 scripts/rename_inventory.py && python3 scripts/rename_inventory.py --check
+```
+
 ## Phase ordering
 
 Phase 5 moves with phase 2: the Lean manifest's `stated_in` paths name `crates/bert-*` files and Gate A reads them, and the contract goldens embed a crate name in a lens note. The lists below are generated.
 
 <!-- rename-inventory:begin (generated by scripts/rename_inventory.py; do not edit) -->
 
-Occurrences: **575** in **118** files (inventory of 2026-10-11, one row per occurrence).
+Occurrences: **549** in **115** files (inventory of 2026-10-11, one row per occurrence).
 
 ### By class
 
@@ -300,7 +332,7 @@ Occurrences: **575** in **118** files (inventory of 2026-10-11, one row per occu
 | lineage | 147 | 22 |
 | upstream-bert | 139 | 40 |
 | issue-ref | 160 | 47 |
-| deploy | 40 | 11 |
+| deploy | 14 | 8 |
 | crate-dir | 6 | 5 |
 | fixture | 1 | 1 |
 | cli-word | 33 | 15 |
@@ -310,13 +342,13 @@ Occurrences: **575** in **118** files (inventory of 2026-10-11, one row per occu
 
 | directory | occurrences |
 |---|---|
-| docs/ | 269 |
+| docs/ | 261 |
 | crates/ | 207 |
 | assets/ | 33 |
-| tools/ | 20 |
-| scripts/ | 19 |
+| tools/ | 14 |
 | (root) | 11 |
 | web/ | 10 |
+| scripts/ | 7 |
 | fixtures/ | 5 |
 | .vscode/ | 1 |
 
@@ -338,12 +370,12 @@ Occurrences: **575** in **118** files (inventory of 2026-10-11, one row per occu
 | crates/facets-compose/src/export.rs | 10 |
 | docs/archive/on-the-word-ladder.md | 10 |
 | docs/audits/docs-staleness-2026-10-11.md | 10 |
-| docs/running-permanently.md | 10 |
 | crates/facets-core/src/decomposition.rs | 9 |
 | docs/decisions/0002-web-first-rebuild.md | 9 |
 | docs/decisions/0005-vocabulary-tiers.md | 9 |
 | docs/design/educational-model-suite.md | 9 |
 | crates/facets-tether/src/forcing.rs | 7 |
+| docs/design/dynamics-research/read-klir.md | 7 |
 
 ### Phase 5: goldens and fixtures to re-bless
 
