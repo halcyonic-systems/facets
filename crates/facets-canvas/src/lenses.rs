@@ -405,11 +405,16 @@ fn lens_residue(model: &CanvasModel, lens: Lens, facts: &LensFacts) -> LensResid
         .count();
     // A pass-way (#226) is excluded deliberately: its answer to "what work
     // process?" is "none — I am a pass-way", which is an ANSWER, not an
-    // omission. A component merely STAMPED interface still gets asked.
+    // omission. A component merely STAMPED interface still gets asked. An
+    // agent is excluded for the same reason: it is a kind of its own with no
+    // primitive by design (ADR 0008 D1, "the ten work processes stay ten"),
+    // so its rule is the answer (#561).
     let bare_components = model
         .things
         .iter()
-        .filter(|t| t.role == Role::Component && t.primitive.is_none() && !t.passway)
+        .filter(|t| {
+            t.role == Role::Component && t.primitive.is_none() && !t.passway && t.rule.is_none()
+        })
         .count();
     let directed = model.relations.iter().filter(|r| r.klir_directed).count();
     // Effective I = flow-crossing ∪ authored — the same union b_interfaces reports.
@@ -2110,6 +2115,33 @@ mod tests {
         assert_eq!(count(&mobus.hidden, "mere relation"), Some(1), "B̄ never projects");
         assert_eq!(count(&mobus.unspecified, "substances"), Some(4));
         assert_eq!(count(&mobus.unspecified, "process primitives"), Some(2));
+    }
+
+    /// Law: an agent's absent primitive is not residue (#561). The
+    /// feedforward bench model has every work process answered, so Mobus
+    /// asks nothing of it; clearing one component's primitive is the
+    /// separating instance, and the line comes back counting that one alone.
+    #[test]
+    fn an_agent_owes_mobus_no_primitive() {
+        let mut m =
+            parse_sl(include_str!("../../../assets/bench/thermostat-feedforward.sl")).unwrap();
+        assert!(m.things.iter().any(|t| t.rule.is_some()), "the bench model carries an agent");
+        let primitive_line = |m: &CanvasModel| {
+            let residue = analyze(m, Lens::Mobus).residue;
+            residue
+                .unspecified
+                .iter()
+                .find(|e| e.label.starts_with("process primitive"))
+                .map(|e| e.count)
+        };
+        assert_eq!(primitive_line(&m), None, "an agent's rule answers the work-process question");
+        let bare = m
+            .things
+            .iter_mut()
+            .find(|t| t.role == Role::Component && t.rule.is_none() && t.primitive.is_some())
+            .unwrap();
+        bare.primitive = None;
+        assert_eq!(primitive_line(&m), Some(1), "a component without its primitive is still asked");
     }
 
     /// Law: answering a lens's question empties its unspecified residue — and
