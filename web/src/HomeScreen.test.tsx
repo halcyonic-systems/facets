@@ -29,6 +29,7 @@ import { resetLibraryForTest, setLibraryAllEnabled } from "./libraryFlag";
 setLibraryAllEnabled(true);
 import type { RecentEntry } from "./recent";
 import { CORPUS } from "./corpus";
+import { resetKlirForTest, setKlirEnabled } from "./flags";
 import type { LibraryNode } from "./libraryTree";
 
 // renderToStaticMarkup never resolves an effect, so the drafted partition is
@@ -405,8 +406,12 @@ describe("the doors", () => {
   });
 
   it("keeps the two colour channels apart", () => {
+    // All three traditions on the page: the Klir shelf stands behind the lens
+    // flag (cut 2026-10-26), so this test opens the door and closes it after.
+    setKlirEnabled(true);
     const lens = doors({ initialArrange: "lens" });
     const domain = doors({ initialArrange: "domain" });
+    resetKlirForTest();
     // A tradition is a reading and wears --world-*; a genus is a kingdom and
     // wears a chart ink. Neither channel appears in the other's cut.
     for (const id of ["klir", "bunge", "mobus"]) {
@@ -436,6 +441,28 @@ describe("the doors", () => {
     expect(html).toContain("var(--accent-slate)");
     // Delete is the one destructive control on the page and is marked as one.
     expect(doors({ tree, initialManage: true })).toContain("var(--verdict-error)");
+  });
+
+  // cut 2026-10-26: the Klir lens is behind `?lens=klir`. With the door closed
+  // the lens cut has no Klir shelf, and the Klir entries still ship — the list
+  // view and search reach them, because a hidden shelf is not a dropped model.
+  it("hides the Klir shelf while the lens flag is off, and keeps its models", () => {
+    resetKlirForTest();
+    const lensShelves = shelves(shipped, "lens");
+    expect(lensShelves.some((s) => s.id === "klir")).toBe(false);
+    expect(lensShelves.filter((s) => s.kind === "tradition").map((s) => s.id).sort()).toEqual(["bunge", "mobus"]);
+    expect(doors({ initialArrange: "lens" })).not.toContain("var(--world-klir)");
+    const klirRows = shipped.filter((m) => m.open.kind === "corpus" && m.open.entry.tradition === "klir");
+    expect(klirRows.length).toBeGreaterThan(0);
+    const list = browser();
+    for (const m of klirRows) expect(list).toContain(escapeHtml(m.name));
+    const lead = klirRows.find((m) => m.key === "klir/students-in-a-course.sl")!;
+    expect(doors({ initialQuery: lead.name })).toContain(escapeHtml(lead.name));
+    // Open the door: the shelf is back, led by its pinned model.
+    setKlirEnabled(true);
+    const klir = shelves(shipped, "lens").find((s) => s.id === "klir");
+    expect(klir?.models[0]?.key).toBe("klir/students-in-a-course.sl");
+    resetKlirForTest();
   });
 
   it("leads each shelf with the model that teaches it", () => {

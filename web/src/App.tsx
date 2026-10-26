@@ -21,6 +21,7 @@ import { stage2Report, type PoolEntry, type Stage2Report } from "./resolution";
 import type { CorpusEntry } from "./corpus";
 import Canvas, { type RideOrder } from "./canvas/Canvas";
 import { view3dEnabled } from "./canvas3d/flag";
+import { lensTabs } from "./flags";
 
 // facets#435: the 3D view is a lazy sibling of <Canvas>; three stays out of the
 // main chunk until the beta pill is pressed.
@@ -142,7 +143,6 @@ function spokenFor(csv: string, m: Manifest): Manifest {
   const ignored = headers.filter((h) => !have.has(h)).map((column) => ({ column, as: "ignore" as const }));
   return ignored.length ? { ...m, mapping: [...m.mapping, ...ignored] } : m;
 }
-const LENSES: CanvasModel["lens"][] = ["Klir", "Bunge", "Mobus"];
 
 /** The mode axis (#304, extended by #312 move 2), in switch order. Three things
  *  to be DOING with the open model — asserting, observing, executing — not three
@@ -2989,7 +2989,7 @@ function Workspace() {
             : "The active lens — each tradition asks its own question of the model"
         }
       >
-        {LENSES.map((l) => (
+        {lensTabs(canvasModel.lens).map((l) => (
           <button
             key={l}
             onClick={() => setLens(l)}
