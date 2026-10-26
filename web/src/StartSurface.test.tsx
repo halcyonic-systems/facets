@@ -40,15 +40,13 @@ describe("StartSurface", () => {
     expect(m).not.toContain("Kingdom");
   });
 
-  it("offers the data and library doors only when the shell supplies them", () => {
+  it("offers the library door only when the shell supplies it, and no data door", () => {
     const bare = renderToStaticMarkup(<StartSurface onDescribe={noop} onSkip={noop} />);
-    expect(bare).not.toContain("Build from data");
     expect(bare).not.toContain("Open an example");
-    const full = renderToStaticMarkup(
-      <StartSurface onDescribe={noop} onSkip={noop} onStartFromData={noop} onOpenLibrary={noop} />,
-    );
-    expect(full).toContain("Build from data");
+    const full = renderToStaticMarkup(<StartSurface onDescribe={noop} onSkip={noop} onOpenLibrary={noop} />);
     expect(full).toContain("Open an example");
+    // The data-first door left the face in the 2026-10-26 cut (#309 parked).
+    expect(full).not.toContain("Build from data");
   });
 
   it("says the co-author is off, and that nothing is sent before the author chooses", () => {

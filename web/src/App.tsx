@@ -1453,7 +1453,17 @@ function Workspace() {
   }
 
   // #309 M1: open the data-first door. Same discard/walk guards as File → New;
-  // the reset itself waits until the surface commits.
+  // the reset itself waits until the surface commits. Since the 2026-10-26 cut
+  // no door on the face leads here (#309 parked); `?data=1` opens it, so the
+  // surface stays reachable while the issue is parked without being offered.
+  useEffect(() => {
+    try {
+      if (new URLSearchParams(window.location.search).get("data") === "1") void startFromData();
+    } catch {
+      // no URL to read (tests, desktop) — nothing to open
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
   async function startFromData() {
     if (!(await guardDiscard()) || !(await flushWalk())) return;
     setStartFromDataOpen(true);
@@ -4103,10 +4113,6 @@ function Workspace() {
             setSlOpen(true);
           }}
           onSkip={() => setStartOpen(false)}
-          onStartFromData={() => {
-            setStartOpen(false);
-            void startFromData();
-          }}
           onOpenLibrary={() => {
             setStartOpen(false);
             openHomeAt({ view: "library" });
@@ -4121,7 +4127,6 @@ function Workspace() {
         <HomeScreen
           initialRoute={homeRoute}
           onCreate={newModel}
-          onStartFromData={startFromData}
           onOpenExample={pickExample}
           onOpenCorpus={pickCorpus}
           onOpenDrafted={pickDrafted}

@@ -1,7 +1,7 @@
 // The home screen — a menu with three doors, not a modal stacked on an empty
 // canvas. Two levels, one surface:
 //
-//   home     Start (Draw your system · Build from data) · Continue (Open a model)
+//   home     Start (Draw your system · Describe your system) · Continue (Open a model)
 //            · Try (Sandbox) — documentation and provenance in the colophon
 //   library  DOORS: what you had open last, the shelves of ours cut by lens or
 //            by domain, your own saved models, a file — and, one control away,
@@ -50,6 +50,7 @@ import type { LibraryNode } from "./libraryTree";
 import { draftedModels, type DraftedModel } from "./drafted";
 import {
   facets,
+  featured,
   matchesFacet,
   matchesQuery,
   shelves,
@@ -78,9 +79,6 @@ export type HomeRoute = { view: "home" } | { view: "library" } | { view: "about"
 interface HomeProps {
   initialRoute?: HomeRoute;
   onCreate: () => void;
-  /** #309: the Klir lens's data-first front door — author a data system before
-   *  (or instead of) any structure. */
-  onStartFromData: () => void;
   onOpenExample: (d: Demo) => void;
   onOpenCorpus: (e: CorpusEntry) => void;
   onOpenDrafted: (sl: string) => void;
@@ -122,7 +120,6 @@ export function HomeScreen(props: HomeProps) {
         {route.view === "home" && (
           <HomeMenu
             onCreate={props.onCreate}
-            onStartFromData={props.onStartFromData}
             onOpenLibrary={() => setRoute({ view: "library" })}
             onAbout={() => setRoute({ view: "about" })}
           />
@@ -516,19 +513,17 @@ function DrawGlyph() {
   );
 }
 
-function DataGlyph() {
+function DescribeGlyph() {
+  // Lines of prose becoming a drafted model: three text rules, and a small
+  // checked box where the kernel's verdict lands.
   return (
     <svg viewBox="0 0 96 64" width="96" height="64" aria-hidden="true" className="home-glyph shrink-0">
-      <rect x={6} y={8} width={84} height={48} style={glyphStroke} strokeWidth={1} />
-      <rect x={6} y={8} width={84} height={12} style={{ fill: "var(--accent-soft)" }} />
-      <line x1={6} y1={20} x2={90} y2={20} style={glyphStroke} strokeWidth={1} />
-      <line x1={6} y1={32} x2={90} y2={32} style={glyphStroke} strokeWidth={0.6} strokeDasharray="2 2" />
-      <line x1={6} y1={44} x2={90} y2={44} style={glyphStroke} strokeWidth={0.6} strokeDasharray="2 2" />
-      <line x1={34} y1={8} x2={34} y2={56} style={glyphStroke} strokeWidth={0.6} />
-      <line x1={62} y1={8} x2={62} y2={56} style={glyphStroke} strokeWidth={0.6} />
-      <circle cx={20} cy={14} r={2} style={glyphFill} />
-      <circle cx={48} cy={14} r={2} style={glyphFill} />
-      <circle cx={76} cy={14} r={2} style={glyphFill} />
+      <line x1={10} y1={16} x2={62} y2={16} style={glyphStroke} strokeWidth={1.2} />
+      <line x1={10} y1={28} x2={54} y2={28} style={glyphStroke} strokeWidth={1.2} />
+      <line x1={10} y1={40} x2={58} y2={40} style={glyphStroke} strokeWidth={1.2} />
+      <line x1={10} y1={52} x2={34} y2={52} style={glyphStroke} strokeWidth={1.2} />
+      <rect x={70} y={22} width={18} height={18} style={glyphStroke} strokeWidth={1} />
+      <polyline points="74,31 78,35 85,26" style={glyphStroke} strokeWidth={1.2} fill="none" />
     </svg>
   );
 }
@@ -620,14 +615,12 @@ const ledeLink: CSSProperties = {
 
 export function HomeMenu({
   onCreate,
-  onStartFromData,
   onOpenLibrary,
   onAbout,
 }: {
   /** Open a blank canvas; `{ sl: true }` opens it with the SL pane showing,
    *  which is where "describe it in a few lines" lands. */
   onCreate: (opts?: { sl?: boolean }) => void;
-  onStartFromData?: () => void;
   onOpenLibrary: () => void;
   /** Open the provenance page (#229). Optional so the menu renders standalone. */
   onAbout?: () => void;
@@ -657,6 +650,12 @@ export function HomeMenu({
       />
       <Column className="pb-16 pt-10">
         <GroupHeader label="Start" lead />
+        {/* Two doors in, one model underneath. The data-first door that stood
+            here (#309, the Klir source-and-data rungs) left the face in the
+            2026-10-26 cut: the course it was built for grew its own GSPS path,
+            and a model here starts from the system, not from a table. The
+            surface still exists behind `?data=1` for the parked issue; the CSV
+            attach path on an open model is untouched. */}
         <div className="grid grid-cols-2 gap-5">
           <Panel
             glyph={<DrawGlyph />}
@@ -664,14 +663,12 @@ export function HomeMenu({
             description="Components, flows, a boundary. Every step is checked as you draw."
             onClick={() => onCreate()}
           />
-          {onStartFromData && (
-            <Panel
-              glyph={<DataGlyph />}
-              name="Build from data"
-              description="Start from a CSV or a few observations, and find the structure in them."
-              onClick={onStartFromData}
-            />
-          )}
+          <Panel
+            glyph={<DescribeGlyph />}
+            name="Describe your system"
+            description="A few plain sentences. The co-author drafts it in SL; the kernel checks it; you accept or discard."
+            onClick={() => onCreate({ sl: true })}
+          />
         </div>
         <div className="mt-9 grid grid-cols-2 items-stretch gap-5">
           <div className="flex flex-col">
@@ -1237,6 +1234,7 @@ export function LibraryBrowser({
     setArrange(next);
     noteArrange(next);
   };
+  const featuredCards = featured(shownShipped);
   const openShipped = (m: ShippedModel) =>
     m.open.kind === "example" ? onOpenExample(m.open.demo) : onOpenCorpus(m.open.entry);
   const slOf = (m: ShippedModel) => (m.open.kind === "example" ? m.open.demo.sl : m.open.entry.sl);
@@ -1246,7 +1244,7 @@ export function LibraryBrowser({
       <Masthead
         eyebrow="Library"
         title="Open a model"
-        lede="Pick up where you left off, or come in through a lens or a domain."
+        lede="Pick up where you left off, start from one of ours, or come in through a domain."
         back={{ label: "Home", onClick: onBack }}
         aside={<SearchField value={query} onChange={setQuery} />}
         dense
@@ -1327,7 +1325,29 @@ export function LibraryBrowser({
             {/* No Recent means this is the first section, and a top margin
                 under the masthead rule would print as a gap rather than as
                 air. */}
-            <section className={recentCards.length > 0 ? "mt-14" : ""}>
+            {/* Start here. Three of ours, pinned (home.ts FEATURED): the
+                system the instrument is pointed at first, then two that teach
+                its two depths. Shown unless a search has named something. */}
+            {!q && featuredCards.length > 0 && (
+              <section className={recentCards.length > 0 ? "mt-14" : ""}>
+                <SectionHead label="Start here" lead={recentCards.length === 0} />
+                <CardGrid across={3}>
+                  {featuredCards.map((m) => (
+                    <ModelCard
+                      key={`featured:${m.key}`}
+                      cacheKey={m.key}
+                      source={slOf(m)}
+                      name={m.name}
+                      runs={m.runs}
+                      sub={m.description}
+                      onClick={() => openShipped(m)}
+                    />
+                  ))}
+                </CardGrid>
+              </section>
+            )}
+
+            <section className={recentCards.length > 0 || featuredCards.length > 0 ? "mt-14" : ""}>
               <SectionHead
                 label="Start from one of ours"
                 // A search has put the shelves away, and the toggle only cuts
@@ -1361,7 +1381,10 @@ export function LibraryBrowser({
                   ))}
                 </CardGrid>
               ) : (
-                shelves(shownShipped, arrange).map((shelf) => {
+                // The Bench shelf (#472) holds models that exist to test the
+                // instrument. Since the 2026-10-26 cut it is not among the doors:
+                // the list view and the search still reach every one of them.
+                shelves(shownShipped, arrange).filter((shelf) => shelf.kind !== "role").map((shelf) => {
                   const expanded = opened.includes(shelf.id);
                   const cards = expanded ? shelf.models : shelf.models.slice(0, SHELF_CARDS);
                   return (

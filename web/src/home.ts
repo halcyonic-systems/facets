@@ -275,3 +275,30 @@ export function matchesQuery(row: ShippedModel, query: string): boolean {
   const hay = [row.name, row.description, ...row.tags.map((t) => t.label)].join(" ").toLowerCase();
   return hay.includes(q);
 }
+
+// ---------------------------------------------------------------------------
+// featured — the three cards the library leads with
+// ---------------------------------------------------------------------------
+
+/** The models a newcomer meets first, in order: the LLM serving market (the
+ *  one data-fed observatory model, and the system the instrument is being
+ *  pointed at), Bitcoin (a social system with a conserved backbone), and the
+ *  steel-plant walk (Mobus's own procedure, two levels deep). An EDITORIAL list
+ *  like SHELF_LEAD, decided in the 2026-10-26 cut; a key that no longer ships
+ *  is skipped rather than failing, so a retirement cannot blank the row. A
+ *  runnable example is keyed by its bundle name and a structural one by
+ *  `example:<file>`, so both spellings are accepted for each. */
+const FEATURED: string[][] = [
+  ["llm-market", "example:llm-market"],
+  ["bitcoin", "example:bitcoin"],
+  ["example:steel-plant-walk", "steel-plant-walk"],
+];
+
+export function featured(rows: ShippedModel[] = shippedModels()): ShippedModel[] {
+  const out: ShippedModel[] = [];
+  for (const keys of FEATURED) {
+    const hit = rows.find((r) => keys.includes(r.key));
+    if (hit) out.push(hit);
+  }
+  return out;
+}
