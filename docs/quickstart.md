@@ -96,9 +96,10 @@ shows, per lens, whether the model holds as a system and — where it does not �
 reason; nothing is a shrug. This is [systemhood](glossary.md#systemhood) being
 decided, not styled.
 
-Switch between **Klir**, **Bunge** and **Mobus** in the top bar and watch the same
-model described in three vocabularies. That is the instrument's point: one model,
-three faithful views.
+Switch between **Bunge** and **Mobus** in the top bar and watch the same model
+described in two vocabularies. **Klir**, the relational floor, joins the bar when
+the page is opened with `?lens=klir`. That is the instrument's point: one model,
+faithful views.
 
 ## 5. Break it on purpose — the step that matters
 
@@ -158,8 +159,9 @@ flow Work -> "Sink 6" : matter "waste X"
 @lens mobus
 ```
 
-Compile it, read its verdicts under each lens, and compare how the Klir, Bunge,
-and Mobus panels each describe the same model in their own vocabulary.
+Compile it, read its verdicts under each lens, and compare how the Bunge and
+Mobus panels (and Klir's, with `?lens=klir`) each describe the same model in
+their own vocabulary.
 
 ## 7. Watch one run
 

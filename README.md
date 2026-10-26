@@ -26,7 +26,10 @@ on 2026-09-07; the exchange itself is pinned by a test.*
 Modeling tools render what you author. This one also **judges** it: once a model
 exists, the kernel decides whether it holds as a system under three traditions of
 systems science — Klir, Bunge, and Mobus — and every verdict names the condition
-it rests on. Where a model holds, it runs against your own data.
+it rests on. Where a model holds, it runs against your own data. On the face,
+Mobus is the working lens and Bunge the systemhood check; Klir, the relational
+floor, is one flag away (`?lens=klir`) since the 2026-10-26 cut, and unchanged
+in the kernel, the CLI and the corpus.
 
 Three ways in, one model underneath — and the LLM path runs *through* SL rather
 than around it. A draft is text the same deterministic compiler reads, and you
@@ -106,7 +109,8 @@ flow Hammer -> Wrench : matter "contact" mere
 ```
 
 Read through **Klir**, that is a system: two things, one relation — `S = (T, R)`
-with both coordinates populated. Switch to the **Bunge** lens and the kernel
+with both coordinates populated (on the hosted site, open the page with
+`?lens=klir` to see that reading). Switch to the **Bunge** lens and the kernel
 refuses the same model:
 
 ```
