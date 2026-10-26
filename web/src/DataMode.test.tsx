@@ -87,7 +87,7 @@ describe("Data mode (#304 M1)", () => {
     );
     expect(html).toContain("replace CSV…"); // data present → replace wording
     expect(html).toContain("Column bindings");
-    expect(html).toContain("time (support)");
+    expect(html).toContain("time (what the rows are measured against)");
     expect(html).toContain("→ remittances"); // every declared flow is a bind target
   });
 

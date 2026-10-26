@@ -142,11 +142,11 @@ export const WORK_MODES = ["structure", "data"] as const;
 export type WorkMode = (typeof WORK_MODES)[number];
 const WORK_MODE_LABEL: Record<WorkMode, string> = {
   structure: "Model",
-  data: "Data",
+  data: "Measurements",
 };
 const WORK_MODE_TITLE: Record<WorkMode, string> = {
   structure: "Model — the diagram, its knobs, and the run on one bench (the canvas asserts; Run computes)",
-  data: "Data — the model's data-level face (rows = time, columns = declared flows; observes, never asserts)",
+  data: "Measurements — the attached series against the model's declared flows (rows = time, columns = flows; observes, never asserts)",
 };
 
 // #109 walk choreography — the enter/exit transition's OUT phase length. Must
@@ -2374,7 +2374,7 @@ function Workspace() {
             ? "Run the forced simulation"
             : canvasModel.things.length > 0
               ? attachedCsv
-                ? "Run from the declared amounts (bind a column in Data mode to force a flow)"
+                ? "Run from the declared amounts (bind a column under Measurements to force a flow)"
                 : "Run from the declared amounts"
               : "Add at least one thing to run."
           : "No mechanism stated (⊘M), so structure alone gives Run nothing to execute.";
@@ -3198,7 +3198,7 @@ function Workspace() {
                   it gets the data rung's own. */}
               {workMode === "data" &&
               (canvasModel.klir_level === "Source" || canvasModel.klir_level === "Data")
-                ? "what did I observe? — variables over a support, their states recorded; nothing behind them is asserted"
+                ? "what did I measure? — variables against time, their values recorded; nothing behind them is asserted"
                 : desc.question}
             </div>
           </div>

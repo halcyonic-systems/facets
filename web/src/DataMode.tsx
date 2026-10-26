@@ -1,5 +1,8 @@
-// The Data mode — the model's Klir DATA-LEVEL face (#304 milestone 1,
-// ratified 2026-08-09), styled as the sheet a billion people already know.
+// Measurements — the sheet that shows an attached series against the model's
+// declared flows (#304 milestone 1, ratified 2026-08-09; named "Data mode" and
+// framed as the Klir data-level face until the 2026-10-26 cut, when #304 was
+// parked and the sheet kept under a plain name). Styled as the sheet a billion
+// people already know.
 // Rows are the support (time), columns are DECLARED flows; the binding is by
 // declaration, never invention: a column that names no declared flow is shown
 // BROKEN, a flow with no column sits in the unbound rail, and nothing is
@@ -394,7 +397,7 @@ export function DataMode({
               }}
             >
               <option value="ignore">— ignore —</option>
-              <option value="time">time (support)</option>
+              <option value="time">time (what the rows are measured against)</option>
               {model.relations
                 .filter((r) => r.name)
                 .map((r) => (
@@ -517,7 +520,7 @@ export function DataMode({
           <span className="font-display text-lg" style={{ color: "var(--text-primary)" }}>
             {modelName}
           </span>
-          <Pill tone="neutral">Data level</Pill>
+          <Pill tone="neutral">Measurements</Pill>
           {/* The console graft: the shape, stated the moment the sheet opens. */}
           {parsed && (
             <span className="font-mono text-xs" style={{ color: "var(--text-primary)" }}>
@@ -575,9 +578,9 @@ export function DataMode({
           {!parsed && (
             <div className="max-w-md p-4">
               <p className="text-xs" style={{ color: "var(--text-secondary)" }}>
-                This model ships structure only — every declared flow is unbound. Attaching data
-                (CSV + mapping) gives this sheet its rows; the declared flows on the right are the
-                columns it is waiting to grow.
+                This model ships structure only — every declared flow is unbound. Attaching your
+                measurements (a CSV, one row per time step) gives this sheet its rows; the declared
+                flows on the right are the columns it is waiting to grow.
               </p>
               {onAttachCsv && <div className="mt-3">{importButton}</div>}
             </div>
