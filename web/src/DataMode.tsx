@@ -59,9 +59,20 @@ export function bindingEntry(
     // and a flow sharing a name cannot collide in one dropdown.
     return { column, as: "stock", element: value.slice("stock:".length) };
   }
-  if (value === "ignore") return null;
+  // An explicit ignore is written, not dropped: the kernel refuses a run
+  // whose CSV has a column the manifest does not speak for, and the dropdown
+  // already shows the author the word "ignore" (feel-test 2026-10-26).
+  if (value === "ignore") return { column, as: "ignore" };
   const declared = prior?.as === "flow" ? prior.unit : undefined;
-  const unit = declared ?? model.relations.find((r) => r.name === value)?.unit;
+  // Two flows may share a name (a pass-way's inner and outer legs); the unit
+  // is whichever of them declares one (feel-test 2026-10-26: the first hit
+  // was the unitless leg and the kernel refused the run).
+  const unit =
+    declared ??
+    model.relations
+      .filter((r) => r.name === value)
+      .map((r) => r.unit)
+      .find((u) => !!u);
   return { column, as: "flow", element: value, force: true, ...(unit ? { unit } : {}) };
 }
 
@@ -529,13 +540,10 @@ export function DataMode({
           )}
           <span className="font-mono text-xs" style={{ color: "var(--text-secondary)" }}>
             {parsed
-              ? `support: ${timeMapping ? timeMapping.column : "row index"}${
+              ? `measured against: ${timeMapping ? timeMapping.column : "row index"}${
                   model.time_unit ? ` (${model.time_unit})` : ""
                 } · ${parsed.rows.length} observations`
               : "no data attached — structural entry"}
-          </span>
-          <span className="font-mono text-xs" style={{ color: "var(--text-muted)" }}>
-            model declares level {model.klir_level ?? "— undeclared"}
           </span>
           <span className="ml-auto flex items-center gap-2">
             {/* #309: the two readings of one data system, a toggle apart. */}
@@ -552,8 +560,8 @@ export function DataMode({
                     }}
                     title={
                       v === "observations"
-                        ? "rows over the support — one row per observation"
-                        : "distinct states of the variables, with frequencies — the support collapsed away"
+                        ? "rows against time — one row per observation"
+                        : "distinct states of the variables, with frequencies — time collapsed away"
                     }
                   >
                     {v === "observations" ? "observations" : "observed states"}
@@ -567,7 +575,7 @@ export function DataMode({
         <p className="mt-1 max-w-3xl text-xs" style={{ color: "var(--text-muted)" }}>
           {variableCols.length > 0
             ? dataView === "states"
-              ? "One row per distinct state of the variables, most frequent first, with the support collapsed away. Frequencies are observed and nothing is generated: a generating rule would be stated against this table, and none is stated here."
+              ? "One row per distinct state of the variables, most frequent first, with time collapsed away. Frequencies are observed and nothing is generated: a generating rule would be stated against this table, and none is stated here."
               : "A column is a declared variable — matched by name, never invention. No relation is asserted here; inducing structure from these columns is inference, not reading."
             : "A column is a declared flow — the binding is by declaration, never invention. Structure mode asserts; this sheet observes. Inducing structure from these columns is inference, not reading."}
         </p>
@@ -719,7 +727,7 @@ export function DataMode({
                     className="px-2 py-1.5 text-left font-mono text-[11px] font-normal"
                     style={{ ...headerCellStyle(0, true), color: "var(--text-secondary)" }}
                     onClick={() => clickHeader(0)}
-                    title="sort by the support column"
+                    title="sort by the time column"
                   >
                     {timeMapping ? timeMapping.column : "t"}
                     {caret(0)}
@@ -837,7 +845,7 @@ export function DataMode({
                     style={{ ...headerCellStyle(0, true), color: "var(--text-secondary)" }}
                     onClick={() => clickHeader(0)}
                     onMouseEnter={() => setHoverCol(0)}
-                    title="sort by the support column"
+                    title="sort by the time column"
                   >
                     {timeMapping ? timeMapping.column : "t"}
                     {caret(0)}

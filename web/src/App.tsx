@@ -1,6 +1,6 @@
 import { Suspense, lazy, useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { buildRunRecord, postRunRecord, runRecordFilename, type RunRecord } from "./runRecord";
-import { ready, runMarkov, Bench, openModel, writeArchive, project, analyzeCanvas, checkDecompositionsCanvas, decomposeComponent, compileSl, type ArchiveText, mintModelId, emitSl, sandboxPalette } from "./kernel";
+import { ready, runMarkov, Bench, parseCsv, openModel, writeArchive, project, analyzeCanvas, checkDecompositionsCanvas, decomposeComponent, compileSl, type ArchiveText, mintModelId, emitSl, sandboxPalette } from "./kernel";
 import type {
   TickLog,
   CanvasModel,
@@ -126,6 +126,22 @@ import { diagramFilename, exportDiagramSvg, exportDiagramPng } from "./canvas/ex
 const residueLine = (e: ResidueEntry) => (e.count === 0 ? e.label : `${e.count} ${e.label}`);
 
 const today = () => new Date().toISOString().slice(0, 10);
+
+/** Every CSV column spoken for. The kernel refuses a forced run whose CSV
+ *  carries a column the manifest neither binds nor ignores; the sheet shows an
+ *  untouched column as "ignore", so that is what it means here. Bound columns
+ *  are left exactly as the author wrote them (feel-test 2026-10-26). */
+function spokenFor(csv: string, m: Manifest): Manifest {
+  let headers: string[];
+  try {
+    headers = parseCsv(csv).headers;
+  } catch {
+    return m;
+  }
+  const have = new Set(m.mapping.map((x) => x.column));
+  const ignored = headers.filter((h) => !have.has(h)).map((column) => ({ column, as: "ignore" as const }));
+  return ignored.length ? { ...m, mapping: [...m.mapping, ...ignored] } : m;
+}
 const LENSES: CanvasModel["lens"][] = ["Klir", "Bunge", "Mobus"];
 
 /** The mode axis (#304, extended by #312 move 2), in switch order. Three things
@@ -843,7 +859,7 @@ function Workspace() {
       // the forcing path runs exactly as before.
       closeBench();
       const b = csv.trim()
-        ? Bench.openForced(modelJson, csv, JSON.stringify(m), dtv, today())
+        ? Bench.openForced(modelJson, csv, JSON.stringify(spokenFor(csv, m)), dtv, today())
         : Bench.openUnforced(modelJson, dtv);
       b.stepOver(tv);
       benchRef.current = b;
