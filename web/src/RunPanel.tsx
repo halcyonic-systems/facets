@@ -33,12 +33,17 @@ import { BungeStateSpace } from "./canvas/BungeStateSpace";
 import { evaluateMetrics, type MetricReading } from "./metrics";
 import {
   CHART_SERIES,
+  FALLBACK_SLOT,
   FUTURE_OPACITY,
   PAST,
   RunChart,
   STROKES,
+  compactTick,
+  entitySlots,
   midRun,
+  surfaceEntities,
   timeAxisLabel,
+  type SeriesSlot,
 } from "./RunChart";
 
 // Category labels are lens-faithful (K≅2 on the run panel): Klir and Bunge share
@@ -208,6 +213,9 @@ export function RunStory({
   const metrics = model ? evaluateMetrics(model, result) : null;
   const baseMetrics = model && baseline ? evaluateMetrics(model, baseline) : null;
   const baseFor = (name: string) => baseMetrics?.readings.find((b) => b.name === name) ?? null;
+  // One colour per entity across every chart on this surface (dataviz): the
+  // slots are assigned once from the whole entity set, never per chart.
+  const slots = entitySlots(surfaceEntities(model, result));
   const CHART_H = 210;
   return (
     <div className="grid gap-5">
@@ -215,7 +223,7 @@ export function RunStory({
         <div className="grid gap-x-8 gap-y-5 xl:grid-cols-2">
           {groupReadings(metrics.readings).map((g) =>
             g.length === 1 ? (
-              <MetricRow key={g[0].name} r={g[0]} tick={tick} height={CHART_H} timeUnit={model?.time_unit} baseline={baseFor(g[0].name)} />
+              <MetricRow key={g[0].name} r={g[0]} tick={tick} height={CHART_H} timeUnit={model?.time_unit} baseline={baseFor(g[0].name)} slot={slots.get(g[0].entity)} />
             ) : (
               <MetricFamilyChart
                 key={g[0].familyKey}
@@ -224,6 +232,7 @@ export function RunStory({
                 height={CHART_H}
                 timeUnit={model?.time_unit}
                 baseline={g.map((r) => baseFor(r.name)).filter((b): b is MetricReading => b !== null)}
+                slots={slots}
               />
             ),
           )}
@@ -258,6 +267,7 @@ export function RunStory({
               height={CHART_H}
               timeUnit={model?.time_unit}
               baseline={baseline?.trajectories ?? null}
+              slots={slots}
             />
           </div>
         )}
@@ -276,7 +286,8 @@ export function RunStory({
 /** The Fit tab (ws3) — only mounted when a CSV is bound (absence is ontology:
  *  no data, no fit). The sharpest MEANINGFUL divergence headlines; a forced
  *  flow trivially matching its own data never does. */
-export function RunFit({ result, tick, timeUnit }: { result: RunResultRich; tick?: number; timeUnit?: string | null }) {
+export function RunFit({ result, tick, timeUnit, model }: { result: RunResultRich; tick?: number; timeUnit?: string | null; model?: CanvasModel | null }) {
+  const slots = entitySlots(surfaceEntities(model, result));
   const lead = result.comparisons
     .map((c) => ({ c, pct: c.divergence_pct }))
     .filter((r) => r.pct != null && r.pct > 0.5)
@@ -312,9 +323,9 @@ export function RunFit({ result, tick, timeUnit }: { result: RunResultRich; tick
       <div className="grid gap-x-8 gap-y-6 xl:grid-cols-2">
         {groupComparisons(result.comparisons).map((g) =>
           g.length === 1 ? (
-            <ComparisonChart key={g[0].element} c={g[0]} tick={tick} height={230} timeUnit={timeUnit} />
+            <ComparisonChart key={g[0].element} c={g[0]} tick={tick} height={230} timeUnit={timeUnit} slot={slots.get(g[0].element) ?? FALLBACK_SLOT} />
           ) : (
-            <ComparisonFamilyChart key={g[0].unit || "unitless"} comparisons={g} tick={tick} height={230} timeUnit={timeUnit} />
+            <ComparisonFamilyChart key={g[0].unit || "unitless"} comparisons={g} tick={tick} height={230} timeUnit={timeUnit} slots={slots} />
           ),
         )}
       </div>
@@ -415,12 +426,17 @@ function groupComparisons(comparisons: Comparison[]): Comparison[][] {
  *  by alphabetical entity order; the leaderboard order is the endpoint's. */
 
 
-function MetricFamilyChart({ readings, tick, height = 150, timeUnit, baseline = [] }: { readings: MetricReading[]; tick?: number; height?: number; timeUnit?: string | null; baseline?: MetricReading[] }) {
+function MetricFamilyChart({ readings, tick, height = 150, timeUnit, baseline = [], slots }: { readings: MetricReading[]; tick?: number; height?: number; timeUnit?: string | null; baseline?: MetricReading[]; slots: Map<string, SeriesSlot> }) {
   const first = readings[0];
   const byEntity = [...readings].sort((a, b) => a.entity.localeCompare(b.entity));
-  const colorOf = new Map(byEntity.map((r, i) => [r.entity, CHART_SERIES[i]]));
+  const slotOf = (entity: string) => slots.get(entity) ?? FALLBACK_SLOT;
   const n = Math.max(...readings.map((r) => r.series.length), ...baseline.map((r) => r.series.length));
   const mid = midRun(tick, n);
+  // The value at the cursor while scrubbing, the endpoint at rest: the legend
+  // line is the chart's readout (dataviz hover layer; the cursor is the hover).
+  const at = mid ? tick! : null;
+  const fmt = (r: MetricReading, v: number) =>
+    r.kind === "share" ? `${(v * 100).toFixed(1)}%` : `${humanize(v)}${r.unit ? ` ${r.unit}` : ""}`;
   const data = withBaselineRows(
     Array.from({ length: n }, (_, t) => {
       const row: Record<string, number | null> = { t };
@@ -432,28 +448,26 @@ function MetricFamilyChart({ readings, tick, height = 150, timeUnit, baseline = 
     }),
     baseline.map((b) => ({ name: b.entity, series: b.series })),
   );
-  const endpointOf = (r: MetricReading) =>
-    r.kind === "share"
-      ? `${(r.endpoint * 100).toFixed(1)}%`
-      : `${humanize(r.endpoint)}${r.unit ? ` ${r.unit}` : ""}`;
+  const readoutOf = (r: MetricReading) => fmt(r, at !== null ? (r.series[Math.min(at, r.series.length - 1)] ?? r.endpoint) : r.endpoint);
   return (
     <div>
-      <div className="mb-1 flex items-baseline justify-between gap-3">
+      <div className="mb-1 flex flex-wrap items-baseline justify-between gap-x-3 gap-y-0.5">
         <div className="text-sm font-medium" style={{ color: "var(--text-primary)" }}>
           {first.family}
+          {at !== null && (
+            <span className="ml-1.5 text-[11px] font-normal" style={{ color: "var(--text-muted)" }}>
+              at t={at}
+            </span>
+          )}
         </div>
         {/* The leaderboard: endpoint-ranked (the readings arrive pre-sorted). */}
         <div className="flex flex-wrap justify-end gap-x-3 gap-y-0.5 text-[11px]">
           {readings.map((r) => (
             <span key={r.entity} className="inline-flex items-center gap-1">
-              <span
-                aria-hidden
-                className="inline-block h-[2px] w-3"
-                style={{ background: colorOf.get(r.entity) }}
-              />
+              <Swatch slot={slotOf(r.entity)} />
               <span style={{ color: "var(--text-secondary)" }}>{r.entity}</span>
               <span className="tabular font-medium" style={{ color: "var(--text-primary)" }}>
-                {endpointOf(r)}
+                {readoutOf(r)}
               </span>
             </span>
           ))}
@@ -474,10 +488,11 @@ function MetricFamilyChart({ readings, tick, height = 150, timeUnit, baseline = 
               type="monotone"
               dataKey={r.entity}
               name={r.entity}
-              stroke={colorOf.get(r.entity)}
+              stroke={slotOf(r.entity).color}
+              strokeDasharray={slotOf(r.entity).dash}
               strokeOpacity={mid ? FUTURE_OPACITY : 1}
               dot={false}
-              strokeWidth={2.5}
+              strokeWidth={STROKES.executed.width}
               isAnimationActive={false}
             />
           ))}
@@ -487,9 +502,10 @@ function MetricFamilyChart({ readings, tick, height = 150, timeUnit, baseline = 
                 key={`${r.entity}-past`}
                 type="monotone"
                 dataKey={PAST(r.entity)}
-                stroke={colorOf.get(r.entity)}
+                stroke={slotOf(r.entity).color}
+                strokeDasharray={slotOf(r.entity).dash}
                 dot={false}
-                strokeWidth={2.5}
+                strokeWidth={STROKES.executed.width}
                 isAnimationActive={false}
                 tooltipType="none"
               />
@@ -500,7 +516,7 @@ function MetricFamilyChart({ readings, tick, height = 150, timeUnit, baseline = 
               type="monotone"
               dataKey={BASE(b.entity)}
               name={`${b.entity} (baseline)`}
-              stroke={colorOf.get(b.entity) ?? "var(--text-muted)"}
+              stroke={slotOf(b.entity).color}
               strokeDasharray={BASELINE_DASH}
               strokeOpacity={0.7}
               dot={false}
@@ -517,10 +533,13 @@ function MetricFamilyChart({ readings, tick, height = 150, timeUnit, baseline = 
  *  style keeps role (solid executed, dashed actual). Declared-mean lines stay
  *  with the singleton view — three encodings per entity is past the ink
  *  budget of a merged chart. */
-function ComparisonFamilyChart({ comparisons, tick, height = 150, timeUnit }: { comparisons: Comparison[]; tick?: number; height?: number; timeUnit?: string | null }) {
+function ComparisonFamilyChart({ comparisons, tick, height = 150, timeUnit, slots }: { comparisons: Comparison[]; tick?: number; height?: number; timeUnit?: string | null; slots: Map<string, SeriesSlot> }) {
   const byFlow = [...comparisons].sort((a, b) => a.element.localeCompare(b.element));
-  const colorOf = new Map(byFlow.map((c, i) => [c.element, CHART_SERIES[i]]));
-  const n = Math.max(...comparisons.map((c) => Math.max(c.simulated.length, c.actual.length)));
+  const slotOf = (element: string) => slots.get(element) ?? FALLBACK_SLOT;
+  // The x domain is the observations' (dataviz, readouts audit charts item 7):
+  // past the data the run is a forecast with nothing to check against, and
+  // the Fit header already says how many ticks run on past it.
+  const n = Math.max(...comparisons.map((c) => c.actual.length));
   const mid = midRun(tick, n);
   const data = Array.from({ length: n }, (_, t) => {
     const row: Record<string, number | null> = { t };
@@ -541,11 +560,7 @@ function ComparisonFamilyChart({ comparisons, tick, height = 150, timeUnit }: { 
         <div className="flex flex-wrap justify-end gap-x-3 gap-y-0.5 text-[11px]">
           {comparisons.map((c) => (
             <span key={c.element} className="inline-flex items-center gap-1">
-              <span
-                aria-hidden
-                className="inline-block h-[2px] w-3"
-                style={{ background: colorOf.get(c.element) }}
-              />
+              <Swatch slot={slotOf(c.element)} />
               <span style={{ color: "var(--text-secondary)" }}>{c.element}</span>
               {c.divergence_pct != null && (
                 <span className="tabular" style={{ color: "var(--text-muted)" }}>
@@ -569,7 +584,7 @@ function ComparisonFamilyChart({ comparisons, tick, height = 150, timeUnit }: { 
               key={`${c.element}-x`}
               type="monotone"
               dataKey={`${c.element} · executed`}
-              stroke={colorOf.get(c.element)}
+              stroke={slotOf(c.element).color}
               strokeOpacity={mid ? FUTURE_OPACITY : 1}
               dot={false}
               strokeWidth={STROKES.executed.width}
@@ -582,7 +597,7 @@ function ComparisonFamilyChart({ comparisons, tick, height = 150, timeUnit }: { 
                 key={`${c.element}-x-past`}
                 type="monotone"
                 dataKey={PAST(`${c.element} · executed`)}
-                stroke={colorOf.get(c.element)}
+                stroke={slotOf(c.element).color}
                 dot={false}
                 strokeWidth={STROKES.executed.width}
                 isAnimationActive={false}
@@ -594,7 +609,7 @@ function ComparisonFamilyChart({ comparisons, tick, height = 150, timeUnit }: { 
               key={`${c.element}-a`}
               type="monotone"
               dataKey={`${c.element} · actual`}
-              stroke={colorOf.get(c.element)}
+              stroke={slotOf(c.element).color}
               strokeDasharray={STROKES.actual.dash}
               dot={false}
               strokeWidth={STROKES.actual.width}
@@ -612,9 +627,14 @@ function ComparisonFamilyChart({ comparisons, tick, height = 150, timeUnit }: { 
 /** One declared metric's reading (#203): the author's name and endpoint
  *  number lead; the executed series rides below as a small chart. Same-verb
  *  families arrive pre-sorted by endpoint — the leaderboard reading. */
-export function MetricRow({ r, tick, height = 90, timeUnit, baseline = null }: { r: MetricReading; tick?: number; height?: number; timeUnit?: string | null; baseline?: MetricReading | null }) {
+export function MetricRow({ r, tick, height = 90, timeUnit, baseline = null, slot = FALLBACK_SLOT }: { r: MetricReading; tick?: number; height?: number; timeUnit?: string | null; baseline?: MetricReading | null; slot?: SeriesSlot }) {
   const n = Math.max(r.series.length, baseline?.series.length ?? 0);
   const mid = midRun(tick, n);
+  const fmt = (v: number) => (r.kind === "share" ? `${(v * 100).toFixed(1)}%` : `${humanize(v)}${r.unit ? ` ${r.unit}` : ""}`);
+  // The header value reads at the cursor while scrubbing (the readout the
+  // dataviz hover layer asks for; the cursor is the hover here).
+  const at = mid ? Math.min(tick!, r.series.length - 1) : null;
+  const shown = at !== null ? fmt(r.series[at] ?? r.endpoint) : fmt(r.endpoint);
   const data = Array.from({ length: n }, (_, t) => ({
     t,
     v: r.series[t] ?? null,
@@ -627,14 +647,12 @@ export function MetricRow({ r, tick, height = 90, timeUnit, baseline = null }: {
         ? `${(baseline.endpoint * 100).toFixed(1)}%`
         : `${humanize(baseline.endpoint)}${baseline.unit ? ` ${baseline.unit}` : ""}`
       : null;
-  const endpoint =
-    r.kind === "share"
-      ? `${(r.endpoint * 100).toFixed(1)}%`
-      : `${humanize(r.endpoint)}${r.unit ? ` ${r.unit}` : ""}`;
+  const endpoint = fmt(r.endpoint);
   return (
     <div>
       <div className="mb-1 flex items-baseline justify-between gap-3">
         <div>
+          {/* A single series: the title names it, no legend box (dataviz). */}
           <div className="text-sm font-medium" style={{ color: "var(--text-primary)" }}>
             {r.name}
           </div>
@@ -645,12 +663,14 @@ export function MetricRow({ r, tick, height = 90, timeUnit, baseline = null }: {
         <div className="text-right">
           {/* The chart's header value: a numeral, not a second hero (audit #26). */}
           <div className={NUM} style={{ ...NUM_STYLE, color: "var(--text-primary)" }}>
-            {endpoint}
+            {shown}
           </div>
           <div className="text-[11px]" style={{ color: "var(--text-muted)" }}>
-            {r.kind === "share"
-              ? "at run end"
-              : `over ${n} ticks · ≈${humanize(r.endpoint / Math.max(1, n))}/tick`}
+            {at !== null
+              ? `at t=${at} · run end ${endpoint}`
+              : r.kind === "share"
+                ? "at run end"
+                : `over ${n} ticks · ≈${humanize(r.endpoint / Math.max(1, n))}/tick`}
             {baseEndpoint && <span className="tabular"> · vs baseline {baseEndpoint}</span>}
           </div>
         </div>
@@ -668,29 +688,31 @@ export function MetricRow({ r, tick, height = 90, timeUnit, baseline = null }: {
             type="monotone"
             dataKey="v"
             name={r.name}
-            stroke="var(--accent)"
+            stroke={slot.color}
+            strokeDasharray={slot.dash}
             strokeOpacity={mid ? FUTURE_OPACITY : 1}
             dot={false}
-            strokeWidth={2.5}
+            strokeWidth={STROKES.executed.width}
             isAnimationActive={false}
           />
           {mid && (
             <Line
               type="monotone"
               dataKey="past"
-              stroke="var(--accent)"
+              stroke={slot.color}
+              strokeDasharray={slot.dash}
               dot={false}
-              strokeWidth={2.5}
+              strokeWidth={STROKES.executed.width}
               isAnimationActive={false}
               tooltipType="none"
             />
           )}
-                {baseline && (
+          {baseline && (
             <Line
               type="monotone"
               dataKey="b"
               name={`${r.name} (baseline)`}
-              stroke="var(--accent)"
+              stroke={slot.color}
               strokeDasharray={BASELINE_DASH}
               strokeOpacity={0.7}
               dot={false}
@@ -703,8 +725,11 @@ export function MetricRow({ r, tick, height = 90, timeUnit, baseline = null }: {
   );
 }
 
-function ComparisonChart({ c, tick, height = 150, timeUnit }: { c: Comparison; tick?: number; height?: number; timeUnit?: string | null }) {
-  const n = Math.max(c.simulated.length, c.actual.length, c.declared?.length ?? 0);
+function ComparisonChart({ c, tick, height = 150, timeUnit, slot }: { c: Comparison; tick?: number; height?: number; timeUnit?: string | null; slot: SeriesSlot }) {
+  // The x domain is the observations' (dataviz; readouts audit charts item 7):
+  // the executed and declared series are clipped to the window the data
+  // covers, and the forecast past it is stated in words under the chart.
+  const n = c.actual.length;
   const mid = midRun(tick, n);
   const data = Array.from({ length: n }, (_, i) => ({
     t: i,
@@ -742,18 +767,18 @@ function ComparisonChart({ c, tick, height = 150, timeUnit }: { c: Comparison; t
         xLabel={timeAxisLabel(timeUnit)}
         yLabel={c.unit || "model units"}
       >
-          {/* The forecast region: past the data's horizon the executed line is
-              a forecast with nothing to check against (fit is in-sample only). */}
-          {forecastTicks > 0 && h != null && (
+          {/* The forecast region, when the data ends inside the window: past
+              the horizon the executed line is a forecast with nothing to
+              check against (fit is in-sample only). */}
+          {forecastTicks > 0 && h != null && h < n - 1 && (
             <ReferenceArea
               x1={h}
               x2={n - 1}
               fill="var(--text-muted)"
               fillOpacity={0.06}
-              ifOverflow="extendDomain"
             />
           )}
-          {forecastTicks > 0 && h != null && (
+          {forecastTicks > 0 && h != null && h < n - 1 && (
             <ReferenceLine x={h} stroke="var(--text-muted)" strokeDasharray="4 4" />
           )}
           {c.declared && (
@@ -773,7 +798,7 @@ function ComparisonChart({ c, tick, height = 150, timeUnit }: { c: Comparison; t
             type="monotone"
             dataKey="executed"
             name="executed"
-            stroke="var(--accent)"
+            stroke={slot.color}
             strokeOpacity={mid ? FUTURE_OPACITY : 1}
             dot={false}
             strokeWidth={STROKES.executed.width}
@@ -783,7 +808,7 @@ function ComparisonChart({ c, tick, height = 150, timeUnit }: { c: Comparison; t
             <Line
               type="monotone"
               dataKey="pastExecuted"
-              stroke="var(--accent)"
+              stroke={slot.color}
               dot={false}
               strokeWidth={STROKES.executed.width}
               isAnimationActive={false}
@@ -794,7 +819,7 @@ function ComparisonChart({ c, tick, height = 150, timeUnit }: { c: Comparison; t
             type="monotone"
             dataKey="actual"
             name="actual"
-            stroke="var(--accent-indigo)"
+            stroke={slot.color}
             strokeDasharray={STROKES.actual.dash}
             dot={false}
             strokeWidth={STROKES.actual.width}
@@ -802,10 +827,10 @@ function ComparisonChart({ c, tick, height = 150, timeUnit }: { c: Comparison; t
           />
       </RunChart>
       <div className="mt-1 flex flex-wrap gap-x-4 gap-y-1 text-[11px]" style={{ color: "var(--text-muted)" }}>
-        <LegendSwatch stroke={STROKES.executed} color="var(--accent)" label="executed (the run, model units)" />
+        <LegendSwatch stroke={STROKES.executed} color={slot.color} label="executed (the run, model units)" />
         <LegendSwatch
           stroke={STROKES.actual}
-          color="var(--accent-indigo)"
+          color={slot.color}
           label={`actual (your data${c.unit ? `, ${c.unit}` : ""})`}
         />
         {c.declared && (
@@ -814,7 +839,8 @@ function ComparisonChart({ c, tick, height = 150, timeUnit }: { c: Comparison; t
       </div>
       {forecastTicks > 0 && h != null && (
         <p className="mt-0.5 text-xs" style={{ color: "var(--text-muted)" }}>
-          data ends at tick {h} — beyond it the model is forecasting, nothing to check against
+          data ends at tick {h} — the remaining {forecastTicks} ticks run past the data and are not drawn here;
+          beyond the data the model is forecasting, nothing to check against
         </p>
       )}
     </div>
@@ -825,14 +851,8 @@ function ComparisonChart({ c, tick, height = 150, timeUnit }: { c: Comparison; t
 // #282: the Klir deck — a DTMC run wears DTMC semantics. Steps, states, and
 // occupancy; no Δt, no conservation chrome (probability is the only mass here,
 // and MarkovReadout's rule holds: no conservation pill on a distribution run).
-const STATE_COLORS = [
-  "var(--accent)",
-  "var(--accent-indigo)",
-  "var(--accent-strong)",
-  "var(--accent-slate)",
-  "var(--verdict-warning)",
-  "var(--verdict-error)",
-];
+// The states take the four series slots by name (never cycled through the
+// accent and verdict tokens: status never impersonates a series).
 
 /** Provenance of the chain's transition weights (#282 follow-up): `weight` on
  *  a relation is the author's declared count; absent defaults to uniform 1.
@@ -872,6 +892,8 @@ export function DtmcPanel({
   });
   const at = tick !== undefined ? Math.max(0, Math.min(steps - 1, tick)) : steps - 1;
   const shown = run.history[at] ?? [];
+  const slots = entitySlots(run.states);
+  const slotOf = (s: string) => slots.get(s) ?? FALLBACK_SLOT;
   return (
     <div className="grid gap-5">
       <Card title="Result" source="facets-compose · wasm">
@@ -897,31 +919,35 @@ export function DtmcPanel({
           yLabel="probability"
           yDomain={[0, 1]}
         >
-            {run.states.map((s, i) => (
+            {run.states.map((s) => (
               <Line
                 key={s}
                 type="monotone"
                 dataKey={s}
-                stroke={STATE_COLORS[i % STATE_COLORS.length]}
+                stroke={slotOf(s).color}
+                strokeDasharray={slotOf(s).dash}
                 dot={false}
-                strokeWidth={2.5}
+                strokeWidth={STROKES.executed.width}
                 isAnimationActive={false}
               />
             ))}
       </RunChart>
-        <div
-          className="mt-1 flex flex-wrap gap-x-4 gap-y-1 text-[11px]"
-          style={{ color: "var(--text-muted)" }}
-        >
-          {run.states.map((s, i) => (
-            <LegendSwatch
-              key={s}
-              stroke={STROKES.executed}
-              color={STATE_COLORS[i % STATE_COLORS.length]}
-              label={s}
-            />
-          ))}
-        </div>
+        {/* The legend carries the value at the cursor beside each state. */}
+        {run.states.length > 1 && (
+          <div
+            className="mt-1 flex flex-wrap gap-x-4 gap-y-1 text-[11px]"
+            style={{ color: "var(--text-muted)" }}
+          >
+            {run.states.map((s, i) => (
+              <span key={s} className="inline-flex items-center gap-1.5">
+                <LegendSwatch stroke={{ ...STROKES.executed, dash: slotOf(s).dash }} color={slotOf(s).color} label={s} />
+                <span className="tabular" style={{ color: "var(--text-primary)" }}>
+                  {((shown[i] ?? 0) * 100).toFixed(0)}%
+                </span>
+              </span>
+            ))}
+          </div>
+        )}
       </Card>
 
       <Card title={at === steps - 1 ? "Final distribution" : `Distribution at step ${at}`} source="facets-compose · wasm">
@@ -937,6 +963,15 @@ export function DtmcPanel({
         </div>
       </Card>
     </div>
+  );
+}
+
+/** The 12x2 line key beside an entity's name, in its slot's stroke. */
+function Swatch({ slot }: { slot: SeriesSlot }) {
+  return (
+    <svg width="12" height="4" aria-hidden="true" className="shrink-0">
+      <line x1="0" y1="2" x2="12" y2="2" stroke={slot.color} strokeWidth={2} strokeDasharray={slot.dash} />
+    </svg>
   );
 }
 
@@ -979,6 +1014,7 @@ function LevelsChart({
   height = 110,
   timeUnit,
   baseline = null,
+  slots,
 }: {
   trajectories: NonNullable<RunResultRich["trajectories"]>;
   levels: Level[];
@@ -987,7 +1023,9 @@ function LevelsChart({
   timeUnit?: string | null;
   /** #463 move 4: the kept baseline's trajectories, dashed. */
   baseline?: RunResultRich["trajectories"] | null;
+  slots: Map<string, SeriesSlot>;
 }) {
+  const slotOf = (name: string) => slots.get(name) ?? FALLBACK_SLOT;
   // Internal stocks only: a source's "trajectory" is its declared rate drawn
   // flat — the rates-as-levels confusion all over again (#344 item 2). The
   // curves that carry the run's story are the levels that RESPOND.
@@ -1003,10 +1041,17 @@ function LevelsChart({
     <div className="grid gap-x-8 gap-y-4 xl:grid-cols-2">
       {[...groups.entries()].map(([unit, fam]) => {
         const byName = [...fam].sort((a, b) => a.name.localeCompare(b.name));
-        const colorOf = new Map(byName.map((t, i) => [t.name, CHART_SERIES[i % CHART_SERIES.length]]));
         const famBase = (baseline ?? []).filter((b) => fam.some((t) => t.name === b.name));
         const n = Math.max(...fam.map((t) => t.series.length), ...famBase.map((b) => b.series.length));
         const mid = midRun(tick, n);
+        // The legend reads the value at the cursor while scrubbing, the final
+        // level at rest. A single stock needs no legend: its name is the title.
+        const at = mid ? tick! : null;
+        const valueOf = (t: (typeof fam)[number]) => {
+          const i = at !== null ? Math.min(at, t.series.length - 1) : t.series.length - 1;
+          return compactTick(t.series[i] ?? 0);
+        };
+        const single = byName.length === 1;
         const data = withBaselineRows(
           Array.from({ length: n }, (_, i) => {
             const row: Record<string, number | null> = { t: i };
@@ -1020,19 +1065,23 @@ function LevelsChart({
         );
         return (
           <div key={unit}>
-            <div className="mb-1 flex items-baseline justify-between gap-3">
-              <div className="text-xs font-medium" style={{ color: "var(--text-secondary)" }}>
-                {unitLabel(unit).text}
+            <div className="mb-1 flex flex-wrap items-baseline justify-between gap-x-3 gap-y-0.5">
+              <div className="text-sm font-medium" style={{ color: "var(--text-primary)" }}>
+                {single ? byName[0].name : unitLabel(unit).text}
+                {at !== null && (
+                  <span className="ml-1.5 text-[11px] font-normal" style={{ color: "var(--text-muted)" }}>
+                    at t={at}
+                  </span>
+                )}
               </div>
               <div className="flex flex-wrap justify-end gap-x-3 gap-y-0.5 text-[11px]">
                 {byName.map((t) => (
                   <span key={t.name} className="inline-flex items-center gap-1">
-                    <span
-                      aria-hidden
-                      className="inline-block h-[2px] w-3"
-                      style={{ background: colorOf.get(t.name) }}
-                    />
-                    <span style={{ color: "var(--text-secondary)" }}>{t.name}</span>
+                    {!single && <Swatch slot={slotOf(t.name)} />}
+                    {!single && <span style={{ color: "var(--text-secondary)" }}>{t.name}</span>}
+                    <span className="tabular font-medium" style={{ color: "var(--text-primary)" }}>
+                      {valueOf(t)}
+                    </span>
                   </span>
                 ))}
               </div>
@@ -1051,10 +1100,11 @@ function LevelsChart({
                     type="monotone"
                     dataKey={t.name}
                     name={t.name}
-                    stroke={colorOf.get(t.name)}
+                    stroke={slotOf(t.name).color}
+                    strokeDasharray={slotOf(t.name).dash}
                     strokeOpacity={mid ? FUTURE_OPACITY : 1}
                     dot={false}
-                    strokeWidth={2.5}
+                    strokeWidth={STROKES.executed.width}
                     isAnimationActive={false}
                   />
                 ))}
@@ -1064,9 +1114,10 @@ function LevelsChart({
                       key={`${t.name}-past`}
                       type="monotone"
                       dataKey={PAST(t.name)}
-                      stroke={colorOf.get(t.name)}
+                      stroke={slotOf(t.name).color}
+                      strokeDasharray={slotOf(t.name).dash}
                       dot={false}
-                      strokeWidth={2.5}
+                      strokeWidth={STROKES.executed.width}
                       isAnimationActive={false}
                       tooltipType="none"
                     />
@@ -1077,7 +1128,7 @@ function LevelsChart({
                     type="monotone"
                     dataKey={BASE(b.name)}
                     name={`${b.name} (baseline)`}
-                    stroke={colorOf.get(b.name) ?? "var(--text-muted)"}
+                    stroke={slotOf(b.name).color}
                     strokeDasharray={BASELINE_DASH}
                     strokeOpacity={0.7}
                     dot={false}

@@ -165,7 +165,7 @@ export function Readouts({
           <RunStory result={result} lens={lens} tick={tick} model={model} baseline={baseline} />
         )}
         {tab === "fit" && hasFit && (
-          <RunFit result={result} tick={tick} timeUnit={model?.time_unit} />
+          <RunFit result={result} tick={tick} timeUnit={model?.time_unit} model={model} />
         )}
         {tab === "log" && tickLog && (
           <div className="grid gap-3">

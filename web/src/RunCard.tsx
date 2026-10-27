@@ -15,7 +15,16 @@ import { forcedByColumn, resolveParamRows } from "./kernel/params";
 import { ParamControl } from "./ParamControl";
 import { FieldControl } from "./RunInputs";
 import { glanceFacts } from "./RunPanel";
-import { FUTURE_OPACITY, RunChart, midRun, timeAxisLabel } from "./RunChart";
+import {
+  FALLBACK_SLOT,
+  FUTURE_OPACITY,
+  RunChart,
+  STROKES,
+  entitySlots,
+  midRun,
+  surfaceEntities,
+  timeAxisLabel,
+} from "./RunChart";
 import { Line } from "recharts";
 import { TimeRow } from "./Readouts";
 import { evaluateMetrics } from "./metrics";
@@ -94,6 +103,11 @@ export function RunCard({
   const paramRows = resolveParamRows(model).filter((row) => row.relation || row.field);
   const facts = result ? glanceFacts(result, model, tick) : null;
   const headReading = result ? (evaluateMetrics(model, result)?.readings[0] ?? null) : null;
+  // The headline draws in its entity's slot, the same stroke the Readouts give
+  // that entity (dataviz: colour follows the entity across the surface).
+  const headSlot = headReading
+    ? entitySlots(surfaceEntities(model, result)).get(headReading.entity) ?? FALLBACK_SLOT
+    : FALLBACK_SLOT;
 
   return (
     // 18rem wide and never more than 40% of the stage (rule 16; audit #6: at
@@ -132,7 +146,7 @@ export function RunCard({
               <span className="min-w-0 truncate text-xs" style={{ color: "var(--text-secondary)" }}>
                 {facts.head.name}
                 <span style={{ color: "var(--text-muted)" }}>
-                  {facts.head.kind === "sum" ? " · running total" : " · share"}
+                  {facts.head.kind === "sum" ? ` · running total${facts.head.unit ? ` · ${facts.head.unit}` : ""}` : " · share"}
                 </span>
               </span>
               {/* The card's one hero figure: proportional figures at display
@@ -161,8 +175,10 @@ export function RunCard({
       )}
 
       {/* Beat two — the shape. The ONE headline chart, drawn bare (the reading
-          above is its header) and given the height at which a curve's turn is
-          actually legible rather than merely present. */}
+          above is its header, and says "share" or the unit, so the axis goes
+          unlabeled) and given the height at which a curve's turn is actually
+          legible rather than merely present. A share draws two gridlines only
+          (0.5 and 1); the time axis shows at most six labels. */}
       {result && headReading && (
         <Band className="pb-1 pt-2">
           <RunChart
@@ -175,25 +191,27 @@ export function RunCard({
             tick={tick}
             height={140}
             xLabel={timeAxisLabel(model.time_unit)}
-            yLabel={headReading.kind === "share" ? "share" : headReading.unit || undefined}
             yDomain={headReading.kind === "share" ? [0, 1] : undefined}
+            yTicks={headReading.kind === "share" ? [0, 0.5, 1] : undefined}
           >
             <Line
               type="monotone"
               dataKey="v"
-              stroke="var(--accent)"
+              stroke={headSlot.color}
+              strokeDasharray={headSlot.dash}
               strokeOpacity={midRun(tick, headReading.series.length) ? FUTURE_OPACITY : 1}
               dot={false}
-              strokeWidth={2.5}
+              strokeWidth={STROKES.executed.width}
               isAnimationActive={false}
             />
             {midRun(tick, headReading.series.length) && (
               <Line
                 type="monotone"
                 dataKey="past"
-                stroke="var(--accent)"
+                stroke={headSlot.color}
+                strokeDasharray={headSlot.dash}
                 dot={false}
-                strokeWidth={2.5}
+                strokeWidth={STROKES.executed.width}
                 isAnimationActive={false}
               />
             )}
