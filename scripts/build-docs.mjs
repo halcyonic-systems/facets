@@ -103,7 +103,7 @@ const SHELL_CSS = `
   .folio svg { width: 1em; height: 1em; }
   .status { display: inline-block; padding: 2px 8px; border-radius: var(--radius-sm); background: var(--accent-soft); color: var(--accent); }
   h1.title { font-family: var(--font-display); font-weight: 700; font-size: var(--t-d1); line-height: 1.1; letter-spacing: -0.01em; margin: 12px 0 32px; }
-  article { max-width: 72ch; }
+  article { max-width: 72ch; overflow-wrap: break-word; }
   article h2 { font-family: var(--font-display); font-weight: 700; font-size: var(--t-d2); line-height: 1.15; margin: 48px 0 12px; }
   article h3 { font-family: var(--font-display); font-weight: 700; font-size: var(--t-d3); line-height: 1.2; margin: 32px 0 8px; }
   article h4 { font-size: var(--t-label); font-weight: 600; text-transform: uppercase; letter-spacing: var(--tracking-label); margin: 24px 0 8px; color: var(--text-secondary); }
@@ -113,7 +113,7 @@ const SHELL_CSS = `
   article ul, article ol { padding-left: 24px; margin: 0 0 16px; }
   article li { margin: 4px 0; }
   article li > p { margin: 0; }
-  article code { font-family: var(--font-mono); font-size: 0.875em; background: var(--bg-surface); border-radius: var(--radius-sm); padding: 1px 4px; }
+  article code { font-family: var(--font-mono); font-size: 0.875em; background: var(--bg-surface); border-radius: var(--radius-sm); padding: 1px 4px; overflow-wrap: anywhere; }
   article pre { background: var(--bg-surface); border: 1px solid var(--border); border-radius: var(--radius-sm); padding: 12px 16px; overflow-x: auto; margin: 0 0 24px; }
   article pre code { background: none; padding: 0; border-radius: 0; font-size: var(--t-num); line-height: 1.55; color: var(--text-primary); }
   article blockquote { margin: 0 0 16px; padding: 4px 0 4px 16px; border-left: 2px solid var(--accent); color: var(--text-secondary); }
