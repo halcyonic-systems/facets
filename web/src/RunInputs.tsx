@@ -47,7 +47,7 @@ function InputRow({
       </span>
       {forcedBy ? (
         <span
-          className="shrink-0 font-mono text-[11px]"
+          className="min-w-0 truncate font-mono text-[11px]"
           style={{ color: "var(--text-muted)" }}
           title={`This flow is driven by the data column “${forcedBy}” — the series, not a scalar, is what runs.`}
         >
@@ -64,7 +64,7 @@ function InputRow({
       ) : (
         <AmountField relation={relation} onEdit={onEdit} />
       )}
-      <span className="w-16 shrink-0 text-[11px]" style={{ color: "var(--text-muted)" }}>
+      <span className="w-16 min-w-0 shrink truncate text-[11px]" style={{ color: "var(--text-muted)" }}>
         {relation.unit ?? ""}
       </span>
     </div>
@@ -112,7 +112,7 @@ function ShareRow({
         {label}
       </span>
       {forcedBy ? (
-        <span className="flex-1 font-mono text-[11px]" style={{ color: "var(--text-muted)" }}>
+        <span className="min-w-0 flex-1 truncate font-mono text-[11px]" style={{ color: "var(--text-muted)" }}>
           driven by “{forcedBy}”
         </span>
       ) : setBy ? (
@@ -196,7 +196,7 @@ export function FieldControl({
           }}
           aria-label={param.name}
         />
-        <span className="w-16 shrink-0 text-[11px]" style={{ color: "var(--text-muted)" }}>
+        <span className="w-16 min-w-0 shrink truncate text-[11px]" style={{ color: "var(--text-muted)" }}>
           {unit}
         </span>
       </div>
@@ -269,7 +269,7 @@ function EngineRow({
         }}
         aria-label={label}
       />
-      <span className="w-16 shrink-0 text-[11px]" style={{ color: "var(--text-muted)" }}>
+      <span className="w-16 min-w-0 shrink truncate text-[11px]" style={{ color: "var(--text-muted)" }}>
         {unit ?? ""}
       </span>
     </div>

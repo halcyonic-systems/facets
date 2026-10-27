@@ -218,7 +218,7 @@ export function Readouts({
             {model.name.trim()}
           </span>
         )}
-        <div className="min-w-64 flex-1">{transport}</div>
+        <div className="order-last min-w-0 basis-full xl:order-none xl:basis-auto xl:flex-1">{transport}</div>
         {/* #463 move 4: keep this run as the baseline; every later knob
             then reads against it. One button, two states; dropping it is
             the same button. */}
@@ -249,7 +249,9 @@ export function Readouts({
           style={{ borderColor: "var(--hairline)" }}
           aria-label="Run inputs"
         >
-          <div className="grid gap-3">
+          {/* min-w-0 on each card: a grid child's min-width is auto, so a card
+              with a wide row would push past the rail instead of truncating. */}
+          <div className="grid gap-3 [&>*]:min-w-0">
             {timeRow}
             {inputs}
           </div>
