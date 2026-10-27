@@ -200,7 +200,7 @@ function countLibrary(tree: LibraryNode[]): number {
  *  a page-margin habit rather than a legibility need. */
 function Column({ children, className = "" }: { children: ReactNode; className?: string }) {
   return (
-    <div className={`mx-auto w-full max-w-4xl px-8 ${className}`}>
+    <div className={`mx-auto w-full max-w-4xl px-4 sm:px-8 ${className}`}>
       {children}
     </div>
   );
@@ -279,14 +279,14 @@ function Masthead({
   return (
     <Column className={dense ? "pt-8" : "pt-12"}>
       {back && (
-        <div className={dense ? "mb-6" : "mb-10"}>
+        <div className={dense ? "mb-6" : "mb-8"}>
           <Button size={28} variant="quiet" icon="back" onClick={back.onClick}>
             {back.label}
           </Button>
         </div>
       )}
-      <div className={`flex items-start justify-between gap-10 ${dense ? "pt-1" : "pt-6"}`}>
-        <div className="flex min-w-0 items-center gap-6">
+      <div className={`flex flex-col gap-6 sm:flex-row sm:items-start sm:justify-between sm:gap-8 ${dense ? "pt-1" : "pt-6"}`}>
+        <div className="flex min-w-0 items-center gap-4 sm:gap-6">
           {mark}
           <div className="min-w-0">
             {eyebrow && (
@@ -301,7 +301,7 @@ function Masthead({
             </h1>
           </div>
         </div>
-        {aside && <div className="shrink-0 pt-2">{aside}</div>}
+        {aside && <div className="w-full shrink-0 sm:w-auto sm:pt-2">{aside}</div>}
         {stat !== undefined && (
           <div className="shrink-0 pt-1 text-right">
             <div className="text-2xl font-semibold leading-none tabular" style={{ color: "var(--text-primary)" }}>
@@ -533,7 +533,7 @@ function Panel({
   onClick?: () => void;
   href?: string;
 }) {
-  const cls = "home-panel flex h-full w-full items-center gap-5 rounded-md border px-6 py-5 text-left";
+  const cls = "home-panel flex h-full w-full items-center gap-4 rounded-md border px-6 py-4 text-left";
   const style = { borderColor: "var(--hairline)", color: "var(--text-primary)" };
   const body = (
     <>
@@ -611,7 +611,7 @@ export function HomeMenu({
         mark={<Gem />}
         lede={lede}
       />
-      <Column className="pb-16 pt-10">
+      <Column className="pb-12 pt-8">
         <GroupHeader label="Start" lead />
         {/* Two doors in, one model underneath. The data-first door that stood
             here (#309, the Klir source-and-data rungs) left the face in the
@@ -619,7 +619,7 @@ export function HomeMenu({
             and a model here starts from the system, not from a table. The
             surface still exists behind `?data=1` for the parked issue; the CSV
             attach path on an open model is untouched. */}
-        <div className="grid grid-cols-2 gap-5">
+        <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
           <Panel
             glyph={<DoorWell icon="draw" hue="var(--accent)" soft="var(--accent-soft)" />}
             name="Draw your system"
@@ -633,7 +633,7 @@ export function HomeMenu({
             onClick={() => onCreate({ sl: true })}
           />
         </div>
-        <div className="mt-9 grid grid-cols-2 items-stretch gap-5">
+        <div className="mt-8 grid grid-cols-1 items-stretch gap-4 sm:grid-cols-2">
           <div className="flex flex-col">
             <GroupHeader label="Continue" />
             <Panel
@@ -658,7 +658,7 @@ export function HomeMenu({
             page's claim rests on, so it belongs on the page, quietly, rather
             than among the doors. The docs sit beside it: a reference, not a door. */}
         <div
-          className="mt-14 flex items-baseline gap-8 border-t pt-4"
+          className="mt-12 flex flex-wrap items-center gap-4 border-t pt-4"
           style={{ borderColor: "var(--hairline)" }}
         >
           {onAbout && (
@@ -700,13 +700,13 @@ export function AboutPage({ onBack }: { onBack: () => void }) {
         lede="Every verdict is machine-checked against Lean proofs in another repository. These are the ones."
         back={{ label: "Home", onClick: onBack }}
       />
-      <Column className="pb-20 pt-12">
+      <Column className="pb-12 pt-12">
         <BlockHeader label="Provenance" count={buildInfo.gitSha} />
         <div style={{ borderTop: "1px solid var(--rule-strong)" }}>
           {provenanceLines().map((line) => (
             <div
               key={line.label}
-              className="grid grid-cols-[10rem_1fr] gap-5 border-b py-3"
+              className="grid grid-cols-1 gap-1 border-b py-3 sm:grid-cols-[10rem_1fr] sm:gap-4"
               style={{ borderColor: "var(--hairline)" }}
             >
               <span className={LABEL} style={labelStyle}>
@@ -994,7 +994,7 @@ function ModelCard({
     // back to the app accent, which is what .home-panel does everywhere else.
     ...(hue ? { "--card-hue": hue } : {}),
   } as CSSProperties;
-  const panel = `${hue ? "hue-panel" : "home-panel"} flex min-w-0 items-center gap-3 rounded-md border px-3 py-2.5 text-left`;
+  const panel = `${hue ? "hue-panel" : "home-panel"} flex min-w-0 items-center gap-3 rounded-md border px-3 py-2 text-left`;
   return trailing ? (
     <div className={panel} style={style}>
       {body}
@@ -1011,7 +1011,7 @@ function ModelCard({
  *  Recent strip. */
 function CardGrid({ across, children }: { across: 3 | 4; children: ReactNode }) {
   return (
-    <div className={`grid gap-2.5 ${across === 4 ? "grid-cols-4" : "grid-cols-3"}`}>{children}</div>
+    <div className={`grid gap-3 ${across === 4 ? "grid-cols-2 md:grid-cols-4" : "grid-cols-1 sm:grid-cols-3"}`}>{children}</div>
   );
 }
 
@@ -1060,7 +1060,7 @@ function ShelfHead({
   onExpand: () => void;
 }) {
   return (
-    <div className="flex items-baseline gap-2.5 pb-2">
+    <div className="flex items-baseline gap-3 pb-2">
       {hue && <span aria-hidden className="h-4 w-[3px] shrink-0 self-center" style={{ background: hue }} />}
       {/* A shelf is the second level: the display face a step below the
           section head, a step above the card names, so the three sizes read
@@ -1210,7 +1210,7 @@ export function LibraryBrowser({
         dense
       />
 
-      <Column className="pb-14 pt-5">
+      <Column className="pb-12 pt-4">
         {view === "list" ? (
           <LedgerView
             all={all}
@@ -1289,7 +1289,7 @@ export function LibraryBrowser({
                 system the instrument is pointed at first, then two that teach
                 its two depths. Shown unless a search has named something. */}
             {!q && featuredCards.length > 0 && (
-              <section className={recentCards.length > 0 ? "mt-14" : ""}>
+              <section className={recentCards.length > 0 ? "mt-12" : ""}>
                 <SectionHead label="Start here" lead={recentCards.length === 0} />
                 <CardGrid across={3}>
                   {featuredCards.map((m) => (
@@ -1308,7 +1308,7 @@ export function LibraryBrowser({
             )}
 
             {libraryOpen && (
-            <section className={recentCards.length > 0 || featuredCards.length > 0 ? "mt-14" : ""}>
+            <section className={recentCards.length > 0 || featuredCards.length > 0 ? "mt-12" : ""}>
               <SectionHead
                 label="Start from one of ours"
                 // A search has put the shelves away, and the toggle only cuts
@@ -1384,7 +1384,7 @@ export function LibraryBrowser({
                 control on every card: renaming and deleting are not what a
                 reader came here to do, and a × on every card invites the one
                 click this page cannot undo. */}
-            <section className="mt-14">
+            <section className="mt-12">
               <SectionHead
                 label="Yours"
                 right={
@@ -1468,11 +1468,11 @@ export function LibraryBrowser({
               )}
             </section>
 
-            <section className="mt-14">
+            <section className="mt-12">
               <SectionHead label="From a file" />
               <button
                 onClick={onOpenFile}
-                className="home-panel flex w-full items-center gap-4 rounded-md border px-3 py-2.5 text-left"
+                className="home-panel flex w-full items-center gap-4 rounded-md border px-3 py-2 text-left"
                 style={{ borderColor: "var(--hairline)", background: "var(--bg-secondary)" }}
               >
                 <span
@@ -1493,7 +1493,7 @@ export function LibraryBrowser({
               </button>
             </section>
 
-            <div className="mt-8 pt-3.5" style={{ borderTop: "1px solid var(--hairline)" }}>
+            <div className="mt-8 pt-4" style={{ borderTop: "1px solid var(--hairline)" }}>
               <Button size={28} variant="quiet" onClick={() => setView("list")}>
                 Browse all {all.length + savedCount} as a list
                 <Icon name="forward" size={16} />
@@ -1514,7 +1514,7 @@ function SearchField({ value, onChange }: { value: string; onChange: (v: string)
   // The Input primitive (32 tall, 4px, the global focus ring) with the drawn
   // search mark set inside its left padding (rules 10, 14).
   return (
-    <label className="relative flex min-w-[18rem] items-center">
+    <label className="relative flex w-full items-center sm:w-72">
       <Icon name="search" size={16} className="pointer-events-none absolute left-2" style={{ color: "var(--text-muted)" }} />
       <Input
         value={value}
@@ -1619,7 +1619,7 @@ function SavedCard({
   if (draft !== null) {
     return (
       <div
-        className="flex min-w-0 items-center gap-3 rounded-md border px-3 py-2.5"
+        className="flex min-w-0 items-center gap-3 rounded-md border px-3 py-2"
         style={{ borderColor: "var(--hairline)", background: "var(--bg-secondary)" }}
       >
         <CardThumb cacheKey={`saved:${node.name}`} source={node.json} kind="archive" well={YOURS_WELL} />
@@ -1795,7 +1795,7 @@ function LedgerView({
           a release ships a handful of models and everything else is the
           user's own. Saved models carry no genus or tradition, so a facet
           selection empties this section rather than silently ignoring it. */}
-      <section className="mt-16">
+      <section className="mt-12">
         <BlockHeader label="Yours" count={`${savedCount} model${savedCount === 1 ? "" : "s"}`} />
         {facet ? (
           <EmptyLine>your models carry no genus or tradition tag — clear the filter to see them</EmptyLine>
@@ -1810,12 +1810,12 @@ function LedgerView({
                 style={{ borderColor: "var(--hairline)" }}
               >
                 <span
-                  className="flex items-start justify-end pr-5 pt-3 text-xs tabular"
+                  className="flex items-start justify-end pr-4 pt-3 text-xs tabular"
                   style={{ color: "var(--text-muted)" }}
                 >
                   {String(i + 1).padStart(2, "0")}
                 </span>
-                <div className="py-2.5 pr-2">
+                <div className="py-2 pr-2">
                   <LibraryRow node={root} depth={0} onLoad={onLoad} onDelete={onDelete} onRename={onRename} />
                 </div>
               </div>
@@ -1844,7 +1844,7 @@ function LedgerView({
         )}
       </section>
 
-      <section className="mt-16">
+      <section className="mt-12">
         <BlockHeader label="From a file" />
         <Ledger>
           <LedgerRow
@@ -1907,7 +1907,7 @@ function ModelRow({
   return (
     <button
       onClick={onClick}
-      className="record-row grid w-full grid-cols-[3rem_minmax(0,1fr)_auto] items-start gap-x-4 border-b py-3 text-left"
+      className="record-row grid w-full grid-cols-[3rem_minmax(0,1fr)] items-start gap-x-4 border-b py-3 text-left sm:grid-cols-[3rem_minmax(0,1fr)_auto]"
       style={{ borderColor: "var(--hairline)" }}
     >
       <ModelGutter model={model} index={index} />
@@ -1927,8 +1927,8 @@ function ModelRow({
           {model.description}
         </span>
       </span>
-      <span className="block max-w-[16rem] shrink-0 pt-1 text-right">
-        <span className="flex flex-wrap items-center justify-end gap-x-3 gap-y-1">
+      <span className="col-start-2 block min-w-0 pt-1 text-left sm:col-start-3 sm:max-w-[16rem] sm:shrink-0 sm:text-right">
+        <span className="flex flex-wrap items-center justify-start gap-x-3 gap-y-1 sm:justify-end">
           {/* Tags and the set name are labels; the citation is prose at meta. */}
           {model.tags.map((t) => (
             <span key={`${t.kind}:${t.id}`} className={`inline-flex items-center gap-1.5 ${LABEL}`} style={labelStyle}>
@@ -2008,7 +2008,7 @@ function LibraryRow({
     <>
       <div
         className={depth === 0 ? "flex items-center gap-2" : "mt-1 flex items-center gap-2"}
-        style={{ paddingLeft: depth === 0 ? 0 : (depth - 1) * 14 }}
+        style={{ paddingLeft: depth === 0 ? 0 : (depth - 1) * 16 }}
       >
         {depth > 0 && (
           <Icon name="tree" size={16} className="shrink-0" style={{ color: "var(--text-muted)" }} />
