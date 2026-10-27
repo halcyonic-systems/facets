@@ -6,7 +6,7 @@ Use: `<Icon name="close" size={16} />` is decorative (`aria-hidden`); the contro
 
 The ten primitives also render in the lenses' ±6 box through `canvas/lenses/primitive-glyphs.tsx` (`primitiveGlyph(p)`), so the canvas badge, the palette rail and the inspector draw from the same table. `PRIMITIVE_ICON` maps the kernel's primitive names to icon names.
 
-## UI (38)
+## UI (39)
 
 | Name | Replaces | Where it goes |
 |---|---|---|
@@ -48,6 +48,7 @@ The ten primitives also render in the lenses' ±6 box through `canvas/lenses/pri
 | `tree` | `└` | Switch child rows, Library tree connector |
 | `dot` | `•`, `·` | active model marker, dirty marker (with "unsaved" in the name) |
 | `braces` | `{ }` text | the SL drawer button on the tool rail |
+| `select` | the 16px cursor drawing | the tool rail's select row |
 
 ## Canvas (23)
 

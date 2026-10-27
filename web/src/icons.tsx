@@ -96,6 +96,7 @@ const UI = {
   tree: [P("M8 4 V16 H20")],
   dot: [C(12, 12, 2.5, "ink")],
   braces: [P("M9 4 H7 V10 L5 12 L7 14 V20 H9 M15 4 H17 V10 L19 12 L17 14 V20 H15")],
+  select: [P("M6 4 L19 12 L12.5 13.2 L16 19.5 L13.5 20.5 L10.2 14.3 L6 18 Z")],
 } satisfies Record<string, Shape[]>;
 
 // ---- The CANVAS set ------------------------------------------------------------
