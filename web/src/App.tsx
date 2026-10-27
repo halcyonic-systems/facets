@@ -85,6 +85,7 @@ import { chosenEffort, effortOnWire } from "./draftEffort";
 import { adoptInterior, carryChildIdentity, draftInteriorWithRetry } from "./interior";
 import { pendingCrossings } from "./canvas/crossings";
 import {
+  THEME_CHOICES,
   THEME_LABEL,
   nextThemeChoice,
   setThemeChoice,
@@ -2989,17 +2990,20 @@ function Workspace() {
         />
       </div>
       {view3dEnabled() && workMode === "structure" && (
-        <Button
-          size={28}
-          variant="quiet"
-          className="chrome-toggle"
-          onClick={() => setView3d((v) => !v)}
-          aria-pressed={view3d}
-          title="3D exploded view (beta) — a way of looking at the model, read-only"
-          data-testid="view-3d-toggle"
-        >
-          3D · beta
-        </Button>
+        // Below 1280 this toggle lives in the bar's overflow menu (rule 16).
+        <span className="hidden xl:contents">
+          <Button
+            size={28}
+            variant="quiet"
+            className="chrome-toggle"
+            onClick={() => setView3d((v) => !v)}
+            aria-pressed={view3d}
+            title="3D exploded view (beta) — a way of looking at the model, read-only"
+            data-testid="view-3d-toggle"
+          >
+            3D · beta
+          </Button>
+        </span>
       )}
     </div>
   ) : undefined;
@@ -3022,18 +3026,63 @@ function Workspace() {
           end of the question it modifies — the status-bar toggle stays, since
           in Focus this bar is a strip and that one is how you come back. */}
       {!narrow && (
-        <Button
-          size={28}
-          variant="quiet"
-          className="chrome-toggle"
-          onClick={() => setFocus((f) => !f)}
-          aria-pressed={focus}
-          title="Focus: the mode's primary surface fills the window — ⌃⌥F, Esc to leave"
-          data-testid="mode-focus"
-        >
-          Focus
-        </Button>
+        // Below 1280 only the status bar's Focus toggle shows (rule 16).
+        <span className="hidden xl:contents">
+          <Button
+            size={28}
+            variant="quiet"
+            className="chrome-toggle"
+            onClick={() => setFocus((f) => !f)}
+            aria-pressed={focus}
+            title="Focus: the mode's primary surface fills the window — ⌃⌥F, Esc to leave"
+            data-testid="mode-focus"
+          >
+            Focus
+          </Button>
+        </span>
       )}
+    </div>
+  ) : undefined;
+
+  // Makeover slice D (rule 16): below the narrow breakpoint the three strips
+  // collapse into one View menu, so every mode, bench and lens stays reachable
+  // at 390 and nothing sits clipped in the tab order. Same setters as the
+  // strips; the open choice is the checked menuitemradio.
+  const viewMenu = canvasModel ? (
+    <div data-lens={canvasModel.lens}>
+    <Menu label="View" title="Mode, Model or Measurements, and the lens">
+      <MenuSection title="Mode">
+        {WORKSPACE_MODES.map((m) => (
+          <MenuItem key={m.value} role="menuitemradio" checked={mode === m.value} onSelect={() => setWorkspaceMode(m.value)} title={m.title}>
+            {m.label}
+          </MenuItem>
+        ))}
+      </MenuSection>
+      <MenuSeparator />
+      <MenuSection title="Bench">
+        {WORK_MODES.map((m) => (
+          <MenuItem key={m} role="menuitemradio" checked={workMode === m} onSelect={() => setWorkMode(m)} title={WORK_MODE_TITLE[m]}>
+            {WORK_MODE_LABEL[m]}
+          </MenuItem>
+        ))}
+      </MenuSection>
+      <MenuSeparator />
+      <MenuSection title="Lens">
+        {lensTabs(canvasModel.lens).map((l) => (
+          <MenuItem key={l} role="menuitemradio" checked={canvasModel.lens === l} onSelect={() => setLens(l)}>
+            {l}
+          </MenuItem>
+        ))}
+      </MenuSection>
+      {view3dEnabled() && workMode === "structure" && (
+        <>
+          <MenuSeparator />
+          <MenuItem role="menuitemcheckbox" checked={view3d} onSelect={() => setView3d((v) => !v)}>
+            3D exploded view (beta)
+          </MenuItem>
+        </>
+      )}
+    </Menu>
     </div>
   ) : undefined;
 
@@ -3044,14 +3093,39 @@ function Workspace() {
         onMouseEnter={() => setBarPeek(true)}
         onMouseLeave={() => setBarPeek(false)}
         className={frame.topBarStrip && !barPeek ? "h-1.5 shrink-0" : undefined}
-        style={frame.topBarStrip && !barPeek ? { background: "var(--accent)", opacity: 0.5 } : undefined}
+        style={
+          frame.topBarStrip && !barPeek
+            ? { background: "color-mix(in srgb, var(--accent) 50%, var(--bg-secondary))", borderBottom: "1px solid var(--accent)" }
+            : undefined
+        }
         data-testid="top-bar"
       >
+      {/* The strip's one control: focusing it (Tab) peeks the bar, as hover
+          does, so the bar is reachable without a pointer. */}
+      {frame.topBarStrip && !barPeek && (
+        <button
+          type="button"
+          className="block h-full w-full"
+          aria-label="Show the menu bar (Focus)"
+          onFocus={() => setBarPeek(true)}
+          onClick={() => setBarPeek(true)}
+        />
+      )}
       <div className={frame.topBarStrip && !barPeek ? "hidden" : undefined}>
       <MenuBar
         loaded={true}
-        controls={workbenchControls}
-        modeSwitch={modeSwitch}
+        controls={narrow ? undefined : workbenchControls}
+        modeSwitch={narrow ? viewMenu : modeSwitch}
+        narrow={narrow}
+        more={
+          // Below 1280 the 3D toggle leaves the strip for the overflow menu
+          // (rule 16); Focus is in the status bar at every width.
+          canvasModel && !narrow && view3dEnabled() && workMode === "structure" ? (
+            <MenuItem role="menuitemcheckbox" checked={view3d} onSelect={() => setView3d((v) => !v)}>
+              3D exploded view (beta)
+            </MenuItem>
+          ) : undefined
+        }
         onNew={newModel}
         onOpen={() => openHomeAt({ view: "library" })}
         onSave={() => void quickSave()}
@@ -4148,27 +4222,44 @@ function SeamGlyph({ clean }: { clean: boolean }) {
 // bar read as if the display mattered as much as the model does. The label
 // always states the CURRENT state, and the tooltip states what a click does and
 // what "auto" is currently resolving to.
-function ThemeControl() {
+function useThemeChoice(): ThemeChoice {
   const [choice, setChoice] = useState<ThemeChoice>(() => themeChoice());
   useEffect(() => subscribeTheme(setChoice), []);
+  return choice;
+}
+
+/** The current mode, as the control's accessible name states it. */
+function themeName(choice: ThemeChoice): string {
+  return choice === "system" ? "Theme: following the system" : `Theme: ${THEME_LABEL[choice]}, overriding the system`;
+}
+
+// Makeover slice D (rules 11, 14): a 32px ToolButton with the drawn theme
+// icon; the name states the current mode, the tooltip what a click does. It
+// still cycles system → light → dark.
+function ThemeControl() {
+  const choice = useThemeChoice();
   const next = nextThemeChoice(choice);
   return (
-    <button
+    <ToolButton
       onClick={() => setThemeChoice(next)}
-      className="ml-auto text-[11px]"
-      style={{
-        fontFamily: "var(--font-mono)",
-        color: choice === "system" ? "var(--text-muted)" : "var(--text-secondary)",
-      }}
-      aria-label={`Theme: ${THEME_LABEL[choice]}`}
-      title={
-        choice === "system"
-          ? `Theme: following the system — click for ${THEME_LABEL[next]}`
-          : `Theme: ${THEME_LABEL[choice]}, overriding the system — click for ${THEME_LABEL[next]}`
-      }
-    >
-      {THEME_LABEL[choice]}
-    </button>
+      icon="theme"
+      aria-label={themeName(choice)}
+      title={`${themeName(choice)} — click for ${THEME_LABEL[next]}`}
+    />
+  );
+}
+
+/** The same three states as a menuitemradio group, for the overflow menu. */
+function ThemeMenuItems() {
+  const choice = useThemeChoice();
+  return (
+    <MenuSection title="Theme">
+      {THEME_CHOICES.map((c) => (
+        <MenuItem key={c} role="menuitemradio" checked={choice === c} onSelect={() => setThemeChoice(c)}>
+          {c === "system" ? "Follow the system" : THEME_LABEL[c] === "light" ? "Light" : "Dark"}
+        </MenuItem>
+      ))}
+    </MenuSection>
   );
 }
 
@@ -4209,8 +4300,16 @@ export function MenuBar({
   onOpenPin,
   controls,
   modeSwitch,
+  narrow = false,
+  more,
 }: {
   loaded: boolean;
+  /** Rule 16: below the narrow breakpoint the wordmark and Home leave the
+   *  bar (Home moves into the overflow menu), File and Switch become icon
+   *  triggers, and the title chip shortens. */
+  narrow?: boolean;
+  /** Items the surface adds to the overflow menu below 1280 (the 3D toggle). */
+  more?: React.ReactNode;
   /** #345 ws-D: the workbench controls, dissolved upward from the old
    *  strip — mode switch, lens pills, Review, clean chip, SL. The caller
    *  wraps them in a data-lens scope so the lens seam re-tints them here. */
@@ -4260,31 +4359,33 @@ export function MenuBar({
   const [fileOpen, setFileOpen] = useState(false);
   const [switchOpen, setSwitchOpen] = useState(false);
   const [typeOpen, setTypeOpen] = useState(false);
+  const titleRef = useRef<HTMLButtonElement>(null);
   // Display only: the asserted kind, read back into the name's tooltip so the
   // declaration is legible without opening it. No verdict is computed here.
   const typeLabel =
     [systemType?.kingdom, systemType?.genus, systemType?.domain].filter(Boolean).join(" / ") || "unasserted";
   return (
     <div
-      className="relative z-30 flex items-center gap-4 border-b px-3 py-1"
+      className={`relative z-30 flex items-center border-b px-3 py-1 ${narrow ? "gap-2" : "gap-2 xl:gap-4"}`}
       style={{ borderColor: "var(--rule-strong)", background: "var(--bg-secondary)" }}
     >
       {/* Under the facets.systems portal the wordmark is the way back to the
           entry screen; everywhere else (dev, :5190, desktop) there is no portal
           above this app, so it stays plain text. */}
-      {import.meta.env.BASE_URL === "/model/" ? (
+      {/* A name of a thing: Cormorant 700 at d3 (rule 5). */}
+      {narrow ? null : import.meta.env.BASE_URL === "/model/" ? (
         <a
           href="/"
-          className="text-xs font-semibold uppercase tracking-wider"
-          style={{ fontFamily: "var(--font-mono)", color: "var(--ink)" }}
+          className="hidden font-bold leading-none whitespace-nowrap xl:inline"
+          style={{ fontFamily: "var(--font-display)", fontSize: "var(--t-d3)", color: "var(--ink)" }}
           title="Facets home"
         >
           facets&#8202;·&#8202;model
         </a>
       ) : (
         <span
-          className="text-xs font-semibold uppercase tracking-wider"
-          style={{ fontFamily: "var(--font-mono)", color: "var(--ink)" }}
+          className="hidden font-bold leading-none whitespace-nowrap xl:inline"
+          style={{ fontFamily: "var(--font-display)", fontSize: "var(--t-d3)", color: "var(--ink)" }}
         >
           facets&#8202;·&#8202;model
         </span>
@@ -4297,21 +4398,30 @@ export function MenuBar({
       {/* Home / Close (#73): the one route back to the start screen from a
           loaded model. Disabled when already home (no model), so it never
           no-ops silently. */}
-      <Button
-        size={28}
-        variant="quiet"
-        onClick={onHome}
-        disabled={!loaded || !hasModel}
-        title={hasModel ? "Close this model and return to the start screen" : "Already at the start screen"}
-      >
-        Home
-      </Button>
+      {!narrow && (
+        <Button
+          size={28}
+          variant="quiet"
+          onClick={onHome}
+          disabled={!loaded || !hasModel}
+          title={hasModel ? "Close this model and return to the start screen" : "Already at the start screen"}
+        >
+          Home
+        </Button>
+      )}
 
       {/* Makeover slice D (rule 15): File and Switch are the Menu primitive
           (APG menu button: roles, Enter/arrows/Escape/Tab, focus return),
           in controlled mode over the state this bar already held. Every item
           keeps its handler; the shortcut moves to the right slot. */}
-      <Menu label="File" open={fileOpen} onOpenChange={setFileOpen} disabled={!loaded}>
+      <Menu
+        label={narrow ? undefined : "File"}
+        icon={narrow ? "file" : undefined}
+        aria-label="File"
+        open={fileOpen}
+        onOpenChange={setFileOpen}
+        disabled={!loaded}
+      >
         <MenuItem icon="plus" onSelect={onNew}>
           New
         </MenuItem>
@@ -4358,7 +4468,9 @@ export function MenuBar({
           Open… dialog. Only meaningful once a model is loaded. The open model
           is the checked menuitemradio in its group. */}
       <Menu
-        label="Switch"
+        label={narrow ? undefined : "Switch"}
+        icon={narrow ? "folder" : undefined}
+        aria-label="Switch model"
         open={switchOpen}
         onOpenChange={setSwitchOpen}
         disabled={!loaded || !hasModel}
@@ -4439,19 +4551,28 @@ export function MenuBar({
           name instead of holding a tab in the inspector dock. A dropdown, not
           a modal: the canvas stays visible and the editor is one click away. */}
       {currentLabel && (
-        <div className="relative">
-          <button
+        <div
+          className="relative min-w-0"
+          onKeyDown={(e) => {
+            if (e.key === "Escape" && typeOpen) {
+              e.stopPropagation();
+              setTypeOpen(false);
+              titleRef.current?.focus();
+            }
+          }}
+        >
+          <Button
+            ref={titleRef}
+            size={28}
+            variant="quiet"
+            icon="file"
             onClick={() => onSystemTypeChange && setTypeOpen((o) => !o)}
             disabled={!onSystemTypeChange}
+            aria-haspopup="dialog"
             aria-expanded={typeOpen}
-            aria-label={`${currentLabel} — system type`}
-            className="max-w-[16rem] truncate rounded px-1.5 py-0.5 text-[11px]"
-            style={{
-              fontFamily: "var(--font-mono)",
-              color: typeOpen ? "var(--text-secondary)" : "var(--text-muted)",
-              background: typeOpen ? "var(--bg-surface)" : "transparent",
-              cursor: onSystemTypeChange ? "pointer" : "default",
-            }}
+            aria-label={`${currentLabel}${dirty ? ", unsaved changes" : ""} — system type`}
+            className={`${narrow ? "max-w-[8rem]" : "max-w-[8rem] xl:max-w-[16rem]"} min-w-0`}
+            style={{ color: "var(--text-secondary)", fontWeight: 400 }}
             title={
               onSystemTypeChange
                 ? `${currentLabel}${dirty ? " — unsaved changes" : ""} · system type: ${typeLabel} (click to declare)`
@@ -4460,9 +4581,9 @@ export function MenuBar({
                   : currentLabel
             }
           >
-            {currentLabel}
-            {dirty ? " •" : ""}
-          </button>
+            <span className="min-w-0 truncate">{currentLabel}</span>
+            {dirty && <Icon name="dot" size={16} className="shrink-0" style={{ color: "var(--accent)" }} />}
+          </Button>
           {typeOpen && onSystemTypeChange && (
             <>
               <div className="fixed inset-0 z-10" onClick={() => setTypeOpen(false)} />
@@ -4488,37 +4609,62 @@ export function MenuBar({
           an address a pin could name. */}
       {modeSwitch && <div className="mx-auto flex items-center">{modeSwitch}</div>}
       {controls && (
-        <div className={`flex min-w-0 flex-wrap items-center gap-2${modeSwitch ? "" : " ml-auto"}`}>{controls}</div>
+        <div className={`flex min-w-0 items-center gap-2${modeSwitch ? "" : " ml-auto"}`}>{controls}</div>
       )}
 
       {/* Meta cluster: pin · theme — standing status, not actions; a hairline
           sets it off from the working controls. The kernel chip moved to the
           status bar (#409). */}
       {controls && (
-        <span aria-hidden className="h-4 w-px" style={{ background: "var(--hairline)" }} />
+        <span aria-hidden className="hidden h-4 w-px xl:block" style={{ background: "var(--hairline)" }} />
       )}
-      <div className={controls ? "flex items-center gap-2" : "ml-auto flex items-center gap-2"}>
-      {canPin && onTogglePin && (
-        <button
-          onClick={onTogglePin}
-          className="text-[11px]"
-          style={{
-            fontFamily: "var(--font-mono)",
-            color: pinned ? "var(--accent-strong)" : "var(--text-muted)",
-          }}
-          title={pinned ? "On the workbench — click to remove" : "Pin to the workbench (Home and Switch menus)"}
-        >
-          {pinned ? "pinned ✓" : "pin"}
-        </button>
-      )}
-
-      <ThemeControl />
+      {/* Rule 16: at 1280 and up the pin and the theme are two 32px
+          ToolButtons; below that they fold into one overflow menu so the bar
+          stays one row at 1024, and at narrow widths Home joins them. */}
+      <div className={`${controls || modeSwitch ? "" : "ml-auto "}hidden items-center gap-2 xl:flex`}>
+        {canPin && onTogglePin && (
+          <ToolButton
+            onClick={onTogglePin}
+            icon="pin"
+            active={pinned}
+            aria-label={pinned ? "Pinned to the workbench" : "Pin to the workbench"}
+            title={pinned ? "On the workbench — click to remove" : "Pin to the workbench (Home and Switch menus)"}
+          />
+        )}
+        <ThemeControl />
+      </div>
+      <div className={`${controls || modeSwitch ? "" : "ml-auto "}flex items-center xl:hidden`}>
+        <Menu icon="menu" aria-label="More" title="Home, pin and theme" align="end" size={32}>
+          {narrow && (
+            <>
+              <MenuItem icon="back" onSelect={onHome} disabled={!loaded || !hasModel}>
+                Home
+              </MenuItem>
+              <MenuSeparator />
+            </>
+          )}
+          {more && (
+            <>
+              {more}
+              <MenuSeparator />
+            </>
+          )}
+          {canPin && onTogglePin && (
+            <>
+              <MenuItem role="menuitemcheckbox" checked={pinned} icon="pin" onSelect={onTogglePin}>
+                {pinned ? "Pinned to the workbench" : "Pin to the workbench"}
+              </MenuItem>
+              <MenuSeparator />
+            </>
+          )}
+          <ThemeMenuItems />
+        </Menu>
+      </div>
       {!loaded && (
         <span className="text-[11px]" style={{ fontFamily: "var(--font-mono)", color: "var(--text-muted)" }}>
           loading…
         </span>
       )}
-      </div>
     </div>
   );
 }

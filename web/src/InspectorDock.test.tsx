@@ -54,8 +54,10 @@ describe("the model name carries the system type (#312)", () => {
 
   it("stays inert when the shell hands over no writer", () => {
     const html = menuBar({ onSystemTypeChange: undefined });
-    expect(html).toMatch(/<button disabled=""[^>]*aria-label="watershed[^"]*system type"/);
-    expect(html).toContain("cursor:default");
+    // The chip is a quiet Button (makeover slice D): disabled keeps readable
+    // ink and the primitive's not-allowed cursor.
+    expect(html).toMatch(/<button[^>]*disabled=""[^>]*aria-label="watershed[^"]*system type"/);
+    expect(html).toContain("cursor:not-allowed");
   });
 
   it("the editor it opens is the same component the dock used, same contract", () => {
