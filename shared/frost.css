@@ -73,14 +73,14 @@
   color-scheme: light dark;
 
   /* surfaces + text */
-  --bg-primary: light-dark(#f1f2f3, #16181a);
-  --bg-secondary: light-dark(#fafafb, #1d2022);
-  --bg-surface: light-dark(#e6e7e9, #24282a);
-  --stage-from: light-dark(#f5f6f7, #191c1e);
-  --stage-to: light-dark(#eceded, #121415);
-  --text-primary: light-dark(#17181a, #e8eaec);
-  --text-secondary: light-dark(#45484c, #b0b4b8);
-  --text-muted: light-dark(#6d7175, #82868a);
+  --bg-primary: light-dark(#f3f6f9, #16181a);
+  --bg-secondary: light-dark(#ffffff, #1d2022);
+  --bg-surface: light-dark(#e5edf4, #0e0f11);
+  --stage-from: light-dark(#f3f6f9, #16181a);
+  --stage-to: light-dark(#e5edf4, #0e0f11);
+  --text-primary: light-dark(#2e3440, #e8eaec);
+  --text-secondary: light-dark(#3b4252, #b0b4b8);
+  --text-muted: light-dark(#5b6577, #8e9499);
   --text-on-accent: light-dark(#ffffff, #16181a);
 
   /* accents + verdicts */
@@ -94,27 +94,27 @@
   --verdict-ok: light-dark(#1f7351, #4fbc93);
 
   /* structure */
-  --border: light-dark(#d5dee4, #33383b);
-  --hairline: light-dark(#e5ecf0, #2a2f3260);
+  --border: light-dark(#d8dee9, #434c5e);
+  --hairline: light-dark(#c2ccda, #3b4252);
   --radius-sm: 4px;
   --radius-md: 8px;
-  --radius-lg: 12px;
-  --radius-card: 10px;
+  --radius-lg: 8px;
+  --radius-card: 8px;
   --radius-pill: 9999px;
-  --shadow-ink: light-dark(rgba(22, 35, 43, 0.05), rgba(0, 0, 0, 0.25));
-  --shadow-ink-hover: light-dark(rgba(22, 35, 43, 0.09), rgba(0, 0, 0, 0.34));
-  --shadow-card: 0 1px 2px var(--shadow-ink);
-  --shadow-card-hover: 0 2px 8px var(--shadow-ink-hover);
+  --shadow-ink: transparent;
+  --shadow-ink-hover: transparent;
+  --shadow-card: none;
+  --shadow-card-hover: none;
 
   /* printed record (paper register) */
-  --paper: light-dark(#ffffff, #17191c);
-  --paper-ground: light-dark(#eaecee, #0e0f11);
-  --paper-edge: light-dark(#f4f5f6, #1c1f22);
-  --ink: light-dark(#17181a, #e8eaec);
-  --ink-secondary: light-dark(#45484c, #b0b4b8);
-  --ink-muted: light-dark(#7c8084, #7d8286);
-  --rule: light-dark(#17181a, #e8eaec);
-  --rule-soft: light-dark(#e0e3e5, #2c3034);
+  --paper: light-dark(#ffffff, #1d2022);
+  --paper-ground: light-dark(#e5edf4, #0e0f11);
+  --paper-edge: light-dark(#f3f6f9, #16181a);
+  --ink: light-dark(#2e3440, #e8eaec);
+  --ink-secondary: light-dark(#3b4252, #b0b4b8);
+  --ink-muted: light-dark(#5b6577, #8e9499);
+  --rule: light-dark(#d8dee9, #434c5e);
+  --rule-soft: light-dark(#c2ccda, #3b4252);
   --seal: light-dark(#8a3324, #c9705c);
 
   /* type + motion */

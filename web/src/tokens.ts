@@ -36,3 +36,22 @@ export const kind = {
 // exported SVG still needs a concrete page color. Literal here because tokens.ts
 // is the one sanctioned home for raw color values (check-tokens.mjs enforces).
 export const exportBgFallback = "#ffffff";
+
+// The PROCESS PRIMITIVE hues (makeover rule 9b, 2026-10-26): one hue per Mobus
+// primitive, stated once in index.css as a light-dark() pair and carried by the
+// palette rail, the canvas badge and the inspector alike, so a primitive is
+// recognisable by colour before its glyph is read. var() references for the
+// same reason `kind` is: the theme pair stays in one place. Keyed by the
+// kernel's ProcessPrimitive names (canvas/types.ts PRIMITIVE_BADGE).
+export const prim = {
+  Buffering: "var(--prim-buffering)",
+  Modulating: "var(--prim-modulating)",
+  Splitting: "var(--prim-splitting)",
+  Combining: "var(--prim-combining)",
+  Impeding: "var(--prim-impeding)",
+  Propelling: "var(--prim-propelling)",
+  Copying: "var(--prim-copying)",
+  Sensing: "var(--prim-sensing)",
+  Amplifying: "var(--prim-amplifying)",
+  Inverting: "var(--prim-inverting)",
+} as const;
