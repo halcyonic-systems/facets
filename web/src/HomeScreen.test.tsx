@@ -19,7 +19,7 @@
 import { describe, expect, it, vi } from "vitest";
 import { renderToStaticMarkup } from "react-dom/server";
 import { AboutPage, HomeMenu, LibraryBrowser } from "./HomeScreen";
-import { facets, matchesFacet, shelves, shippedModels, type Arrange, type Tag } from "./home";
+import { facets, featured, matchesFacet, shelves, shippedModels, type Arrange, type Tag } from "./home";
 import type { RecentEntry } from "./recent";
 import { CORPUS } from "./corpus";
 import type { LibraryNode } from "./libraryTree";
@@ -307,12 +307,23 @@ describe("the doors", () => {
   // Only what the Recent strip itself renders — every model on this page also
   // appears on a shelf below, so "is it in Recent" is a question about a REGION
   // of the page and not about the page.
+  // "Start here" (the pinned three) now sits between Recent and the shelves,
+  // and it can repeat a name that Recent carries, so the region ends there.
   const recentRegion = (html: string) =>
-    html.slice(html.indexOf("Recent"), html.indexOf("Start from one of ours"));
+    html.slice(html.indexOf("Recent"), html.indexOf("Start here"));
 
   it("opens on doors rather than on the ledger", () => {
     const html = doors();
     expect(html).toContain("Start from one of ours");
+    // Start here: the three pinned cards, in order, before the shelves.
+    expect(html).toContain("Start here");
+    const names = featured(shipped).map((m) => m.name);
+    expect(names).toEqual(["LLM Serving Market", "Bitcoin", "The Steel-Plant, two levels deep"]);
+    const at = names.map((n) => html.indexOf(escapeHtml(n)));
+    expect(at[0]).toBeGreaterThan(-1);
+    expect(at[0]).toBeLessThan(at[1]);
+    expect(at[1]).toBeLessThan(at[2]);
+    expect(at[2]).toBeLessThan(html.indexOf("Start from one of ours"));
     expect(html).toContain("By lens");
     expect(html).toContain("From a file");
     // The ledger is still there, one control away, and it still says how much
@@ -365,18 +376,23 @@ describe("the doors", () => {
     const lens = doors({ initialArrange: "lens" });
     const domain = doors({ initialArrange: "domain" });
     for (const shelf of shelves(shipped, "lens")) {
-      expect(lens).toContain(escapeHtml(shelf.note));
+      if (shelf.kind !== "role") expect(lens).toContain(escapeHtml(shelf.note));
       // A tradition shelf wears its world hue; a domain shelf wears none; the
       // Bench shelf (kind "role", #472) wears neither channel — it is cut on
       // what a model is for, not what it reads or is about.
       if (shelf.kind === "role") {
-        expect(lens).toContain(`>${escapeHtml(shelf.label)}<`);
+        // The Bench shelf is not among the doors since the 2026-10-26 cut; its
+        // models stay shipped, so search and the ledger still reach them.
+        expect(lens).not.toContain(`>${escapeHtml(shelf.label)}<`);
+        expect(shelf.models.length).toBeGreaterThan(0);
+        expect(doors({ initialQuery: shelf.models[0].name })).toContain(escapeHtml(shelf.models[0].name));
         continue;
       }
       expect(lens).toContain(`var(--world-${shelf.id})`);
       expect(domain).not.toContain(`var(--world-${shelf.id})`);
     }
     for (const shelf of shelves(shipped, "domain")) {
+      if (shelf.kind === "role") continue; // the Bench shelf is off the doors in both cuts
       expect(domain).toContain(`>${escapeHtml(shelf.label)}<`);
     }
   });

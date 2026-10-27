@@ -12,14 +12,12 @@ import { isHosted, reasonerConfig, subscribeReasoner } from "./reasoner";
 export function StartSurface({
   onDescribe,
   onSkip,
-  onStartFromData,
   onOpenLibrary,
 }: {
   /** Open the co-author tab on this description. */
   onDescribe: (description: string) => void;
   /** Leave for the blank canvas. */
   onSkip: () => void;
-  onStartFromData?: () => void;
   onOpenLibrary?: () => void;
 }) {
   const [description, setDescription] = useState("");
@@ -113,11 +111,6 @@ export function StartSurface({
           <button onClick={onSkip} className="underline" style={{ color: "var(--text-secondary)" }}>
             Draw it by hand
           </button>
-          {onStartFromData && (
-            <button onClick={onStartFromData} className="underline" style={{ color: "var(--text-secondary)" }}>
-              Build from data
-            </button>
-          )}
           {onOpenLibrary && (
             <button onClick={onOpenLibrary} className="underline" style={{ color: "var(--text-secondary)" }}>
               Open an example
