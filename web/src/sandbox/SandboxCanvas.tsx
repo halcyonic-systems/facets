@@ -22,7 +22,7 @@ import { NODE_R } from "../canvas/geometry";
 import { PaperTab } from "../canvas/lenses/common";
 import { primitiveGlyph } from "../canvas/lenses/primitive-glyphs";
 import { ARROW, HANDLE, LABEL } from "../canvas/style";
-import { ICONS, PRIMITIVE_ICON, renderShapes } from "../icons";
+import { PRIMITIVE_ICON } from "../icons";
 import { prim } from "../tokens";
 
 export interface CanvasSelection {
@@ -256,8 +256,10 @@ export default function SandboxCanvas({ snapshot, selected, onSelect, onMoveNode
             {open ? (
               /* Source and sink: Mobus's open square, no interior (rule 17);
                  the stub says which way the substance goes. */
-              <g style={{ color: "var(--text-secondary)" }} stroke="currentColor" strokeWidth={2} strokeLinecap="square" strokeLinejoin="miter" fill="none">
-                {renderShapes(ICONS[n.kind === "Source" ? "source" : "sink"], { origin: 0, scale: (2 * R) / 18, paper: "var(--bg-primary)" })}
+              <g stroke="var(--text-secondary)" strokeWidth={2} strokeLinecap="square" strokeLinejoin="miter" fill="none">
+                <rect x={-R} y={-R} width={2 * R} height={2 * R} rx={0} />
+                {/* the stub: leaving a source, entering a sink */}
+                <path d={n.kind === "Source" ? `M ${R} 0 H ${R + 10}` : `M ${-R - 10} 0 H ${-R}`} />
               </g>
             ) : (
               <>

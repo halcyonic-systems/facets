@@ -111,7 +111,7 @@ export function ToolRail({
 
   return (
     <div
-      className={`tool-rail flex w-[72px] shrink-0 flex-col border-r ${STRIP}`}
+      className={`tool-rail flex w-20 shrink-0 flex-col border-r ${STRIP}`}
       style={{ borderColor: "var(--hairline)", background: "var(--lens-chrome)" }}
       data-testid="tool-rail"
     >

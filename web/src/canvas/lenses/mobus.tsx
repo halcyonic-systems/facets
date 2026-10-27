@@ -326,9 +326,10 @@ function PortView({
   const hh0 = hw0 * (compact ? 0.62 : 0.58);
   // The glyph is drawn against a 7px half-height and scaled with the capsule, so
   // enlarging the notch enlarges the one mark that carries direction. Rule 17:
-  // the chevron (6.8 glyph units tall at k = 1) never falls under
-  // CHEVRON_MIN_PX on screen; the capsule grows to keep holding it.
-  const k = Math.max(hh0 / 7, CHEVRON_MIN_PX / (6.8 * Math.max(scale, 0.05)));
+  // the chevron (6 glyph units tall at k = 1 for the hybrid pair, 6.8 for
+  // the single) never falls under CHEVRON_MIN_PX on screen; the capsule
+  // grows to keep holding it.
+  const k = Math.max(hh0 / 7, CHEVRON_MIN_PX / (6 * Math.max(scale, 0.05)));
   const hh = Math.max(hh0, k * 4.6);
   const hw = Math.max(hw0, hh * 1.3);
   const n = (v: number) => (v * k).toFixed(2);
