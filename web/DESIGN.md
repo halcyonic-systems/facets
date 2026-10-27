@@ -172,7 +172,9 @@ Since the makeover's token slice it also checks rules 3 and 10: `rounded-full`
 or `--radius-pill` without `data-pill`, literal radii (the bare `rounded`,
 numeric `borderRadius`), and any `outline-none` or `outline: none` without a
 `:focus-visible` replacement. These FAIL in the files named by
-`RADIUS_OUTLINE_STRICT` (`ui.tsx`, `index.css` since slice B2) and are listed
+`RADIUS_OUTLINE_STRICT` (`ui.tsx`, `index.css` since slice B2; `SlPane.tsx`,
+`SlChain.tsx`, `CoAuthorMode.tsx`, `ReasonerGate.tsx`, `SystemTypeEditor.tsx`
+since slice G, the text surfaces) and are listed
 as warnings elsewhere; each surface slice adds its files to the set as it
 clears them (the open list is under "Open at slice B2" below), and when the set
 covers `src/` the `RADIUS_OUTLINE_FAIL` switch flips and the set goes. A
@@ -227,9 +229,6 @@ literal (`rounded`, `rounded-pill`, numeric `borderRadius`); "outline" is
 | `InspectorDock.tsx` | 242 | 240 | |
 | `HomeScreen.tsx` | | | 1581, 1695 |
 | `StartSurface.tsx` | 88 | | 80 |
-| `ReasonerGate.tsx` | 140, 151 | 99, 122 | 122 |
-| `CoAuthorMode.tsx` | 404, 421, 461, 491, 563, 598 | 309, 448, 525, 536 | 448, 525 |
-| `SlPane.tsx` | 263, 279, 354, 372, 403, 410, 482 | | |
 | `AnalystPanel.tsx` | 144 | 289 | |
 | `FormalPanel.tsx` | 82 | | |
 | `ParamControl.tsx` | | 40 | |

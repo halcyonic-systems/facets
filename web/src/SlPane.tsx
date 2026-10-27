@@ -15,8 +15,10 @@
 // seam; manual authoring (textarea + Compile) is always present underneath and
 // never gated on the drafter.
 
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { compileSl, emitSl, splicePositions } from "./kernel";
+import { Button } from "./ui";
+import { Icon } from "./icons";
 import { SlEditor } from "./sl/SlEditor";
 import type { CanvasModel, SlError } from "./kernel/types";
 import { CoAuthorMode } from "./CoAuthorMode";
@@ -181,6 +183,12 @@ export function SlPane({
   // arrives (any compile path: button, ⌘⏎, co-author).
   const [editedSinceCompile, setEditedSinceCompile] = useState(false);
   useEffect(() => setEditedSinceCompile(false), [errors]);
+  // A fault row, pressed, asks the editor for its line through the same
+  // focusLine channel the parent's selection uses (SlEditor scrolls and
+  // flashes it). The parent's request, when one arrives, takes over again.
+  const [faultFocus, setFaultFocus] = useState<{ line: number; nonce: number } | null>(null);
+  const parentFocus = selection?.focusLine ?? null;
+  useEffect(() => setFaultFocus(null), [parentFocus]);
 
   // Canvas → text: serialize the live model into the pane (kernel emit_sl —
   // canonical, round-trip-golden-tested). Replaces the pane text; the author
@@ -257,40 +265,30 @@ export function SlPane({
   // the moment: an empty page wants the whole model, a written one wants only
   // its positions refreshed. The other waits under details.
   const fromCanvasButton = (
-    <button
+    <Button
+      variant="quiet"
+      icon="back"
       onClick={fromCanvas}
       disabled={!canvasModel}
-      className="rounded-full px-3 py-1 text-sm"
-      style={{
-        border: "1px solid var(--hairline)",
-        color: "var(--text-secondary)",
-        opacity: canvasModel ? 1 : 0.45,
-        cursor: canvasModel ? "pointer" : "not-allowed",
-      }}
       title={canvasModel ? "Replace the text with the current canvas model, serialized" : "No model on the canvas yet"}
     >
-      ← From canvas
-    </button>
+      From canvas
+    </Button>
   );
   const layoutOnlyButton = (
-    <button
+    <Button
+      variant="quiet"
+      icon="back"
       onClick={layoutFromCanvas}
       disabled={!canvasModel}
-      className="rounded-full px-3 py-1 text-sm"
-      style={{
-        border: "1px solid var(--hairline)",
-        color: "var(--text-secondary)",
-        opacity: canvasModel ? 1 : 0.45,
-        cursor: canvasModel ? "pointer" : "not-allowed",
-      }}
       title={
         canvasModel
           ? "Update only the @pos lines from the canvas — comments and everything else in this text are left untouched"
           : "No model on the canvas yet"
       }
     >
-      ← Layout only
-    </button>
+      Layout only
+    </Button>
   );
 
   // Folded to a rail: the text is one click away, which is not the same as
@@ -305,12 +303,10 @@ export function SlPane({
         style={{ borderColor: "var(--hairline)", background: "var(--bg-secondary)" }}
         data-testid="sl-rail"
       >
-        <span className="text-xs" style={{ color: "var(--text-muted)" }}>
-          ▸
-        </span>
+        <Icon name="chevron-right" size={16} style={{ color: "var(--text-muted)" }} />
         <span
-          className="text-[10px] font-semibold uppercase tracking-wide"
-          style={{ color: "var(--text-muted)", writingMode: "vertical-rl" }}
+          className="text-[11px] font-semibold uppercase"
+          style={{ color: "var(--text-muted)", writingMode: "vertical-rl", letterSpacing: "var(--tracking-label)" }}
         >
           SL text
         </span>
@@ -342,7 +338,7 @@ export function SlPane({
       >
         <span
           className="text-sm font-semibold"
-          style={{ color: "var(--text-secondary)" }}
+          style={{ color: "var(--text-primary)" }}
           title="SL, the system language"
         >
           {full ? "SL — system language" : "SL"}
@@ -351,8 +347,8 @@ export function SlPane({
           {header}
           {onArrangement && (
             <div
-              className="flex overflow-hidden rounded-full"
-              style={{ border: "1px solid var(--hairline)" }}
+              className="flex overflow-hidden rounded-sm"
+              style={{ border: "1px solid var(--rule-strong)" }}
               role="group"
               aria-label="Arrangement"
             >
@@ -369,22 +365,24 @@ export function SlPane({
           )}
           {coauthor && !drafterDocked && (
             <div
-              className="flex overflow-hidden rounded-full"
-              style={{ border: "1px solid var(--hairline)" }}
+              className="flex overflow-hidden rounded-sm"
+              style={{ border: "1px solid var(--rule-strong)" }}
+              role="group"
+              aria-label="Way of filling the text"
             >
               <ModeButton label="SL" active={mode === "sl"} onClick={() => setMode("sl")} />
               <ModeButton label="Co-author" active={mode === "coauthor"} onClick={() => setMode("coauthor")} />
             </div>
           )}
           {onClose && (
-            <button
+            <Button
+              size={28}
+              variant="quiet"
+              icon="close"
               onClick={onClose}
-              className="px-1 text-sm"
-              style={{ color: "var(--text-muted)" }}
+              aria-label="Close the SL pane"
               title="Close the SL pane"
-            >
-              ✕
-            </button>
+            />
           )}
         </div>
       </div>
@@ -398,28 +396,16 @@ export function SlPane({
           data-testid="sl-preview-gate"
         >
           <span>Previewing a draft. It is not kept until you accept it.</span>
-          <button
-            onClick={preview.onAccept}
-            className="rounded-full px-3 py-1 text-xs font-semibold"
-            style={{ background: "var(--accent)", color: "var(--text-on-accent)" }}
-          >
+          <Button size={28} onClick={preview.onAccept}>
             Accept
-          </button>
-          <button
-            onClick={preview.onDiscard}
-            className="rounded-full px-3 py-1 text-xs"
-            style={{ border: "1px solid var(--hairline)", color: "var(--text-secondary)" }}
-          >
+          </Button>
+          <Button size={28} variant="quiet" onClick={preview.onDiscard}>
             Discard
-          </button>
+          </Button>
           {onArrangement && (
-            <button
-              onClick={() => onArrangement("split")}
-              className="text-xs underline"
-              style={{ color: "var(--text-muted)" }}
-            >
+            <Button size={28} variant="quiet" onClick={() => onArrangement("split")}>
               see the diagram
-            </button>
+            </Button>
           )}
         </div>
       )}
@@ -447,28 +433,14 @@ export function SlPane({
             }}
             onCompile={() => compile()}
             onCursorLine={selection?.onCursorLine}
-            focusLine={selection?.focusLine ?? null}
+            focusLine={faultFocus ?? parentFocus}
           />
           {errors.length > 0 && (
-            <div
-              className="max-h-40 overflow-y-auto border-t px-3 py-2 text-xs"
-              style={{
-                borderColor: "var(--hairline)",
-                color: "var(--verdict-error)",
-                opacity: editedSinceCompile ? 0.45 : 1,
-              }}
-            >
-              {editedSinceCompile && (
-                <div className="pb-1" style={{ color: "var(--text-muted)" }}>
-                  edited since last compile — ⌘⏎ to re-check
-                </div>
-              )}
-              {errors.map((e, i) => (
-                <div key={i} className="py-0.5 font-mono">
-                  line {e.line}: {e.message}
-                </div>
-              ))}
-            </div>
+            <SlFaults
+              errors={errors}
+              stale={editedSinceCompile}
+              onPick={(line) => setFaultFocus({ line, nonce: Date.now() })}
+            />
           )}
           {/* One row while authoring: the act, the one canvas action that
               fits the moment, and where the text stands. The rest is folded
@@ -477,14 +449,9 @@ export function SlPane({
             className="flex flex-wrap items-center gap-x-3 gap-y-1 border-t px-3 py-2"
             style={{ borderColor: "var(--hairline)" }}
           >
-            <button
-              onClick={() => compile()}
-              className="rounded-full px-4 py-1 text-sm font-semibold"
-              style={{ background: "var(--accent)", color: "var(--text-on-accent)" }}
-              title="Compile SL → model (⌘⏎) · deterministic compile, kernel verdicts"
-            >
+            <Button onClick={() => compile()} title="Compile SL → model (⌘⏎) · deterministic compile, kernel verdicts">
               Compile
-            </button>
+            </Button>
             {text.trim() === "" ? fromCanvasButton : layoutOnlyButton}
             <SlStatusLine
               model={canvasModel}
@@ -492,28 +459,31 @@ export function SlPane({
               faults={errors.length}
               edited={editedSinceCompile}
             />
-            <span className="ml-auto flex items-baseline gap-3 text-[11px]">
+            <span className="ml-auto flex items-center gap-3">
               <GrammarLink />
-              <button
+              <Button
+                size={28}
+                variant="quiet"
+                icon={detailsOpen ? "chevron-up" : "chevron-down"}
                 onClick={toggleDetails}
                 aria-expanded={detailsOpen}
-                className="underline"
-                style={{ color: "var(--text-muted)" }}
                 data-testid="sl-details-toggle"
               >
                 {detailsOpen ? "hide details" : "details"}
-              </button>
+              </Button>
             </span>
           </div>
           {detailsOpen && (
-            <div className="overflow-y-auto" style={{ maxHeight: "45%" }}>
+            <div className="min-h-0 shrink overflow-y-auto" style={{ maxHeight: "45%" }}>
               <div
                 className="flex flex-wrap items-center gap-2 border-t px-3 py-2"
                 style={{ borderColor: "var(--hairline)" }}
               >
                 {text.trim() === "" ? layoutOnlyButton : fromCanvasButton}
-                <span className="text-[11px]" style={{ color: "var(--text-muted)" }}>
-                  ⌘⏎ · deterministic compile, kernel verdicts
+                <span className="inline-flex items-center gap-0.5 text-xs" style={{ color: "var(--text-muted)" }}>
+                  <Icon name="command" size={16} />
+                  <Icon name="return" size={16} />
+                  <span className="pl-1">compiles · deterministic compile, kernel verdicts</span>
                 </span>
               </div>
               {/* What the compile produced, named step by step. It stays
@@ -523,7 +493,12 @@ export function SlPane({
             </div>
           )}
           {drafterDocked && coauthor && (
-            <div className="shrink-0 border-t" style={{ borderColor: "var(--hairline)", background: "var(--bg-primary)" }}>
+            <div
+              // Yields to the editor's eight-line floor (sl audit #8) and
+              // scrolls inside itself when it has to.
+              className="min-h-0 shrink overflow-y-auto border-t"
+              style={{ borderColor: "var(--hairline)", background: "var(--bg-primary)" }}
+            >
               <CoAuthorMode
                 docked
                 folded={drafterFolded}
@@ -542,6 +517,102 @@ export function SlPane({
   );
 }
 
+/** The fault list (sl audit § 3, after GOV.UK's error summary): one row per
+ *  fault, each a quiet button that takes the editor to its line; the line
+ *  number is a mono numeral chip, a 2px bar in the verdict colour on the
+ *  row's left edge, the message in 13px Inter. `role="alert"` so a failed
+ *  compile is announced. Alt+ArrowDown / ArrowUp step between rows. Stale
+ *  faults (the text has changed since) keep full ink and change their word.
+ *  The words are the kernel's, untouched. */
+function SlFaults({
+  errors,
+  stale,
+  onPick,
+}: {
+  errors: SlError[];
+  stale: boolean;
+  onPick: (line: number) => void;
+}) {
+  const listRef = useRef<HTMLUListElement>(null);
+  function onKeyDown(e: React.KeyboardEvent) {
+    if (!e.altKey || (e.key !== "ArrowDown" && e.key !== "ArrowUp")) return;
+    const rows = Array.from(listRef.current?.querySelectorAll<HTMLButtonElement>("button") ?? []);
+    if (rows.length === 0) return;
+    const at = rows.indexOf(document.activeElement as HTMLButtonElement);
+    const next = e.key === "ArrowDown" ? (at + 1) % rows.length : (at - 1 + rows.length) % rows.length;
+    rows[next].focus();
+    e.preventDefault();
+  }
+  const n = errors.length;
+  return (
+    <div
+      role="alert"
+      className="max-h-40 min-h-0 shrink overflow-y-auto border-t"
+      style={{ borderColor: "var(--hairline)" }}
+      data-testid="sl-faults"
+    >
+      <p
+        className="flex flex-wrap items-center gap-x-1 px-3 pt-2 pb-1 text-xs font-medium"
+        style={{ color: stale ? "var(--text-secondary)" : "var(--verdict-error)" }}
+      >
+        {stale ? (
+          <>
+            {n} fault{n === 1 ? "" : "s"} from the last compile, the text has changed since
+            <span className="inline-flex items-center gap-0.5 pl-1" style={{ color: "var(--text-muted)" }}>
+              <Icon name="command" size={16} />
+              <Icon name="return" size={16} />
+              re-checks
+            </span>
+          </>
+        ) : (
+          <>
+            {n} fault{n === 1 ? "" : "s"}
+          </>
+        )}
+      </p>
+      <ul ref={listRef} className="flex flex-col pb-1" onKeyDown={onKeyDown}>
+        {errors.map((e, i) => (
+          <li key={i}>
+            <Button
+              variant="quiet"
+              onClick={() => onPick(e.line)}
+              disabled={e.line < 1}
+              title={e.line >= 1 ? `Go to line ${e.line}` : undefined}
+              className="sl-fault-row h-auto w-full justify-start rounded-none px-3 py-1 text-left font-normal"
+              style={{
+                whiteSpace: "normal",
+                border: "none",
+                borderLeft: `2px solid ${stale ? "var(--text-muted)" : "var(--verdict-error)"}`,
+                background: "transparent",
+                color: "var(--text-primary)",
+                fontSize: "var(--t-num)",
+                lineHeight: "18px",
+                cursor: e.line >= 1 ? "pointer" : "default",
+              }}
+            >
+              <span className="sr-only">Fault{e.line >= 1 ? " on line" : ""} </span>
+              {e.line >= 1 && (
+                <span
+                  className="tabular mr-2 inline-block shrink-0 rounded-sm px-1 align-baseline text-xs font-semibold"
+                  style={{
+                    fontFamily: "var(--font-mono)",
+                    background: "var(--bg-surface)",
+                    color: "var(--text-secondary)",
+                    lineHeight: "18px",
+                  }}
+                >
+                  {e.line}
+                </span>
+              )}
+              <span className="min-w-0">{e.message}</span>
+            </Button>
+          </li>
+        ))}
+      </ul>
+    </div>
+  );
+}
+
 function ModeButton({
   label,
   title,
@@ -553,18 +624,19 @@ function ModeButton({
   active: boolean;
   onClick: () => void;
 }) {
+  // One segment of a group: the Button primitive at 28 with its own edge and
+  // corners dropped, since the group carries them (rule 3: 4px on the group).
   return (
-    <button
+    <Button
+      size={28}
+      variant={active ? "primary" : "quiet"}
       onClick={onClick}
       title={title}
       aria-pressed={active}
-      className="px-2.5 py-1 text-[11px] font-semibold"
-      style={{
-        background: active ? "var(--accent)" : "transparent",
-        color: active ? "var(--text-on-accent)" : "var(--text-secondary)",
-      }}
+      className="rounded-none"
+      style={{ border: "none" }}
     >
       {label}
-    </button>
+    </Button>
   );
 }

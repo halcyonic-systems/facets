@@ -19,7 +19,7 @@
 // it refuses those.
 import { Component, type ErrorInfo, type ReactNode } from "react";
 import { isKernelError, isKernelTrap } from "./kernel";
-import { Card } from "./ui";
+import { Banner, Card } from "./ui";
 
 type Props = {
   /** When any entry changes (by identity), the caught error clears and the
@@ -62,13 +62,17 @@ export class KernelErrorBoundary extends Component<Props, State> {
         title={trapped ? "The kernel aborted — this is a bug in the kernel" : "Kernel rejected this state"}
         source="facets-core · wasm"
       >
-        <p className="text-sm" style={{ color: "var(--verdict-error)" }}>
-          {error.message ||
-            (trapped
-              ? "The kernel aborted mid-call."
-              : "The kernel refused the current editing state.")}
-        </p>
-        <p className="mt-2 text-xs" style={{ color: "var(--text-muted)" }}>
+        {/* The kernel's own words on the error Banner (rule 9d: a solid chip,
+            urgent, with the drawn error mark), announced as an alert. */}
+        <div role="alert">
+          <Banner tone="error">
+            {error.message ||
+              (trapped
+                ? "The kernel aborted mid-call."
+                : "The kernel refused the current editing state.")}
+          </Banner>
+        </div>
+        <p className="mt-3 max-w-[72ch] text-xs" style={{ color: "var(--text-muted)" }}>
           {trapped
             ? "This is not a verdict about your model — the kernel broke its own no-panic contract. The last action did not complete; your model is unaffected, since it is held here and not inside the kernel. The panic message is in the browser console; please report it. Reload the page if the canvas keeps failing."
             : kernel
