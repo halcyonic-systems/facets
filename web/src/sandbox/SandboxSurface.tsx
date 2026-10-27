@@ -14,6 +14,7 @@ import { useSandboxSession } from "./useSandboxSession";
 import SandboxCanvas, { type CanvasSelection } from "./SandboxCanvas";
 import SandboxInspector from "./SandboxInspector";
 import SandboxMetrics from "./SandboxMetrics";
+import { Icon } from "../icons";
 
 /** Cascade for click-to-place so repeated adds don't perfectly overlap. */
 function placeAt(count: number): { x: number; y: number } {
@@ -82,27 +83,27 @@ export default function SandboxSurface() {
   return (
     <div
       className="flex h-screen flex-col"
-      style={{ background: "var(--surface-page, var(--surface, #fff))", color: "var(--text-primary)" }}
+      style={{ background: "var(--bg-primary)", color: "var(--text-primary)" }}
     >
       {/* transport bar */}
       <header className="flex flex-wrap items-center gap-3 border-b px-4 py-2 text-sm">
         <h1 className="mr-2 text-sm font-semibold">Sandbox</h1>
         <button
-          className="rounded px-3 py-1"
+          className="rounded-sm px-3 py-1"
           style={{ background: "var(--accent)", color: "var(--text-on-accent)" }}
           onClick={() => sb.setRunning(!sb.running)}
         >
           {sb.running ? "Pause" : "Run"}
         </button>
-        <button className="rounded border px-2 py-1" onClick={sb.stepOnce} disabled={sb.running}>
+        <button className="rounded-sm border px-2 py-1" onClick={sb.stepOnce} disabled={sb.running}>
           Step
         </button>
-        <button className="rounded border px-2 py-1" onClick={sb.reset}>
+        <button className="rounded-sm border px-2 py-1" onClick={sb.reset}>
           Reset
         </button>
         {sb.fork ? (
           <button
-            className="rounded border px-2 py-1"
+            className="rounded-sm border px-2 py-1"
             onClick={sb.dropFork}
             title="drop the kept baseline — the dashed lines in the metrics"
           >
@@ -110,7 +111,7 @@ export default function SandboxSurface() {
           </button>
         ) : (
           <button
-            className="rounded border px-2 py-1"
+            className="rounded-sm border px-2 py-1"
             onClick={sb.keepFork}
             disabled={!snap || snap.tick === 0}
             title="keep a copy of the run from this moment: it keeps stepping, unedited, and draws dashed beside the live run — change the structure here and compare"
@@ -151,7 +152,8 @@ export default function SandboxSurface() {
             style={{ color: Math.abs(snap.balance) < 1e-3 ? "var(--verdict-ok)" : "var(--verdict-warning)" }}
             title="conservation residual: emitted + initial stocks − (stored + sunk + dissipated). Mid-run edits move the baseline; Reset re-baselines."
           >
-            ⚖ {Math.abs(snap.balance) < 1e-3 ? "conserved" : `residual ${snap.balance.toFixed(2)}`}
+            <Icon name="scale" size={16} className="mr-1 inline-block align-[-3px]" />
+            {Math.abs(snap.balance) < 1e-3 ? "conserved" : `residual ${snap.balance.toFixed(2)}`}
           </span>
         )}
         {snap?.algebraic_cycle && (
@@ -169,15 +171,15 @@ export default function SandboxSurface() {
             </span>
           )}
           <input
-            className="w-32 rounded border px-2 py-1"
+            className="w-32 rounded-sm border px-2 py-1"
             value={docName}
             onChange={(e) => setDocName(e.target.value)}
           />
-          <button className="rounded border px-2 py-1" onClick={() => void save()}>
+          <button className="rounded-sm border px-2 py-1" onClick={() => void save()}>
             Save
           </button>
           <select
-            className="rounded border px-1 py-1"
+            className="rounded-sm border px-1 py-1"
             value=""
             onChange={(e) => e.target.value && void open(e.target.value)}
           >
@@ -201,13 +203,13 @@ export default function SandboxSurface() {
             Primitives
           </h2>
           <p className="mb-2 text-[10px]" style={{ color: "var(--text-muted)" }}>
-            click to add · drag ∘ to wire
+            click to add · drag the handle to wire
           </p>
           <div className="mb-4 grid gap-1">
             {palette.map((p) => (
               <button
                 key={p.kind}
-                className="rounded border px-2 py-1 text-left text-xs"
+                className="rounded-sm border px-2 py-1 text-left text-xs"
                 title={p.card.plain}
                 onClick={() =>
                   sb.mutate((h) => {
@@ -231,7 +233,7 @@ export default function SandboxSurface() {
             {stampList.map((s) => (
               <button
                 key={s.slug}
-                className="rounded border px-2 py-1 text-left text-xs"
+                className="rounded-sm border px-2 py-1 text-left text-xs"
                 style={{ borderColor: "var(--lens-accent, var(--accent))" }}
                 title={`${s.blurb}\n↳ ${s.composition}\n${s.provenance}`}
                 onClick={() =>
@@ -266,7 +268,11 @@ export default function SandboxSurface() {
                     Build a system from work processes
                   </p>
                   <p>① stamp a systems process (left rail)</p>
-                  <p>② or add primitives and drag ∘ → component to wire</p>
+                  <p className="flex items-center justify-center gap-1">
+                    ② or add primitives and drag the handle
+                    <Icon name="flow" size={16} />
+                    to a component to wire
+                  </p>
                   <p>③ press Run — then tweak it while it flows</p>
                 </div>
               </div>
