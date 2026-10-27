@@ -4605,8 +4605,9 @@ export function MenuBar({
               {/* No frame of its own: SystemTypeEditor's Card is the frame, so
                   the panel does not double-border. Same component, same
                   value/onChange contract it carried in the dock. */}
-              <div className="absolute left-0 top-full z-20 mt-1 w-72">
+              <div className="absolute left-0 top-full z-20 mt-1 w-80">
                 <SystemTypeEditor
+                  onClose={() => setTypeOpen(false)}
                   value={systemType}
                   onChange={onSystemTypeChange}
                   description={soiDescription}

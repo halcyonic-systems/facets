@@ -6,13 +6,13 @@
 // to the SL view. One-shot per turn (no session memory across drafts,
 // deliberately deferred); history persists across reloads (coauthor.ts,
 // localStorage, no cap).
-import { useEffect, useRef, useState } from "react";
+import { useEffect, useId, useRef, useState } from "react";
 import { slChangeSummary, splitHistory, type CoauthorSeed, type CoauthorTurn, type DraftOutcome, type DraftStage } from "./coauthor";
 import { ReasonerGate } from "./ReasonerGate";
 import { isLoopback, reasonerConfig, setReasonerConfig, subscribeReasoner } from "./reasoner";
 import { drafterModel, drafterModelOptions, setDrafterModel, subscribeDrafterModel } from "./drafterModel";
 import { DRAFT_EFFORTS, draftEffort, effortApplies, setDraftEffort, subscribeDraftEffort } from "./draftEffort";
-import { Pill } from "./ui";
+import { Button, Pill, Select, Textarea } from "./ui";
 
 type Tone = "neutral" | "ok" | "warning" | "error";
 
@@ -206,6 +206,7 @@ export function CoAuthorMode({
   folded?: boolean;
 }) {
   const [description, setDescription] = useState(seed?.description ?? "");
+  const descriptionId = useId();
   const [reached, setReached] = useState(false);
   const isFolded = folded && !reached && description.trim() === "";
   const [busy, setBusy] = useState(false);
@@ -306,7 +307,7 @@ export function CoAuthorMode({
   const turnItem = (t: CoauthorTurn) => (
     <li
       key={t.id}
-      className="rounded p-2 text-xs"
+      className="rounded-sm p-2 text-xs"
       style={{ background: "var(--bg-primary)", border: "1px solid var(--hairline)" }}
     >
       <div className="mb-1 flex items-center justify-between gap-2">
@@ -314,7 +315,7 @@ export function CoAuthorMode({
           {t.kind === "correction" && <Pill tone="neutral">correction</Pill>}
           <Pill tone={statusTone(t.status)}>{statusLabel(t.status)}</Pill>
         </span>
-        <span className="text-[10px]" style={{ color: "var(--text-muted)" }}>
+        <span className="text-xs tabular" style={{ color: "var(--text-muted)" }}>
           {new Date(t.at).toLocaleTimeString()}
         </span>
       </div>
@@ -336,20 +337,20 @@ export function CoAuthorMode({
             <p className="mb-1" style={{ color: "var(--text-secondary)" }}>
               {c.asked}
             </p>
-            <p className="mb-1 text-[10px]" style={{ color: "var(--text-muted)" }}>
+            <p className="mb-1 text-xs" style={{ color: "var(--text-muted)" }}>
               {c.about}
             </p>
             {c.changed && (
-              <p className="mb-1 text-[10px]" style={{ color: "var(--text-muted)" }}>
+              <p className="mb-1 text-xs" style={{ color: "var(--text-muted)" }}>
                 {c.changed}
               </p>
             )}
-            <p className="mb-1 text-[10px]" style={{ color: "var(--text-muted)" }}>
+            <p className="mb-1 text-xs" style={{ color: "var(--text-muted)" }}>
               {c.sawFindings}
             </p>
             {t.priorFindings && (
               <pre
-                className="mb-1 max-h-20 overflow-y-auto whitespace-pre-wrap p-1 text-[10px]"
+                className="mb-1 max-h-20 overflow-y-auto whitespace-pre-wrap rounded-sm p-1 text-xs"
                 style={{ background: "var(--bg-secondary)", color: "var(--text-muted)" }}
               >
                 {t.priorFindings}
@@ -364,27 +365,27 @@ export function CoAuthorMode({
           believing a model that never ran wrote this. */}
       {drafterMismatch(t) && (
         <p
-          className="mb-1 p-1 text-[10px]"
+          className="mb-1 rounded-sm p-1 text-xs"
           style={{ color: "var(--verdict-warning)", border: "1px solid var(--verdict-warning)" }}
         >
           {drafterMismatch(t)}
         </p>
       )}
       {drafterLine(t) && (
-        <p className="mb-1 text-[10px]" style={{ color: "var(--text-muted)" }}>
+        <p className="mb-1 text-xs" style={{ color: "var(--text-muted)" }}>
           {drafterLine(t)}
         </p>
       )}
       {/* What this draft carries that the drafter did not write. Named on
           the turn so the record keeps the drafter's own miss. */}
       {t.repairs?.map((line) => (
-        <p key={line} className="mb-1 text-[10px]" style={{ color: "var(--text-muted)" }} data-testid="coauthor-repair">
+        <p key={line} className="mb-1 text-xs" style={{ color: "var(--text-muted)" }} data-testid="coauthor-repair">
           Added for the drafter: {line}.
         </p>
       ))}
       {t.errorText && (
         <pre
-          className="mb-1 whitespace-pre-wrap p-1 text-[10px]"
+          className="mb-1 whitespace-pre-wrap rounded-sm p-1 text-xs"
           style={{ background: "var(--bg-secondary)", color: "var(--verdict-error)" }}
         >
           {t.errorText}
@@ -393,46 +394,36 @@ export function CoAuthorMode({
       {t.sl && (
         <>
           <pre
-            className="mb-1 max-h-20 overflow-y-auto whitespace-pre-wrap p-1 font-mono text-[10px]"
+            className="mb-1 max-h-20 overflow-y-auto whitespace-pre-wrap rounded-sm p-1 font-mono text-xs"
             style={{ background: "var(--bg-secondary)", color: "var(--text-secondary)" }}
           >
             {t.sl}
           </pre>
-          <div className="flex items-center gap-1">
-            <button
-              onClick={() => onLoad(t.sl)}
-              className="rounded-full px-2 py-0.5 text-[10px]"
-              style={{ border: "1px solid var(--hairline)", color: "var(--text-secondary)" }}
-              title="Load this draft's SL into the pane"
-            >
+          <div className="flex items-center gap-2">
+            <Button size={28} variant="quiet" onClick={() => onLoad(t.sl)} title="Load this draft's SL into the pane">
               Load
-            </button>
+            </Button>
             {/* #314. Say what is wrong, get a revision. The revision
                 goes through the compiler and the kernel judges it
                 like anything else, so this button changes what the
                 drafter writes and nothing else. */}
-            <button
+            <Button
+              size={28}
+              variant="quiet"
               onClick={() => {
                 setCorrection("");
                 setError(null);
                 setCorrectingId((id) => (id === t.id ? null : t.id));
               }}
               disabled={busy}
-              className="rounded-full px-2 py-0.5 text-[10px]"
-              style={{
-                border: "1px solid var(--hairline)",
-                color: "var(--text-secondary)",
-                opacity: busy ? 0.5 : 1,
-                cursor: busy ? "not-allowed" : "pointer",
-              }}
               title="Tell the drafter what is wrong with this draft"
             >
               {correctingId === t.id ? "Cancel" : "Correct"}
-            </button>
+            </Button>
           </div>
           {correctingId === t.id && (
             <div className="mt-1">
-              <textarea
+              <Textarea
                 value={correction}
                 onChange={(e) => setCorrection(e.target.value)}
                 onKeyDown={(e) => {
@@ -445,31 +436,21 @@ export function CoAuthorMode({
                 spellCheck
                 rows={3}
                 autoFocus
-                className="w-full resize-none rounded p-2 text-[11px] outline-none"
-                style={{
-                  background: "var(--bg-primary)",
-                  color: "var(--text-secondary)",
-                  border: "1px solid var(--hairline)",
-                }}
+                aria-label="What is wrong with this draft"
+                className="w-full resize-none"
                 placeholder="e.g. this is good as far as it goes, but you have identified flows as sources and sinks"
                 data-testid={`correction-input-${t.id}`}
               />
-              <div className="mt-1 flex items-center gap-2">
-                <button
+              <div className="mt-2 flex flex-wrap items-center gap-2">
+                <Button
+                  size={28}
                   onClick={() => sendCorrection(t.id)}
                   disabled={busy || !correction.trim()}
-                  className="rounded-full px-3 py-0.5 text-[10px] font-semibold"
-                  style={{
-                    background: "var(--accent)",
-                    color: "var(--text-on-accent)",
-                    opacity: busy || !correction.trim() ? 0.5 : 1,
-                    cursor: busy || !correction.trim() ? "not-allowed" : "pointer",
-                  }}
                   title="Send the correction and redraft (⌘⏎)"
                 >
                   {busy ? "Redrafting…" : "Send correction"}
-                </button>
-                <span className="text-[10px]" style={{ color: "var(--text-muted)" }}>
+                </Button>
+                <span className="text-xs" style={{ color: "var(--text-muted)" }}>
                   The revision compiles and the kernel judges it, same as any draft.
                 </span>
               </div>
@@ -486,14 +467,9 @@ export function CoAuthorMode({
   if (isFolded) {
     return (
       <div className="flex items-center gap-3 px-3 py-1.5 text-xs" data-testid="drafting-strip">
-        <button
-          onClick={() => setReached(true)}
-          className="rounded-full px-3 py-0.5 font-semibold"
-          style={{ background: "var(--accent)", color: "var(--text-on-accent)" }}
-          title="Draft with the co-author — opens the describe box"
-        >
+        <Button size={28} onClick={() => setReached(true)} title="Draft with the co-author — opens the describe box">
           Draft
-        </button>
+        </Button>
         <span style={{ color: "var(--text-muted)" }}>
           {turns[0] ? turnSummary(turns[0]) : "the co-author is on call · describe a system and it drafts the SL"}
         </span>
@@ -503,10 +479,11 @@ export function CoAuthorMode({
   return (
     <div className={docked ? "flex flex-col" : "flex min-h-0 flex-1 flex-col"} data-testid={docked ? "drafting-box" : undefined}>
       <div className={docked ? "p-3" : "border-b p-3"} style={{ borderColor: "var(--hairline)" }}>
-        <p className="mb-2 text-xs" style={{ color: "var(--text-secondary)" }}>
+        <label htmlFor={descriptionId} className="mb-2 block text-sm" style={{ color: "var(--text-secondary)" }}>
           Describe a system in plain language.
-        </p>
-        <textarea
+        </label>
+        <Textarea
+          id={descriptionId}
           value={description}
           onChange={(e) => setDescription(e.target.value)}
           onKeyDown={(e) => {
@@ -522,26 +499,19 @@ export function CoAuthorMode({
           disabled={busy}
           spellCheck
           rows={4}
-          className="w-full resize-none rounded p-2 text-sm outline-none"
-          style={{ background: "var(--bg-primary)", color: "var(--text-primary)", border: "1px solid var(--hairline)" }}
+          className="w-full resize-none"
           placeholder="e.g. a home thermostat with a sensor, a controller, and a furnace"
         />
         {reasoner.enabled && (
-          <label className="mt-2 flex flex-wrap items-center gap-2 text-[11px]" style={{ color: "var(--text-muted)" }}>
+          <label className="mt-2 flex flex-wrap items-center gap-2 text-xs" style={{ color: "var(--text-secondary)" }}>
             <span>Drafts with</span>
-            <select
-              value={model}
-              onChange={(e) => setDrafterModel(e.target.value)}
-              disabled={busy}
-              className="rounded px-1 py-0.5 text-[11px]"
-              style={{ background: "var(--bg-primary)", color: "var(--text-secondary)", border: "1px solid var(--hairline)" }}
-            >
+            <Select value={model} onChange={(e) => setDrafterModel(e.target.value)} disabled={busy} className="h-7">
               {drafterModelOptions(reasoner.endpoint).map((o) => (
                 <option key={o.value} value={o.value}>
                   {o.label}
                 </option>
               ))}
-            </select>
+            </Select>
           </label>
         )}
         {reasoner.enabled &&
@@ -549,31 +519,27 @@ export function CoAuthorMode({
             <div
               role="radiogroup"
               aria-label="How the drafter works"
-              className="mt-2 flex flex-wrap items-center gap-2 text-[11px]"
-              style={{ color: "var(--text-muted)" }}
+              className="mt-2 flex flex-wrap items-center gap-2 text-xs"
+              style={{ color: "var(--text-secondary)" }}
               data-testid="draft-effort"
             >
               {DRAFT_EFFORTS.map((o) => (
-                <button
+                <Button
                   key={o.value}
+                  size={28}
+                  variant={effort === o.value ? "primary" : "quiet"}
                   role="radio"
                   aria-checked={effort === o.value}
                   onClick={() => setDraftEffort(o.value)}
                   disabled={busy}
-                  className="rounded-full px-2 py-0.5 text-[11px]"
-                  style={{
-                    border: `1px solid ${effort === o.value ? "var(--accent)" : "var(--hairline)"}`,
-                    color: effort === o.value ? "var(--text-primary)" : "var(--text-secondary)",
-                    fontWeight: effort === o.value ? 600 : 400,
-                  }}
                 >
                   {o.label}
-                </button>
+                </Button>
               ))}
               <span>{DRAFT_EFFORTS.find((o) => o.value === effort)?.detail}. The kernel checks either way.</span>
             </div>
           ) : (
-            <p className="mt-2 text-[11px]" style={{ color: "var(--text-muted)" }} data-testid="draft-effort-na">
+            <p className="mt-2 text-xs" style={{ color: "var(--text-muted)" }} data-testid="draft-effort-na">
               Careful or Fast is offered with claude-opus-5 and claude-sonnet-5.
             </p>
           ))}
@@ -591,22 +557,11 @@ export function CoAuthorMode({
           }}
         />
         {reasoner.enabled && (
-          <div className="mt-2 flex items-center gap-2">
-            <button
-              onClick={() => draft()}
-              disabled={busy || !description.trim()}
-              className="rounded-full px-3 py-1 text-xs font-semibold"
-              style={{
-                background: "var(--accent)",
-                color: "var(--text-on-accent)",
-                opacity: busy || !description.trim() ? 0.5 : 1,
-                cursor: busy || !description.trim() ? "not-allowed" : "pointer",
-              }}
-              title="Draft SL from the description (⌘⏎)"
-            >
+          <div className="mt-2 flex flex-wrap items-center gap-2">
+            <Button onClick={() => draft()} disabled={busy || !description.trim()} title="Draft SL from the description (⌘⏎)">
               {busy ? "Drafting…" : "Draft"}
-            </button>
-            <span className="text-[11px]" style={{ color: "var(--text-muted)" }} data-testid="coauthor-stage">
+            </Button>
+            <span className="text-xs" style={{ color: "var(--text-muted)" }} data-testid="coauthor-stage">
               {busy
                 ? `${stageLabel(stage, reasoner.endpoint, model)} (${Math.floor(elapsedMs / 1000)}s)`
                 : "LLM proposes · kernel checks · you accept"}
@@ -626,7 +581,7 @@ export function CoAuthorMode({
         <div className="px-3 pb-3">
           {turns[0] && (
             <p
-              className="mb-1 text-[11px]"
+              className="mb-1 text-xs"
               style={{ color: turns[0].status === "previewing" || turns[0].status === "accepted" ? "var(--text-muted)" : "var(--verdict-error)" }}
               data-testid="coauthor-latest"
             >
@@ -634,27 +589,24 @@ export function CoAuthorMode({
             </p>
           )}
           {turns.length > 0 && (
-            <button
+            <Button
+              size={28}
+              variant="quiet"
+              icon={historyOpen ? "chevron-up" : "chevron-down"}
               onClick={() => setHistoryOpen((o) => !o)}
               aria-expanded={historyOpen}
-              className="text-[10px] font-semibold uppercase tracking-wide"
-              style={{ color: "var(--text-muted)" }}
               data-testid="coauthor-history-toggle"
             >
-              {historyOpen ? "▾" : "▸"} History ({turns.length - dockedDiscarded})
-            </button>
+              History ({turns.length - dockedDiscarded})
+            </Button>
           )}
           {historyOpen && (
             <div className="mt-2 max-h-[40vh] overflow-y-auto">
               <ul className="flex flex-col gap-2">{dockedList.map(turnItem)}</ul>
               {dockedDiscarded > 0 && (
-                <button
-                  onClick={() => setShowDiscarded((v) => !v)}
-                  className="mt-2 text-[10px] underline"
-                  style={{ color: "var(--text-muted)" }}
-                >
+                <Button size={28} variant="quiet" className="mt-2" onClick={() => setShowDiscarded((v) => !v)}>
                   {showDiscarded ? "hide discarded" : `show discarded (${dockedDiscarded})`}
-                </button>
+                </Button>
               )}
             </div>
           )}
@@ -669,26 +621,24 @@ export function CoAuthorMode({
         {current.length > 0 && <ul className="mb-3 flex flex-col gap-2">{current.map(turnItem)}</ul>}
         {past.length + discarded.length > 0 && (
           <>
-            <button
+            <Button
+              size={28}
+              variant="quiet"
+              icon={historyOpen ? "chevron-up" : "chevron-down"}
+              className="mb-2"
               onClick={() => setHistoryOpen((o) => !o)}
               aria-expanded={historyOpen}
-              className="mb-2 text-[10px] font-semibold uppercase tracking-wide"
-              style={{ color: "var(--text-muted)" }}
               data-testid="coauthor-history-toggle"
             >
-              {historyOpen ? "▾" : "▸"} History ({past.length})
-            </button>
+              History ({past.length})
+            </Button>
             {historyOpen && (
               <>
                 <ul className="flex flex-col gap-2">{earlier.map(turnItem)}</ul>
                 {discarded.length > 0 && (
-                  <button
-                    onClick={() => setShowDiscarded((v) => !v)}
-                    className="mt-2 text-[10px] underline"
-                    style={{ color: "var(--text-muted)" }}
-                  >
+                  <Button size={28} variant="quiet" className="mt-2" onClick={() => setShowDiscarded((v) => !v)}>
                     {showDiscarded ? "hide discarded" : `show discarded (${discarded.length})`}
-                  </button>
+                  </Button>
                 )}
               </>
             )}
