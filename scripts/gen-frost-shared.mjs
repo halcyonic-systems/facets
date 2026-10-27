@@ -10,9 +10,11 @@
  *   node scripts/gen-frost-shared.mjs --check   verify shared/ is current (CI)
  *
  * The subset is the base Frost register (surfaces, text, accents, verdicts,
- * structure, radii, shadows), the printed-record register (paper/ink/rule/seal),
- * and the type stacks. Lens seams, KIND channels, chart series stay private to
- * the model app — they are kernel semantics, not foundation.
+ * structure, radii, shadows, the focus ring), the type scale (--t-*), the
+ * printed-record register (paper/ink/rule/seal), the type stacks and motion.
+ * Lens seams, KIND channels, chart series stay private to the model app — they
+ * are kernel semantics, not foundation. The sheet also carries the three rules
+ * every face shares: the focus ring, the reduced-motion gate, the wordmark.
  */
 import { readFileSync, writeFileSync, mkdirSync, readdirSync, copyFileSync, existsSync } from "node:fs";
 import { fileURLToPath } from "node:url";
@@ -34,15 +36,48 @@ const SUBSET = [
   "accent", "accent-strong", "accent-soft", "accent-indigo", "accent-slate",
   "verdict-error", "verdict-warning", "verdict-ok",
   "// structure",
-  "border", "hairline",
+  "border", "rule-strong", "hairline",
   "radius-sm", "radius-md", "radius-lg", "radius-card", "radius-pill",
   "shadow-ink", "shadow-ink-hover", "shadow-card", "shadow-card-hover",
+  "focus-ring",
+  "// type scale (makeover rule 5): two families, eight sizes, one label tracking",
+  "t-d1", "t-d2", "t-d3", "t-body", "t-sm", "t-num", "t-meta", "t-label", "tracking-label",
   "// printed record (paper register)",
   "paper", "paper-ground", "paper-edge",
   "ink", "ink-secondary", "ink-muted", "rule", "rule-soft", "seal",
   "// type + motion",
-  "font-display", "font-body", "font-mono", "transition-base",
+  "font-display", "font-body", "font-mono", "motion-fast", "motion", "transition-base",
 ];
+
+// Rules every static face gets with the tokens (makeover rules 10, 13 and the
+// one wordmark). They mirror the global rules in web/src/index.css; the app
+// keeps its own copy because it does not link this sheet.
+const SHARED_RULES = `
+/* FOCUS (makeover rule 10): one ring, the accent, 2px, offset 2px, on every
+   control under keyboard focus; nothing under pointer focus. A face may move
+   the ring, never remove it. */
+:focus-visible { outline: var(--focus-ring); outline-offset: 2px; }
+:focus:not(:focus-visible) { outline: none; }
+
+/* MOTION (makeover rule 13): under prefers-reduced-motion nothing animates,
+   nothing loops and nothing eases. */
+@media (prefers-reduced-motion: reduce) {
+  *, *::before, *::after {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+  }
+}
+
+/* WORDMARK: one drawing on every face. Cormorant Garamond 700 "facets", the
+   face name after it in the accent. Each surface sets only the size, from the
+   --t-* scale (the portal hero scales --t-d1). */
+.wordmark {
+  font-family: var(--font-display); font-weight: 700; line-height: 1;
+  letter-spacing: -0.01em; color: var(--text-primary); text-decoration: none;
+}
+.wordmark .face { color: var(--accent); }
+`;
 
 const src = readFileSync(INDEX_CSS, "utf8");
 const decl = {};
@@ -86,7 +121,7 @@ ${lines.join("\n")}
 
 :root[data-theme="light"] { color-scheme: light; }
 :root[data-theme="dark"] { color-scheme: dark; }
-`;
+${SHARED_RULES}`;
 
 const check = process.argv.includes("--check");
 if (check) {
