@@ -13,7 +13,8 @@ import type { EdgeFact, Kind, Lens, Manifest, ParamDecl, Relation } from "../ker
 import { channelCopy } from "./lenses/bunge";
 import { ParamControl } from "../ParamControl";
 import type { Pt } from "./geometry";
-import { DescriptionField, GroundingField, InspectorRow as Row, InspectorTitle as Title, Popover, ToolButton as SmallButton } from "../ui";
+import { DescriptionField, GroundingField, InspectorRow as Row, InspectorTitle as Title, ToolButton as SmallButton } from "../ui";
+import { PopoverDialog } from "./PopoverDialog";
 import {
   FormalismLine,
   SUBSTANCES,
@@ -82,7 +83,7 @@ export function EdgePopover({
   // Shared viewport-clamped Popover (walkthrough #16): a mid-canvas wire's
   // editor used to run past the canvas bottom with its fields unreachable.
   return (
-    <Popover x={anchor.x} y={anchor.y} width={230} accent>
+    <PopoverDialog x={anchor.x} y={anchor.y} width={230} label={`Edit flow${relation.name ? ` ${relation.name}` : ""}`} onClose={onClose}>
       {/* Flow name — shared across lenses. A flow's name is its identity (and the
           manifest key when tethered); an FSA transition IS a named trigger. */}
       <FlowNameField relation={relation} onUpdateRelation={onUpdateRelation} />
@@ -104,11 +105,11 @@ export function EdgePopover({
         />
       )}
       <div className="mt-1 flex justify-start border-t pt-1" style={{ borderColor: "var(--hairline)" }}>
-        <button onClick={onDelete} className="rounded-full px-3 py-1 text-xs" style={{ color: "var(--verdict-error)" }}>
-          delete flow
-        </button>
+        <span style={{ color: "var(--verdict-error)" }}>
+          <SmallButton onClick={onDelete}>delete flow</SmallButton>
+        </span>
       </div>
-    </Popover>
+    </PopoverDialog>
   );
 }
 
@@ -215,9 +216,7 @@ export function FlowNameField({
 function CloseRow({ onClose }: { onClose: () => void }) {
   return (
     <div className="flex justify-end">
-      <button onClick={onClose} className="rounded-full px-3 py-1 text-xs" style={{ color: "var(--text-muted)" }}>
-        close
-      </button>
+      <SmallButton onClick={onClose}>close</SmallButton>
     </div>
   );
 }
