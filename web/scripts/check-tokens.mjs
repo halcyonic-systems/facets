@@ -106,7 +106,7 @@ const warnings = [];
 // RADIUS_OUTLINE_FAIL to true, which makes the rules strict everywhere, and
 // delete the set.
 const RADIUS_OUTLINE_FAIL = false;
-const RADIUS_OUTLINE_STRICT = new Set(["ui.tsx", "index.css"]);
+const RADIUS_OUTLINE_STRICT = new Set(["ui.tsx", "index.css", "StatusBar.tsx", "Transport.tsx"]);
 // Every soft message starts "<file>:<line> ", so the file is the text before
 // the first colon (no path here carries a colon of its own).
 const soft = (msg) => {

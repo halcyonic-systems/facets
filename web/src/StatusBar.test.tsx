@@ -18,7 +18,11 @@ describe("StatusBar", () => {
     const m = renderToStaticMarkup(
       <StatusBar model={model} verdict={{ issues: [] }} faults={0} previewing={false} focus={false} onToggleFocus={noop} onVerdict={noop} kernelLoaded />,
     );
-    expect(m).toContain("✓ clean");
+    // The verdict is the one true Pill (data-pill) with its mark in the icon
+    // slot, never a glyph in the word (makeover rules 3, 14).
+    expect(m).toContain("clean");
+    expect(m).toMatch(/data-pill=""[^>]*data-tone="ok"/);
+    expect(m).toContain('data-icon="ok"');
     expect(m).toContain("1 thing · 0 relations");
     expect(m).toContain("compiled");
     expect(m).toContain(">Focus</button>");
@@ -49,19 +53,21 @@ describe("StatusBar", () => {
 });
 
 describe("#427 the secondary-pane toggle at narrow widths", () => {
-  it("names the pane and opens it; absent above the breakpoint", () => {
+  // Below the breakpoint the toggles (the sheet, the overlays, Focus) fold
+  // into one closed Menu so the bar stays one row at 390 (makeover rule 16);
+  // above it they are the row of quiet Buttons and no menu is offered.
+  it("offers the sheet behind the View options menu; absent above the breakpoint", () => {
     const narrow = renderToStaticMarkup(
       <StatusBar model={model} verdict={{ issues: [] }} faults={0} previewing={false} focus={false} onToggleFocus={noop} onVerdict={noop} kernelLoaded secondary={{ label: "Element", open: false }} onToggleSecondary={noop} />,
     );
-    expect(narrow).toContain("Element ▸");
-    const open = renderToStaticMarkup(
-      <StatusBar model={model} verdict={{ issues: [] }} faults={0} previewing={false} focus={false} onToggleFocus={noop} onVerdict={noop} kernelLoaded secondary={{ label: "Diagram", open: true }} onToggleSecondary={noop} />,
-    );
-    expect(open).toContain("✕ Diagram");
+    expect(narrow).toMatch(/aria-haspopup="menu"[^>]*aria-label="View options"/);
+    expect(narrow).not.toContain(">Focus</button>");
     const wide = renderToStaticMarkup(
       <StatusBar model={model} verdict={{ issues: [] }} faults={0} previewing={false} focus={false} onToggleFocus={noop} onVerdict={noop} kernelLoaded />,
     );
+    expect(wide).not.toContain("View options");
     expect(wide).not.toContain('data-testid="secondary-toggle"');
+    expect(wide).toContain(">Focus</button>");
   });
 });
 
