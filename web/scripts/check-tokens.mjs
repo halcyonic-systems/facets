@@ -31,8 +31,11 @@
  *       replacement on the same selector                               WARN*
  *   (d) index.css carries the global :focus-visible ring and the global
  *       prefers-reduced-motion gate                                     FAIL
- *   * warning until slice B (the primitives) lands, then RADIUS_OUTLINE_FAIL
- *     flips to true and both become failures.
+ *   * a failure in the files RADIUS_OUTLINE_STRICT names (the primitives slice
+ *     B2 cleared ui.tsx and index.css), a warning elsewhere until every surface
+ *     slice has cleared its own and RADIUS_OUTLINE_FAIL flips to true.
+ *   (e) a fontSize may read a type token, `var(--t-*)` (rule 5); any other
+ *       CSS-string font size still fails.
  *
  * Run: npm run check:tokens (also part of just check and CI).
  */
@@ -96,10 +99,20 @@ const tok = parseTokens(stripComments(readFileSync(TOKENS, "utf8")));
 
 const problems = [];
 const warnings = [];
-// Slice B (the primitives) flips this to true; until then rules (b) and (c)
-// list their offenders without failing the gate.
+// Rules (b) and (c) fail per file. Slice B2 (the primitives, 2026-10-26)
+// cleared its own files and made them strict; each surface slice adds its
+// files to RADIUS_OUTLINE_STRICT as it clears them (the open list is in
+// web/DESIGN.md "Open at slice B2"). When every surface has landed, flip
+// RADIUS_OUTLINE_FAIL to true, which makes the rules strict everywhere, and
+// delete the set.
 const RADIUS_OUTLINE_FAIL = false;
-const soft = (msg) => (RADIUS_OUTLINE_FAIL ? problems : warnings).push(msg);
+const RADIUS_OUTLINE_STRICT = new Set(["ui.tsx", "index.css"]);
+// Every soft message starts "<file>:<line> ", so the file is the text before
+// the first colon (no path here carries a colon of its own).
+const soft = (msg) => {
+  const file = msg.slice(0, msg.indexOf(":"));
+  (RADIUS_OUTLINE_FAIL || RADIUS_OUTLINE_STRICT.has(file) ? problems : warnings).push(msg);
+};
 
 for (const ref of tok.refs) {
   if (!css.declared.has(ref)) problems.push(`tokens.ts references ${ref}, not declared in index.css`);
@@ -297,7 +310,8 @@ for (const file of srcFiles()) {
   // banned outright; arbitrary Tailwind sizes and numeric fontSize (SVG /
   // recharts) must be in the frozen sets above.
   for (const m of src.matchAll(/font-?[Ss]ize\s*:\s*["'`]([^"'`]+)["'`]/g)) {
-    problems.push(`${rel}:${lineOf(src, m.index)} fontSize: "${m[1]}" — use a text-* class or the frozen numeric scale`);
+    if (/^var\(--t-[a-z0-9]+\)$/.test(m[1])) continue; // a type token (rule 5)
+    problems.push(`${rel}:${lineOf(src, m.index)} fontSize: "${m[1]}": use a text-* class, a var(--t-*) type token, or the frozen numeric scale`);
   }
   for (const m of src.matchAll(/text-\[([^\]]+)\]/g)) {
     if (!TEXT_ARBITRARY_OK.has(m[1]))
@@ -416,7 +430,7 @@ for (const m of INDEX_CSS_SRC.matchAll(/([^{}]+)\{([^{}]*)\}/g)) {
 }
 
 if (warnings.length) {
-  console.warn(`⚠ ${warnings.length} warning(s) — rules 3 and 10 are listed, not yet failed; slice B flips RADIUS_OUTLINE_FAIL:`);
+  console.warn(`⚠ ${warnings.length} warning(s) — rules 3 and 10 fail in ${[...RADIUS_OUTLINE_STRICT].join(", ")} and are listed elsewhere until each surface slice clears its files (web/DESIGN.md "Open at slice B2"):`);
   for (const w of warnings) console.warn("  - " + w);
   console.warn("");
 }

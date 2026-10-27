@@ -682,3 +682,30 @@ input[type="range"]:focus-visible {
   flex-basis: auto !important;
   border-left: 0 !important;
 }
+
+/* ── PRIMITIVES (makeover slice B2, src/ui.tsx) ────────────────────────────
+   The states an inline style cannot express. Classes only; every colour is a
+   token. The focus ring stays the global one above (rule 10); the menu item
+   pulls it inside the panel so the panel's overflow cannot clip it. */
+.prim-quiet:hover:not(:disabled) {
+  background-color: var(--bg-surface) !important;
+}
+.prim-tool:hover:not(:disabled):not([aria-pressed="true"]) {
+  color: var(--text-primary);
+}
+.prim-tab:hover {
+  color: var(--text-primary) !important;
+}
+.prim-menu-item:hover:not([aria-disabled="true"]),
+.prim-menu-item:focus-visible {
+  background-color: var(--bg-surface);
+}
+.prim-menu-item:focus-visible {
+  outline-offset: -2px;
+}
+/* Placeholders at ink-muted (5.4:1 on the ground): Tailwind's default is
+   currentColor at 50% alpha, 3.3:1 in light (sl audit #24). */
+.prim-field::placeholder {
+  color: var(--text-muted);
+  opacity: 1;
+}
