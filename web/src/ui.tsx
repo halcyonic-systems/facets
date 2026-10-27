@@ -202,7 +202,10 @@ export type ButtonVariant = "primary" | "quiet" | "danger";
  *  and `danger` with the error verdict, both under `--text-on-accent`; `quiet`
  *  is the sheet with a `--rule-strong` hairline. The focus ring is the global
  *  one (index.css :focus-visible); nothing here removes it. Disabled keeps
- *  readable ink (`--text-muted`, never half opacity). */
+ *  readable ink (`--text-muted`, never half opacity) on no fill, behind the
+ *  faint `--border`: an outline with quiet words, not a grey chip. The hover
+ *  fade lives on `:hover` in index.css, never inline, so a theme flip repaints
+ *  at once instead of fading every button through grey. */
 export function Button({
   size = 32,
   variant = "primary",
@@ -221,7 +224,7 @@ export function Button({
   const iconOnly = children === undefined || children === null || children === false;
   const box = size === 28 ? (iconOnly ? "h-7 w-7" : "h-7 px-2.5") : iconOnly ? "h-8 w-8" : "h-8 px-3";
   const look: CSSProperties = disabled
-    ? { background: "var(--bg-surface)", color: "var(--text-muted)", border: "1px solid var(--border)", cursor: "not-allowed" }
+    ? { background: "transparent", color: "var(--text-muted)", border: "1px solid var(--border)", cursor: "not-allowed" }
     : variant === "primary"
       ? { background: "var(--accent)", color: "var(--text-on-accent)", border: "1px solid var(--accent)" }
       : variant === "danger"
@@ -235,7 +238,7 @@ export function Button({
       data-size={size}
       data-variant={variant}
       className={`prim-button ${variant === "quiet" ? "prim-quiet" : ""} inline-flex shrink-0 items-center justify-center gap-1.5 rounded-sm whitespace-nowrap text-sm font-medium ${box} ${className}`}
-      style={{ transition: "background-color var(--motion-fast) ease-out", ...look, ...style }}
+      style={{ ...look, ...style }}
       {...rest}
     >
       {icon && <Icon name={icon} size={16} />}
@@ -285,7 +288,6 @@ export function ToolButton({
         color: disabled ? "var(--text-muted)" : active ? "var(--text-on-accent)" : "var(--text-secondary)",
         border: `1px solid ${active ? "var(--lens-accent)" : "var(--border)"}`,
         cursor: disabled ? "not-allowed" : "pointer",
-        transition: "background-color var(--motion-fast) ease-out",
       }}
     >
       {icon && <Icon name={icon} size={20} />}

@@ -1544,7 +1544,6 @@ function ArrangeToggle({ value, onChange }: { value: Arrange; onChange: (v: Arra
         letterSpacing: "var(--tracking-label)",
         background: value === v ? "var(--accent)" : "var(--bg-secondary)",
         color: value === v ? "var(--text-on-accent)" : "var(--text-secondary)",
-        transition: "background-color var(--motion-fast) ease-out",
       }}
     >
       {label}

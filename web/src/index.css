@@ -723,6 +723,14 @@ input[type="range"]:focus-visible {
 .prim-quiet:hover:not(:disabled) {
   background-color: var(--bg-surface) !important;
 }
+/* The hover fade is declared on :hover only. A transition on the resting
+   state also fires when the theme flips (every light-dark() pair changes at
+   once), and a tab that is not painting holds the half-way grey: the dark
+   gallery's grey chips (polish pass, 2026-10-27). */
+.prim-button:hover,
+.prim-tool:hover {
+  transition: background-color var(--motion-fast) ease-out;
+}
 .prim-tool:hover:not(:disabled):not([aria-pressed="true"]) {
   color: var(--text-primary);
 }
@@ -768,6 +776,8 @@ input[type="range"]:focus-visible {
   margin-bottom: 0 !important;
   border-bottom: 0 !important;
   border-radius: var(--radius-sm);
+}
+.chrome-strip [role="tab"]:hover {
   transition: background-color var(--motion-fast) ease-out, color var(--motion-fast) ease-out;
 }
 .chrome-strip [role="tab"][aria-selected="true"] {
