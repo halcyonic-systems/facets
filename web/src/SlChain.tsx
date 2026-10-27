@@ -128,17 +128,28 @@ export function SlStatusLine({
         : model
           ? { text: "compiled", color: "var(--verdict-ok)" }
           : { text: "not compiled yet", color: "var(--text-muted)" };
+  // While faults exist the verdict shown would be the last good compile's,
+  // so it is named as that (sl audit #11) instead of reading "clean" beside
+  // "3 faults" on one line.
+  const faulted = faults > 0;
   return (
-    <span className="min-w-0 text-[11px]" style={{ color: "var(--text-muted)" }} data-testid="sl-status">
-      <span style={{ color: state.color }}>{state.text}</span>
-      {model && (
+    <span className="min-w-0" style={{ color: "var(--text-muted)", fontSize: "var(--t-meta)" }} data-testid="sl-status">
+      <span style={{ color: state.color, fontWeight: 500 }}>{state.text}</span>
+      {model && faulted && (
+        <>
+          {" · last clean compile: "}
+          {model.things.length} thing{model.things.length === 1 ? "" : "s"}, {model.relations.length} relation
+          {model.relations.length === 1 ? "" : "s"}
+        </>
+      )}
+      {model && !faulted && (
         <>
           {" · "}
           {model.things.length} thing{model.things.length === 1 ? "" : "s"}, {model.relations.length} relation
           {model.relations.length === 1 ? "" : "s"}
         </>
       )}
-      {model && verdict && (
+      {model && verdict && !faulted && (
         <>
           {" · "}
           {MODE_BY_LENS[model.lens]},{" "}

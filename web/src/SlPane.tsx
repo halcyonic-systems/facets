@@ -15,8 +15,10 @@
 // seam; manual authoring (textarea + Compile) is always present underneath and
 // never gated on the drafter.
 
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { compileSl, emitSl, splicePositions } from "./kernel";
+import { Button } from "./ui";
+import { Icon } from "./icons";
 import { SlEditor } from "./sl/SlEditor";
 import type { CanvasModel, SlError } from "./kernel/types";
 import { CoAuthorMode } from "./CoAuthorMode";
@@ -181,6 +183,12 @@ export function SlPane({
   // arrives (any compile path: button, ⌘⏎, co-author).
   const [editedSinceCompile, setEditedSinceCompile] = useState(false);
   useEffect(() => setEditedSinceCompile(false), [errors]);
+  // A fault row, pressed, asks the editor for its line through the same
+  // focusLine channel the parent's selection uses (SlEditor scrolls and
+  // flashes it). The parent's request, when one arrives, takes over again.
+  const [faultFocus, setFaultFocus] = useState<{ line: number; nonce: number } | null>(null);
+  const parentFocus = selection?.focusLine ?? null;
+  useEffect(() => setFaultFocus(null), [parentFocus]);
 
   // Canvas → text: serialize the live model into the pane (kernel emit_sl —
   // canonical, round-trip-golden-tested). Replaces the pane text; the author
@@ -447,28 +455,14 @@ export function SlPane({
             }}
             onCompile={() => compile()}
             onCursorLine={selection?.onCursorLine}
-            focusLine={selection?.focusLine ?? null}
+            focusLine={faultFocus ?? parentFocus}
           />
           {errors.length > 0 && (
-            <div
-              className="max-h-40 min-h-0 shrink overflow-y-auto border-t px-3 py-2 text-xs"
-              style={{
-                borderColor: "var(--hairline)",
-                color: "var(--verdict-error)",
-                opacity: editedSinceCompile ? 0.45 : 1,
-              }}
-            >
-              {editedSinceCompile && (
-                <div className="pb-1" style={{ color: "var(--text-muted)" }}>
-                  edited since last compile — ⌘⏎ to re-check
-                </div>
-              )}
-              {errors.map((e, i) => (
-                <div key={i} className="py-0.5 font-mono">
-                  line {e.line}: {e.message}
-                </div>
-              ))}
-            </div>
+            <SlFaults
+              errors={errors}
+              stale={editedSinceCompile}
+              onPick={(line) => setFaultFocus({ line, nonce: Date.now() })}
+            />
           )}
           {/* One row while authoring: the act, the one canvas action that
               fits the moment, and where the text stands. The rest is folded
@@ -544,6 +538,102 @@ export function SlPane({
         </>
       )}
     </aside>
+  );
+}
+
+/** The fault list (sl audit § 3, after GOV.UK's error summary): one row per
+ *  fault, each a quiet button that takes the editor to its line; the line
+ *  number is a mono numeral chip, a 2px bar in the verdict colour on the
+ *  row's left edge, the message in 13px Inter. `role="alert"` so a failed
+ *  compile is announced. Alt+ArrowDown / ArrowUp step between rows. Stale
+ *  faults (the text has changed since) keep full ink and change their word.
+ *  The words are the kernel's, untouched. */
+function SlFaults({
+  errors,
+  stale,
+  onPick,
+}: {
+  errors: SlError[];
+  stale: boolean;
+  onPick: (line: number) => void;
+}) {
+  const listRef = useRef<HTMLUListElement>(null);
+  function onKeyDown(e: React.KeyboardEvent) {
+    if (!e.altKey || (e.key !== "ArrowDown" && e.key !== "ArrowUp")) return;
+    const rows = Array.from(listRef.current?.querySelectorAll<HTMLButtonElement>("button") ?? []);
+    if (rows.length === 0) return;
+    const at = rows.indexOf(document.activeElement as HTMLButtonElement);
+    const next = e.key === "ArrowDown" ? (at + 1) % rows.length : (at - 1 + rows.length) % rows.length;
+    rows[next].focus();
+    e.preventDefault();
+  }
+  const n = errors.length;
+  return (
+    <div
+      role="alert"
+      className="max-h-40 min-h-0 shrink overflow-y-auto border-t"
+      style={{ borderColor: "var(--hairline)" }}
+      data-testid="sl-faults"
+    >
+      <p
+        className="flex flex-wrap items-center gap-x-1 px-3 pt-2 pb-1 text-xs font-medium"
+        style={{ color: stale ? "var(--text-secondary)" : "var(--verdict-error)" }}
+      >
+        {stale ? (
+          <>
+            {n} fault{n === 1 ? "" : "s"} from the last compile, the text has changed since
+            <span className="inline-flex items-center gap-0.5 pl-1" style={{ color: "var(--text-muted)" }}>
+              <Icon name="command" size={16} />
+              <Icon name="return" size={16} />
+              re-checks
+            </span>
+          </>
+        ) : (
+          <>
+            {n} fault{n === 1 ? "" : "s"}
+          </>
+        )}
+      </p>
+      <ul ref={listRef} className="flex flex-col pb-1" onKeyDown={onKeyDown}>
+        {errors.map((e, i) => (
+          <li key={i}>
+            <Button
+              variant="quiet"
+              onClick={() => onPick(e.line)}
+              disabled={e.line < 1}
+              title={e.line >= 1 ? `Go to line ${e.line}` : undefined}
+              className="sl-fault-row h-auto w-full justify-start rounded-none px-3 py-1 text-left font-normal"
+              style={{
+                whiteSpace: "normal",
+                border: "none",
+                borderLeft: `2px solid ${stale ? "var(--text-muted)" : "var(--verdict-error)"}`,
+                background: "transparent",
+                color: "var(--text-primary)",
+                fontSize: "var(--t-num)",
+                lineHeight: "18px",
+                cursor: e.line >= 1 ? "pointer" : "default",
+              }}
+            >
+              <span className="sr-only">Fault{e.line >= 1 ? " on line" : ""} </span>
+              {e.line >= 1 && (
+                <span
+                  className="tabular mr-2 inline-block shrink-0 rounded-sm px-1 align-baseline text-xs font-semibold"
+                  style={{
+                    fontFamily: "var(--font-mono)",
+                    background: "var(--bg-surface)",
+                    color: "var(--text-secondary)",
+                    lineHeight: "18px",
+                  }}
+                >
+                  {e.line}
+                </span>
+              )}
+              <span className="min-w-0">{e.message}</span>
+            </Button>
+          </li>
+        ))}
+      </ul>
+    </div>
   );
 }
 
