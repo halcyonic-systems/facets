@@ -6,6 +6,7 @@
 import type { CanvasRole, EnvKind, Grounding, ProcessPrimitive } from "../../kernel/types";
 import { primitiveGlyph } from "./primitive-glyphs";
 import { humanize } from "../../ui";
+import { prim } from "../../tokens";
 import { NODE_R, type Pt } from "../geometry";
 import { groundingLine, groundingStroke, useGroundingOverlay } from "../grounding";
 import { HANDLE, LABEL, STROKE_FLOOR_PX, STYLE, TAB } from "../style";
@@ -251,9 +252,12 @@ export function NodeBody({
           strokeOpacity={0.35}
         />
       )}
-      {showHalo && (
-        <circle r={NODE_R + STYLE.compHalo.pad} fill="var(--lens-accent-soft)" opacity={STYLE.compHalo.opacity} />
-      )}
+      {/* The composition halo (a lens-accent wash around every component) was
+          the last residue of the withdrawn world tint: a colour on a surface
+          that named nothing the membrane or hull does not already say
+          (makeover rule 9e, canvas audit finding 18). `showHalo` stays in the
+          lens contract; it draws nothing. */}
+      {showHalo && null}
       {hovered && (
         <circle
           data-export-ignore
@@ -414,9 +418,12 @@ export function NodeBody({
         <g
           data-glyph="centered"
           transform={`scale(${(NODE_R * GLYPH_FRAC) / 6})`}
-          style={{ color: "var(--lens-accent)" }}
+          // Rule 9b: the process wears its own hue, the same one the rail row
+          // and the inspector carry, so it is known by colour before its
+          // silhouette is read.
+          style={{ color: prim[badge] }}
           fill="none"
-          stroke="var(--lens-accent)"
+          stroke={prim[badge]}
           strokeWidth={strokeWorld(2, sc, STROKE_FLOOR_PX) / ((NODE_R * GLYPH_FRAC) / 6)}
           strokeLinecap="square"
           strokeLinejoin="miter"
@@ -434,14 +441,14 @@ export function NodeBody({
           <circle
             r={STYLE.badge.r}
             fill={STYLE.nodeFill}
-            stroke="var(--lens-accent)"
+            stroke={prim[badge]}
             strokeWidth={STYLE.badge.strokeWidth}
           />
           <g
             transform={`scale(${(STYLE.badge.r * 0.8) / 6})`}
-            style={{ color: "var(--lens-accent)" }}
+            style={{ color: prim[badge] }}
             fill="none"
-            stroke="var(--lens-accent)"
+            stroke={prim[badge]}
             strokeWidth={2}
             strokeLinecap="square"
             strokeLinejoin="miter"

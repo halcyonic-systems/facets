@@ -1244,9 +1244,10 @@ export default function Canvas({
               cy={ring.cy}
               rx={ring.rx}
               ry={ring.ry}
-              fill="var(--accent-soft)"
-              fillOpacity={STYLE.ring.fillOpacity}
-              stroke="var(--accent-slate)"
+              // The membrane is ink (rule 9a): no tint inside it, no accent on
+              // it; the one ring reads by weight and dash alone.
+              fill="none"
+              stroke="var(--text-secondary)"
               strokeWidth={strokeWorld(STYLE.ring.strokeWidth, scale, STROKE_FLOOR_PX)}
               strokeDasharray={
                 facts && facts.boundary_props.porosity > 0
@@ -1272,7 +1273,7 @@ export default function Canvas({
                 textAnchor="middle"
                 dominantBaseline="central"
                 fontSize={STYLE.label.size * headHold}
-                fill="var(--accent-slate)"
+                fill="var(--text-secondary)"
                 paintOrder="stroke"
                 stroke="var(--bg-primary)"
                 strokeWidth={4}

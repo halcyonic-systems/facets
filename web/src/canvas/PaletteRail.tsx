@@ -9,13 +9,14 @@ import { LensPalette, type PaletteHint, type PaletteTool } from "./lenses/regist
 import { primitiveGlyph } from "./lenses/primitive-glyphs";
 import { ProcessReference } from "./ProcessReference";
 import { Popover, ToolButton } from "../ui";
+import { prim } from "../tokens";
 
 /** The primitive's own glyph on its rail row (#100 phase 4): picking a
  *  primitive stamps this drawing as the component's face, so the rail shows
  *  the thing you are placing, not just a two-letter code. */
 export function GlyphChip({ primitive }: { primitive: ProcessPrimitive }) {
   return (
-    <svg width={14} height={14} viewBox="-7.5 -7.5 15 15" aria-hidden className="mr-1 inline-block align-[-2px]">
+    <svg width={14} height={14} viewBox="-7.5 -7.5 15 15" aria-hidden className="mr-1 inline-block align-[-2px]" style={{ color: prim[primitive] }}>
       <g fill="none" stroke="currentColor" strokeWidth={1.4} strokeLinecap="round" strokeLinejoin="round">
         {primitiveGlyph(primitive)}
       </g>
