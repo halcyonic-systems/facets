@@ -3,7 +3,8 @@
 import { useState } from "react";
 import { Line, ReferenceArea, ReferenceLine } from "recharts";
 import type { CanvasModel, Comparison, Level, MarkovRunResult, RunResultRich } from "./kernel/types";
-import { Card, Pill, Stat, Verdict, humanize } from "./ui";
+import { Button, Card, Pill, Stat, Verdict, humanize } from "./ui";
+import { Icon } from "./icons";
 import { horizonOf, unitLabel } from "./runViz";
 import { BungeStateSpace } from "./canvas/BungeStateSpace";
 import { evaluateMetrics, type MetricReading } from "./metrics";
@@ -44,8 +45,8 @@ function categoryHeader(cat: Level["category"], lens: CanvasModel["lens"]) {
 const WORDING = {
   ranClean: "Ran clean",
   ranLeak: "Ran — some quantity went missing",
-  conservedPill: "✓ nothing lost or created",
-  leakPill: "⚠ quantity leaked",
+  conservedPill: "nothing lost or created",
+  leakPill: "quantity leaked",
   residualLabel: "balance residual",
 };
 
@@ -1216,21 +1217,24 @@ function LevelRow({
           {unit.text}
         </span>
         {acceptable && (
-          <button
+          <Button
+            size={28}
+            variant="quiet"
+            icon="check"
             onClick={() => {
               onAcceptUnit(l.name, l.unit);
               setAccepted(true);
             }}
-            className="ml-2 rounded border px-1.5 py-0.5 text-[10px]"
-            style={{ borderColor: "var(--border)", color: "var(--text-muted)" }}
+            className="ml-2"
             title={`Declare ${l.unit} as ${l.name}'s stock unit`}
           >
             accept
-          </button>
+          </Button>
         )}
         {accepted && (
-          <span className="ml-2 text-[10px]" style={{ color: "var(--verdict-ok)" }}>
-            declared ✓
+          <span className="ml-2 inline-flex items-center gap-0.5 text-xs" style={{ color: "var(--verdict-ok)" }}>
+            <Icon name="check" size={16} />
+            declared
           </span>
         )}
       </span>

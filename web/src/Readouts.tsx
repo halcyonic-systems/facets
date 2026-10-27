@@ -10,7 +10,7 @@ import type { CanvasModel, Manifest, MarkovRunResult, Relation, RunResultRich, T
 import type { RunKind } from "./canvas/lenses/registry";
 import { RunInputs } from "./RunInputs";
 import { DtmcPanel, RunFit, RunGlance, RunStory, RunTable, weightProvenance } from "./RunPanel";
-import { Card, Tabs } from "./ui";
+import { Button, Card, Input, Tabs } from "./ui";
 import { TickLogTable } from "./TickLogTable";
 
 /** The readout tabs. Fit only exists when a CSV is bound — absence is
@@ -139,8 +139,8 @@ export function Readouts({
       ) : (
         <Placeholder>
           Run evolves this state machine as a Markov chain: steps and state
-          occupancy, not Δt. Set the steps in the rail and press ▶ Run, or ⏭
-          Step one tick at a time.
+          occupancy, not Δt. Set the steps in the rail and press Run, or Step
+          one tick at a time.
         </Placeholder>
       )}
     </div>
@@ -171,9 +171,9 @@ export function Readouts({
           <div className="grid gap-3">
             {onExportRun && (
               <div>
-                <button onClick={onExportRun} className="record-folio text-[10px] tracking-[0.12em]" data-testid="export-run">
-                  export run (.json) →
-                </button>
+                <Button size={28} variant="quiet" icon="file" onClick={onExportRun} data-testid="export-run">
+                  export run (.json)
+                </Button>
               </div>
             )}
             <TickLogTable log={tickLog} tick={tick} timeUnit={model?.time_unit} />
@@ -192,7 +192,7 @@ export function Readouts({
     </>
   ) : (
     <Placeholder>
-      {"Nothing has run yet. Press ▶ Run in the header, or set the run length in the rail first. No data is needed: the declared amounts govern until a column is bound."}
+      {"Nothing has run yet. Press Run in the header, or set the run length in the rail first. No data is needed: the declared amounts govern until a column is bound."}
     </Placeholder>
   );
 
@@ -221,24 +221,21 @@ export function Readouts({
             then reads against it. One button, two states; dropping it is
             the same button. */}
         {result && onKeepBaseline && (
-          <button
+          <Button
+            size={28}
+            variant="quiet"
+            icon={baseline ? "check" : "pin"}
             onClick={baseline ? onDropBaseline : onKeepBaseline}
-            className="record-folio shrink-0 text-[10px] tracking-[0.12em]"
             title={baseline ? "Drop the kept baseline" : "Keep this run as the baseline: later knobs read against it"}
             data-testid="keep-baseline"
             aria-pressed={Boolean(baseline)}
           >
-            {baseline ? "baseline kept · drop" : "keep baseline →"}
-          </button>
+            {baseline ? "baseline kept · drop" : "keep baseline"}
+          </Button>
         )}
-        <button
-          onClick={onClose}
-          title="Back to the model (Esc)"
-          className="shrink-0 px-2 text-xs"
-          style={{ color: "var(--text-muted)" }}
-        >
-          ⤡ model
-        </button>
+        <Button size={28} variant="quiet" icon="collapse" onClick={onClose} title="Back to the model (Esc)">
+          model
+        </Button>
       </div>
       <div className="flex min-h-0 flex-1">
         <aside
@@ -293,7 +290,7 @@ export function TimeRow({
           {symbol}
         </span>
       )}
-      <input
+      <Input
         key={value}
         type="number"
         defaultValue={value}
@@ -306,8 +303,7 @@ export function TimeRow({
         onKeyDown={(e) => {
           if (e.key === "Enter") (e.target as HTMLInputElement).blur();
         }}
-        className="w-16 rounded-md px-1.5 py-0.5 text-xs tabular"
-        style={{ border: "1px solid var(--border)", background: "var(--bg-primary)", color: "var(--text-primary)" }}
+        className="w-20 tabular"
       />
     </label>
   );

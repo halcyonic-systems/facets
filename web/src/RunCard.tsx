@@ -19,7 +19,7 @@ import { FUTURE_OPACITY, RunChart, midRun, timeAxisLabel } from "./RunChart";
 import { Line } from "recharts";
 import { TimeRow } from "./Readouts";
 import { evaluateMetrics } from "./metrics";
-import { humanize } from "./ui";
+import { Button, humanize } from "./ui";
 import { unitLabel } from "./runViz";
 
 /** One band of the stack. The rule rides the TOP of every band but the first,
@@ -73,20 +73,17 @@ export function RunCard({
 
   if (collapsed) {
     return (
-      <button
+      <Button
+        size={28}
+        variant="quiet"
+        icon="chevron-left"
         onClick={() => setCollapsed(false)}
         title="Expand the run card"
-        className="absolute right-3 top-3 z-10 px-2.5 py-1 text-xs font-semibold uppercase tracking-wide"
-        style={{
-          background: "var(--bg-secondary)",
-          border: "1px solid var(--border)",
-          borderRadius: "var(--radius-sm)",
-          color: "var(--text-secondary)",
-          boxShadow: "var(--shadow-card)",
-        }}
+        aria-expanded={false}
+        className="absolute right-3 top-3 z-10"
       >
-        ◂ Run
-      </button>
+        Run
+      </Button>
     );
   }
 
@@ -112,22 +109,18 @@ export function RunCard({
           Run
         </span>
         <span className="min-w-0 flex-1" />
-        <button
-          onClick={onOpenReadouts}
-          title="Open Readouts — every chart, full page"
-          className="text-[11px]"
-          style={{ color: "var(--text-muted)" }}
-        >
-          ⤢ readouts
-        </button>
-        <button
+        <Button size={28} variant="quiet" icon="expand" onClick={onOpenReadouts} title="Open Readouts: every chart, full page">
+          readouts
+        </Button>
+        <Button
+          size={28}
+          variant="quiet"
+          icon="chevron-right"
           onClick={() => setCollapsed(true)}
           title="Collapse the run card"
-          className="pl-1 text-xs"
-          style={{ color: "var(--text-muted)" }}
-        >
-          ▸
-        </button>
+          aria-label="Collapse the run card"
+          aria-expanded
+        />
       </Band>
 
       {/* Beat one — the reading. The headline is the AT-CURSOR value, so it
@@ -225,14 +218,16 @@ export function RunCard({
             ) : null,
           )}
           {onResetInputs && (
-            <button
+            <Button
+              size={28}
+              variant="quiet"
+              icon="reset"
               onClick={onResetInputs}
-              className="mt-1 text-[11px]"
-              style={{ color: "var(--text-muted)" }}
+              className="mt-1"
               title="Restore every amount to what the model declares"
             >
-              ↺ reset to declared
-            </button>
+              reset to declared
+            </Button>
           )}
           {/* The honest boundary of the knobs, where the knobs live: transforms
               pass their matched substance and dissipate the rest, so a

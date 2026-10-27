@@ -106,7 +106,32 @@ const warnings = [];
 // RADIUS_OUTLINE_FAIL to true, which makes the rules strict everywhere, and
 // delete the set.
 const RADIUS_OUTLINE_FAIL = false;
-const RADIUS_OUTLINE_STRICT = new Set(["ui.tsx", "index.css"]);
+const RADIUS_OUTLINE_STRICT = new Set([
+  "ui.tsx",
+  "index.css",
+  // Slice F, the reading surfaces (2026-10-26).
+  "InspectorDock.tsx",
+  "ReadSheet.tsx",
+  "FormalPanel.tsx",
+  "ReviewPanel.tsx",
+  "AnalystPanel.tsx",
+  "ModelAbout.tsx",
+  "ElementMechanism.tsx",
+  "RunCard.tsx",
+  "RunInputs.tsx",
+  "RunPanel.tsx",
+  "RunChart.tsx",
+  "Readouts.tsx",
+  "TickLogTable.tsx",
+  "DataMode.tsx",
+  "ParamControl.tsx",
+  "canvas/BungeRegister.tsx",
+  "canvas/BungeStateSpace.tsx",
+  "canvas/KlirRegister.tsx",
+  "canvas/KlirLadderPanel.tsx",
+  "canvas/SimScrubber.tsx",
+  "canvas/NodeEditor.tsx",
+]);
 // Every soft message starts "<file>:<line> ", so the file is the text before
 // the first colon (no path here carries a colon of its own).
 const soft = (msg) => {

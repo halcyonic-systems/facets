@@ -32,6 +32,7 @@ import {
   summaryLine,
 } from "./review";
 import { openExternal } from "./desktop";
+import { Button } from "./ui";
 
 // Where the linked docs live. The anchors are repo-relative
 // (`docs/glossary.md#precondition`), pinned by the kernel's doc_anchors_resolve
@@ -387,18 +388,9 @@ export function ReviewPanel({
             </p>
           )}
           <div className="mt-3 flex items-center gap-3">
-            <button
-              onClick={onReview}
-              className="px-3 py-1.5 text-xs font-semibold uppercase tracking-[0.14em]"
-              style={{
-                background: "var(--accent-strong)",
-                color: "var(--text-on-accent)",
-                borderRadius: "var(--radius-sm)",
-              }}
-              title="Re-run the kernel's review of this model"
-            >
+            <Button size={28} variant="primary" onClick={onReview} title="Re-run the kernel's review of this model">
               Review model
-            </button>
+            </Button>
             {reviewedAt && (
               <span className="text-xs tabular" style={{ color: "var(--text-muted)" }}>
                 reviewed {reviewedAt}

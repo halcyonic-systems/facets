@@ -6,7 +6,8 @@
 import katex from "katex";
 import "katex/dist/katex.min.css";
 import type { LensDescription } from "./kernel/types";
-import { Card } from "./ui";
+import { Card, Pill } from "./ui";
+import { Icon } from "./icons";
 
 function Tex({ tex, block = false }: { tex: string; block?: boolean }) {
   const html = katex.renderToString(tex, { throwOnError: false, displayMode: block });
@@ -78,15 +79,10 @@ function BungeFace({ d }: { d: Extract<LensDescription, { lens: "Bunge" }> }) {
         {/* µ(σ) is the four-coordinate CESM object (Bunge 2004); bare σ is the
             1979 CES triple. Label the four-tuple µ(σ) (concordance row 1 / §14.1). */}
         <Tex block tex={`\\mu(\\sigma) = \\langle \\mathcal{C},\\; \\mathcal{E},\\; \\mathcal{S},\\; \\mathcal{M} \\rangle`} />
-        <span
-          className="rounded-full px-3 py-1 text-xs font-semibold"
-          style={{
-            background: isSystem ? "var(--accent-soft)" : "var(--verdict-error)",
-            color: isSystem ? "var(--accent-strong)" : "var(--text-on-accent)",
-          }}
-        >
+        {/* Systemhood is a verdict (Def 1.1): a chip coloured by meaning (rule 9d). */}
+        <Pill tone={isSystem ? "ok" : "error"} icon={isSystem ? "check" : "warning"}>
           {isSystem ? "system — 𝔹 ≠ ∅ (Def 1.1)" : "aggregate — 𝔹 = ∅ (Def 1.1)"}
-        </span>
+        </Pill>
       </div>
       <p className="mt-1 text-xs" style={{ color: "var(--text-muted)" }}>
         µ(σ) is Bunge's 2004 four-coordinate object; bare σ names the 1979 ⟨C, E, S⟩ triple.
@@ -149,9 +145,12 @@ function MobusFace({ d }: { d: Extract<LensDescription, { lens: "Mobus" }> }) {
       <Line label={<Tex tex="H" />}>{d.h_note}</Line>
       <Line label={<Tex tex="\Delta t" />}>{d.dt_note}</Line>
       {d.self_loop_conflicts.length > 0 && (
-        <p className="mt-2 text-xs leading-relaxed" style={{ color: "var(--verdict-error)" }}>
-          ⊘ no Mobus preimage (no_self_loops): {d.self_loop_conflicts.join(", ")} — a Bunge diagonal
-          bond; represent feedback as a 2-cycle or internal H/T dynamics.
+        <p className="mt-2 flex items-start gap-1.5 text-xs leading-relaxed" style={{ color: "var(--verdict-error)" }}>
+          <Icon name="error" size={16} className="mt-px shrink-0" />
+          <span>
+            no Mobus preimage (no_self_loops): {d.self_loop_conflicts.join(", ")} — a Bunge diagonal
+            bond; represent feedback as a 2-cycle or internal H/T dynamics.
+          </span>
         </p>
       )}
     </div>

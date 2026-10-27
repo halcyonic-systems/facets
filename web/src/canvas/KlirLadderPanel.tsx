@@ -9,6 +9,8 @@
 // Rust — Fig. 4.13 semilattice); this file typesets and explains, it judges
 // nothing.
 import type { KlirLadder } from "../kernel/types";
+import { Button } from "../ui";
+import { Icon } from "../icons";
 
 // ---- The Hasse diagram (Fig. 4.13 slice) ------------------------------------
 // Columns = the S operator applied 0/1/2 times; rows = the E→D→G content axis;
@@ -48,7 +50,7 @@ function Chip({
         y={y}
         width={CHIP_W}
         height={CHIP_H}
-        rx={6}
+        rx={4}
         fill={current ? "var(--lens-accent-soft)" : "var(--bg-secondary)"}
         stroke={current ? "var(--lens-accent)" : "var(--border)"}
         strokeWidth={current ? 2 : 1}
@@ -207,8 +209,10 @@ export function LadderChip({
 }) {
   return (
     <button
+      type="button"
       onClick={onToggle}
-      className="rounded-full px-2.5 py-1 text-xs"
+      aria-expanded={open}
+      className="inline-flex h-8 items-center gap-1 rounded-sm px-2.5 text-xs"
       style={{
         fontFamily: "var(--font-mono)",
         background: open ? "var(--lens-accent-soft)" : "var(--bg-surface)",
@@ -217,8 +221,8 @@ export function LadderChip({
       }}
       title="Where this model stands on Klir's GSPS epistemological ladder — click for the introduction"
     >
-      position: <span style={{ color: "var(--text-primary)", fontWeight: 600 }}>{ladder.position}</span>{" "}
-      {open ? "▾" : "▸"}
+      position: <span style={{ color: "var(--text-primary)", fontWeight: 600 }}>{ladder.position}</span>
+      <Icon name={open ? "chevron-up" : "chevron-down"} size={16} />
     </button>
   );
 }
@@ -234,9 +238,9 @@ export function KlirLadderPanel({ ladder, onClose }: { ladder: KlirLadder; onClo
         <span className="font-semibold" style={{ color: "var(--text-primary)" }}>
           Klir&rsquo;s epistemological ladder
         </span>
-        <button className="rounded-full px-2 py-0.5" style={{ color: "var(--text-muted)" }} onClick={onClose}>
+        <Button size={28} variant="quiet" icon="close" onClick={onClose}>
           close
-        </button>
+        </Button>
       </div>
 
       {/* 1 — the introduction: what the letters mean, before any verdict. */}

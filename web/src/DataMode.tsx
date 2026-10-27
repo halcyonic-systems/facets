@@ -12,7 +12,8 @@ import { useMemo, useState, type CSSProperties } from "react";
 import type { CanvasModel, ColumnMapping, Manifest } from "./kernel/types";
 import { parseCsv } from "./kernel";
 import { KIND_COLOR } from "./canvas/types";
-import { Pill } from "./ui";
+import { Button, Input, Pill, Select, ToolButton } from "./ui";
+import { Icon } from "./icons";
 
 const ROW_CAP = 200;
 
@@ -268,9 +269,12 @@ export function DataMode({
 
   const caret = (col: number) =>
     sort && sort.col === col ? (
-      <span aria-hidden className="ml-1" style={{ color: "var(--accent)" }}>
-        {sort.dir === "asc" ? "▲" : "▼"}
-      </span>
+      <Icon
+        name={sort.dir === "asc" ? "chevron-up" : "chevron-down"}
+        size={16}
+        className="ml-1 inline-block align-text-bottom"
+        style={{ color: "var(--accent)" }}
+      />
     ) : null;
 
   const headerCellStyle = (col: number, frozen: boolean): CSSProperties => ({
@@ -289,14 +293,17 @@ export function DataMode({
   // The Data tab's own acquisition affordance — a file picker, no bundle
   // needed. Reads as text; parsing and every judgment stay downstream.
   const importButton = onAttachCsv && (
+    // A <label> over a hidden file input, dressed as the quiet 28px Button
+    // (a <button> cannot open a file picker without a script).
     <label
-      className="cursor-pointer px-2 py-1 font-mono text-[11px] uppercase tracking-wide"
+      className="prim-button prim-quiet inline-flex h-7 shrink-0 cursor-pointer items-center gap-1.5 rounded-sm px-2.5 whitespace-nowrap text-sm font-medium"
       style={{
-        border: "1px solid var(--accent)",
-        color: "var(--accent-strong)",
-        background: "var(--bg-surface)",
+        background: "var(--bg-secondary)",
+        color: "var(--text-primary)",
+        border: "1px solid var(--rule-strong)",
       }}
     >
+      <Icon name="folder" size={16} />
       {csv ? "replace CSV…" : "import CSV…"}
       <input
         type="file"
@@ -352,7 +359,17 @@ export function DataMode({
   };
 
   const proposalLabel = (value: string) =>
-    value === "time" ? "time" : value.startsWith("stock:") ? `▤ ${value.slice(6)}` : `→ ${value}`;
+    value === "time" ? (
+      "time"
+    ) : value.startsWith("stock:") ? (
+      <>
+        <Icon name="buffering" size={16} /> {value.slice(6)}
+      </>
+    ) : (
+      <>
+        <Icon name="forward" size={16} /> {value}
+      </>
+    );
 
   const currentBinding = (column: string): string => {
     const m = manifest?.mapping.find((x) => x.column === column);
@@ -376,36 +393,30 @@ export function DataMode({
         Column bindings
       </h2>
       {proposals.size > 0 && (
-        <button
-          type="button"
+        <Button
+          size={28}
+          variant="quiet"
+          icon="check"
           data-testid="confirm-proposed"
           onClick={confirmProposals}
           title="bind every proposed column as shown; the dropdowns stay the correction surface"
-          className="mb-1.5 w-full px-2 py-1 font-mono text-[11px]"
-          style={{
-            border: "1px dashed var(--accent)",
-            color: "var(--accent-strong)",
-            background: "var(--bg-surface)",
-          }}
+          className="mb-2 w-full"
+          style={{ borderStyle: "dashed", borderColor: "var(--accent)", color: "var(--accent-strong)" }}
         >
           confirm {proposals.size} proposed by name
-        </button>
+        </Button>
       )}
       <ul className="text-xs">
         {parsed.headers.map((h) => (
-          <li key={h} className="flex items-center justify-between gap-2 py-0.5">
-            <span className="truncate font-mono" style={{ color: "var(--text-secondary)" }}>
+          <li key={h} className="flex flex-wrap items-center justify-between gap-2 py-1">
+            <span className="min-w-0 truncate font-mono" style={{ color: "var(--text-secondary)" }} title={h}>
               {h}
             </span>
-            <select
+            <Select
               value={currentBinding(h)}
               onChange={(e) => setBinding(h, e.target.value)}
-              className="max-w-[9rem] border px-1 py-0.5 font-mono text-[11px]"
-              style={{
-                borderColor: "var(--hairline)",
-                background: "var(--bg-primary)",
-                color: "var(--text-primary)",
-              }}
+              aria-label={`Binding for column ${h}`}
+              className="max-w-[10rem] font-mono"
             >
               <option value="ignore">— ignore —</option>
               <option value="time">time (what the rows are measured against)</option>
@@ -432,32 +443,28 @@ export function DataMode({
                     ))}
                 </optgroup>
               )}
-            </select>
+            </Select>
             {proposals.has(h) && (
-              <button
-                type="button"
+              <Button
+                size={28}
+                variant="quiet"
                 data-proposed={proposals.get(h)}
                 onClick={() => setBinding(h, proposals.get(h)!)}
                 title="proposed by name, not yet bound: click to bind this column"
-                className="truncate px-1 py-0.5 font-mono text-[11px] italic"
-                style={{ border: "1px dashed var(--hairline)", color: "var(--text-secondary)" }}
+                className="max-w-full font-mono"
+                style={{ borderStyle: "dashed", color: "var(--text-secondary)" }}
               >
                 proposed {proposalLabel(proposals.get(h)!)}
-              </button>
+              </Button>
             )}
             {manifest?.mapping.find((m) => m.column === h && m.as === "flow") && (
-              <input
+              <Input
                 aria-label={`unit of ${h}`}
                 title="the column's unit: what this column measures (defaults to the flow's unit)"
                 value={manifest.mapping.find((m) => m.column === h)?.unit ?? ""}
                 placeholder="unit"
                 onChange={(e) => setUnit(h, e.target.value)}
-                className="w-16 border px-1 py-0.5 font-mono text-[11px]"
-                style={{
-                  borderColor: "var(--hairline)",
-                  background: "var(--bg-primary)",
-                  color: "var(--text-primary)",
-                }}
+                className="w-20 font-mono"
               />
             )}
           </li>
@@ -548,16 +555,12 @@ export function DataMode({
           <span className="ml-auto flex items-center gap-2">
             {/* #309: the two readings of one data system, a toggle apart. */}
             {observedStates && (
-              <span className="flex font-mono text-[11px]" style={{ border: HAIRLINE }}>
+              <span className="flex items-center gap-1" role="group" aria-label="reading">
                 {(["observations", "states"] as const).map((v) => (
-                  <button
+                  <ToolButton
                     key={v}
+                    active={dataView === v}
                     onClick={() => setDataView(v)}
-                    className="px-2 py-1 uppercase tracking-wide"
-                    style={{
-                      background: dataView === v ? "var(--accent-soft)" : "var(--bg-surface)",
-                      color: dataView === v ? "var(--accent-strong)" : "var(--text-muted)",
-                    }}
                     title={
                       v === "observations"
                         ? "rows against time — one row per observation"
@@ -565,7 +568,7 @@ export function DataMode({
                     }
                   >
                     {v === "observations" ? "observations" : "observed states"}
-                  </button>
+                  </ToolButton>
                 ))}
               </span>
             )}
@@ -891,8 +894,9 @@ export function DataMode({
                               className="mr-1 inline-block h-[3px] w-3 align-middle"
                               style={{ background: "var(--verdict-error)" }}
                             />
-                            <span style={{ color: "var(--verdict-error)" }}>
-                              ⚠ {c.mapping.element ?? "(no target)"}
+                            <span className="inline-flex items-center gap-1" style={{ color: "var(--verdict-error)" }}>
+                              <Icon name="warning" size={16} />
+                              {c.mapping.element ?? "(no target)"}
                             </span>
                             {caret(ci + 1)}
                           </div>

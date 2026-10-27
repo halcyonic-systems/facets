@@ -33,8 +33,8 @@ function markerIndex(tick: number | undefined, n: number): number | null {
 const AXIS_TICK = { fontSize: 11, fill: "var(--text-muted)" } as const;
 const TOOLTIP_STYLE = {
   background: "var(--bg-secondary)",
-  border: "1px solid var(--border)",
-  borderRadius: 8,
+  border: "1px solid var(--hairline)",
+  borderRadius: "var(--radius-md)",
   fontSize: 12,
 } as const;
 

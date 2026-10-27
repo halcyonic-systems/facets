@@ -14,7 +14,7 @@ import {
   countLlmFindings,
   type CitationResolver,
 } from "./analysis/citations";
-import { Card, Pill } from "./ui";
+import { Button, Card, Input, Pill, Select } from "./ui";
 import { TraceDiagram } from "./analysis/TraceDiagram";
 
 const MODEL_OPTIONS: { label: string; value: string }[] = [
@@ -116,36 +116,24 @@ export function AnalystPanel({
       <div className="grid gap-3">
         <label className="grid gap-1 text-xs" style={{ color: "var(--text-secondary)" }}>
           Question (optional)
-          <input
+          <Input
             value={question}
             onChange={(e) => setQuestion(e.target.value)}
             placeholder="e.g. is the veto path modeled correctly?"
-            className="rounded-md px-2 py-1 text-sm"
-            style={{ border: "1px solid var(--border)", background: "var(--bg-primary)", color: "var(--text-primary)" }}
           />
         </label>
         <AssertedType systemType={canvasModel.system_type} />
         <div className="flex items-center gap-2">
-          <select
-            value={model}
-            onChange={(e) => setModel(e.target.value)}
-            className="rounded-md px-2 py-1 text-xs"
-            style={{ border: "1px solid var(--border)", background: "var(--bg-primary)", color: "var(--text-primary)" }}
-          >
+          <Select value={model} onChange={(e) => setModel(e.target.value)} aria-label="Model to analyze with">
             {MODEL_OPTIONS.map((o) => (
               <option key={o.value} value={o.value}>
                 {o.label}
               </option>
             ))}
-          </select>
-          <button
-            onClick={analyze}
-            disabled={busy}
-            className="ml-auto rounded-full px-5 py-2 text-sm font-semibold transition-colors"
-            style={{ background: "var(--accent)", color: "var(--text-on-accent)", opacity: busy ? 0.5 : 1, cursor: busy ? "wait" : "pointer" }}
-          >
+          </Select>
+          <Button onClick={analyze} disabled={busy} className="ml-auto" style={busy ? { cursor: "wait" } : undefined}>
             {busy ? "Analyzing…" : "Analyze"}
-          </button>
+          </Button>
         </div>
 
         {error && (
@@ -286,7 +274,7 @@ function Cited({
             key={i}
             onClick={() => onNavigate(seg.target)}
             title={`${seg.text}: click to select on the canvas`}
-            className="mx-0.5 rounded px-1 text-xs"
+            className="mx-0.5 rounded-sm px-1 text-xs"
             style={{
               color: "var(--lens-accent)",
               border: "1px solid var(--lens-accent)",

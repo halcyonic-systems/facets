@@ -8,6 +8,7 @@
 // reader of `playing`, so a run can auto-play once after ▶ Run and playback
 // survives the scrubber remounting across modes.
 import { useEffect, useRef } from "react";
+import { Button } from "../ui";
 
 const TICKS_PER_SEC = 6;
 
@@ -61,14 +62,12 @@ export function SimScrubber({
 
   return (
     <div className="flex items-center gap-3">
-      <button
+      <Button
         onClick={() => onPlayingChange(!playing)}
         aria-label={playing ? "pause" : "play"}
-        className="flex h-8 w-8 shrink-0 items-center justify-center rounded-full text-sm"
-        style={{ background: "var(--accent)", color: "var(--text-on-accent)" }}
-      >
-        {playing ? "⏸" : "▶"}
-      </button>
+        title={playing ? "Pause" : "Play"}
+        icon={playing ? "pause" : "play"}
+      />
       <input
         type="range"
         min={0}
@@ -79,6 +78,7 @@ export function SimScrubber({
           onTick(Number(e.target.value));
         }}
         className="flex-1"
+        aria-label="Run position"
       />
       <span
         className="shrink-0 whitespace-nowrap text-right text-xs tabular"

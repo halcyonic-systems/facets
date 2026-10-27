@@ -86,7 +86,7 @@ describe("ReadSheet", () => {
     expect(at("Review")).toBeLessThan(at("The formal object"));
     expect(at("The formal object")).toBeLessThan(at("Analyst"));
     expect(m).toContain("where this comes from");
-    expect(m).not.toContain("math.systems ↗");
+    expect(m).not.toContain("math.systems");
     expect(m).not.toContain("read-element");
   });
 

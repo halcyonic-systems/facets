@@ -5,6 +5,7 @@
 // re-runs; ADR run-seam-canvas-document). No systems fact is decided here.
 import { useEffect, useState } from "react";
 import type { ParamDecl, Relation } from "./kernel/types";
+import { Input } from "./ui";
 
 /** While a slider drag preview is live, ANY pointer release commits it — the
  *  element's own events miss a release that lands outside it, and a missed
@@ -36,9 +37,8 @@ export function AmountField({
     setDraft(null);
   };
   return (
-    <input
-      className="w-20 rounded border px-1.5 py-0.5 text-right font-mono text-xs"
-      style={{ borderColor: "var(--border)", background: "var(--bg-primary)", color: "var(--text-primary)" }}
+    <Input
+      className="w-24 text-right font-mono tabular"
       value={draft ?? relation.amount ?? ""}
       onChange={(e) => setDraft(e.target.value)}
       onBlur={commit}
