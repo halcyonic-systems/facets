@@ -75,6 +75,7 @@ import { buildInfo, provenanceLines } from "./buildInfo";
 import Thumbnail from "./canvas/Thumbnail";
 import { useThumbnailModel } from "./canvas/useThumbnail";
 import { Icon } from "./icons";
+import { LanguagePanel } from "./LanguageFigure";
 import { Button, Input, Pill, type Tone } from "./ui";
 
 // The rendered docs on the site (#368): the LIVE doc set, published with the
@@ -130,8 +131,8 @@ export function HomeScreen(props: HomeProps) {
           <HomeMenu
             onCreate={props.onCreate}
             onOpenLibrary={() => setRoute({ view: "library" })}
-            onOpenFeatured={() => {
-              const m = featured().find((r) => r.key.endsWith("llm-market"));
+            onOpenModel={(model) => {
+              const m = featured().find((r) => r.key === model || r.key === `example:${model}`);
               if (!m) return setRoute({ view: "library" });
               if (m.open.kind === "example") props.onOpenExample(m.open.demo);
               else props.onOpenCorpus(m.open.entry);
@@ -527,98 +528,6 @@ function Gem({ size = 72 }: { size?: number }) {
 // into the foot with its limits.
 // ---------------------------------------------------------------------------
 
-const KIND_VAR = {
-  matter: "var(--kind-matter)",
-  energy: "var(--kind-energy)",
-  informational: "var(--kind-informational)",
-} as const;
-
-const ink = { fill: "none", stroke: "var(--text-primary)", strokeWidth: 2 } as const;
-const wordStyle: CSSProperties = {
-  fontFamily: "var(--font-body)",
-  fontWeight: 600,
-  fontSize: "var(--t-sm)",
-  fill: "var(--text-primary)",
-};
-const keyStyle: CSSProperties = { fontFamily: mono, fontSize: "var(--t-meta)", fill: "var(--accent)" };
-
-/** A word of the language where it sits on the drawing, with its SL keyword
- *  under it. */
-function Term({ x, y, word, sl }: { x: number; y: number; word: string; sl: string }) {
-  return (
-    <text x={x} y={y} textAnchor="middle">
-      <tspan style={wordStyle}>{word}</tspan>
-      <tspan x={x} dy="1.35em" style={keyStyle}>
-        {sl}
-      </tspan>
-    </text>
-  );
-}
-
-/** The language as one small system: a source outside sends a flow across an
- *  interface to a component inside the boundary, and on out to a sink. Each
- *  word is labelled where it sits, with its SL keyword, so the five words read
- *  as a sentence rather than a list (the entry pass, 2026-10-27). */
-function LanguageFigure() {
-  const R = { cx: 260, cy: 128, rx: 132, ry: 88 };
-  const inL = R.cx - R.rx;
-  const inR = R.cx + R.rx;
-  const arrow = (d: string, color: string, dashed?: boolean) => (
-    <path
-      d={d}
-      style={{ fill: "none", stroke: color, strokeWidth: 2.5, strokeDasharray: dashed ? "6 5" : undefined }}
-      markerEnd={`url(#home-lang-${dashed ? "info" : "matter"})`}
-    />
-  );
-  return (
-    <svg viewBox="0 0 520 228" className="block h-auto w-full" role="img" aria-labelledby="home-lang-t">
-      <title id="home-lang-t">
-        A source sends a flow across an interface to a component inside the system, and on to a sink.
-      </title>
-      <defs>
-        {(
-          [
-            ["matter", KIND_VAR.matter],
-            ["info", KIND_VAR.informational],
-          ] as const
-        ).map(([id, c]) => (
-          <marker key={id} id={`home-lang-${id}`} viewBox="0 0 10 10" refX="8" refY="5" markerWidth="7" markerHeight="7" orient="auto">
-            <path d="M0,0 L10,5 L0,10 Z" style={{ fill: c }} />
-          </marker>
-        ))}
-      </defs>
-      <ellipse cx={R.cx} cy={R.cy} rx={R.rx} ry={R.ry} style={{ ...ink, fill: "var(--bg-primary)" }} />
-      {arrow(`M62,${R.cy} H${inL - 12}`, KIND_VAR.matter)}
-      {arrow(`M${inL + 9},${R.cy} H${R.cx - 34}`, KIND_VAR.matter)}
-      {arrow(`M${R.cx + 30},${R.cy} H${inR - 12}`, KIND_VAR.informational, true)}
-      {arrow(`M${inR + 9},${R.cy} H${458}`, KIND_VAR.informational, true)}
-      {/* source and sink: Mobus's open squares, open toward the system */}
-      <path d={`M60,${R.cy - 18} H24 V${R.cy + 18} H60`} style={ink} />
-      <path d={`M460,${R.cy - 18} H496 V${R.cy + 18} H460`} style={ink} />
-      {/* interfaces: notches on the boundary */}
-      {[inL, inR].map((x) => (
-        <rect key={x} x={x - 8} y={R.cy - 8} width={16} height={16} style={{ ...ink, fill: "var(--bg-secondary)" }} />
-      ))}
-      <circle
-        cx={R.cx}
-        cy={R.cy}
-        r={28}
-        style={{
-          fill: "color-mix(in srgb, var(--prim-amplifying) 16%, var(--bg-secondary))",
-          stroke: "var(--prim-amplifying)",
-          strokeWidth: 2.5,
-        }}
-      />
-      <Term x={R.cx} y={R.cy - R.ry - 22} word="System" sl="system" />
-      <Term x={R.cx} y={R.cy + 50} word="Component" sl="component" />
-      <Term x={inL - 32} y={R.cy - 46} word="Interface" sl="interface" />
-      <Term x={(inR + 458) / 2 + 4} y={R.cy - 46} word="Flow" sl="flow" />
-      <Term x={42} y={R.cy + 44} word="Source" sl="source" />
-      <Term x={478} y={R.cy + 44} word="Sink" sl="sink" />
-    </svg>
-  );
-}
-
 const THEORY_URL = "https://facets.systems/docs/theory-fidelity.html";
 
 /** What the check means, for a reader who has never met it. The claims are the
@@ -667,16 +576,16 @@ const CHECK_NOTES: { label: string; body: ReactNode }[] = [
 export function HomeMenu({
   onCreate,
   onOpenLibrary,
-  onOpenFeatured,
+  onOpenModel,
   onAbout,
 }: {
   /** Open a blank canvas; `{ sl: true }` opens it with the SL pane showing,
    *  which is where "describe it in a few lines" lands. */
   onCreate: (opts?: { sl?: boolean }) => void;
   onOpenLibrary: () => void;
-  /** Open the worked example, the LLM serving market. Absent, the link is not
-   *  shown. */
-  onOpenFeatured?: () => void;
+  /** Open a public model by its file name in assets/examples, from the
+   *  language figure's model readings. Absent, no open link is shown. */
+  onOpenModel?: (model: string) => void;
   /** Open the provenance page (#229). Optional so the menu renders standalone. */
   onAbout?: () => void;
 }) {
@@ -687,7 +596,7 @@ export function HomeMenu({
           Drawing, describing and wiring processes are ways of working on the
           same model, chosen on the blank canvas, not doors here. The sandbox
           surface stays at `?sandbox=1`; the data-first door at `?data=1`. */}
-      <main className="mx-auto grid w-full max-w-6xl flex-1 items-center gap-12 px-4 py-12 sm:px-10 lg:grid-cols-2 lg:gap-20 lg:py-16">
+      <main className="mx-auto grid w-full max-w-6xl flex-1 content-center items-center gap-12 px-4 py-12 sm:px-10 lg:grid-cols-[minmax(0,5fr)_minmax(0,6fr)] lg:gap-16 lg:py-16">
         <div className="min-w-0">
           <Gem size={48} />
           <h1 className="mt-6" style={{ ...nameStyle, fontSize: "var(--t-hero)", lineHeight: 1.05 }}>
@@ -718,26 +627,18 @@ export function HomeMenu({
         </div>
 
         {/* The language: its words drawn as one small system, each labelled
-            with its SL keyword. */}
+            with its SL keyword, and read in a public model's words on request
+            (LanguageFigure.tsx, languageReadings.ts). */}
         <section className="min-w-0" aria-labelledby="home-language">
           <h2 id="home-language" style={{ ...nameStyle, ...d2 }}>
             One language for any system
           </h2>
           <p className="mt-2 text-sm leading-6" style={{ color: "var(--text-secondary)" }}>
-            A cell, a firm and a market, described in the same few words.
+            The same few words describe any system. Pick a model to see it in its own words.
           </p>
           <div className="mt-5">
-            <LanguageFigure />
+            <LanguagePanel onOpenModel={onOpenModel} />
           </div>
-          <p className="mt-4 text-sm leading-6" style={{ color: "var(--text-secondary)" }}>
-            A source sends a flow across an interface to a component inside the system, and on to a sink.
-          </p>
-          {onOpenFeatured && (
-            <button type="button" onClick={onOpenFeatured} className={`${quiet} -mx-2 mt-3`} style={{ color: "var(--accent)" }}>
-              See it applied to the LLM serving market
-              <Icon name="forward" size={16} />
-            </button>
-          )}
         </section>
       </main>
 

@@ -416,6 +416,26 @@ body {
   background: var(--accent-soft);
   border-color: var(--accent);
 }
+/* the language figure's switch: a quiet chip, the accent when it is the
+   reading on show */
+.lang-tab {
+  color: var(--text-secondary);
+  border-color: var(--hairline);
+  background: var(--bg-secondary);
+  transition:
+    background-color var(--transition-base),
+    border-color var(--transition-base),
+    color var(--transition-base);
+}
+.lang-tab:hover {
+  color: var(--text-primary);
+  background: var(--bg-primary);
+}
+.lang-tab[aria-pressed="true"] {
+  color: var(--accent-strong);
+  border-color: var(--accent);
+  background: var(--accent-soft);
+}
 /* the front door's folded proof notes: no browser marker, a caret that turns */
 .home-check summary::-webkit-details-marker {
   display: none;
