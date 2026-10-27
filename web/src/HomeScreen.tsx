@@ -112,20 +112,20 @@ export function HomeScreen(props: HomeProps) {
   return (
     <div
       className="flex min-h-0 flex-1 flex-col overflow-y-auto"
-      style={{ backgroundColor: "var(--paper-ground)", color: "var(--ink)" }}
+      style={{ backgroundColor: "var(--bg-surface)", color: "var(--text-primary)" }}
     >
       {/* One page, one measure. Every level sets inside the same reading column
           — there is no full-bleed device, because the page ground IS the
           identity and a band would interrupt it.
 
-          The sheet: the content sits on --paper against a --paper-ground that
+          The sheet: the content sits on --bg-secondary against a --bg-surface that
           is one neutral step away, so the page has an edge without a border,
           a shadow, or a tint doing the work. Its measure is wider than the
           reading column's, so the type keeps real margins rather than running
           to the paper's edge. */}
       <div
         className="mx-auto w-full max-w-4xl flex-1 border-x"
-        style={{ backgroundColor: "var(--paper)", borderColor: "var(--rule-soft)" }}
+        style={{ backgroundColor: "var(--bg-secondary)", borderColor: "var(--hairline)" }}
       >
         {route.view === "home" && (
           <HomeMenu
@@ -327,7 +327,7 @@ function Masthead({
           {note}
         </p>
       )}
-      <div className={dense ? "mt-6" : "mt-8"} style={{ borderTop: "1px solid var(--rule)" }} />
+      <div className={dense ? "mt-6" : "mt-8"} style={{ borderTop: "1px solid var(--rule-strong)" }} />
     </Column>
   );
 }
@@ -341,7 +341,7 @@ function BlockHeader({ label, count }: { label: string; count?: string }) {
       <span className={LABEL} style={labelStyle}>
         {label}
       </span>
-      <span className="h-px min-w-6 flex-1" style={{ background: "var(--rule-soft)" }} />
+      <span className="h-px min-w-6 flex-1" style={{ background: "var(--hairline)" }} />
       {count && (
         <span className="shrink-0 text-xs tabular" style={{ color: "var(--text-muted)" }}>
           {count}
@@ -353,7 +353,7 @@ function BlockHeader({ label, count }: { label: string; count?: string }) {
 
 /** The table. It opens on a head rule; its entries close on hairlines. */
 function Ledger({ children }: { children: ReactNode }) {
-  return <div style={{ borderTop: "1px solid var(--rule)" }}>{children}</div>;
+  return <div style={{ borderTop: "1px solid var(--rule-strong)" }}>{children}</div>;
 }
 
 /** The folio column: a numeral in the left margin of the entry, in mono so the
@@ -438,7 +438,7 @@ function LedgerRow({
       </span>
     </>
   );
-  const style = { borderColor: "var(--rule-soft)" };
+  const style = { borderColor: "var(--hairline)" };
   return href ? (
     <a href={href} target="_blank" rel="noreferrer" onClick={openExternal} className={ROW_GRID} style={style}>
       {body}
@@ -481,7 +481,7 @@ function Gem() {
     <svg viewBox="0 0 80 80" width="72" height="72" aria-hidden="true" className="shrink-0">
       <polygon
         points={GEM_RIM.map((p) => p.join(",")).join(" ")}
-        style={{ fill: "var(--paper)", stroke: "var(--ink)", strokeWidth: 0.35 }}
+        style={{ fill: "var(--bg-secondary)", stroke: "var(--text-primary)", strokeWidth: 0.35 }}
       />
       {GEM_FACETS.map((f) => (
         <polygon key={f.points} points={f.points} style={{ fill: f.token, opacity: f.opacity }} />
@@ -493,7 +493,7 @@ function Gem() {
           y1={40}
           x2={x}
           y2={y}
-          style={{ stroke: "var(--ink)", strokeWidth: 0.2, opacity: 0.5 }}
+          style={{ stroke: "var(--text-primary)", strokeWidth: 0.2, opacity: 0.5 }}
         />
       ))}
     </svg>
@@ -533,8 +533,8 @@ function Panel({
   onClick?: () => void;
   href?: string;
 }) {
-  const cls = "home-panel flex h-full w-full items-center gap-5 border px-6 py-5 text-left";
-  const style = { borderColor: "var(--rule-soft)", color: "var(--ink)" };
+  const cls = "home-panel flex h-full w-full items-center gap-5 rounded-md border px-6 py-5 text-left";
+  const style = { borderColor: "var(--hairline)", color: "var(--text-primary)" };
   const body = (
     <>
       {glyph}
@@ -569,13 +569,13 @@ function GroupHeader({ label }: { label: string; lead?: boolean }) {
       <span className={LABEL} style={labelStyle}>
         {label}
       </span>
-      <span className="h-px min-w-6 flex-1" style={{ background: "var(--rule-soft)" }} />
+      <span className="h-px min-w-6 flex-1" style={{ background: "var(--hairline)" }} />
     </div>
   );
 }
 
 const ledeLink: CSSProperties = {
-  color: "var(--ink)",
+  color: "var(--text-primary)",
   borderBottom: "1px solid var(--accent)",
   paddingBottom: 1,
 };
@@ -659,7 +659,7 @@ export function HomeMenu({
             than among the doors. The docs sit beside it: a reference, not a door. */}
         <div
           className="mt-14 flex items-baseline gap-8 border-t pt-4"
-          style={{ borderColor: "var(--rule-soft)" }}
+          style={{ borderColor: "var(--hairline)" }}
         >
           {onAbout && (
             <Button size={28} variant="quiet" onClick={onAbout}>
@@ -702,12 +702,12 @@ export function AboutPage({ onBack }: { onBack: () => void }) {
       />
       <Column className="pb-20 pt-12">
         <BlockHeader label="Provenance" count={buildInfo.gitSha} />
-        <div style={{ borderTop: "1px solid var(--rule)" }}>
+        <div style={{ borderTop: "1px solid var(--rule-strong)" }}>
           {provenanceLines().map((line) => (
             <div
               key={line.label}
               className="grid grid-cols-[10rem_1fr] gap-5 border-b py-3"
-              style={{ borderColor: "var(--rule-soft)" }}
+              style={{ borderColor: "var(--hairline)" }}
             >
               <span className={LABEL} style={labelStyle}>
                 {line.label}
@@ -802,7 +802,7 @@ function FacetButton({
       style={{
         // The selected facet is underscored by its tradition's hue, or by the
         // accent (rule 8: a selection is an action, so it wears the accent).
-        borderBottom: selected ? `2px solid ${hue ?? "var(--accent)"}` : "1px solid var(--rule-soft)",
+        borderBottom: selected ? `2px solid ${hue ?? "var(--accent)"}` : "1px solid var(--hairline)",
       }}
     >
       {hue && <span aria-hidden className="h-2 w-0.5 shrink-0 self-center" style={{ background: hue }} />}
@@ -862,7 +862,7 @@ const RECENT_WELL = { fill: "var(--accent-soft)", edge: "var(--accent)" };
 /** A saved model belongs to no shelf and no tradition, and inventing a colour
  *  for it would invent a fact. Its well is the page's own paper edge, drawn
  *  round in slate so it still reads as a well and not as a hole. */
-const YOURS_WELL = { fill: "var(--paper-edge)", edge: "var(--accent-slate)" };
+const YOURS_WELL = { fill: "var(--bg-primary)", edge: "var(--accent-slate)" };
 
 /** A shelf's colour: a tradition's world hue, or a genus's chart ink. */
 function shelfHue(shelf: Shelf): string | undefined {
@@ -910,13 +910,13 @@ function CardThumb({
   const compiled = useThumbnailModel(cacheKey, source, kind);
   return (
     <span
-      className="flex h-11 w-11 shrink-0 items-center justify-center border"
+      className="flex h-11 w-11 shrink-0 items-center justify-center rounded-sm border"
       style={{
-        borderColor: well?.edge ?? hue ?? "var(--rule-soft)",
+        borderColor: well?.edge ?? hue ?? "var(--hairline)",
         // 22% (operator, 2026-09-04: 14 read as bland): three shelves read as
         // three colours at a glance, and the drawing inside the well still
         // reads as ink on paper.
-        background: well?.fill ?? (hue ? `color-mix(in oklab, ${hue} 22%, var(--paper))` : "var(--paper-edge)"),
+        background: well?.fill ?? (hue ? `color-mix(in oklab, ${hue} 22%, var(--bg-secondary))` : "var(--bg-primary)"),
       }}
     >
       {compiled && <Thumbnail model={compiled} size={34} />}
@@ -988,14 +988,13 @@ function ModelCard({
     </>
   );
   const style = {
-    borderColor: "var(--rule-soft)",
-    borderRadius: "var(--radius-sm)",
-    background: "var(--paper)",
+    borderColor: "var(--hairline)",
+    background: "var(--bg-secondary)",
     // The hover hue, read by .hue-panel in index.css. A card with no hue falls
     // back to the app accent, which is what .home-panel does everywhere else.
     ...(hue ? { "--card-hue": hue } : {}),
   } as CSSProperties;
-  const panel = `${hue ? "hue-panel" : "home-panel"} flex min-w-0 items-center gap-3 border px-3 py-2.5 text-left`;
+  const panel = `${hue ? "hue-panel" : "home-panel"} flex min-w-0 items-center gap-3 rounded-md border px-3 py-2.5 text-left`;
   return trailing ? (
     <div className={panel} style={style}>
       {body}
@@ -1029,7 +1028,7 @@ function SectionHead({ label, right }: { label: string; right?: ReactNode; lead?
   return (
     <div
       className="mb-4 flex items-baseline gap-4 border-b pb-2"
-      style={{ borderColor: "var(--ink)", borderBottomWidth: "2px" }}
+      style={{ borderColor: "var(--rule-strong)" }}
     >
       <span className="shrink-0 leading-none" style={{ ...nameStyle, ...d2 }} data-testid="section-head">
         {label}
@@ -1473,13 +1472,13 @@ export function LibraryBrowser({
               <SectionHead label="From a file" />
               <button
                 onClick={onOpenFile}
-                className="home-panel flex w-full items-center gap-4 border px-3 py-2.5 text-left"
-                style={{ borderColor: "var(--rule-soft)", borderRadius: "var(--radius-sm)", background: "var(--paper)" }}
+                className="home-panel flex w-full items-center gap-4 rounded-md border px-3 py-2.5 text-left"
+                style={{ borderColor: "var(--hairline)", background: "var(--bg-secondary)" }}
               >
                 <span
                   aria-hidden
-                  className="flex h-11 w-11 shrink-0 items-center justify-center border"
-                  style={{ borderColor: "var(--rule-soft)", background: "var(--bg-primary)", color: "var(--text-muted)" }}
+                  className="flex h-11 w-11 shrink-0 items-center justify-center rounded-sm border"
+                  style={{ borderColor: "var(--hairline)", background: "var(--bg-primary)", color: "var(--text-muted)" }}
                 >
                   <Icon name="file" size={20} />
                 </span>
@@ -1494,7 +1493,7 @@ export function LibraryBrowser({
               </button>
             </section>
 
-            <div className="mt-8 pt-3.5" style={{ borderTop: "1px solid var(--rule-soft)" }}>
+            <div className="mt-8 pt-3.5" style={{ borderTop: "1px solid var(--hairline)" }}>
               <Button size={28} variant="quiet" onClick={() => setView("list")}>
                 Browse all {all.length + savedCount} as a list
                 <Icon name="forward" size={16} />
@@ -1567,7 +1566,7 @@ function ArrangeToggle({ value, onChange }: { value: Arrange; onChange: (v: Arra
  *  Inter: the italic serif lede is on the charter's withdrawn list. */
 function EmptyLine({ children }: { children: ReactNode }) {
   return (
-    <div className="border-t py-3 text-sm" style={{ borderColor: "var(--rule-soft)", color: "var(--text-muted)" }}>
+    <div className="border-t py-3 text-sm" style={{ borderColor: "var(--hairline)", color: "var(--text-muted)" }}>
       {children}
     </div>
   );
@@ -1620,8 +1619,8 @@ function SavedCard({
   if (draft !== null) {
     return (
       <div
-        className="flex min-w-0 items-center gap-3 border px-3 py-2.5"
-        style={{ borderColor: "var(--rule-soft)", borderRadius: "var(--radius-sm)", background: "var(--paper)" }}
+        className="flex min-w-0 items-center gap-3 rounded-md border px-3 py-2.5"
+        style={{ borderColor: "var(--hairline)", background: "var(--bg-secondary)" }}
       >
         <CardThumb cacheKey={`saved:${node.name}`} source={node.json} kind="archive" well={YOURS_WELL} />
         <Input
@@ -1803,12 +1802,12 @@ function LedgerView({
         ) : tree.length === 0 && drafted.length === 0 ? (
           <EmptyLine>no saved models yet</EmptyLine>
         ) : (
-          <div style={{ borderTop: "1px solid var(--rule)" }}>
+          <div style={{ borderTop: "1px solid var(--rule-strong)" }}>
             {shownRoots.map((root, i) => (
               <div
                 key={root.name}
                 className="grid w-full grid-cols-[3rem_1fr] items-stretch border-b"
-                style={{ borderColor: "var(--rule-soft)" }}
+                style={{ borderColor: "var(--hairline)" }}
               >
                 <span
                   className="flex items-start justify-end pr-5 pt-3 text-xs tabular"
@@ -1822,7 +1821,7 @@ function LedgerView({
               </div>
             ))}
             {foldedRoots > 0 && (
-              <div className="border-b py-2 pl-12" style={{ borderColor: "var(--rule-soft)" }}>
+              <div className="border-b py-2 pl-12" style={{ borderColor: "var(--hairline)" }}>
                 <Button size={28} variant="quiet" onClick={() => setShowAllSaved(true)}>
                   show all {tree.length} saved models
                   <Icon name="forward" size={16} />
@@ -1909,7 +1908,7 @@ function ModelRow({
     <button
       onClick={onClick}
       className="record-row grid w-full grid-cols-[3rem_minmax(0,1fr)_auto] items-start gap-x-4 border-b py-3 text-left"
-      style={{ borderColor: "var(--rule-soft)" }}
+      style={{ borderColor: "var(--hairline)" }}
     >
       <ModelGutter model={model} index={index} />
       <span className="block min-w-0">

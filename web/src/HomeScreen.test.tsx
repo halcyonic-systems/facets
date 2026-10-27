@@ -425,7 +425,7 @@ describe("the doors", () => {
       expect(lens).not.toContain(`var(${ink})`);
     }
     // The colour is a fill with an edge, never a gradient or a left border.
-    expect(lens).toContain("color-mix(in oklab, var(--world-mobus) 22%, var(--paper))");
+    expect(lens).toContain("color-mix(in oklab, var(--world-mobus) 22%, var(--bg-secondary))");
     expect(lens).not.toContain("gradient");
   });
 
