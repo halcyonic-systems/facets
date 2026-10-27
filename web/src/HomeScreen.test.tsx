@@ -106,6 +106,18 @@ describe("home", () => {
     expect(html).not.toContain("Open a folder");
   });
 
+  // The front door's proof claim is stated with its limits (2026-10-27): it
+  // says what the check is, why a proof is involved, and what it does not
+  // claim, and it never says every verdict is proven.
+  it("says what the check means and what it does not claim", () => {
+    const html = renderToStaticMarkup(<HomeMenu onCreate={noop} onOpenLibrary={noop} />);
+    expect(html).toContain("What it checks");
+    expect(html).toContain("Why proofs");
+    expect(html).toContain("What it does not claim");
+    expect(html).toContain("theory-fidelity.html");
+    expect(html).not.toContain("Every verdict is machine-checked");
+  });
+
   // #229 — the landing page asserts the kernel judges under Klir, Bunge and
   // Mobus, so a reader must be able to find out which proofs, at which commit.
   // The provenance moved off the landing page to its own page (it was a whole
