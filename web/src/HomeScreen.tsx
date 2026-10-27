@@ -50,7 +50,7 @@
 // (rule 14), cards are 8px with a hairline edge (rules 2, 3), and the page
 // reflows at 390 (rule 16). The --paper/--ink names stay as aliases in
 // index.css; this file reads --bg-* and --text-*.
-import { useState, useRef, useEffect, type CSSProperties, type ReactNode } from "react";
+import { useState, useRef, useEffect, useId, type CSSProperties, type ReactNode } from "react";
 import type { Demo } from "./demos";
 import type { CorpusEntry } from "./corpus";
 import type { LibraryNode } from "./libraryTree";
@@ -74,7 +74,7 @@ import { openExternal } from "./desktop";
 import { buildInfo, provenanceLines } from "./buildInfo";
 import Thumbnail from "./canvas/Thumbnail";
 import { useThumbnailModel } from "./canvas/useThumbnail";
-import { Icon, type IconName } from "./icons";
+import { Icon, ICONS, renderShapes, type IconName } from "./icons";
 import { Button, Input, Pill, type Tone } from "./ui";
 
 // The rendered docs on the site (#368): the LIVE doc set, published with the
@@ -123,17 +123,29 @@ export function HomeScreen(props: HomeProps) {
           a shadow, or a tint doing the work. Its measure is wider than the
           reading column's, so the type keeps real margins rather than running
           to the paper's edge. */}
-      <div
-        className="mx-auto w-full max-w-4xl flex-1 border-x"
-        style={{ backgroundColor: "var(--bg-secondary)", borderColor: "var(--hairline)" }}
-      >
-        {route.view === "home" && (
+      {/* The front door is a full-width page of its own (the entry pass,
+          2026-10-27); the sheet below is for the library and the build page. */}
+      {route.view === "home" && (
+        <div className="flex flex-1 flex-col">
           <HomeMenu
             onCreate={props.onCreate}
             onOpenLibrary={() => setRoute({ view: "library" })}
             onAbout={() => setRoute({ view: "about" })}
           />
-        )}
+          {props.onClose && (
+            <div className="mx-auto w-full max-w-6xl px-4 pb-8 sm:px-10" style={{ backgroundColor: "var(--bg-secondary)" }}>
+              <Button size={28} variant="quiet" icon="back" onClick={props.onClose}>
+                back to the model on the canvas
+              </Button>
+            </div>
+          )}
+        </div>
+      )}
+      {route.view !== "home" && (
+      <div
+        className="mx-auto w-full max-w-4xl flex-1 border-x"
+        style={{ backgroundColor: "var(--bg-secondary)", borderColor: "var(--hairline)" }}
+      >
         {route.view === "about" && <AboutPage onBack={() => setRoute({ view: "home" })} />}
         {route.view === "library" && (
           <LibraryBrowser
@@ -159,6 +171,7 @@ export function HomeScreen(props: HomeProps) {
           </Column>
         )}
       </div>
+      )}
     </div>
   );
 }
@@ -476,9 +489,9 @@ const GEM_RIM = [
   [9, 19],
 ];
 
-function Gem() {
+function Gem({ size = 72 }: { size?: number }) {
   return (
-    <svg viewBox="0 0 80 80" width="72" height="72" aria-hidden="true" className="shrink-0">
+    <svg viewBox="0 0 80 80" width={size} height={size} aria-hidden="true" className="shrink-0">
       <polygon
         points={GEM_RIM.map((p) => p.join(",")).join(" ")}
         style={{ fill: "var(--bg-secondary)", stroke: "var(--text-primary)", strokeWidth: 0.35 }}
@@ -500,85 +513,261 @@ function Gem() {
   );
 }
 
-// The door glyphs are the four door icons in icons.tsx (`draw`, `describe`,
-// `open`, `sandbox`, drawn for 32 on the 24 grid, rule 14), each in a tinted
-// well in its card's hue (rule 9c): Draw and Describe wear the accent, Open
-// the Buffering blue (a stack that holds), Sandbox the Splitting orange (a run
-// that branches). The well is the hue at 14% over the sheet and the icon the
-// full hue, so the four doors read as four colours before their names do.
-function DoorWell({ icon, hue, soft }: { icon: IconName; hue: string; soft?: string }) {
+// ---------------------------------------------------------------------------
+// The front door (2026-10-27, the entry pass). A desktop page, not a phone
+// column: the promise and the two actions on the left, a system drawn the way
+// the canvas draws one on the right, and the proof line at the foot. The two
+// doors are the only actions on the page; the lede no longer repeats them as
+// links.
+// ---------------------------------------------------------------------------
+
+type Kind = "matter" | "energy" | "informational";
+
+/** A node in the front-door figure. Components sit inside the boundary as
+ *  circles and carry their process primitive's badge; sources and sinks are
+ *  Mobus's open squares, open on the side that faces the system; an object is
+ *  a closed square (shape-vocabulary-research.md). */
+interface FigNode {
+  x: number;
+  y: number;
+  label: string;
+  shape: "component" | "source" | "sink" | "object";
+  prim?: { icon: IconName; hue: string };
+}
+
+const FIG = { cx: 330, cy: 236, R: 160 };
+const COMP_R = 42;
+const SQ = 44;
+
+const FIG_NODES: Record<string, FigNode> = {
+  sun: { x: 70, y: 64, label: "Sunlight", shape: "source" },
+  rain: { x: 56, y: 330, label: "Rain", shape: "source" },
+  heat: { x: 604, y: 92, label: "Heat", shape: "sink" },
+  out: { x: 612, y: 336, label: "Outflow", shape: "sink" },
+  angler: { x: 372, y: 452, label: "Angler", shape: "object" },
+  algae: { x: 262, y: 168, label: "Algae", shape: "component", prim: { icon: "combining", hue: "var(--prim-combining)" } },
+  water: { x: 274, y: 304, label: "Water", shape: "component", prim: { icon: "buffering", hue: "var(--prim-buffering)" } },
+  fish: { x: 416, y: 230, label: "Fish", shape: "component", prim: { icon: "splitting", hue: "var(--prim-splitting)" } },
+};
+
+const FIG_FLOWS: { from: string; to: string; kind: Kind; bend?: number }[] = [
+  { from: "sun", to: "algae", kind: "energy", bend: -20 },
+  { from: "rain", to: "water", kind: "matter", bend: 20 },
+  { from: "water", to: "algae", kind: "matter", bend: -18 },
+  { from: "algae", to: "fish", kind: "matter", bend: -18 },
+  { from: "fish", to: "heat", kind: "energy", bend: -20 },
+  { from: "water", to: "out", kind: "matter", bend: 22 },
+  { from: "fish", to: "angler", kind: "informational", bend: -16 },
+];
+
+const KIND_VAR: Record<Kind, string> = {
+  matter: "var(--kind-matter)",
+  energy: "var(--kind-energy)",
+  informational: "var(--kind-informational)",
+};
+
+const reach = (n: FigNode) => (n.shape === "component" ? COMP_R + 4 : SQ / 2 + 8);
+
+/** A flow as a gentle quadratic from one node's edge to the other's, plus the
+ *  points where it crosses the boundary (each gets an interface notch). */
+function flowGeometry(a: FigNode, b: FigNode, bend = 0) {
+  const dx = b.x - a.x;
+  const dy = b.y - a.y;
+  const len = Math.hypot(dx, dy);
+  const ux = dx / len;
+  const uy = dy / len;
+  const p0 = { x: a.x + ux * reach(a), y: a.y + uy * reach(a) };
+  const p2 = { x: b.x - ux * reach(b), y: b.y - uy * reach(b) };
+  const c = { x: (p0.x + p2.x) / 2 - uy * bend, y: (p0.y + p2.y) / 2 + ux * bend };
+  const at = (t: number) => ({
+    x: (1 - t) ** 2 * p0.x + 2 * (1 - t) * t * c.x + t * t * p2.x,
+    y: (1 - t) ** 2 * p0.y + 2 * (1 - t) * t * c.y + t * t * p2.y,
+  });
+  const inside = (t: number) => Math.hypot(at(t).x - FIG.cx, at(t).y - FIG.cy) < FIG.R;
+  const notches: { x: number; y: number; angle: number }[] = [];
+  const N = 120;
+  for (let i = 0; i < N; i++) {
+    if (inside(i / N) !== inside((i + 1) / N)) {
+      const p = at((i + 0.5) / N);
+      notches.push({ ...p, angle: (Math.atan2(p.y - FIG.cy, p.x - FIG.cx) * 180) / Math.PI });
+    }
+  }
+  return { d: `M${p0.x},${p0.y} Q${c.x},${c.y} ${p2.x},${p2.y}`, notches };
+}
+
+/** Mobus's open square: three sides, open toward the system's centre. */
+function openSquare(n: FigNode) {
+  const h = SQ / 2;
+  const left = n.x < FIG.cx;
+  const top = n.y < FIG.cy;
+  // Open on the side whose axis points most toward the centre.
+  const horizontal = Math.abs(FIG.cx - n.x) > Math.abs(FIG.cy - n.y);
+  const [x0, y0, x1, y1] = [n.x - h, n.y - h, n.x + h, n.y + h];
+  if (horizontal) {
+    return left
+      ? `M${x1},${y0} H${x0} V${y1} H${x1}`
+      : `M${x0},${y0} H${x1} V${y1} H${x0}`;
+  }
+  return top ? `M${x0},${y1} V${y0} H${x1} V${y1}` : `M${x0},${y0} V${y1} H${x1} V${y0}`;
+}
+
+/** A system drawn in the canvas's own vocabulary: the boundary as the one
+ *  ring, interfaces as notches on it, components as circles wearing their
+ *  primitive's hue, environment as squares, and every flow in its substance's
+ *  colour. A picture, not a model: nothing here runs. */
+export function FrontFigure() {
+  const uid = useId().replace(/:/g, "");
+  const marker = (k: Kind) => `${uid}-arrow-${k}`;
   return (
-    <span
-      aria-hidden
-      className="flex h-14 w-14 shrink-0 items-center justify-center rounded-sm"
-      style={{ background: soft ?? `color-mix(in srgb, ${hue} 14%, var(--bg-secondary))`, color: hue }}
-    >
-      <Icon name={icon} size={32} />
+    <svg viewBox="16 24 652 452" className="block h-auto w-full" role="img" aria-labelledby={`${uid}-t`}>
+      <title id={`${uid}-t`}>
+        A pond drawn as a system: algae, water and fish inside a boundary, sunlight and rain flowing in, heat and outflow
+        leaving, and an angler reading the fish.
+      </title>
+      <defs>
+        {(Object.keys(KIND_VAR) as Kind[]).map((k) => (
+          <marker
+            key={k}
+            id={marker(k)}
+            viewBox="0 0 10 10"
+            refX="8"
+            refY="5"
+            markerWidth="7"
+            markerHeight="7"
+            orient="auto-start-reverse"
+          >
+            <path d="M0,0 L10,5 L0,10 Z" style={{ fill: KIND_VAR[k] }} />
+          </marker>
+        ))}
+      </defs>
+      {/* the boundary */}
+      <circle
+        cx={FIG.cx}
+        cy={FIG.cy}
+        r={FIG.R}
+        style={{ fill: "var(--bg-secondary)", stroke: "var(--text-primary)", strokeWidth: 2 }}
+      />
+      <text
+        x={FIG.cx}
+        y={FIG.cy - FIG.R + 40}
+        textAnchor="middle"
+        style={{ fontFamily: "var(--font-display)", fontWeight: 700, fontSize: "var(--t-d1)", fill: "var(--text-primary)" }}
+      >
+        Pond
+      </text>
+      {/* flows, then the notches that sit over them on the ring */}
+      {FIG_FLOWS.map((f) => {
+        const g = flowGeometry(FIG_NODES[f.from], FIG_NODES[f.to], f.bend);
+        return (
+          <g key={`${f.from}-${f.to}`}>
+            <path
+              d={g.d}
+              markerEnd={`url(#${marker(f.kind)})`}
+              style={{
+                fill: "none",
+                stroke: KIND_VAR[f.kind],
+                strokeWidth: 2.5,
+                strokeDasharray: f.kind === "informational" ? "6 5" : undefined,
+              }}
+            />
+            {g.notches.map((n, i) => (
+              <rect
+                key={i}
+                x={n.x - 6}
+                y={n.y - 6}
+                width={12}
+                height={12}
+                transform={`rotate(${n.angle} ${n.x} ${n.y})`}
+                style={{ fill: "var(--bg-secondary)", stroke: "var(--text-primary)", strokeWidth: 2 }}
+              />
+            ))}
+          </g>
+        );
+      })}
+      {Object.entries(FIG_NODES).map(([id, n]) => {
+        const labelStyleSvg: CSSProperties = {
+          fontFamily: "var(--font-body)",
+          fontWeight: 600,
+          fontSize: "var(--t-body)",
+          fill: "var(--text-primary)",
+        };
+        if (n.shape === "component") {
+          return (
+            <g key={id}>
+              <circle
+                cx={n.x}
+                cy={n.y}
+                r={COMP_R}
+                style={{
+                  fill: `color-mix(in srgb, ${n.prim!.hue} 12%, var(--bg-secondary))`,
+                  stroke: n.prim!.hue,
+                  strokeWidth: 2.5,
+                }}
+              />
+              <g
+                transform={`translate(${n.x - 15} ${n.y - 30}) scale(1.25)`}
+                fill="none"
+                strokeWidth={2}
+                strokeLinecap="square"
+                strokeLinejoin="miter"
+                style={{ stroke: n.prim!.hue, color: n.prim!.hue }}
+              >
+                {renderShapes(ICONS[n.prim!.icon])}
+              </g>
+              <text x={n.x} y={n.y + 24} textAnchor="middle" style={labelStyleSvg}>
+                {n.label}
+              </text>
+            </g>
+          );
+        }
+        const h = SQ / 2;
+        const below = n.y > FIG.cy + FIG.R;
+        return (
+          <g key={id}>
+            {n.shape === "object" ? (
+              <rect
+                x={n.x - h}
+                y={n.y - h}
+                width={SQ}
+                height={SQ}
+                style={{ fill: "var(--bg-primary)", stroke: "var(--text-primary)", strokeWidth: 2 }}
+              />
+            ) : (
+              <path d={openSquare(n)} style={{ fill: "none", stroke: "var(--text-primary)", strokeWidth: 2 }} />
+            )}
+            <text
+              x={below ? n.x + h + 10 : n.x}
+              y={below ? n.y + 5 : n.y + h + 22}
+              textAnchor={below ? "start" : "middle"}
+              style={labelStyleSvg}
+            >
+              {n.label}
+            </text>
+          </g>
+        );
+      })}
+    </svg>
+  );
+}
+
+/** A substance in the figure's key: its colour on a short stroke, and its
+ *  name, so colour is never the only carrier (rule 12). */
+function KeyChip({ kind, label }: { kind: Kind; label: string }) {
+  return (
+    <span className="inline-flex items-center gap-2 text-xs font-medium" style={{ color: "var(--text-secondary)" }}>
+      <svg width="20" height="8" aria-hidden="true">
+        <line
+          x1="0"
+          y1="4"
+          x2="20"
+          y2="4"
+          style={{ stroke: KIND_VAR[kind], strokeWidth: 2.5, strokeDasharray: kind === "informational" ? "4 3" : undefined }}
+        />
+      </svg>
+      {label}
     </span>
   );
 }
-
-/** A door as a panel: a glyph, the door's name in the serif, and a gloss. The
- *  same shape for every door; Start's two carry a larger glyph. */
-function Panel({
-  glyph,
-  name,
-  description,
-  onClick,
-  href,
-}: {
-  glyph: ReactNode;
-  name: string;
-  description: string;
-  onClick?: () => void;
-  href?: string;
-}) {
-  const cls = "home-panel flex h-full w-full items-center gap-4 rounded-md border px-6 py-4 text-left";
-  const style = { borderColor: "var(--hairline)", color: "var(--text-primary)" };
-  const body = (
-    <>
-      {glyph}
-      <span className="flex min-w-0 flex-col gap-1">
-        <span className="leading-tight" style={{ ...doorStyle, ...d3 }}>
-          {name}
-        </span>
-        <span className="text-sm leading-5" style={{ color: "var(--text-secondary)" }}>
-          {description}
-        </span>
-      </span>
-    </>
-  );
-  return href ? (
-    <a href={href} className={cls} style={style}>
-      {body}
-    </a>
-  ) : (
-    <button onClick={onClick} className={cls} style={style}>
-      {body}
-    </button>
-  );
-}
-
-/** A group mark for a set of doors: the label and a hairline out to the margin.
- *  The lead group used to take the accent; the accent names an action, not an
- *  emphasis (rule 8), so every group is the same mark. `lead` stays on the
- *  prop so callers need no edit. */
-function GroupHeader({ label }: { label: string; lead?: boolean }) {
-  return (
-    <div className="flex items-baseline gap-4 pb-3">
-      <span className={LABEL} style={labelStyle}>
-        {label}
-      </span>
-      <span className="h-px min-w-6 flex-1" style={{ background: "var(--hairline)" }} />
-    </div>
-  );
-}
-
-const ledeLink: CSSProperties = {
-  color: "var(--text-primary)",
-  borderBottom: "1px solid var(--accent)",
-  paddingBottom: 1,
-};
 
 export function HomeMenu({
   onCreate,
@@ -592,75 +781,117 @@ export function HomeMenu({
   /** Open the provenance page (#229). Optional so the menu renders standalone. */
   onAbout?: () => void;
 }) {
-  const lede = (
-    <>
-      <button className="home-lede-link" style={ledeLink} onClick={() => onCreate()}>
-        Start a model
-      </button>
-      {" "}or{" "}
-      <button className="home-lede-link" style={ledeLink} onClick={onOpenLibrary}>
-        open one
-      </button>
-      , and the instrument checks the structure as you go.
-    </>
+  const docs = (
+    <a
+      href={DOCS_URL}
+      target="_blank"
+      rel="noreferrer"
+      onClick={openExternal}
+      className="home-quiet-link inline-flex h-8 items-center gap-1.5 rounded-sm px-2 text-sm font-medium"
+      style={{ color: "var(--text-secondary)" }}
+    >
+      Documentation
+      <Icon name="external" size={16} />
+    </a>
   );
   return (
-    <div>
-      <Masthead
-        title={<span>facets&#8202;·&#8202;model</span>}
-        mark={<Gem />}
-        lede={lede}
-      />
-      <Column className="pb-12 pt-8">
-        <GroupHeader label="Start" lead />
-        {/* Two doors: make a model or open one (one-surface.md, 2026-10-27).
-            Drawing, describing and wiring processes are ways of working on
-            the same model, chosen on the blank canvas, not doors here. The
-            sandbox's door went the same day; its surface stays at
-            `?sandbox=1`. The data-first door left in the 2026-10-26 cut and
-            stays behind `?data=1`. */}
-        <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
-          <Panel
-            glyph={<DoorWell icon="draw" hue="var(--accent)" soft="var(--accent-soft)" />}
-            name="New model"
-            description="Draw it, describe it in a few lines, or drop in processes and press Run. Every step is checked."
-            onClick={() => onCreate()}
-          />
-          <Panel
-            glyph={<DoorWell icon="open" hue="var(--prim-buffering)" />}
-            name="Open a model"
-            description="Library, your saved models, or a file."
-            onClick={onOpenLibrary}
-          />
+    <div className="flex min-h-full flex-col" style={{ backgroundColor: "var(--bg-secondary)" }}>
+      {/* Two doors: make a model or open one (one-surface.md, 2026-10-27).
+          Drawing, describing and wiring processes are ways of working on the
+          same model, chosen on the blank canvas, not doors here. The sandbox
+          surface stays at `?sandbox=1`; the data-first door at `?data=1`. */}
+      <main className="mx-auto grid w-full max-w-6xl flex-1 items-center gap-10 px-4 py-10 sm:px-10 lg:grid-cols-[minmax(0,5fr)_minmax(0,6fr)] lg:gap-16 lg:py-16">
+        <div className="min-w-0">
+          <div className="flex items-center gap-3">
+            <Gem size={40} />
+            <span className={LABEL} style={{ ...labelStyle, color: "var(--accent)" }}>
+              Systems modeling, checked as you go
+            </span>
+          </div>
+          <h1 className="mt-4" style={{ ...nameStyle, fontSize: "var(--t-hero)", lineHeight: 1.04 }}>
+            <span className="block">Draw a system.</span>
+            <span className="block">Run it.</span>
+            <span className="block">See what holds.</span>
+          </h1>
+          <p className="mt-6 max-w-lg text-lg leading-7" style={{ color: "var(--text-secondary)" }}>
+            Components, boundaries and flows in the terms of systems science. The kernel checks the structure while you
+            build, and the run answers when you turn a knob.
+          </p>
+          <div className="mt-8 flex flex-wrap gap-3">
+            <button
+              type="button"
+              onClick={() => onCreate()}
+              className="home-door home-door-primary inline-flex h-12 w-full items-center justify-center gap-2.5 sm:w-auto rounded-sm px-6 text-base font-semibold"
+            >
+              <Icon name="plus" size={20} />
+              New model
+            </button>
+            <button
+              type="button"
+              onClick={onOpenLibrary}
+              className="home-door home-door-secondary inline-flex h-12 w-full items-center justify-center gap-2.5 sm:w-auto rounded-sm px-6 text-base font-semibold"
+            >
+              <Icon name="open" size={20} />
+              Open a model
+            </button>
+          </div>
+          <p className="mt-4 max-w-lg text-sm leading-5" style={{ color: "var(--text-muted)" }}>
+            Draw it, describe it in a few lines, or wire processes and press Run. Open the library, your saved models,
+            or a file.
+          </p>
         </div>
-        {/* The colophon. A printed record states its edition at the foot of the
-            page, not in its table of contents — and the provenance is what this
-            page's claim rests on, so it belongs on the page, quietly, rather
-            than among the doors. The docs sit beside it: a reference, not a door. */}
-        <div
-          className="mt-12 flex flex-wrap items-center gap-4 border-t pt-4"
-          style={{ borderColor: "var(--hairline)" }}
-        >
+
+        <figure className="min-w-0">
+          <div className="rounded-md border p-4 sm:p-6" style={{ background: "var(--bg-primary)", borderColor: "var(--hairline)" }}>
+            <FrontFigure />
+          </div>
+          <figcaption className="mt-3 flex flex-wrap items-center gap-x-5 gap-y-2">
+            <KeyChip kind="matter" label="Matter" />
+            <KeyChip kind="energy" label="Energy" />
+            <KeyChip kind="informational" label="Information" />
+            <span className="text-xs" style={{ color: "var(--text-muted)" }}>
+              Inside the ring, the system. Outside, its environment.
+            </span>
+          </figcaption>
+        </figure>
+      </main>
+
+      {/* The proof line. What makes this instrument different is that its
+          verdicts are machine-checked; the provenance that backs the claim is
+          one click away, so the claim sits at the foot of the front door
+          rather than behind a button called "This build". */}
+      <footer className="border-t" style={{ borderColor: "var(--hairline)" }}>
+        <div className="mx-auto flex w-full max-w-6xl flex-wrap items-center justify-between gap-3 px-4 py-4 sm:px-10">
+          <div className="flex min-w-0 items-center gap-3 text-sm" style={{ color: "var(--text-secondary)" }}>
+            <span
+              aria-hidden
+              className="flex h-6 w-6 shrink-0 items-center justify-center rounded-sm"
+              style={{ background: "color-mix(in srgb, var(--verdict-ok) 14%, var(--bg-secondary))", color: "var(--verdict-ok)" }}
+            >
+              <Icon name="check" size={16} />
+            </span>
+            <span>Every verdict is machine-checked against Lean proofs.</span>
+          </div>
+          <div className="flex items-center gap-2">
+          {docs}
           {onAbout && (
-            <Button size={28} variant="quiet" onClick={onAbout}>
+            <button
+              type="button"
+              onClick={onAbout}
+              className="home-quiet-link inline-flex h-8 items-center gap-2 rounded-sm px-2 text-sm font-medium"
+              style={{ color: "var(--text-secondary)" }}
+            >
               This build
-            </Button>
+              {buildInfo.gitSha && (
+                <span className="tabular text-xs" style={{ color: "var(--text-muted)" }}>
+                  {buildInfo.gitSha.slice(0, 7)}
+                </span>
+              )}
+            </button>
           )}
-          {/* A real link (right-click, copy): the quiet button's look at the
-              24px floor, with the external mark (rule 11, icons.md). */}
-          <a
-            href={DOCS_URL}
-            target="_blank"
-            rel="noreferrer"
-            onClick={openExternal}
-            className="inline-flex h-7 items-center gap-1.5 rounded-sm px-2.5 text-sm font-medium"
-            style={{ color: "var(--text-primary)", border: "1px solid var(--rule-strong)" }}
-          >
-            Documentation
-            <Icon name="external" size={16} />
-          </a>
+          </div>
         </div>
-      </Column>
+      </footer>
     </div>
   );
 }

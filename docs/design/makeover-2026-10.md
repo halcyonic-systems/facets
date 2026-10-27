@@ -24,7 +24,7 @@ Every rule below is one an agent can check on the page. "Arcadia" means `~/halcy
 4. Spacing on the 4px scale: 2, 4, 8, 12, 16, 24, 32, 48. No other gap. (Arcadia spacing.)
 
 ### Type
-5. Two families, eight sizes. Cormorant Garamond 700 for names of things (the app, a model, a section, a shelf) at 30, 24, 20. Inter for everything scanned: 16 body, 14 rows and controls, 13/600 numerals, 12 meta, 11/600 uppercase +0.06em labels. JetBrains Mono only for the kernel's numbers and SL. (Arcadia typography; DESIGN.md type.)
+5. Two families, eight sizes. Cormorant Garamond 700 for names of things (the app, a model, a section, a shelf) at 30, 24, 20. Inter for everything scanned: 16 body, 14 rows and controls, 13/600 numerals, 12 meta, 11/600 uppercase +0.06em labels. JetBrains Mono only for the kernel's numbers and SL. (Arcadia typography; DESIGN.md type.) One exception, on one page: the front door's headline is `--t-hero`, 40 to 60 with the viewport (the entry pass, 2026-10-27).
 6. Line length never past 72 characters of prose. Labels never wrap to a second line inside a chip or a tab.
 
 ### Colour

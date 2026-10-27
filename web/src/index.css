@@ -201,6 +201,8 @@
      controls, 600 numerals, meta, and 11/600 uppercase labels at
      --tracking-label. JetBrains Mono only for the kernel's numbers and SL.
      Later slices consume these; nothing is re-skinned by their arrival. */
+  /* the front door's headline, the one size above d1, on that page only */
+  --t-hero: clamp(40px, 4.6vw, 60px);
   --t-d1: 30px;
   --t-d2: 24px;
   --t-d3: 20px;
@@ -387,11 +389,39 @@ body {
   border-color: var(--card-hue) !important;
 }
 
-.home-lede-link {
-  transition: color var(--transition-base);
+/* the front door's two actions (the entry pass, 2026-10-27): New model is the
+   one filled control on the page, Open a model its outlined twin; hover is a
+   surface step, never a shadow */
+.home-door {
+  transition:
+    background-color var(--transition-base),
+    border-color var(--transition-base),
+    color var(--transition-base);
 }
-.home-lede-link:hover {
-  color: var(--accent) !important;
+.home-door-primary {
+  background: var(--accent);
+  color: var(--text-on-accent);
+  border: 1px solid var(--accent);
+}
+.home-door-primary:hover {
+  background: var(--accent-strong);
+  border-color: var(--accent-strong);
+}
+.home-door-secondary {
+  background: var(--bg-secondary);
+  color: var(--text-primary);
+  border: 1px solid var(--rule-strong);
+}
+.home-door-secondary:hover {
+  background: var(--accent-soft);
+  border-color: var(--accent);
+}
+.home-quiet-link {
+  transition: color var(--transition-base), background-color var(--transition-base);
+}
+.home-quiet-link:hover {
+  color: var(--text-primary) !important;
+  background: var(--bg-primary);
 }
 
 /* faint tabular figures for all the numbers the kernel returns */
