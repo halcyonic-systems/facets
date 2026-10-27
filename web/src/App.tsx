@@ -85,6 +85,7 @@ import { chosenEffort, effortOnWire } from "./draftEffort";
 import { adoptInterior, carryChildIdentity, draftInteriorWithRetry } from "./interior";
 import { pendingCrossings } from "./canvas/crossings";
 import {
+  THEME_CHOICES,
   THEME_LABEL,
   nextThemeChoice,
   setThemeChoice,
@@ -93,7 +94,8 @@ import {
   type ThemeChoice,
 } from "./theme";
 import type { SlError } from "./kernel/types";
-import { Banner, ConfirmDialog, ToolButton } from "./ui";
+import { Banner, Button, ConfirmDialog, Menu, MenuItem, MenuSection, MenuSeparator, Tabs, ToolButton } from "./ui";
+import { Icon } from "./icons";
 import { KernelErrorBoundary } from "./KernelErrorBoundary";
 import { isFolderSupported, pickDirectory, writeModel, type DirHandleLike } from "./fsAccess";
 import { library } from "./library";
@@ -2957,75 +2959,51 @@ function Workspace() {
   // ws-D (#345): the workbench controls, dissolved upward from the strip.
   // Wrapped in the data-lens scope so the lens seam re-tints them inside the
   // menu bar (which sits outside the workbench's own data-lens container).
+  // Makeover slice D (rules 3, 9c, 11, 15): each strip is the shared Tabs
+  // primitive (32 tall, role=tablist, arrow keys) drawn as a segmented well
+  // by `.chrome-strip` in index.css; the active tab is a filled 4px chip in
+  // the lens's own accent, since the seam resolves inside this data-lens
+  // scope. Same handlers, same state.
   const workbenchControls = canvasModel ? (
     <div className="flex items-center gap-2" data-lens={canvasModel.lens}>
-      <div
-        className="flex items-center gap-0.5 p-0.5"
-        style={{ background: "var(--bg-surface)", borderRadius: "var(--radius-pill)" }}
-      >
-        {WORK_MODES.map((m) => (
-          <button
-            key={m}
-            onClick={() => setWorkMode(m)}
-            className="px-2 py-0.5 text-xs font-body transition-colors"
-            style={{
-              borderRadius: "var(--radius-pill)",
-              background: workMode === m ? "var(--accent-strong)" : "transparent",
-              color: workMode === m ? "var(--text-on-accent)" : "var(--text-secondary)",
-              transition: "var(--transition-base)",
-            }}
-            title={WORK_MODE_TITLE[m]}
-          >
-            {WORK_MODE_LABEL[m]}
-          </button>
-        ))}
+      <div className="chrome-strip" title={WORK_MODE_TITLE[workMode]}>
+        <Tabs
+          label="Model or Measurements"
+          tabs={WORK_MODES.map((m) => ({ key: m, label: WORK_MODE_LABEL[m] }))}
+          active={workMode}
+          onSelect={(k) => setWorkMode(k as WorkMode)}
+        />
       </div>
       <div
-        className="flex items-center gap-0.5 p-0.5"
-        style={{ background: "var(--bg-surface)", borderRadius: "var(--radius-pill)" }}
+        className="chrome-strip"
         title={
           !lensTouched && canvasModel.lens === "Mobus"
             ? "Mobus by default: the fullest reading. Switch any time."
             : "The active lens — each tradition asks its own question of the model"
         }
       >
-        {lensTabs(canvasModel.lens).map((l) => (
-          <button
-            key={l}
-            onClick={() => setLens(l)}
-            className="px-2 py-0.5 text-xs font-body transition-colors"
-            style={{
-              borderRadius: "var(--radius-pill)",
-              background: canvasModel.lens === l ? "var(--lens-accent)" : "transparent",
-              color: canvasModel.lens === l ? "var(--text-on-accent)" : "var(--text-secondary)",
-              transition: "var(--transition-base)",
-            }}
-          >
-            {l}
-          </button>
-        ))}
+        <Tabs
+          label="Lens"
+          tabs={lensTabs(canvasModel.lens).map((l) => ({ key: l, label: l }))}
+          active={canvasModel.lens}
+          onSelect={(k) => setLens(k as CanvasModel["lens"])}
+        />
       </div>
       {view3dEnabled() && workMode === "structure" && (
-        <div
-          className="flex items-center gap-0.5 p-0.5"
-          style={{ background: "var(--bg-surface)", borderRadius: "var(--radius-pill)" }}
-        >
-          <button
+        // Below 1280 this toggle lives in the bar's overflow menu (rule 16).
+        <span className="hidden xl:contents">
+          <Button
+            size={28}
+            variant="quiet"
+            className="chrome-toggle"
             onClick={() => setView3d((v) => !v)}
             aria-pressed={view3d}
-            className="px-2 py-0.5 text-xs font-body transition-colors"
-            style={{
-              borderRadius: "var(--radius-pill)",
-              background: view3d ? "var(--lens-accent)" : "transparent",
-              color: view3d ? "var(--text-on-accent)" : "var(--text-secondary)",
-              transition: "var(--transition-base)",
-            }}
             title="3D exploded view (beta) — a way of looking at the model, read-only"
             data-testid="view-3d-toggle"
           >
             3D · beta
-          </button>
-        </div>
+          </Button>
+        </span>
       )}
     </div>
   ) : undefined;
@@ -3034,50 +3012,77 @@ function Workspace() {
   // beside it because they are about the model; the verdict, the review and
   // the SL toggle left for the status bar and the modes.
   const modeSwitch = canvasModel ? (
-    <div
-      className="flex items-center gap-0.5 p-0.5"
-      style={{ background: "var(--bg-surface)", borderRadius: "var(--radius-pill)" }}
-      role="group"
-      aria-label="Mode"
-      data-testid="mode-switch"
-    >
-      {WORKSPACE_MODES.map((m) => (
-        <button
-          key={m.value}
-          onClick={() => setWorkspaceMode(m.value)}
-          aria-pressed={mode === m.value}
-          className="px-3 py-0.5 text-xs font-semibold transition-colors"
-          style={{
-            borderRadius: "var(--radius-pill)",
-            background: mode === m.value ? "var(--accent-strong)" : "transparent",
-            color: mode === m.value ? "var(--text-on-accent)" : "var(--text-secondary)",
-            transition: "var(--transition-base)",
-          }}
-          title={m.title}
-        >
-          {m.label}
-        </button>
-      ))}
+    <div className="flex items-center gap-2" data-testid="mode-switch">
+      <div className="chrome-strip" title={WORKSPACE_MODES.find((m) => m.value === mode)?.title}>
+        <Tabs
+          label="Mode"
+          tabs={WORKSPACE_MODES.map((m) => ({ key: m.value, label: m.label }))}
+          active={mode}
+          onSelect={(k) => setWorkspaceMode(k as WorkspaceMode)}
+        />
+      </div>
       {/* #418 item 1: Focus is the one arrangement choice the frame keeps, and
           tucked in the status bar it read as chrome. It sits here too, at the
           end of the question it modifies — the status-bar toggle stays, since
           in Focus this bar is a strip and that one is how you come back. */}
-      {!narrow && <span aria-hidden className="mx-1 h-4 w-px" style={{ background: "var(--hairline)" }} />}
-      {!narrow && <button
-        onClick={() => setFocus((f) => !f)}
-        aria-pressed={focus}
-        className="px-3 py-0.5 text-xs font-semibold transition-colors"
-        style={{
-          borderRadius: "var(--radius-pill)",
-          background: focus ? "var(--accent)" : "transparent",
-          color: focus ? "var(--text-on-accent)" : "var(--text-secondary)",
-          transition: "var(--transition-base)",
-        }}
-        title="Focus: the mode's primary surface fills the window — ⌃⌥F, Esc to leave"
-        data-testid="mode-focus"
-      >
-        Focus
-      </button>}
+      {!narrow && (
+        // Below 1280 only the status bar's Focus toggle shows (rule 16).
+        <span className="hidden xl:contents">
+          <Button
+            size={28}
+            variant="quiet"
+            className="chrome-toggle"
+            onClick={() => setFocus((f) => !f)}
+            aria-pressed={focus}
+            title="Focus: the mode's primary surface fills the window — ⌃⌥F, Esc to leave"
+            data-testid="mode-focus"
+          >
+            Focus
+          </Button>
+        </span>
+      )}
+    </div>
+  ) : undefined;
+
+  // Makeover slice D (rule 16): below the narrow breakpoint the three strips
+  // collapse into one View menu, so every mode, bench and lens stays reachable
+  // at 390 and nothing sits clipped in the tab order. Same setters as the
+  // strips; the open choice is the checked menuitemradio.
+  const viewMenu = canvasModel ? (
+    <div data-lens={canvasModel.lens}>
+    <Menu label="View" title="Mode, Model or Measurements, and the lens" align="end">
+      <MenuSection title="Mode">
+        {WORKSPACE_MODES.map((m) => (
+          <MenuItem key={m.value} role="menuitemradio" checked={mode === m.value} onSelect={() => setWorkspaceMode(m.value)} title={m.title}>
+            {m.label}
+          </MenuItem>
+        ))}
+      </MenuSection>
+      <MenuSeparator />
+      <MenuSection title="Bench">
+        {WORK_MODES.map((m) => (
+          <MenuItem key={m} role="menuitemradio" checked={workMode === m} onSelect={() => setWorkMode(m)} title={WORK_MODE_TITLE[m]}>
+            {WORK_MODE_LABEL[m]}
+          </MenuItem>
+        ))}
+      </MenuSection>
+      <MenuSeparator />
+      <MenuSection title="Lens">
+        {lensTabs(canvasModel.lens).map((l) => (
+          <MenuItem key={l} role="menuitemradio" checked={canvasModel.lens === l} onSelect={() => setLens(l)}>
+            {l}
+          </MenuItem>
+        ))}
+      </MenuSection>
+      {view3dEnabled() && workMode === "structure" && (
+        <>
+          <MenuSeparator />
+          <MenuItem role="menuitemcheckbox" checked={view3d} onSelect={() => setView3d((v) => !v)}>
+            3D exploded view (beta)
+          </MenuItem>
+        </>
+      )}
+    </Menu>
     </div>
   ) : undefined;
 
@@ -3088,14 +3093,39 @@ function Workspace() {
         onMouseEnter={() => setBarPeek(true)}
         onMouseLeave={() => setBarPeek(false)}
         className={frame.topBarStrip && !barPeek ? "h-1.5 shrink-0" : undefined}
-        style={frame.topBarStrip && !barPeek ? { background: "var(--accent)", opacity: 0.5 } : undefined}
+        style={
+          frame.topBarStrip && !barPeek
+            ? { background: "color-mix(in srgb, var(--accent) 50%, var(--bg-secondary))", borderBottom: "1px solid var(--accent)" }
+            : undefined
+        }
         data-testid="top-bar"
       >
+      {/* The strip's one control: focusing it (Tab) peeks the bar, as hover
+          does, so the bar is reachable without a pointer. */}
+      {frame.topBarStrip && !barPeek && (
+        <button
+          type="button"
+          className="block h-full w-full"
+          aria-label="Show the menu bar (Focus)"
+          onFocus={() => setBarPeek(true)}
+          onClick={() => setBarPeek(true)}
+        />
+      )}
       <div className={frame.topBarStrip && !barPeek ? "hidden" : undefined}>
       <MenuBar
         loaded={true}
-        controls={workbenchControls}
-        modeSwitch={modeSwitch}
+        controls={narrow ? undefined : workbenchControls}
+        modeSwitch={narrow ? viewMenu : modeSwitch}
+        narrow={narrow}
+        more={
+          // Below 1280 the 3D toggle leaves the strip for the overflow menu
+          // (rule 16); Focus is in the status bar at every width.
+          canvasModel && !narrow && view3dEnabled() && workMode === "structure" ? (
+            <MenuItem role="menuitemcheckbox" checked={view3d} onSelect={() => setView3d((v) => !v)}>
+              3D exploded view (beta)
+            </MenuItem>
+          ) : undefined
+        }
         onNew={newModel}
         onOpen={() => openHomeAt({ view: "library" })}
         onSave={() => void quickSave()}
@@ -3215,10 +3245,12 @@ function Workspace() {
             each switch so the settle animation re-runs when it changes. */}
         {canvasModel && desc && (
           <div
-            className="border-b px-4 py-1"
+            className="flex h-8 items-center overflow-hidden border-b px-4"
             style={{ borderColor: "var(--hairline)", background: "var(--lens-chrome)" }}
           >
-            <div key={`${canvasModel.lens}-${workMode}`} className="lens-question">
+            {/* Makeover slice D (rules 5, 13): a 32px band, 14px Inter, the
+                settle at --motion on opacity and a 4px slide (.chrome-question). */}
+            <div key={`${canvasModel.lens}-${workMode}`} className="lens-question chrome-question truncate">
               {/* #309: the registry's question speaks from the generative rung.
                   A Source/Data-level entry in Data mode hasn't earned it yet —
                   it gets the data rung's own. */}
@@ -3671,7 +3703,7 @@ function Workspace() {
                                 setLocSize(s);
                                 setFitToken((n) => (n ?? 0) + 1); // reframe in the new box
                               }}
-                              className="rounded px-1 text-[9px] uppercase leading-4"
+                              className="rounded-sm px-1 text-[9px] uppercase leading-4"
                               style={{
                                 fontFamily: "var(--font-mono)",
                                 color: locSize === s ? "var(--text-primary)" : "var(--text-muted)",
@@ -3685,7 +3717,7 @@ function Workspace() {
                             ))}
                           <button
                             onClick={() => setLocFull((f) => !f)}
-                            className="rounded px-1 text-[10px] leading-4"
+                            className="rounded-sm px-1 text-[10px] leading-4"
                             style={{
                               fontFamily: "var(--font-mono)",
                               color: "var(--text-muted)",
@@ -3904,26 +3936,17 @@ function Workspace() {
                         style={{
                           background: "var(--bg-secondary)",
                           border: "1px solid var(--accent)",
-                          borderRadius: "var(--radius-pill)",
-                          boxShadow: "var(--shadow-card)",
+                          borderRadius: "var(--radius-md)",
                           color: "var(--text-primary)",
                         }}
                       >
                         <span>Previewing a draft — assess it, then</span>
-                        <button
-                          onClick={acceptPreview}
-                          className="rounded-full px-3 py-1 text-xs font-semibold"
-                          style={{ background: "var(--accent)", color: "var(--text-on-accent)" }}
-                        >
+                        <Button size={28} onClick={acceptPreview}>
                           Accept
-                        </button>
-                        <button
-                          onClick={discardPreview}
-                          className="rounded-full px-3 py-1 text-xs"
-                          style={{ border: "1px solid var(--border)", color: "var(--text-muted)" }}
-                        >
+                        </Button>
+                        <Button size={28} variant="quiet" onClick={discardPreview}>
                           Discard
-                        </button>
+                        </Button>
                       </div>
                     )}
                     {/* #345: the bench — Run is a STATE of this surface, not a
@@ -4206,27 +4229,44 @@ function SeamGlyph({ clean }: { clean: boolean }) {
 // bar read as if the display mattered as much as the model does. The label
 // always states the CURRENT state, and the tooltip states what a click does and
 // what "auto" is currently resolving to.
-function ThemeControl() {
+function useThemeChoice(): ThemeChoice {
   const [choice, setChoice] = useState<ThemeChoice>(() => themeChoice());
   useEffect(() => subscribeTheme(setChoice), []);
+  return choice;
+}
+
+/** The current mode, as the control's accessible name states it. */
+function themeName(choice: ThemeChoice): string {
+  return choice === "system" ? "Theme: following the system" : `Theme: ${THEME_LABEL[choice]}, overriding the system`;
+}
+
+// Makeover slice D (rules 11, 14): a 32px ToolButton with the drawn theme
+// icon; the name states the current mode, the tooltip what a click does. It
+// still cycles system → light → dark.
+function ThemeControl() {
+  const choice = useThemeChoice();
   const next = nextThemeChoice(choice);
   return (
-    <button
+    <ToolButton
       onClick={() => setThemeChoice(next)}
-      className="ml-auto text-[11px]"
-      style={{
-        fontFamily: "var(--font-mono)",
-        color: choice === "system" ? "var(--text-muted)" : "var(--text-secondary)",
-      }}
-      aria-label={`Theme: ${THEME_LABEL[choice]}`}
-      title={
-        choice === "system"
-          ? `Theme: following the system — click for ${THEME_LABEL[next]}`
-          : `Theme: ${THEME_LABEL[choice]}, overriding the system — click for ${THEME_LABEL[next]}`
-      }
-    >
-      {THEME_LABEL[choice]}
-    </button>
+      icon="theme"
+      aria-label={themeName(choice)}
+      title={`${themeName(choice)} — click for ${THEME_LABEL[next]}`}
+    />
+  );
+}
+
+/** The same three states as a menuitemradio group, for the overflow menu. */
+function ThemeMenuItems() {
+  const choice = useThemeChoice();
+  return (
+    <MenuSection title="Theme">
+      {THEME_CHOICES.map((c) => (
+        <MenuItem key={c} role="menuitemradio" checked={choice === c} onSelect={() => setThemeChoice(c)}>
+          {c === "system" ? "Follow the system" : THEME_LABEL[c] === "light" ? "Light" : "Dark"}
+        </MenuItem>
+      ))}
+    </MenuSection>
   );
 }
 
@@ -4267,8 +4307,16 @@ export function MenuBar({
   onOpenPin,
   controls,
   modeSwitch,
+  narrow = false,
+  more,
 }: {
   loaded: boolean;
+  /** Rule 16: below the narrow breakpoint the wordmark and Home leave the
+   *  bar (Home moves into the overflow menu), File and Switch become icon
+   *  triggers, and the title chip shortens. */
+  narrow?: boolean;
+  /** Items the surface adds to the overflow menu below 1280 (the 3D toggle). */
+  more?: React.ReactNode;
   /** #345 ws-D: the workbench controls, dissolved upward from the old
    *  strip — mode switch, lens pills, Review, clean chip, SL. The caller
    *  wraps them in a data-lens scope so the lens seam re-tints them here. */
@@ -4318,49 +4366,33 @@ export function MenuBar({
   const [fileOpen, setFileOpen] = useState(false);
   const [switchOpen, setSwitchOpen] = useState(false);
   const [typeOpen, setTypeOpen] = useState(false);
+  const titleRef = useRef<HTMLButtonElement>(null);
   // Display only: the asserted kind, read back into the name's tooltip so the
   // declaration is legible without opening it. No verdict is computed here.
   const typeLabel =
     [systemType?.kingdom, systemType?.genus, systemType?.domain].filter(Boolean).join(" / ") || "unasserted";
-  const item = (label: string, onClick: () => void, disabled = false) => (
-    <button
-      onClick={() => {
-        if (disabled) return;
-        setFileOpen(false);
-        onClick();
-      }}
-      disabled={disabled}
-      className="block w-full px-3 py-1.5 text-left text-xs"
-      style={{
-        color: disabled ? "var(--text-muted)" : "var(--text-secondary)",
-        opacity: disabled ? 0.5 : 1,
-        cursor: disabled ? "not-allowed" : "pointer",
-      }}
-    >
-      {label}
-    </button>
-  );
   return (
     <div
-      className="relative z-30 flex items-center gap-4 border-b px-3 py-1.5"
-      style={{ borderColor: "var(--rule-soft)", background: "var(--paper-edge)" }}
+      className={`relative z-30 flex items-center border-b px-3 py-1 ${narrow ? "gap-2" : "gap-2 xl:gap-4"}`}
+      style={{ borderColor: "var(--rule-strong)", background: "var(--bg-secondary)" }}
     >
       {/* Under the facets.systems portal the wordmark is the way back to the
           entry screen; everywhere else (dev, :5190, desktop) there is no portal
           above this app, so it stays plain text. */}
-      {import.meta.env.BASE_URL === "/model/" ? (
+      {/* A name of a thing: Cormorant 700 at d3 (rule 5). */}
+      {narrow ? null : import.meta.env.BASE_URL === "/model/" ? (
         <a
           href="/"
-          className="text-xs font-semibold uppercase tracking-wider"
-          style={{ fontFamily: "var(--font-mono)", color: "var(--ink)" }}
+          className="hidden font-bold leading-none whitespace-nowrap xl:inline"
+          style={{ fontFamily: "var(--font-display)", fontSize: "var(--t-d3)", color: "var(--ink)" }}
           title="Facets home"
         >
           facets&#8202;·&#8202;model
         </a>
       ) : (
         <span
-          className="text-xs font-semibold uppercase tracking-wider"
-          style={{ fontFamily: "var(--font-mono)", color: "var(--ink)" }}
+          className="hidden font-bold leading-none whitespace-nowrap xl:inline"
+          style={{ fontFamily: "var(--font-display)", fontSize: "var(--t-d3)", color: "var(--ink)" }}
         >
           facets&#8202;·&#8202;model
         </span>
@@ -4373,203 +4405,149 @@ export function MenuBar({
       {/* Home / Close (#73): the one route back to the start screen from a
           loaded model. Disabled when already home (no model), so it never
           no-ops silently. */}
-      <button
-        onClick={onHome}
-        disabled={!loaded || !hasModel}
-        title={hasModel ? "Close this model and return to the start screen" : "Already at the start screen"}
-        className="rounded px-2 py-1 text-[11px] uppercase tracking-wide"
-        style={{
-          fontFamily: "var(--font-mono)",
-          color: loaded && hasModel ? "var(--text-secondary)" : "var(--text-muted)",
-          opacity: loaded && hasModel ? 1 : 0.5,
-          cursor: loaded && hasModel ? "pointer" : "not-allowed",
-        }}
-      >
-        Home
-      </button>
-
-      <div className="relative">
-        <button
-          onClick={() => setFileOpen((o) => !o)}
-          disabled={!loaded}
-          className="rounded px-2 py-1 text-[11px] uppercase tracking-wide"
-          style={{
-            fontFamily: "var(--font-mono)",
-            color: loaded ? "var(--text-secondary)" : "var(--text-muted)",
-            background: fileOpen ? "var(--bg-surface)" : "transparent",
-          }}
+      {!narrow && (
+        <Button
+          size={28}
+          variant="quiet"
+          onClick={onHome}
+          disabled={!loaded || !hasModel}
+          title={hasModel ? "Close this model and return to the start screen" : "Already at the start screen"}
         >
-          File
-        </button>
-        {fileOpen && (
-          <>
-            <div className="fixed inset-0 z-10" onClick={() => setFileOpen(false)} />
-            <div
-              className="absolute left-0 top-full z-20 mt-1 w-40 rounded-md py-1"
-              style={{
-                background: "var(--bg-secondary)",
-                border: "1px solid var(--border)",
-                boxShadow: "var(--shadow-card)",
-                borderRadius: "var(--radius-md)",
-              }}
-            >
-              {item("New", onNew)}
-              {item("Open…", onOpen)}
-              <div className="my-1 border-t" style={{ borderColor: "var(--hairline)" }} />
-              {item("Save ⌘S", onSave, !canExport)}
-              {item("Save to folder…", onSaveToFolder, !canExport)}
-              {item("Save to library as…", onSaveToLibrary, !canExport)}
-              <div className="my-1 border-t" style={{ borderColor: "var(--hairline)" }} />
-              {onDownload && item("Download (.model)", onDownload, !canExport)}
-              {item("Export JSON", onExport, !canExport)}
-              {onExportWalk && item("Export walk (.sl)", onExportWalk, !canExport)}
-              {onExportSvg && item("Export diagram (SVG)", onExportSvg, !canExport)}
-              {onExportPng && item("Export diagram (PNG)", onExportPng, !canExport)}
-            </div>
-          </>
+          Home
+        </Button>
+      )}
+
+      {/* Makeover slice D (rule 15): File and Switch are the Menu primitive
+          (APG menu button: roles, Enter/arrows/Escape/Tab, focus return),
+          in controlled mode over the state this bar already held. Every item
+          keeps its handler; the shortcut moves to the right slot. */}
+      <Menu
+        label={narrow ? undefined : "File"}
+        icon={narrow ? "file" : undefined}
+        aria-label="File"
+        open={fileOpen}
+        onOpenChange={setFileOpen}
+        disabled={!loaded}
+      >
+        <MenuItem icon="plus" onSelect={onNew}>
+          New
+        </MenuItem>
+        <MenuItem icon="folder" onSelect={onOpen}>
+          Open…
+        </MenuItem>
+        <MenuSeparator />
+        <MenuItem icon="file" onSelect={onSave} disabled={!canExport} shortcut="⌘S">
+          Save
+        </MenuItem>
+        <MenuItem icon="folder" onSelect={onSaveToFolder} disabled={!canExport}>
+          Save to folder…
+        </MenuItem>
+        <MenuItem onSelect={onSaveToLibrary} disabled={!canExport}>
+          Save to library as…
+        </MenuItem>
+        <MenuSeparator />
+        {onDownload && (
+          <MenuItem onSelect={onDownload} disabled={!canExport}>
+            Download (.model)
+          </MenuItem>
         )}
-      </div>
+        <MenuItem icon="external" onSelect={onExport} disabled={!canExport}>
+          Export JSON
+        </MenuItem>
+        {onExportWalk && (
+          <MenuItem icon="external" onSelect={onExportWalk} disabled={!canExport}>
+            Export walk (.sl)
+          </MenuItem>
+        )}
+        {onExportSvg && (
+          <MenuItem icon="external" onSelect={onExportSvg} disabled={!canExport}>
+            Export diagram (SVG)
+          </MenuItem>
+        )}
+        {onExportPng && (
+          <MenuItem icon="external" onSelect={onExportPng} disabled={!canExport}>
+            Export diagram (PNG)
+          </MenuItem>
+        )}
+      </Menu>
       {/* Switch model (#74): an in-canvas quick-open — demos + browser library
           in a compact menu, so switching models never routes through the full
-          Open… dialog. Only meaningful once a model is loaded. */}
-      <div className="relative">
-        <button
-          onClick={() => setSwitchOpen((o) => !o)}
-          disabled={!loaded || !hasModel}
-          className="rounded px-2 py-1 text-[11px] uppercase tracking-wide"
-          style={{
-            fontFamily: "var(--font-mono)",
-            color: loaded && hasModel ? "var(--text-secondary)" : "var(--text-muted)",
-            opacity: loaded && hasModel ? 1 : 0.5,
-            cursor: loaded && hasModel ? "pointer" : "not-allowed",
-            background: switchOpen ? "var(--bg-surface)" : "transparent",
-          }}
-          title="Switch to another model without leaving the canvas"
-        >
-          Switch ▾
-        </button>
-        {switchOpen && (
-          <>
-            <div className="fixed inset-0 z-10" onClick={() => setSwitchOpen(false)} />
-            <div
-              className="absolute left-0 top-full z-20 mt-1 max-h-[70vh] w-56 overflow-y-auto py-1"
-              style={{
-                background: "var(--bg-secondary)",
-                border: "1px solid var(--border)",
-                boxShadow: "var(--shadow-card)",
-                borderRadius: "var(--radius-md)",
-              }}
-            >
-              {workbench.length > 0 && onOpenPin && (
-                <>
-                  <div
-                    className="px-3 pb-1 pt-1 text-[10px] font-semibold uppercase tracking-wide"
-                    style={{ color: "var(--text-muted)" }}
+          Open… dialog. Only meaningful once a model is loaded. The open model
+          is the checked menuitemradio in its group. */}
+      <Menu
+        label={narrow ? undefined : "Switch"}
+        icon={narrow ? "folder" : undefined}
+        aria-label="Switch model"
+        open={switchOpen}
+        onOpenChange={setSwitchOpen}
+        disabled={!loaded || !hasModel}
+        title="Switch to another model without leaving the canvas"
+        width={256}
+      >
+        <div className="max-h-[70vh] overflow-y-auto">
+          {workbench.length > 0 && onOpenPin && (
+            <>
+              <MenuSection title="Workbench">
+                {workbench.map((w) => (
+                  <MenuItem
+                    key={`${w.pin.kind}:${w.pin.ref}`}
+                    role="menuitemradio"
+                    checked={currentLabel === w.title}
+                    onSelect={() => onOpenPin(w.pin)}
+                    title={w.detail || w.title}
                   >
-                    Workbench
-                  </div>
-                  {workbench.map((w) => {
-                    const active = currentLabel === w.title;
-                    return (
-                      <button
-                        key={`${w.pin.kind}:${w.pin.ref}`}
-                        onClick={() => {
-                          setSwitchOpen(false);
-                          onOpenPin(w.pin);
-                        }}
-                        className="block w-full truncate px-3 py-1.5 text-left text-xs"
-                        style={{ color: active ? "var(--accent-strong)" : "var(--text-secondary)" }}
-                        title={w.detail || w.title}
-                      >
-                        {active ? "• " : ""}
-                        {w.title}
-                      </button>
-                    );
-                  })}
-                  <div className="my-1 border-t" style={{ borderColor: "var(--hairline)" }} />
-                </>
-              )}
-              <div
-                className="px-3 pb-1 pt-1 text-[10px] font-semibold uppercase tracking-wide"
-                style={{ color: "var(--text-muted)" }}
+                    <span className="block truncate">{w.title}</span>
+                  </MenuItem>
+                ))}
+              </MenuSection>
+              <MenuSeparator />
+            </>
+          )}
+          <MenuSection title="Demos">
+            {DEMOS.map((d) => (
+              <MenuItem
+                key={d.key}
+                role="menuitemradio"
+                checked={currentLabel === d.title}
+                onSelect={() => onSwitchDemo(d)}
+                title={d.title}
               >
-                Demos
+                <span className="block truncate">{d.title}</span>
+              </MenuItem>
+            ))}
+          </MenuSection>
+          <MenuSeparator />
+          <MenuSection title="Saved in this browser">
+            {libraryModels.length === 0 ? (
+              <div className="px-3 py-1.5 text-sm" style={{ color: "var(--text-muted)" }}>
+                no saved models yet
               </div>
-              {DEMOS.map((d) => {
-                const active = currentLabel === d.title;
-                return (
-                  <button
-                    key={d.key}
-                    onClick={() => {
-                      setSwitchOpen(false);
-                      onSwitchDemo(d);
-                    }}
-                    className="block w-full truncate px-3 py-1.5 text-left text-xs"
-                    style={{ color: active ? "var(--accent-strong)" : "var(--text-secondary)" }}
-                    title={d.title}
-                  >
-                    {active ? "• " : ""}
-                    {d.title}
-                  </button>
-                );
-              })}
-              <div className="my-1 border-t" style={{ borderColor: "var(--hairline)" }} />
-              <div
-                className="px-3 pb-1 pt-1 text-[10px] font-semibold uppercase tracking-wide"
-                style={{ color: "var(--text-muted)" }}
-              >
-                Saved in this browser
-              </div>
-              {libraryModels.length === 0 ? (
-                <div className="px-3 py-1.5 text-xs" style={{ color: "var(--text-muted)" }}>
-                  no saved models yet
-                </div>
-              ) : (
-                // Depth mirrors the OpenDialog's grouping (#105): children of a
-                // decomposed model indent under their root SOI instead of
-                // reading as top-level peers.
-                libraryModels.map((m) => {
-                  const active = currentLabel === m.name;
-                  return (
-                    <button
-                      key={m.name}
-                      onClick={() => {
-                        setSwitchOpen(false);
-                        onSwitchLibrary(m.name);
-                      }}
-                      className="block w-full truncate py-1.5 pr-3 text-left text-xs"
-                      style={{
-                        paddingLeft: 12 + m.depth * 12,
-                        color: active ? "var(--accent-strong)" : "var(--text-secondary)",
-                      }}
-                      title={m.name}
-                    >
-                      {m.depth > 0 && (
-                        <span aria-hidden style={{ color: "var(--text-muted)" }}>
-                          {"└ "}
-                        </span>
-                      )}
-                      {active ? "• " : ""}
-                      {m.name}
-                    </button>
-                  );
-                })
-              )}
-              <div className="my-1 border-t" style={{ borderColor: "var(--hairline)" }} />
-              <button
-                onClick={() => {
-                  setSwitchOpen(false);
-                  onOpenFull();
-                }}
-                className="block w-full px-3 py-1.5 text-left text-xs"
-                style={{ color: "var(--text-secondary)" }}
-              >
-                More… (Open dialog)
-              </button>
-            </div>
-          </>
-        )}
-      </div>
+            ) : (
+              // Depth mirrors the OpenDialog's grouping (#105): children of a
+              // decomposed model indent under their root SOI instead of
+              // reading as top-level peers.
+              libraryModels.map((m) => (
+                <MenuItem
+                  key={m.name}
+                  role="menuitemradio"
+                  checked={currentLabel === m.name}
+                  onSelect={() => onSwitchLibrary(m.name)}
+                  title={m.name}
+                >
+                  <span className="flex min-w-0 items-center gap-1" style={{ paddingLeft: m.depth * 12 }}>
+                    {m.depth > 0 && <Icon name="tree" size={16} style={{ color: "var(--text-muted)" }} />}
+                    <span className="truncate">{m.name}</span>
+                  </span>
+                </MenuItem>
+              ))
+            )}
+          </MenuSection>
+          <MenuSeparator />
+          <MenuItem icon="forward" onSelect={onOpenFull}>
+            More… (Open dialog)
+          </MenuItem>
+        </div>
+      </Menu>
 
       </div>
 
@@ -4580,19 +4558,28 @@ export function MenuBar({
           name instead of holding a tab in the inspector dock. A dropdown, not
           a modal: the canvas stays visible and the editor is one click away. */}
       {currentLabel && (
-        <div className="relative">
-          <button
+        <div
+          className="relative min-w-0"
+          onKeyDown={(e) => {
+            if (e.key === "Escape" && typeOpen) {
+              e.stopPropagation();
+              setTypeOpen(false);
+              titleRef.current?.focus();
+            }
+          }}
+        >
+          <Button
+            ref={titleRef}
+            size={28}
+            variant="quiet"
+            icon="file"
             onClick={() => onSystemTypeChange && setTypeOpen((o) => !o)}
             disabled={!onSystemTypeChange}
+            aria-haspopup="dialog"
             aria-expanded={typeOpen}
-            aria-label={`${currentLabel} — system type`}
-            className="max-w-[16rem] truncate rounded px-1.5 py-0.5 text-[11px]"
-            style={{
-              fontFamily: "var(--font-mono)",
-              color: typeOpen ? "var(--text-secondary)" : "var(--text-muted)",
-              background: typeOpen ? "var(--bg-surface)" : "transparent",
-              cursor: onSystemTypeChange ? "pointer" : "default",
-            }}
+            aria-label={`${currentLabel}${dirty ? ", unsaved changes" : ""} — system type`}
+            className={`${narrow ? "max-w-[8rem]" : "max-w-[8rem] xl:max-w-[16rem]"} min-w-0`}
+            style={{ color: "var(--text-secondary)", fontWeight: 400 }}
             title={
               onSystemTypeChange
                 ? `${currentLabel}${dirty ? " — unsaved changes" : ""} · system type: ${typeLabel} (click to declare)`
@@ -4601,9 +4588,9 @@ export function MenuBar({
                   : currentLabel
             }
           >
-            {currentLabel}
-            {dirty ? " •" : ""}
-          </button>
+            <span className="min-w-0 truncate">{currentLabel}</span>
+            {dirty && <Icon name="dot" size={16} className="shrink-0" style={{ color: "var(--accent)" }} />}
+          </Button>
           {typeOpen && onSystemTypeChange && (
             <>
               <div className="fixed inset-0 z-10" onClick={() => setTypeOpen(false)} />
@@ -4630,37 +4617,62 @@ export function MenuBar({
           an address a pin could name. */}
       {modeSwitch && <div className="mx-auto flex items-center">{modeSwitch}</div>}
       {controls && (
-        <div className={`flex min-w-0 flex-wrap items-center gap-2${modeSwitch ? "" : " ml-auto"}`}>{controls}</div>
+        <div className={`flex min-w-0 items-center gap-2${modeSwitch ? "" : " ml-auto"}`}>{controls}</div>
       )}
 
       {/* Meta cluster: pin · theme — standing status, not actions; a hairline
           sets it off from the working controls. The kernel chip moved to the
           status bar (#409). */}
       {controls && (
-        <span aria-hidden className="h-4 w-px" style={{ background: "var(--hairline)" }} />
+        <span aria-hidden className="hidden h-4 w-px xl:block" style={{ background: "var(--hairline)" }} />
       )}
-      <div className={controls ? "flex items-center gap-2" : "ml-auto flex items-center gap-2"}>
-      {canPin && onTogglePin && (
-        <button
-          onClick={onTogglePin}
-          className="text-[11px]"
-          style={{
-            fontFamily: "var(--font-mono)",
-            color: pinned ? "var(--accent-strong)" : "var(--text-muted)",
-          }}
-          title={pinned ? "On the workbench — click to remove" : "Pin to the workbench (Home and Switch menus)"}
-        >
-          {pinned ? "pinned ✓" : "pin"}
-        </button>
-      )}
-
-      <ThemeControl />
+      {/* Rule 16: at 1280 and up the pin and the theme are two 32px
+          ToolButtons; below that they fold into one overflow menu so the bar
+          stays one row at 1024, and at narrow widths Home joins them. */}
+      <div className={`${controls || modeSwitch ? "" : "ml-auto "}hidden items-center gap-2 xl:flex`}>
+        {canPin && onTogglePin && (
+          <ToolButton
+            onClick={onTogglePin}
+            icon="pin"
+            active={pinned}
+            aria-label={pinned ? "Pinned to the workbench" : "Pin to the workbench"}
+            title={pinned ? "On the workbench — click to remove" : "Pin to the workbench (Home and Switch menus)"}
+          />
+        )}
+        <ThemeControl />
+      </div>
+      <div className={`${controls || modeSwitch ? "" : "ml-auto "}flex items-center xl:hidden`}>
+        <Menu icon="menu" aria-label="More" title="Home, pin and theme" align="end" size={32}>
+          {narrow && (
+            <>
+              <MenuItem icon="back" onSelect={onHome} disabled={!loaded || !hasModel}>
+                Home
+              </MenuItem>
+              <MenuSeparator />
+            </>
+          )}
+          {more && (
+            <>
+              {more}
+              <MenuSeparator />
+            </>
+          )}
+          {canPin && onTogglePin && (
+            <>
+              <MenuItem role="menuitemcheckbox" checked={pinned} icon="pin" onSelect={onTogglePin}>
+                {pinned ? "Pinned to the workbench" : "Pin to the workbench"}
+              </MenuItem>
+              <MenuSeparator />
+            </>
+          )}
+          <ThemeMenuItems />
+        </Menu>
+      </div>
       {!loaded && (
         <span className="text-[11px]" style={{ fontFamily: "var(--font-mono)", color: "var(--text-muted)" }}>
           loading…
         </span>
       )}
-      </div>
     </div>
   );
 }
