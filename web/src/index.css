@@ -748,3 +748,23 @@ input[type="range"]:focus-visible {
   color: var(--text-on-accent) !important;
   border-color: var(--lens-accent) !important;
 }
+/* The lens question band (rules 5, 13): 14px Inter in a 32px band; the
+   settle is opacity and a 4px slide over --motion, no scale, and the global
+   reduced-motion gate removes it. */
+@keyframes chrome-question-settle {
+  from {
+    opacity: 0;
+    transform: translateX(-4px);
+  }
+  to {
+    opacity: 1;
+    transform: translateX(0);
+  }
+}
+.chrome-question {
+  font-family: var(--font-body);
+  font-size: var(--t-sm);
+  font-weight: 500;
+  line-height: 1;
+  animation: chrome-question-settle var(--motion) ease-out;
+}

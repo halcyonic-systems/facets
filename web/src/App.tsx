@@ -3245,10 +3245,12 @@ function Workspace() {
             each switch so the settle animation re-runs when it changes. */}
         {canvasModel && desc && (
           <div
-            className="border-b px-4 py-1"
+            className="flex h-8 items-center overflow-hidden border-b px-4"
             style={{ borderColor: "var(--hairline)", background: "var(--lens-chrome)" }}
           >
-            <div key={`${canvasModel.lens}-${workMode}`} className="lens-question">
+            {/* Makeover slice D (rules 5, 13): a 32px band, 14px Inter, the
+                settle at --motion on opacity and a 4px slide (.chrome-question). */}
+            <div key={`${canvasModel.lens}-${workMode}`} className="lens-question chrome-question truncate">
               {/* #309: the registry's question speaks from the generative rung.
                   A Source/Data-level entry in Data mode hasn't earned it yet —
                   it gets the data rung's own. */}
