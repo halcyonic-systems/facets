@@ -76,6 +76,12 @@ describe("Icon", () => {
     expect(named).not.toContain("aria-hidden");
   });
 
+  it("draws the File menu's save and download as their own silhouettes", () => {
+    for (const name of ["save", "download"] as const) expect(UI_ICONS, name).toContain(name);
+    expect(markup("save")).not.toBe(markup("file"));
+    expect(markup("download")).not.toBe(markup("external"));
+  });
+
   it("sizes 16, 20, 24 and 32 on the same viewBox", () => {
     for (const size of [16, 20, 24, 32] as const) {
       const m = renderToStaticMarkup(<Icon name="play" size={size} />);

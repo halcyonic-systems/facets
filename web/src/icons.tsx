@@ -69,6 +69,10 @@ const UI = {
   search: [C(10, 10, 6), P("M14.5 14.5 L20 20")],
   file: [P("M6 3 H14 L19 8 V21 H6 Z M14 3 V8 H19")],
   folder: [P("M3 6 H10 L12 8 H21 V19 H3 Z")],
+  // A disk with its shutter and label, for keeping a copy in the library.
+  save: [P("M4 4 H16 L20 8 V20 H4 Z M8 4 V9 H15 V4 M8 20 V14 H16 V20")],
+  // An arrow down into a tray, for a file that lands on this machine.
+  download: [P("M12 4 V15 M7 10 L12 15 L17 10 M4 15 V20 H20 V15")],
   pin: [P("M9 4 H15 V10 L18 13 H6 L9 10 Z M12 13 V20")],
   theme: [C(12, 12, 8), P("M12 4 A8 8 0 0 1 12 20 Z", { fill: "ink" })],
   menu: [P("M4 7 H20 M4 12 H20 M4 17 H20")],

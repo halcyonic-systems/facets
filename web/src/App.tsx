@@ -4442,12 +4442,12 @@ export function MenuBar({
         <MenuItem icon="folder" onSelect={onSaveToFolder} disabled={!canExport}>
           Save to folder…
         </MenuItem>
-        <MenuItem onSelect={onSaveToLibrary} disabled={!canExport}>
+        <MenuItem icon="save" onSelect={onSaveToLibrary} disabled={!canExport}>
           Save to library as…
         </MenuItem>
         <MenuSeparator />
         {onDownload && (
-          <MenuItem onSelect={onDownload} disabled={!canExport}>
+          <MenuItem icon="download" onSelect={onDownload} disabled={!canExport}>
             Download (.model)
           </MenuItem>
         )}
