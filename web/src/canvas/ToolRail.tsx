@@ -74,7 +74,10 @@ function RailButton({
       >
         {children}
       </span>
-      <span className="text-[11px] leading-none" style={{ color: active ? "var(--text-primary)" : "var(--text-secondary)" }}>
+      <span
+        className="max-w-full text-center text-[11px] leading-tight"
+        style={{ color: active ? "var(--text-primary)" : "var(--text-secondary)" }}
+      >
         {label}
       </span>
     </button>
@@ -102,7 +105,9 @@ export function ToolRail({
   onOpenSl: () => void;
   slOpen: boolean;
 }) {
-  const [hoverTool, setHoverTool] = useState<string | null>(null);
+  // The gloss card is fixed to the viewport at the hovered row, so the rail's
+  // own scroll box (overflow-y) cannot clip it or grow a sideways scroll.
+  const [hoverTool, setHoverTool] = useState<{ id: string; x: number; y: number; strip: boolean } | null>(null);
   const spec = LensPalette[lens];
   const derivedTip = spec.derived.length
     ? ` The kernel draws these: ${spec.derived.map((h) => h.label).join(", ")}.`
@@ -115,7 +120,10 @@ export function ToolRail({
       style={{ borderColor: "var(--hairline)", background: "var(--lens-chrome)" }}
       data-testid="tool-rail"
     >
-      <div className="flex min-h-0 flex-1 flex-col items-center gap-1 overflow-y-auto px-1 py-2 max-[899px]:flex-row max-[899px]:overflow-x-auto max-[899px]:overflow-y-hidden max-[899px]:px-2 max-[899px]:py-1">
+      <div
+        className="flex min-h-0 flex-1 flex-col items-center gap-1 overflow-x-hidden overflow-y-auto py-2 max-[899px]:flex-row max-[899px]:overflow-x-auto max-[899px]:overflow-y-hidden max-[899px]:px-2 max-[899px]:py-1"
+        style={{ scrollbarWidth: "thin" }}
+      >
         <RailButton active={armed === null} title="Select: click a thing or a flow to inspect it" onClick={() => onArm(null)} label="select" testId="tool-select">
           <Icon name="select" size={20} />
         </RailButton>
@@ -142,7 +150,7 @@ export function ToolRail({
             <span className="flex h-8 w-8 items-center justify-center">
               <Icon name="flow" size={20} />
             </span>
-            <span className="text-[11px] leading-none">flow</span>
+            <span className="text-[11px] leading-tight">flow</span>
           </div>
         ))}
         {spec.designate.length > 0 && (
@@ -154,8 +162,13 @@ export function ToolRail({
                 <span
                   key={t.id}
                   className="relative w-full shrink-0 max-[899px]:w-auto"
-                  onPointerEnter={() => setHoverTool(t.id)}
-                  onPointerLeave={() => setHoverTool((h) => (h === t.id ? null : h))}
+                  onPointerEnter={(e) => {
+                    const row = e.currentTarget.getBoundingClientRect();
+                    const rail = e.currentTarget.closest("[data-testid=tool-rail]")?.getBoundingClientRect() ?? row;
+                    const strip = window.innerWidth < 900;
+                    setHoverTool({ id: t.id, x: strip ? row.left : rail.right + 8, y: strip ? row.top - 8 : row.top, strip });
+                  }}
+                  onPointerLeave={() => setHoverTool((h) => (h?.id === t.id ? null : h))}
                 >
                   <RailButton
                     active={armed?.id === t.id}
@@ -171,12 +184,19 @@ export function ToolRail({
                   {/* #418 item 4: the meaning, back inside the mode. A card beside
                       the rail, instant on hover, from the same registry: a
                       hairline edge, no shadow (rule 2). */}
-                  {hoverTool === t.id && t.verb === "designate" && (
+                  {hoverTool?.id === t.id && t.verb === "designate" && (
                     <span
                       role="tooltip"
                       data-testid={`gloss-${primitive ?? "agent"}`}
-                      className="pointer-events-none absolute left-full top-0 z-20 ml-2 block w-64 rounded-md px-2.5 py-2 text-left text-[11px] leading-snug max-[899px]:bottom-full max-[899px]:left-0 max-[899px]:top-auto max-[899px]:mb-2 max-[899px]:ml-0"
-                      style={{ background: "var(--bg-secondary)", border: "1px solid var(--rule-strong)", color: "var(--text-primary)" }}
+                      className="pointer-events-none fixed z-50 block w-64 rounded-md px-2.5 py-2 text-left text-[11px] leading-snug"
+                      style={{
+                        left: hoverTool.x,
+                        top: hoverTool.y,
+                        transform: hoverTool.strip ? "translateY(-100%)" : undefined,
+                        background: "var(--bg-secondary)",
+                        border: "1px solid var(--rule-strong)",
+                        color: "var(--text-primary)",
+                      }}
                     >
                       {primitive ? (
                         <>

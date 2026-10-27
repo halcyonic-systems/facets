@@ -137,7 +137,7 @@ models at their fit scale.
 - **The rail (rule 21):** 80 px wide, 20 px `<Icon>`s in 32 px squares with a
   4 px radius and an 11 px word beneath, grouped select | place and the flow
   gesture | designate | SL, hairlines between; the armed tool is a filled
-  accent square; the rail scrolls inside itself and becomes a strip along
+  accent square; the rail scrolls inside itself (vertically only, a thin bar, never sideways; a word may take a second line) and becomes a strip along
   the stage's foot under 900 px of width. The hint line is a 28 px band
   under the stage, never over the diagram.
 - **Popovers (rule 15):** `PopoverDialog` gives the edge, boundary, interface
