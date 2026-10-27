@@ -41,8 +41,15 @@
 // measure) came from a design brief, not from a stated preference, and were
 // withdrawn 2026-08-12 when asked about directly.
 //
-// Names keep their authored case — small caps, never text-transform (the model
-// is named `hal`, not `HAL`).
+// Names keep their authored case — never text-transform (the model is named
+// `hal`, not `HAL`).
+//
+// Makeover slice C (2026-10-26, docs/design/makeover-2026-10.md): the type sits
+// on the eight --t-* tokens (rule 5), every control is a primitive from ui.tsx
+// or a real link at the 24px floor (rules 10, 11), every glyph is an <Icon>
+// (rule 14), cards are 8px with a hairline edge (rules 2, 3), and the page
+// reflows at 390 (rule 16). The --paper/--ink names stay as aliases in
+// index.css; this file reads --bg-* and --text-*.
 import { useState, useRef, useEffect, type CSSProperties, type ReactNode } from "react";
 import type { Demo } from "./demos";
 import type { CorpusEntry } from "./corpus";
@@ -144,11 +151,7 @@ export function HomeScreen(props: HomeProps) {
         )}
         {props.onClose && (
           <Column className="pb-12">
-            <button
-              onClick={props.onClose}
-              className="text-[11px] uppercase tracking-[0.2em]"
-              style={{ fontFamily: "var(--font-mono)", color: "var(--ink-muted)" }}
-            >
+            <button onClick={props.onClose} className={LABEL} style={labelStyle}>
               ‹ back to the model on the canvas
             </button>
           </Column>
@@ -204,31 +207,35 @@ function Column({ children, className = "" }: { children: ReactNode; className?:
 const mono = "var(--font-mono)";
 const display = "var(--font-display)";
 
-/** A folio: the small letterspaced mono line that sits above a title block and
- *  under a table. Back links and kickers are the same object. */
-const folioStyle: CSSProperties = {
-  fontFamily: mono,
-  color: "var(--ink-muted)",
+/** The label (rule 5): Inter 11/600 uppercase at the one tracking token. Group
+ *  marks, kickers, tags and the colophon links are all this one object. The
+ *  mono face is for numerals and dates only (`.tabular`), never for a label. */
+const LABEL = "text-[11px] font-semibold uppercase";
+const labelStyle: CSSProperties = {
+  letterSpacing: "var(--tracking-label)",
+  color: "var(--text-muted)",
 };
 
-/** A name as this instrument sets names: letterspaced small caps with the
- *  AUTHORED case intact. text-transform would print `hal` as `HAL` and lie
- *  about the model's name; small caps buys the same even ledger colour without
- *  touching the string. */
+/** A name as this instrument sets names: Cormorant 700 with the AUTHORED case
+ *  intact. text-transform would print `hal` as `HAL` and lie about the model's
+ *  name, so the string is never touched. The size is one of the three display
+ *  tokens, set at the call. */
 const nameStyle: CSSProperties = {
   fontFamily: display,
-  fontVariantCaps: "small-caps",
-  letterSpacing: "0.045em",
-  color: "var(--ink)",
+  fontWeight: 700,
+  color: "var(--text-primary)",
 };
 
-/** UI copy that names a door rather than a record — set in the serif at full
- *  case, so a DOOR ("Create a model") and a NAME (`hal`) are visibly different
- *  kinds of thing on the same page. */
-const doorStyle: CSSProperties = {
-  fontFamily: display,
-  color: "var(--ink)",
-};
+/** UI copy that names a door rather than a record. Since the makeover both are
+ *  the display face at 700; what tells a DOOR ("Open a model") from a NAME
+ *  (`hal`) is its place on the page, not a second face. */
+const doorStyle: CSSProperties = nameStyle;
+
+/** A name set at a display size: d1 the page, d2 a section, d3 a shelf, a door
+ *  or a row. */
+const d1: CSSProperties = { fontSize: "var(--t-d1)" };
+const d2: CSSProperties = { fontSize: "var(--t-d2)" };
+const d3: CSSProperties = { fontSize: "var(--t-d3)" };
 
 /** The title block. A page opens the way a title page opens: a rubric rule, the
  *  name in the serif at a size nothing else on the page approaches, the count
@@ -272,8 +279,8 @@ function Masthead({
       {back && (
         <button
           onClick={back.onClick}
-          className={`${dense ? "mb-6" : "mb-10"} block text-[11px] uppercase tracking-[0.22em]`}
-          style={folioStyle}
+          className={`${dense ? "mb-6" : "mb-10"} block ${LABEL}`}
+          style={labelStyle}
         >
           ‹ {back.label}
         </button>
@@ -283,14 +290,13 @@ function Masthead({
           {mark}
           <div className="min-w-0">
             {eyebrow && (
-              <div className="mb-3 text-[11px] uppercase tracking-[0.3em]" style={folioStyle}>
+              <div className={`mb-2 ${LABEL}`} style={labelStyle}>
                 {eyebrow}
               </div>
             )}
-            <h1
-              className={`${dense ? "text-5xl" : "text-6xl"} leading-[0.95] tracking-tight`}
-              style={{ fontWeight: 600, color: "var(--ink)", letterSpacing: "-0.02em" }}
-            >
+            {/* The name of the page is the one d1 on it (rule 5): Cormorant 700
+                at 30, the same on every level. */}
+            <h1 className="leading-tight" style={{ ...nameStyle, ...d1 }}>
               {title}
             </h1>
           </div>
@@ -298,13 +304,10 @@ function Masthead({
         {aside && <div className="shrink-0 pt-2">{aside}</div>}
         {stat !== undefined && (
           <div className="shrink-0 pt-1 text-right">
-            <div
-              className="text-5xl leading-none"
-              style={{ fontWeight: 600, color: "var(--ink)" }}
-            >
+            <div className="text-2xl font-semibold leading-none tabular" style={{ color: "var(--text-primary)" }}>
               {stat}
             </div>
-            <div className="mt-2 text-[10px] uppercase tracking-[0.24em]" style={folioStyle}>
+            <div className={`mt-2 ${LABEL}`} style={labelStyle}>
               {statLabel}
             </div>
           </div>
@@ -312,15 +315,15 @@ function Masthead({
       </div>
       {lede && (
         <p
-          className={`${dense ? "mt-4 max-w-2xl text-lg" : "mt-6 max-w-xl text-xl"} leading-snug`}
-          style={{ color: "var(--ink-secondary)" }}
+          className={`${dense ? "mt-4" : "mt-6"} max-w-2xl text-base leading-6`}
+          style={{ color: "var(--text-secondary)" }}
         >
           {lede}
           {note ? ` — ${note}` : ""}
         </p>
       )}
       {!lede && note && (
-        <p className="mt-5 max-w-2xl text-sm leading-relaxed" style={{ color: "var(--ink-secondary)" }}>
+        <p className="mt-4 max-w-2xl text-sm leading-5" style={{ color: "var(--text-secondary)" }}>
           {note}
         </p>
       )}
@@ -335,12 +338,12 @@ function Masthead({
 function BlockHeader({ label, count }: { label: string; count?: string }) {
   return (
     <div className="flex items-baseline gap-4 pb-3">
-      <span className="text-[11px] uppercase tracking-[0.28em]" style={folioStyle}>
+      <span className={LABEL} style={labelStyle}>
         {label}
       </span>
       <span className="h-px min-w-6 flex-1" style={{ background: "var(--rule-soft)" }} />
       {count && (
-        <span className="shrink-0 text-[11px] tabular" style={{ color: "var(--ink-muted)" }}>
+        <span className="shrink-0 text-xs tabular" style={{ color: "var(--text-muted)" }}>
           {count}
         </span>
       )}
@@ -359,8 +362,8 @@ function Ledger({ children }: { children: ReactNode }) {
 function Gutter({ index, folio }: { index?: number; folio?: string }) {
   return (
     <span
-      className="record-folio flex items-start justify-end pr-5 pt-5 text-[11px] tabular"
-      style={{ color: "var(--ink-muted)", transition: "color var(--transition-base)" }}
+      className="record-folio flex items-start justify-end pr-5 pt-5 text-xs tabular"
+      style={{ color: "var(--text-muted)", transition: "color var(--transition-base)" }}
     >
       {folio ?? (index === undefined ? "·" : String(index).padStart(2, "0"))}
     </span>
@@ -412,14 +415,14 @@ function LedgerRow({
       <Gutter index={index} folio={folio} />
       <span className="block py-4 pr-2">
         <span className="flex items-baseline gap-4">
-          <span className={door ? "text-2xl leading-tight" : "text-xl leading-tight"} style={door ? doorStyle : nameStyle}>
+          <span className="leading-tight" style={{ ...(door ? doorStyle : nameStyle), ...d3 }}>
             {name}
           </span>
           {tag && <Chip>{tag}</Chip>}
         </span>
         <span
-          className="mt-1.5 block max-w-xl text-sm leading-relaxed"
-          style={{ color: "var(--ink-secondary)" }}
+          className="mt-1 block max-w-xl text-sm leading-5"
+          style={{ color: "var(--text-secondary)" }}
         >
           {description}
         </span>
@@ -572,10 +575,10 @@ function Panel({
     <>
       {glyph}
       <span className="flex min-w-0 flex-col gap-1">
-        <span className="text-2xl leading-tight" style={doorStyle}>
+        <span className="leading-tight" style={{ ...doorStyle, ...d3 }}>
           {name}
         </span>
-        <span className="text-sm leading-relaxed" style={{ color: "var(--ink-secondary)" }}>
+        <span className="text-sm leading-5" style={{ color: "var(--text-secondary)" }}>
           {description}
         </span>
       </span>
@@ -592,15 +595,14 @@ function Panel({
   );
 }
 
-/** A group mark for a set of doors — the section head, with the lead group in
- *  the accent so the eye lands on Start. */
-function GroupHeader({ label, lead }: { label: string; lead?: boolean }) {
+/** A group mark for a set of doors: the label and a hairline out to the margin.
+ *  The lead group used to take the accent; the accent names an action, not an
+ *  emphasis (rule 8), so every group is the same mark. `lead` stays on the
+ *  prop so callers need no edit. */
+function GroupHeader({ label }: { label: string; lead?: boolean }) {
   return (
-    <div className="flex items-baseline gap-4 pb-3.5">
-      <span
-        className="text-[11px] uppercase tracking-[0.28em]"
-        style={{ ...folioStyle, color: lead ? "var(--accent)" : "var(--ink-muted)" }}
-      >
+    <div className="flex items-baseline gap-4 pb-3">
+      <span className={LABEL} style={labelStyle}>
         {label}
       </span>
       <span className="h-px min-w-6 flex-1" style={{ background: "var(--rule-soft)" }} />
@@ -641,11 +643,7 @@ export function HomeMenu({
   return (
     <div>
       <Masthead
-        title={
-          <span>
-            facets&#8202;·&#8202;<span style={{ color: "var(--accent)" }}>model</span>
-          </span>
-        }
+        title={<span>facets&#8202;·&#8202;model</span>}
         mark={<Gem />}
         lede={lede}
       />
@@ -700,11 +698,7 @@ export function HomeMenu({
           style={{ borderColor: "var(--rule-soft)" }}
         >
           {onAbout && (
-            <button
-              onClick={onAbout}
-              className="record-folio text-[11px] uppercase tracking-[0.2em]"
-              style={folioStyle}
-            >
+            <button onClick={onAbout} className={`record-folio ${LABEL}`} style={labelStyle}>
               This build
             </button>
           )}
@@ -713,8 +707,8 @@ export function HomeMenu({
             target="_blank"
             rel="noreferrer"
             onClick={openExternal}
-            className="record-folio text-[11px] uppercase tracking-[0.2em]"
-            style={folioStyle}
+            className={`record-folio ${LABEL}`}
+            style={labelStyle}
           >
             Documentation
           </a>
@@ -748,21 +742,16 @@ export function AboutPage({ onBack }: { onBack: () => void }) {
               className="grid grid-cols-[10rem_1fr] gap-5 border-b py-3"
               style={{ borderColor: "var(--rule-soft)" }}
             >
-              <span
-                className="text-[11px] uppercase tracking-[0.18em]"
-                style={folioStyle}
-              >
+              <span className={LABEL} style={labelStyle}>
                 {line.label}
               </span>
               <span className="min-w-0">
-                <span
-                  className="block break-all text-[11px]"
-                  style={{ fontFamily: mono, color: "var(--ink)" }}
-                >
+                {/* A commit, a version, a hash: the machine's numbers, so mono. */}
+                <span className="block break-all text-xs tabular" style={{ color: "var(--text-primary)" }}>
                   {line.value}
                 </span>
                 {line.note && (
-                  <span className="mt-1 block text-[11px]" style={{ color: "var(--ink-muted)" }}>
+                  <span className="mt-1 block text-xs" style={{ color: "var(--text-muted)" }}>
                     {line.note}
                   </span>
                 )}
@@ -770,7 +759,7 @@ export function AboutPage({ onBack }: { onBack: () => void }) {
             </div>
           ))}
         </div>
-        <p className="mt-5 max-w-xl text-sm leading-relaxed" style={{ color: "var(--ink-muted)" }}>
+        <p className="mt-4 max-w-xl text-sm leading-5" style={{ color: "var(--text-muted)" }}>
           Licence and third-party notices ship beside this app, in its{" "}
           <span style={{ fontFamily: mono }}>Contents/Resources</span> folder.
         </p>
@@ -847,13 +836,15 @@ function FacetButton({
       }}
     >
       {hue && <span aria-hidden className="h-2 w-0.5 shrink-0 self-center" style={{ background: hue }} />}
+      {/* A filter is a control, so it is set in Inter 14 (rule 5), not the
+          display face; the count is a numeral and keeps the mono column. */}
       <span
-        className="text-base leading-none"
-        style={{ ...nameStyle, color: selected ? "var(--ink)" : "var(--ink-secondary)" }}
+        className="text-sm font-medium leading-none"
+        style={{ color: selected ? "var(--text-primary)" : "var(--text-secondary)" }}
       >
         {facet.label}
       </span>
-      <span className="shrink-0 text-[10px] tabular" style={{ color: "var(--ink-muted)" }}>
+      <span className="shrink-0 text-xs tabular" style={{ color: "var(--text-muted)" }}>
         {facet.count}
       </span>
     </button>
@@ -873,7 +864,7 @@ function FilterLine({
 }) {
   return (
     <div className="flex flex-wrap items-baseline gap-x-6 gap-y-1 py-1">
-      <span className="w-24 shrink-0 text-[11px] uppercase tracking-[0.22em]" style={folioStyle}>
+      <span className={`w-24 shrink-0 ${LABEL}`} style={labelStyle}>
         {label}
       </span>
       {children}
@@ -1004,13 +995,15 @@ function ModelCard({
               structures differ in their last three words, so a single truncated
               line prints the same string on three cards and the shelf stops
               being readable. */}
-          <span className="line-clamp-2 text-lg leading-tight" style={nameStyle}>
+          {/* A card name is scanned across a grid, so it is Inter 14/500 (rule
+              5's row size), not the display face. */}
+          <span className="line-clamp-2 text-sm font-medium leading-tight" style={{ color: "var(--text-primary)" }}>
             {name}
           </span>
           {runs && (
             <span
-              className="shrink-0 text-[10px]"
-              style={{ fontFamily: mono, letterSpacing: "0.12em", color: "var(--seal)" }}
+              className="shrink-0 text-xs"
+              style={{ letterSpacing: "var(--tracking-label)", color: "var(--seal)" }}
             >
               runs
             </span>
@@ -1021,8 +1014,8 @@ function ModelCard({
                carries the full text as its title, instead of drifting past the
                card into the next column. */
             <span
-              className="min-w-0 truncate text-[10px]"
-              style={{ fontFamily: mono, letterSpacing: "0.12em", color: "var(--ink-muted)" }}
+              className="min-w-0 truncate text-xs"
+              style={{ letterSpacing: "var(--tracking-label)", color: "var(--text-muted)" }}
               title={marker}
               data-testid="card-marker"
             >
@@ -1030,7 +1023,7 @@ function ModelCard({
             </span>
           )}
         </span>
-        <span className="mt-0.5 block truncate text-[11px]" style={{ color: "var(--ink-secondary)" }}>
+        <span className="mt-0.5 block truncate text-xs" style={{ color: "var(--text-secondary)" }}>
           {sub}
         </span>
       </span>
@@ -1069,20 +1062,18 @@ function CardGrid({ across, children }: { across: 3 | 4; children: ReactNode }) 
  *  strip's gloss, the arrangement toggle, the Yours count and its manage link.
  *  `BlockHeader` above is the same object with a count; this one takes a node,
  *  because these are controls rather than facts. */
-function SectionHead({ label, right, lead }: { label: string; right?: ReactNode; lead?: boolean }) {
+function SectionHead({ label, right }: { label: string; right?: ReactNode; lead?: boolean }) {
   // #472 (2026-10-10): the doors are the page's major categories and should
-  // pull the eye before any card does — the display face at a size above the
-  // card names, not a folio whisper. The rule and the right-hand control stay.
+  // pull the eye before any card does — the display face at d2, above the card
+  // names. The rule and the right-hand control stay. `lead` once put the
+  // accent on the first head; the accent names an action (rule 8), so the prop
+  // is kept for callers and does nothing.
   return (
     <div
       className="mb-4 flex items-baseline gap-4 border-b pb-2"
       style={{ borderColor: "var(--ink)", borderBottomWidth: "2px" }}
     >
-      <span
-        className="shrink-0 text-2xl leading-none"
-        style={{ ...nameStyle, color: lead ? "var(--accent)" : "var(--ink)" }}
-        data-testid="section-head"
-      >
+      <span className="shrink-0 leading-none" style={{ ...nameStyle, ...d2 }} data-testid="section-head">
         {label}
       </span>
       <span className="min-w-6 flex-1" />
@@ -1117,17 +1108,17 @@ function ShelfHead({
       {/* A shelf is the second level: the display face a step below the
           section head, a step above the card names, so the three sizes read
           as three levels down the page. */}
-      <span className="text-lg leading-none" style={{ ...nameStyle, color: "var(--ink-secondary)" }}>
+      <span className="leading-none" style={{ ...nameStyle, ...d3, color: "var(--text-secondary)" }}>
         {label}
       </span>
       {note && (
-        <span className="text-[10px] tracking-[0.12em]" style={folioStyle}>
+        <span className="text-xs" style={{ color: "var(--text-muted)" }}>
           {note}
         </span>
       )}
       <span className="flex-1" />
       {shown < total && (
-        <button onClick={onExpand} className="record-folio shrink-0 text-[10px] tracking-[0.1em]" style={folioStyle}>
+        <button onClick={onExpand} className="record-folio shrink-0 text-xs" style={labelStyle}>
           all {total} →
         </button>
       )}
@@ -1293,7 +1284,7 @@ export function LibraryBrowser({
                   lead
                   label="Recent"
                   right={
-                    <span className="shrink-0 text-[10px] tracking-[0.12em]" style={{ fontFamily: mono, color: "var(--ink-muted)" }}>
+                    <span className="shrink-0 text-xs" style={{ color: "var(--text-muted)" }}>
                       yours, and ours you have touched
                     </span>
                   }
@@ -1439,12 +1430,12 @@ export function LibraryBrowser({
               <SectionHead
                 label="Yours"
                 right={
-                  <span className="flex shrink-0 items-baseline gap-3 text-[10px] tracking-[0.12em]" style={{ fontFamily: mono, color: "var(--ink-muted)" }}>
+                  <span className="flex shrink-0 items-baseline gap-3 text-xs" style={{ color: "var(--text-muted)" }}>
                     <span>
-                      {savedCount} · newest first
+                      <span className="tabular">{savedCount}</span> · newest first
                     </span>
                     {savedCount > 0 && (
-                      <button onClick={() => setManage((m) => !m)} className="record-folio" style={folioStyle}>
+                      <button onClick={() => setManage((m) => !m)} className="record-folio" style={labelStyle}>
                         {manage ? "done" : "manage →"}
                       </button>
                     )}
@@ -1457,13 +1448,13 @@ export function LibraryBrowser({
                   reading, not a nag. Both only once something is saved. */}
               {savedCount > 0 && storageLine && (
                 <div
-                  className="mb-3 flex flex-wrap items-baseline gap-x-4 gap-y-1 text-[10px] tracking-[0.12em]"
-                  style={{ fontFamily: mono, color: "var(--ink-muted)" }}
+                  className="mb-3 flex flex-wrap items-baseline gap-x-4 gap-y-1 text-xs"
+                  style={{ color: "var(--text-muted)" }}
                 >
                   <span>{storageLine}</span>
                   <span>last exported: {exportedAt === null ? "never" : whenLabel(exportedAt)}</span>
                   {manage && onExportLibrary && (
-                    <button onClick={onExportLibrary} className="record-folio" style={folioStyle}>
+                    <button onClick={onExportLibrary} className="record-folio" style={labelStyle}>
                       export library (.sl) →
                     </button>
                   )}
@@ -1490,8 +1481,8 @@ export function LibraryBrowser({
                   {!showAllSaved && !q && shownSaved.length > SHELF_CARDS && (
                     <button
                       onClick={() => setShowAllSaved(true)}
-                      className="record-folio mt-2.5 text-[10px] tracking-[0.12em]"
-                      style={folioStyle}
+                      className="record-folio mt-2.5 text-xs"
+                      style={labelStyle}
                     >
                       and {shownSaved.length - SHELF_CARDS} more →
                     </button>
@@ -1533,10 +1524,10 @@ export function LibraryBrowser({
                   ·
                 </span>
                 <span className="min-w-0">
-                  <span className="block text-lg leading-tight" style={doorStyle}>
+                  <span className="block leading-tight" style={{ ...doorStyle, ...d3 }}>
                     Open a file…
                   </span>
-                  <span className="mt-0.5 block truncate text-[11px]" style={{ color: "var(--ink-secondary)" }}>
+                  <span className="mt-0.5 block truncate text-xs" style={{ color: "var(--text-secondary)" }}>
                     a model .json from your computer
                   </span>
                 </span>
@@ -1546,8 +1537,8 @@ export function LibraryBrowser({
             <div className="mt-8 pt-3.5" style={{ borderTop: "1px solid var(--rule-soft)" }}>
               <button
                 onClick={() => setView("list")}
-                className="record-folio text-[11px] uppercase tracking-[0.2em]"
-                style={folioStyle}
+                className="record-folio text-[11px] font-semibold uppercase"
+                style={labelStyle}
               >
                 Browse all {all.length + savedCount} as a list
               </button>
@@ -1592,9 +1583,9 @@ function ArrangeToggle({ value, onChange }: { value: Arrange; onChange: (v: Arra
     <button
       onClick={() => onChange(v)}
       aria-pressed={value === v}
-      className="px-2.5 py-1 text-[10px] uppercase tracking-[0.16em]"
+      className="px-2.5 py-1 text-[11px] font-semibold uppercase"
       style={{
-        fontFamily: mono,
+        letterSpacing: "var(--tracking-label)",
         background: value === v ? "var(--ink)" : "transparent",
         color: value === v ? "var(--paper)" : "var(--ink-muted)",
       }}
@@ -1611,18 +1602,11 @@ function ArrangeToggle({ value, onChange }: { value: Arrange; onChange: (v: Arra
 }
 
 /** A section that has nothing to show, saying so in one line on the rule. The
- *  page keeps its shape: an empty section is a sentence, never a gap. */
+ *  page keeps its shape: an empty section is a sentence, never a gap. Plain
+ *  Inter: the italic serif lede is on the charter's withdrawn list. */
 function EmptyLine({ children }: { children: ReactNode }) {
   return (
-    <div
-      className="border-t py-3 text-sm"
-      style={{
-        borderColor: "var(--rule-soft)",
-        color: "var(--ink-muted)",
-        fontFamily: display,
-        fontStyle: "italic",
-      }}
-    >
+    <div className="border-t py-3 text-sm" style={{ borderColor: "var(--rule-soft)", color: "var(--text-muted)" }}>
       {children}
     </div>
   );
@@ -1793,8 +1777,8 @@ function LedgerView({
     <>
       <button
         onClick={onBackToDoors}
-        className="record-folio mb-4 block text-[11px] uppercase tracking-[0.2em]"
-        style={folioStyle}
+        className="record-folio mb-4 block text-[11px] font-semibold uppercase"
+        style={labelStyle}
       >
         ‹ Doors
       </button>
@@ -1822,8 +1806,8 @@ function LedgerView({
           {facet && (
             <button
               onClick={() => setFacet(null)}
-              className="record-folio pb-1.5 pt-1 text-[11px] uppercase tracking-[0.2em]"
-              style={folioStyle}
+              className="record-folio pb-1.5 pt-1 text-[11px] font-semibold uppercase"
+              style={labelStyle}
             >
               clear · show all {all.length}
             </button>
@@ -1872,8 +1856,8 @@ function LedgerView({
                 style={{ borderColor: "var(--rule-soft)" }}
               >
                 <span
-                  className="flex items-start justify-end pr-5 pt-3 text-[11px] tabular"
-                  style={{ color: "var(--ink-muted)" }}
+                  className="flex items-start justify-end pr-5 pt-3 text-xs tabular"
+                  style={{ color: "var(--text-muted)" }}
                 >
                   {String(i + 1).padStart(2, "0")}
                 </span>
@@ -1885,8 +1869,8 @@ function LedgerView({
             {foldedRoots > 0 && (
               <button
                 onClick={() => setShowAllSaved(true)}
-                className="block w-full border-b py-2.5 text-left text-[11px] uppercase tracking-[0.18em]"
-                style={{ borderColor: "var(--rule-soft)", ...folioStyle }}
+                className="block w-full border-b py-2.5 text-left text-[11px] font-semibold uppercase"
+                style={{ borderColor: "var(--rule-soft)", ...labelStyle }}
               >
                 show all {tree.length} saved models
               </button>
@@ -1950,8 +1934,8 @@ function ModelGutter({ model, index }: { model: ShippedModel; index: number }) {
   const compiled = useThumbnailModel(model.key, sl);
   return (
     <span
-      className="record-folio flex items-start justify-end pr-1 pt-1 text-[11px] tabular"
-      style={{ color: "var(--ink-muted)", transition: "color var(--transition-base)" }}
+      className="record-folio flex items-start justify-end pr-1 pt-1 text-xs tabular"
+      style={{ color: "var(--text-muted)", transition: "color var(--transition-base)" }}
     >
       {compiled ? <Thumbnail model={compiled} size={40} /> : String(index).padStart(2, "0")}
     </span>
@@ -1976,13 +1960,13 @@ function ModelRow({
       <ModelGutter model={model} index={index} />
       <span className="block min-w-0">
         <span className="flex items-baseline gap-3">
-          <span className="truncate text-2xl leading-tight" style={nameStyle}>
+          <span className="truncate leading-tight" style={{ ...nameStyle, ...d3 }}>
             {model.name}
           </span>
           {model.runs && (
             <span
               className="shrink-0 text-xs"
-              style={{ fontFamily: mono, letterSpacing: "0.12em", color: "var(--seal)" }}
+              style={{ letterSpacing: "var(--tracking-label)", color: "var(--seal)" }}
             >
               runs
             </span>
@@ -1990,25 +1974,22 @@ function ModelRow({
           {model.with && (
             <span
               className="shrink-0 text-xs"
-              style={{ fontFamily: mono, letterSpacing: "0.12em", color: "var(--ink-muted)" }}
+              style={{ letterSpacing: "var(--tracking-label)", color: "var(--text-muted)" }}
               data-testid="row-marker"
             >
               with {model.with}
             </span>
           )}
         </span>
-        <span className="mt-0.5 block truncate text-sm" style={{ color: "var(--ink-secondary)" }}>
+        <span className="mt-0.5 block truncate text-sm" style={{ color: "var(--text-secondary)" }}>
           {model.description}
         </span>
       </span>
       <span className="block max-w-[16rem] shrink-0 pt-1 text-right">
         <span className="flex flex-wrap items-center justify-end gap-x-3 gap-y-1">
+          {/* Tags and the set name are labels; the citation is prose at meta. */}
           {model.tags.map((t) => (
-            <span
-              key={`${t.kind}:${t.id}`}
-              className="inline-flex items-center gap-1.5 text-[10px] tracking-[0.14em]"
-              style={{ fontFamily: mono, color: "var(--ink-muted)" }}
-            >
+            <span key={`${t.kind}:${t.id}`} className={`inline-flex items-center gap-1.5 ${LABEL}`} style={labelStyle}>
               {hueOf(t) && (
                 <span aria-hidden className="h-2.5 w-0.5 shrink-0" style={{ background: hueOf(t) }} />
               )}
@@ -2016,19 +1997,13 @@ function ModelRow({
             </span>
           ))}
           {model.set && (
-            <span
-              className="text-[10px] tracking-[0.14em]"
-              style={{ fontFamily: mono, color: "var(--ink-muted)" }}
-            >
+            <span className={LABEL} style={labelStyle}>
               {model.set}
             </span>
           )}
         </span>
         {model.citation && (
-          <span
-            className="mt-1 block text-[10px] leading-snug tracking-[0.04em]"
-            style={{ fontFamily: mono, color: "var(--ink-muted)" }}
-          >
+          <span className="mt-1 block text-xs leading-4" style={{ color: "var(--text-muted)" }}>
             {model.citation}
           </span>
         )}
@@ -2122,10 +2097,13 @@ function LibraryRow({
           />
         ) : (
           <button onClick={() => onLoad(node.name)} className="min-w-0 flex-1 text-left" title={node.name}>
-            <div className={depth === 0 ? "truncate text-lg leading-tight" : "truncate text-sm"} style={nameStyle}>
+            <div
+              className={depth === 0 ? "truncate leading-tight" : "truncate text-sm font-medium"}
+              style={depth === 0 ? { ...nameStyle, ...d3 } : { color: "var(--text-primary)" }}
+            >
               {node.name}
             </div>
-            <div className="text-[10px]" style={{ fontFamily: mono, color: "var(--ink-muted)" }}>
+            <div className="text-xs" style={{ color: "var(--text-muted)" }}>
               saved {relTime(node.savedAt)}
               {node.missingReferents > 0 &&
                 ` · ${node.missingReferents} referent${node.missingReferents === 1 ? "" : "s"} missing`}
