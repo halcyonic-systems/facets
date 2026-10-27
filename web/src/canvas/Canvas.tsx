@@ -55,7 +55,7 @@ import { LensRegistry, type PaletteTool } from "./lenses/registry";
 import { MassOverlay } from "./MassOverlay";
 import { GroundingLegend, GroundingOverlayContext } from "./grounding";
 import { screenHold, screenWorld, strokeWorld, textWorld, StageScale } from "./stageScale";
-import { PaperTab } from "./lenses/common";
+import { NameLayer, PaperTab } from "./lenses/common";
 import type { DecomposeAffordance } from "./NodeEditor";
 
 /** #335: the "nothing is crowded" set. Hoisted to module scope so the common
@@ -455,6 +455,20 @@ export default function Canvas({
           })
       : [];
 
+  // The notches on each interface's own rim, so its name sits clear of one
+  // that points down over it (polish pass, 2026-10-27). Presentation only.
+  const notchesOf = new Map<number, Array<{ angle: number; rim: number; screenHw?: number }>>();
+  for (const { port, angle, compact } of [...portsAt, ...flowlessAt]) {
+    if (!compact) continue;
+    const list = notchesOf.get(port.component) ?? [];
+    list.push({
+      angle,
+      rim: interfaceRim(port.component),
+      screenHw: openApertureIds.has(port.component) ? APERTURE_PORT_SCREEN_HW : undefined,
+    });
+    notchesOf.set(port.component, list);
+  }
+
   const portTargets: PortTarget[] = [...portsAt, ...flowlessAt].map(({ port, at }) => ({
     at,
     component: port.component,
@@ -596,6 +610,7 @@ export default function Canvas({
   // its `hoverTarget` is the drop target of a flow being dragged. The rim door
   // needs the ordinary reading: the pointer is on this component.
   const [hoverNodeId, setHoverNodeId] = useState<number | null>(null);
+  const [nameLayerEl, setNameLayerEl] = useState<SVGGElement | null>(null);
   useLayoutEffect(() => {
     const svg = svgRef.current;
     if (!svg) return;
@@ -1014,6 +1029,7 @@ export default function Canvas({
       }}
     >
       <StageScale.Provider value={scale}>
+      <NameLayer.Provider value={{ el: nameLayerEl, open: (id) => openApertureIds.has(id) }}>
       <defs>
         {/* Every head is one size (rule 19): `userSpaceOnUse` so the stroke
             width no longer sizes it, `headSize` world px held and floored. */}
@@ -1467,6 +1483,7 @@ export default function Canvas({
               dragging={dragThing === t.id && dragMoved}
               sim={sim?.nodes[t.name]}
               scale={scale}
+              notches={notchesOf.get(t.id)}
               onPointerDown={(e) => gestures.onNodePointerDown(e, t)}
               onHandlePointerDown={(e) => {
                 if (!inert) gestures.onHandlePointerDown(e, t);
@@ -1510,6 +1527,8 @@ export default function Canvas({
             )}
           </g>
         ))}
+        {/* Every node's name, over every body (NameLayer in lenses/common). */}
+        <g ref={setNameLayerEl} data-name-layer />
 
         {/* #139 M1: the open apertures, over the nodes whose faces they take.
             Drawn AFTER the node so the component keeps its hit disc, its drag
@@ -1637,6 +1656,7 @@ export default function Canvas({
           viewing: {placeName}
         </text>
       )}
+      </NameLayer.Provider>
     </StageScale.Provider>
     </svg>
     {groundingOverlay && <GroundingLegend things={dModel.things} relations={dModel.relations} />}

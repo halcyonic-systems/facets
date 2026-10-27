@@ -11,7 +11,15 @@ import { NODE_R, type Pt } from "../geometry";
 import { groundingLine, groundingStroke, useGroundingOverlay } from "../grounding";
 import { HANDLE, LABEL, STROKE_FLOOR_PX, STYLE, TAB } from "../style";
 import type { ReactElement, ReactNode, PointerEvent as ReactPointerEvent, SVGProps } from "react";
-import { Children, cloneElement, isValidElement, useLayoutEffect, useRef, useState } from "react";
+import { Children, cloneElement, createContext, isValidElement, useContext, useLayoutEffect, useRef, useState } from "react";
+import { createPortal } from "react-dom";
+
+/** The stage's names layer (polish pass, 2026-10-27): a `<g>` Canvas draws
+ *  after every node body, so one node's body never cuts another's name. Names
+ *  carry no pointer events, so hoisting them moves paint order only. `open`
+ *  says which things are open apertures, whose names the aperture CSS hides.
+ *  Without a provider (unit renders) the name draws inline as before. */
+export const NameLayer = createContext<{ el: SVGGElement | null; open: (id: number) => boolean } | null>(null);
 import { COARSE_POINTER, screenHold, screenWorld, strokeWorld, textWorld, useStageHold, useStageScale } from "../stageScale";
 
 /** The text of a label element, flattened, so a paper tab can re-measure only
@@ -155,6 +163,10 @@ interface NodeBodyProps {
    *  the drawn body (shapes, halos, glyph); the hit disc, label text size, and
    *  connect handle stay full-size for usability. */
   bodyScale?: number;
+  /** How far below the centre (world px) something of this node's own is
+   *  drawn, an interface notch pointing down; the name sits under it, never
+   *  under the notch (polish pass, 2026-10-27). */
+  labelClear?: number;
 }
 
 // The regulator triangle (Mobus Fig 4.17), apex up, circumradius optically
@@ -198,6 +210,7 @@ export function NodeBody({
   envHint = false,
   bodyScale = 1,
   dash,
+  labelClear = 0,
 }: NodeBodyProps) {
   const ctxScale = useStageScale();
   const sc = scale === undefined ? ctxScale : scale;
@@ -228,6 +241,8 @@ export function NodeBody({
   const shapeH = shapeBot - shapeTop;
   // The surface step: hover or drag lifts the body one step (paper to well).
   const stepped = (selfHover && !hovered) || dragging;
+  const nameLayer = useContext(NameLayer);
+  const nameSize = textWorld(labelSmall ? LABEL.small : LABEL.size, sc, LABEL.floorPx);
 
   return (
     <g
@@ -507,11 +522,13 @@ export function NodeBody({
       {/* #335: a thing's NAME is a fixed obstacle in the label-crowding pass —
           an edge label landing on it is the one that goes quiet, since a name
           has no hover gesture to give it back. Tagged, never quieted. */}
+      {(() => {
+        const name = (
       <PaperTab data-node-label={thing.id}>
         <text
-          y={NODE_R * bodyScale + 16}
+          y={Math.max(NODE_R * bodyScale + 16, labelClear + screenWorld(4, sc) + 0.8 * nameSize)}
           textAnchor="middle"
-          fontSize={textWorld(labelSmall ? LABEL.small : LABEL.size, sc, LABEL.floorPx)}
+          fontSize={nameSize}
           fontWeight={LABEL.weight}
           fill={labelSmall ? "var(--text-secondary)" : STYLE.label.fill}
           className="font-body pointer-events-none"
@@ -519,6 +536,20 @@ export function NodeBody({
           {thing.name}
         </text>
       </PaperTab>
+        );
+        return nameLayer?.el
+          ? createPortal(
+              <g
+                transform={`translate(${thing.x}, ${thing.y})`}
+                opacity={pending ? 0.5 : 1}
+                className={nameLayer.open(thing.id) ? "aperture-open" : undefined}
+              >
+                {name}
+              </g>,
+              nameLayer.el,
+            )
+          : name;
+      })()}
 
       {/* The connect handle is a reading, not a world object: an 8 px disc on
           screen at every zoom (tldraw's 8 / zoom), over a hit disc of r 12
@@ -603,6 +634,10 @@ export function EdgeScaffold({
 }: EdgeScaffoldProps) {
   const hold = useStageHold();
   const scale = useStageScale();
+  // The small tag under a flow's label (ample, or its run reading) keeps the
+  // flow label's 10 px screen floor, and drops far enough to clear it.
+  const tagSize = textWorld(10, scale, LABEL.edgeFloorPx);
+  const tagDrop = Math.max(14 * hold, screenWorld(14, scale));
   // #411: under the overlay the stroke reads grade, not substance. The
   // arrowhead keeps its marker (direction is not in question) but takes the
   // grade's colour through the generic marker, since kind markers are inked.
@@ -722,9 +757,9 @@ export function EdgeScaffold({
       {ample ? (
         <text
           x={labelAt.x}
-          y={labelAt.y + 14 * hold}
+          y={labelAt.y + tagDrop}
           textAnchor="middle"
-          fontSize={10 * hold}
+          fontSize={tagSize}
           fill="var(--text-muted)"
           fontStyle="italic"
           className="font-body pointer-events-none"
@@ -735,9 +770,9 @@ export function EdgeScaffold({
         sim && (
           <text
             x={labelAt.x}
-            y={labelAt.y + 14 * hold}
+            y={labelAt.y + tagDrop}
             textAnchor="middle"
-            fontSize={10 * hold}
+            fontSize={tagSize}
             fill="var(--accent-strong)"
             className="font-mono tabular pointer-events-none"
           >

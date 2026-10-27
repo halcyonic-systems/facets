@@ -14,7 +14,18 @@ import { EdgeScaffold, NodeBody, type EdgeStyle } from "./common";
 import type { LensEdgeProps, LensNodeProps } from "./registry";
 import { screenHold, strokeWorld, textWorld, useStageScale } from "../stageScale";
 
-function NodeView({ thing, isOrphan, hovered, selected, dragging, sim, onPointerDown, onHandlePointerDown, scale, inert }: LensNodeProps) {
+function NodeView({ thing, isOrphan, hovered, selected, dragging, sim, onPointerDown, onHandlePointerDown, scale, inert, notches }: LensNodeProps) {
+  const ctxScale = useStageScale();
+  const sc = scale ?? ctxScale;
+  // The lowest point of any notch on this thing's rim, below its centre: the
+  // capsule is centred on the rim point and rotated to its angle, so its
+  // vertical half-extent is hw|sin| + hh|cos| (plus half its stroke).
+  const labelClear = (notches ?? []).reduce((low, n) => {
+    const { hw, hh } = notchSize(true, sc, n.screenHw);
+    const s = Math.sin(n.angle);
+    const c = Math.cos(n.angle);
+    return Math.max(low, n.rim * s + hw * Math.abs(s) + hh * Math.abs(c) + strokeWorld(STYLE.portStrokeWidth, sc, STROKE_FLOOR_PX) / 2);
+  }, 0);
   // #100 phase 4: the decision/regulator process is the ONE sub-kind Mobus's
   // own drawings give a shape — the warm triangle of Fig 4.17. Kernel taxonomy:
   // Modulating IS that decision/regulation primitive (the regulator monitor;
@@ -49,6 +60,7 @@ function NodeView({ thing, isOrphan, hovered, selected, dragging, sim, onPointer
       isSquare={thing.role === "Environment"}
       showHalo={thing.role === "Component" && !iface}
       bodyScale={iface ? INTERFACE_SCALE : undefined}
+      labelClear={labelClear}
       // #308 part A: the reserved pass-way is an interface not yet identified.
       dash={iface && thing.passway && thing.name === "unresolved" ? "4 3" : undefined}
       envOpen={thing.role === "Environment"}
@@ -287,6 +299,27 @@ function EdgeView({ model, relation, fact, ring, selected, driven, sim, crowded,
   );
 }
 
+/** The capsule's half-width along the normal (`hw`), half-height across it
+ *  (`hh`) and glyph scale (`k`), in world px. Floored on SCREEN so the chevron
+ *  stays readable when the model is fitted. `compact` keeps its #306
+ *  proportion of the full notch: a pass-way in the boundary, not a peer of the
+ *  processes. Shared by PortView and the owner's name placement. */
+function notchSize(compact: boolean, scale: number, screenHw?: number): { hw: number; hh: number; k: number } {
+  const hw0 = screenHw !== undefined
+    ? Math.min(portHalfWidth(scale), screenHw / Math.max(scale, 0.05)) * (compact ? 0.66 : 1)
+    : portHalfWidth(scale) * screenHold(scale) * (compact ? 0.66 : 1);
+  const hh0 = hw0 * (compact ? 0.62 : 0.58);
+  // The glyph is drawn against a 7px half-height and scaled with the capsule, so
+  // enlarging the notch enlarges the one mark that carries direction. Rule 17:
+  // the chevron (6 glyph units tall at k = 1 for the hybrid pair, 6.8 for
+  // the single) never falls under CHEVRON_MIN_PX on screen; the capsule
+  // grows to keep holding it.
+  const k = Math.max(hh0 / 7, CHEVRON_MIN_PX / (6 * Math.max(scale, 0.05)));
+  const hh = Math.max(hh0, k * 4.6);
+  const hw = Math.max(hw0, hh * 1.3);
+  return { hw, hh, k };
+}
+
 /** A Mobus interface — a round-edged capsule that PENETRATES the boundary (Fig.
  *  4.9), straddling the membrane along its outward normal so it reads as a
  *  pass-way, not a bead on the ring. The direction chevron points the way the
@@ -317,21 +350,7 @@ function PortView({
 }) {
   const label = port.protocol.length > 22 ? `${port.protocol.slice(0, 21)}…` : port.protocol;
   const out = { x: Math.cos(angle), y: Math.sin(angle) };
-  // Capsule half-width along the normal, floored on SCREEN so the chevron stays
-  // readable when the model is fitted. `compact` keeps its #306 proportion of
-  // the full notch — a pass-way in the boundary, not a peer of the processes.
-  const hw0 = screenHw !== undefined
-    ? Math.min(portHalfWidth(scale), screenHw / Math.max(scale, 0.05)) * (compact ? 0.66 : 1)
-    : portHalfWidth(scale) * screenHold(scale) * (compact ? 0.66 : 1);
-  const hh0 = hw0 * (compact ? 0.62 : 0.58);
-  // The glyph is drawn against a 7px half-height and scaled with the capsule, so
-  // enlarging the notch enlarges the one mark that carries direction. Rule 17:
-  // the chevron (6 glyph units tall at k = 1 for the hybrid pair, 6.8 for
-  // the single) never falls under CHEVRON_MIN_PX on screen; the capsule
-  // grows to keep holding it.
-  const k = Math.max(hh0 / 7, CHEVRON_MIN_PX / (6 * Math.max(scale, 0.05)));
-  const hh = Math.max(hh0, k * 4.6);
-  const hw = Math.max(hw0, hh * 1.3);
+  const { hw, hh, k } = notchSize(compact, scale, screenHw);
   const n = (v: number) => (v * k).toFixed(2);
   const chevron =
     port.direction === "Receives"

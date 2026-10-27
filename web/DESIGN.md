@@ -115,6 +115,10 @@ models at their fit scale.
   ink, not size. Every label sits on a paper tab (`PaperTab`: a `--paper`
   rect from `getBBox`, 2 px pad and radius) so it reads over any crossing.
   JetBrains Mono stays on the kernel's numbers (sim readouts, signatures).
+  Names draw in one layer over every node body (`NameLayer`, polish pass
+  2026-10-27), so a neighbour's body never cuts a name; an interface's name
+  sits below the lowest notch on its own rim; the small tag under a flow
+  label (ample, a run reading) keeps the 10 px floor.
 - **Marks and colour (rules 9a, 9b):** a component's process glyph wears its
   `--prim-*` hue (centered on the body, and on the rail row and inspector);
   the regulator triangle takes `--prim-modulating`; flows and the substance

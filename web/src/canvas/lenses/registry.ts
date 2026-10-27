@@ -46,6 +46,9 @@ export interface LensNodeProps {
   /** Stage scale — marks that must stay a hand's size (the connect handle)
    *  hold a screen size above 1× instead of growing with the world. */
   scale?: number;
+  /** The interface notches riding this thing's rim (Mobus, #306), so its name
+   *  can sit clear of a notch that points down over it. Presentation only. */
+  notches?: Array<{ angle: number; rim: number; screenHw?: number }>;
 }
 
 export interface LensEdgeProps {
