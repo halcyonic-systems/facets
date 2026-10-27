@@ -3050,7 +3050,7 @@ function Workspace() {
   // strips; the open choice is the checked menuitemradio.
   const viewMenu = canvasModel ? (
     <div data-lens={canvasModel.lens}>
-    <Menu label="View" title="Mode, Model or Measurements, and the lens">
+    <Menu label="View" title="Mode, Model or Measurements, and the lens" align="end">
       <MenuSection title="Mode">
         {WORKSPACE_MODES.map((m) => (
           <MenuItem key={m.value} role="menuitemradio" checked={mode === m.value} onSelect={() => setWorkspaceMode(m.value)} title={m.title}>
