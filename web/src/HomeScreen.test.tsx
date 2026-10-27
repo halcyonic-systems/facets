@@ -20,6 +20,13 @@ import { describe, expect, it, vi } from "vitest";
 import { renderToStaticMarkup } from "react-dom/server";
 import { AboutPage, HomeMenu, LibraryBrowser } from "./HomeScreen";
 import { facets, featured, matchesFacet, shelves, shippedModels, type Arrange, type Tag } from "./home";
+import { resetLibraryForTest, setLibraryAllEnabled } from "./libraryFlag";
+
+// Every claim below about the whole library is made with the library door
+// OPEN (`?library=all`); the door's own behaviour is pinned in the last
+// describe, which closes it and opens it again. Set at import, not in a hook:
+// several describes render their markup while the file is collected.
+setLibraryAllEnabled(true);
 import type { RecentEntry } from "./recent";
 import { CORPUS } from "./corpus";
 import type { LibraryNode } from "./libraryTree";
@@ -318,7 +325,7 @@ describe("the doors", () => {
     // Start here: the three pinned cards, in order, before the shelves.
     expect(html).toContain("Start here");
     const names = featured(shipped).map((m) => m.name);
-    expect(names).toEqual(["LLM Serving Market", "Bitcoin", "The Steel-Plant, two levels deep"]);
+    expect(names).toEqual(["LLM Serving Market", "Federal Reserve", "Bitcoin"]);
     const at = names.map((n) => html.indexOf(escapeHtml(n)));
     expect(at[0]).toBeGreaterThan(-1);
     expect(at[0]).toBeLessThan(at[1]);
@@ -533,5 +540,52 @@ describe("#472 fold: three doors, provenance as markers", () => {
     // The marker rides the card wherever the card shows — here, found by name.
     const found = page({ initialQuery: field[0].name });
     expect(found).toContain(`with ${field[0].with}`);
+  });
+});
+
+describe("the library door (cut 2026-10-26)", () => {
+  const shipped = shippedModels();
+  const closed = <T,>(f: () => T): T => {
+    resetLibraryForTest();
+    try {
+      return f();
+    } finally {
+      setLibraryAllEnabled(true);
+    }
+  };
+
+  it("closed, the page carries the three pinned models, yours, and the file door — and no shelves", () => {
+    const html = closed(() => doors());
+    expect(html).toContain("Start here");
+    for (const name of ["LLM Serving Market", "Federal Reserve", "Bitcoin"]) expect(html).toContain(name);
+    expect(html).not.toContain("Start from one of ours");
+    expect(html).not.toContain("By lens");
+    expect(html).not.toContain("Steel-Plant");
+    expect(html).not.toContain("Ribosome");
+    expect(html).toContain("Yours");
+    expect(html).toContain("From a file");
+    expect(html).toContain("Browse all 3 as a list");
+    expect(html).toContain("open your own");
+  });
+
+  it("closed, the ledger lists the same three and nothing else", () => {
+    const html = closed(() => page({ initialView: "list" }));
+    expect(html).toContain("LLM Serving Market");
+    expect(html).not.toContain("Steel-Plant");
+    expect(html).not.toContain("students-in-a-course");
+  });
+
+  it("open, everything that ships is back on the page", () => {
+    const html = doors();
+    expect(html).toContain("Start from one of ours");
+    expect(html).toContain("Steel-Plant");
+    expect(html).toContain(`Browse all ${shipped.length} as a list`);
+  });
+
+  it("nothing stops shipping because the door is closed", () => {
+    // The door decides what the page shows first; the standard library itself
+    // is unchanged, so every gate that reads it still reads all of it.
+    expect(closed(() => shippedModels().length)).toBe(shipped.length);
+    expect(featured(shipped).map((m) => m.name)).toEqual(["LLM Serving Market", "Federal Reserve", "Bitcoin"]);
   });
 });

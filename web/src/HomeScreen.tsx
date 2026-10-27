@@ -62,6 +62,7 @@ import {
   type Tag,
 } from "./home";
 import { noteArrange, readArrange, readRecent, type RecentEntry } from "./recent";
+import { libraryAllEnabled } from "./libraryFlag";
 import { openExternal } from "./desktop";
 import { buildInfo, provenanceLines } from "./buildInfo";
 import Thumbnail from "./canvas/Thumbnail";
@@ -1183,7 +1184,13 @@ export function LibraryBrowser({
   storageLine?: string;
   exportedAt?: number | null;
 }) {
-  const all = shippedModels();
+  // The library door (libraryFlag.ts, cut 2026-10-26). Closed, the standard
+  // library on this page IS the pinned three; open (`?library=all`), it is
+  // everything that ships. The reader's own models and the file door are on
+  // the page either way, and nothing behind the door stops shipping.
+  const libraryOpen = libraryAllEnabled();
+  const everything = shippedModels();
+  const all = libraryOpen ? everything : featured(everything);
   const allFacets = facets(all);
   // #324. The third provenance is read over the network from the reasoner, so
   // unlike the other two it starts empty and may stay that way forever — the
@@ -1244,7 +1251,11 @@ export function LibraryBrowser({
       <Masthead
         eyebrow="Library"
         title="Open a model"
-        lede="Pick up where you left off, start from one of ours, or come in through a domain."
+        lede={
+          libraryOpen
+            ? "Pick up where you left off, start from one of ours, or come in through a domain."
+            : "Pick up where you left off, start from one of ours, or open your own."
+        }
         back={{ label: "Home", onClick: onBack }}
         aside={<SearchField value={query} onChange={setQuery} />}
         dense
@@ -1347,6 +1358,7 @@ export function LibraryBrowser({
               </section>
             )}
 
+            {libraryOpen && (
             <section className={recentCards.length > 0 || featuredCards.length > 0 ? "mt-14" : ""}>
               <SectionHead
                 label="Start from one of ours"
@@ -1417,6 +1429,7 @@ export function LibraryBrowser({
                 })
               )}
             </section>
+            )}
 
             {/* Yours. The half that grows. Manage is a MODE rather than a
                 control on every card: renaming and deleting are not what a
