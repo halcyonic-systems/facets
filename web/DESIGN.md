@@ -12,8 +12,9 @@ surfaces. facets takes **teal** as its accent to distinguish the instrument
 within the Frost family (slate / teal / indigo). The register is the makeover
 charter's (`docs/design/makeover-2026-10.md`, 2026-10-26): a considered
 scientific instrument that is also fun to use. The token slice of that
-charter (rules 1 to 9e, 10, 13) is what this file now describes; the
-primitives and surfaces that consume it follow in later slices.
+charter (rules 1 to 9e, 10, 13) is what this file describes first; the
+primitives that consume it are under "Primitives" below (slice B2), and the
+surfaces follow in later slices.
 
 - **Tokens** live in `src/index.css` as CSS custom properties on `:root`, each
   themed one written **once** as `light-dark(<light>, <dark>)`. Components consume
@@ -108,13 +109,92 @@ chrome from `canvas/registerChrome.ts` instead of re-deriving it; every
 its hue across themes and clears 4.5:1 as text on the sheet and the ground; the
 ten primitive hues hold their hue and clear 3:1 as marks; the shadow tokens
 resolve to none; the global focus ring and reduced-motion gate exist.
-Since the makeover's token slice it also lists, as warnings until slice B
-lands: `rounded-full` or `--radius-pill` without `data-pill`, literal radii
-(the bare `rounded`, numeric `borderRadius`), and any `outline-none` or
-`outline: none` without a `:focus-visible` replacement. No `box-shadow` other
-than none or an inset 1px edge passes anywhere in `src/`. Growing the
-vocabulary is fine — do it in `check-tokens.mjs`, deliberately, not ad hoc at a
-call site.
+Since the makeover's token slice it also checks rules 3 and 10: `rounded-full`
+or `--radius-pill` without `data-pill`, literal radii (the bare `rounded`,
+numeric `borderRadius`), and any `outline-none` or `outline: none` without a
+`:focus-visible` replacement. These FAIL in the files named by
+`RADIUS_OUTLINE_STRICT` (`ui.tsx`, `index.css` since slice B2) and are listed
+as warnings elsewhere; each surface slice adds its files to the set as it
+clears them (the open list is under "Open at slice B2" below), and when the set
+covers `src/` the `RADIUS_OUTLINE_FAIL` switch flips and the set goes. A
+`fontSize` may read a type token (`var(--t-*)`). No `box-shadow` other than
+none or an inset 1px edge passes anywhere in `src/`. Growing the vocabulary is
+fine: do it in `check-tokens.mjs`, deliberately, not ad hoc at a call site.
+
+## Primitives (`src/ui.tsx`, slice B2, 2026-10-26)
+
+One file, every control the surfaces share. Each consumes the tokens above,
+draws its glyphs with `<Icon>` (rule 14), keeps the global focus ring (rule 10)
+and meets the 24px floor (rule 11). Keyboard behaviour follows the APG patterns
+the chrome audit tabulated (rule 15); no library was added. The states an
+inline style cannot express (hover, the focused menu row, placeholders) are the
+`prim-*` classes at the end of `index.css`.
+
+| Primitive | Size | Radius | Edge and fill | Keyboard |
+|---|---|---|---|---|
+| `Button` | 32 tall (default) or 28; `px-3` / `px-2.5`; a square of the same size when it has only an icon; 14px Inter 500; icon slot `<Icon size={16}>` | 4 (`rounded-sm`) | `primary`: `--accent` under `--text-on-accent`; `danger`: `--verdict-error` under `--text-on-accent`; `quiet`: the sheet with a `--rule-strong` hairline, `--bg-surface` on hover; disabled: `--text-muted` on `--bg-surface`, never opacity | Native button; the global ring |
+| `ToolButton` | 32 tall, at least 32 wide; a 32x32 square with `<Icon size={20}>` when given `icon` and no word | 4 | `--bg-surface` with a `--border` edge; armed: filled `--lens-accent` under `--text-on-accent` (rule 9c; the seam resolves to the accent) and `aria-pressed="true"` | Native button; the global ring |
+| `Pill` | 20 tall, 12px Inter 500, `px-1.5`; optional `<Icon size={16}>` | 4; the verdict chip passes `pill` and is the one `rounded-full` with `data-pill` (rule 3) | Colour by meaning (rule 9d), always with a word: `ok` `--verdict-ok`, `warning` `--verdict-warning`, `error` `--verdict-error` (solid, urgent), `runs` `--accent`, `drafted` `--prim-modulating`, `with` `--prim-combining`, `bench` `--prim-buffering`; tinted at 14% over the sheet with the hue as ink; `neutral` is `--text-secondary` on `--bg-surface`. `data-tone` names it | None (not a control) |
+| `Tabs` | 32 tall, `px-2.5`, the 11/600 uppercase label at `--tracking-label`; badge a 16px 4px chip | 0 on the strip, 4 on the badge; the active tab is a 2px `--lens-accent` underline | Hairline below; `role="tablist"` of `role="tab"` with `aria-selected`; only the active tab is in the tab order | ArrowLeft / ArrowRight (wrapping), Home, End select and focus; `tabKeyTarget` is the table |
+| `Menu` / `MenuItem` / `MenuSection` / `MenuSeparator` | Trigger: a `Button` (28 quiet by default) with `aria-haspopup="menu"`, `aria-expanded`, `aria-controls`, and a 16px chevron; panel `role="menu"` labelled by the trigger, at least 10rem, 4px below; items 32 tall, 14px, a 16px icon or check slot, a right shortcut slot in the label style; section headings 11/600 uppercase inside `role="group"` | 8 on the panel | `--rule-strong` edge (1.9:1 on the sheet, so the edge reads with no shadow); hover and focus highlight `--bg-surface`; disabled `--text-muted` with `aria-disabled` | Enter, Space, ArrowDown open and focus the first item, ArrowUp the last; ArrowDown / ArrowUp rove (wrapping), Home / End jump, Escape closes and returns focus to the trigger, Tab closes, pointer down outside closes, picking closes. `menuKeyTarget` is the table. State is the Menu's own unless `open` / `onOpenChange` are passed |
+| `ConfirmDialog` | A 20rem window, `p-5`; buttons are `Button` 32: Cancel quiet, the destructive verb danger, the alternative primary | 8 | Sheet with a `--hairline` edge, no shadow, over a 55% ground scrim | `role="dialog"`, `aria-modal`, `aria-labelledby` the message; focus moves to Cancel on open, Tab and Shift+Tab cycle inside, Escape and the backdrop cancel, focus returns to the opener on close |
+| `Panel`, `Card` | Panel is the bare window; Card adds `p-5` and a header: the title in Cormorant 700 at `--t-d3`, the source stamp in the 11px label style in `--text-muted` | 8 (`rounded-md`) | Sheet with a `--hairline` edge, no shadow | None |
+| `Input`, `Select`, `Textarea` | 32 tall (Textarea grows from 32), 14px Inter, `px-2` | 4 | `--rule-strong` edge on the ground; placeholder `--text-muted` (5.4:1) via `.prim-field::placeholder` | Native; the global ring |
+| `DescriptionField`, `GroundingField` | The fields above under an 11px label; Description's label is a `<label for>` | 4 | as the fields | Native |
+| `Banner` | `px-3 py-1.5`, 12px, a 16px `error` or `info` icon before the word | 4 | `error`: `--verdict-error` under `--text-on-accent`; `soft`: `--lens-accent-soft` | None |
+| `Popover` | Viewport-clamped, `p-3` | 8 | Sheet with a `--hairline` edge (`--lens-accent` when `accent`), no shadow | The caller's (no dismiss logic, as before) |
+
+What did not change: no handler's meaning, no state and no kernel call.
+`ToolButton` keeps its text children (the register's graph / matrix, the
+editors' bond / mere) and only becomes the square when a surface passes `icon`
+alone; `Pill` is a chip until the status bar passes `pill`; `Menu` is built and
+tested here and wired to FILE and SWITCH by the chrome slice.
+
+## Open at slice B2
+
+Rule 3 and rule 10 offenders in files the primitives slice does not own, as
+`check:tokens` lists them at this commit (105 warnings; the six in `ui.tsx`
+are cleared and `ui.tsx` fails on any new one). Each surface slice clears its
+own files and adds them to `RADIUS_OUTLINE_STRICT` in `check-tokens.mjs`.
+"pill" is `rounded-full` or `--radius-pill` without `data-pill`; "radius" is a
+literal (`rounded`, `rounded-pill`, numeric `borderRadius`); "outline" is
+`outline-none`.
+
+| File | pill | radius | outline |
+|---|---|---|---|
+| `App.tsx` | 2964, 2972, 2985, 2998, 3011, 3018, 3039, 3051, 3071, 3902, 3910, 3917 | 3672, 3686, 4375, 4390, 4434, 4584 | |
+| `StatusBar.tsx` | 91, 107, 123, 138, 153 | | |
+| `Transport.tsx` | 58, 71 | | |
+| `InspectorDock.tsx` | 242 | 240 | |
+| `HomeScreen.tsx` | | | 1581, 1695 |
+| `StartSurface.tsx` | 88 | | 80 |
+| `ReasonerGate.tsx` | 140, 151 | 99, 122 | 122 |
+| `CoAuthorMode.tsx` | 404, 421, 461, 491, 563, 598 | 309, 448, 525, 536 | 448, 525 |
+| `SlPane.tsx` | 263, 279, 354, 372, 403, 410, 482 | | |
+| `AnalystPanel.tsx` | 144 | 289 | |
+| `FormalPanel.tsx` | 82 | | |
+| `ParamControl.tsx` | | 40 | |
+| `RunInputs.tsx` | | 101, 102, 103, 186, 263 | |
+| `RunPanel.tsx` | | 1224 | |
+| `canvas/BoundaryPopover.tsx` | 68 | | |
+| `canvas/BungeRegister.tsx` | 235, 376, 542, 545 | | |
+| `canvas/BungeStateSpace.tsx` | | 37 (`borderRadius: 8`) | |
+| `canvas/EdgePopover.tsx` | 107, 218 | | |
+| `canvas/InterfacePopover.tsx` | 68, 81 | 63 | |
+| `canvas/KlirLadderPanel.tsx` | 211, 237 | | |
+| `canvas/KlirRegister.tsx` | 964, 967, 1019, 1022 | | |
+| `canvas/MilieuPopover.tsx` | 47 | | |
+| `canvas/NodeEditor.tsx` | 279, 283, 314 | | |
+| `canvas/SimScrubber.tsx` | 67 | | |
+| `sandbox/SandboxInspector.tsx` | | 138, 177, 217, 225, 289, 324, 333 | |
+| `sandbox/SandboxMetrics.tsx` | | 97 | |
+| `sandbox/SandboxSurface.tsx` | | 91, 97, 100, 105, 113, 172, 176, 180, 210, 234 | |
+
+Also owed to the surface slices by this one: `StatusBar.tsx:70` passes `pill`
+to the verdict `Pill` so the status bar keeps the one true pill; `Transport.tsx:105`
+and `StatusBar.tsx:73` move their `✓` / `⚠` into the Pill's `icon` slot;
+`canvas/PaletteRail.tsx:92` passes `icon` to `ToolButton` for the 32px square;
+`App.tsx` FILE and SWITCH become `Menu` / `MenuItem` / `MenuSection`.
 
 ## Growing this
 
