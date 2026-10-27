@@ -227,8 +227,6 @@ literal (`rounded`, `rounded-pill`, numeric `borderRadius`); "outline" is
 | `StatusBar.tsx` | 91, 107, 123, 138, 153 | | |
 | `Transport.tsx` | 58, 71 | | |
 | `InspectorDock.tsx` | 242 | 240 | |
-| `HomeScreen.tsx` | | | 1581, 1695 |
-| `StartSurface.tsx` | 88 | | 80 |
 | `AnalystPanel.tsx` | 144 | 289 | |
 | `FormalPanel.tsx` | 82 | | |
 | `ParamControl.tsx` | | 40 | |

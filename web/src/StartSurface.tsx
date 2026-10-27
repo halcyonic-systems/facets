@@ -6,8 +6,18 @@
 // SL header carries both of those fields, and the name's type panel edits them
 // afterwards. Zero-gate like the prompt was: Escape, a click outside, or skip
 // all land on the blank canvas.
-import { useEffect, useState } from "react";
+//
+// Makeover slice C (2026-10-26): it is a dialog in name as well as in shape
+// (rule 15): `role="dialog"`, `aria-modal`, labelled by its heading, focus on
+// the textarea when it opens and back on the opener when it closes, Tab held
+// inside. The window is the Panel geometry (8px, a hairline, no shadow; rules
+// 2, 3), the field is the Textarea primitive and the three ways out are
+// Buttons at the 24px floor (rules 10, 11, 14).
+import { useEffect, useId, useRef, useState, type KeyboardEvent as ReactKeyboardEvent } from "react";
 import { isHosted, reasonerConfig, subscribeReasoner } from "./reasoner";
+import { Button, Textarea } from "./ui";
+
+const FOCUSABLE = 'button:not([disabled]), textarea, input, select, a[href], [tabindex]:not([tabindex="-1"])';
 
 export function StartSurface({
   onDescribe,
@@ -23,6 +33,9 @@ export function StartSurface({
   const [description, setDescription] = useState("");
   const [reasoner, setReasoner] = useState(reasonerConfig);
   useEffect(() => subscribeReasoner(setReasoner), []);
+  const titleId = useId();
+  const descId = useId();
+  const boxRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
     function onKey(e: KeyboardEvent) {
@@ -31,6 +44,29 @@ export function StartSurface({
     window.addEventListener("keydown", onKey);
     return () => window.removeEventListener("keydown", onKey);
   }, [onSkip]);
+
+  // Focus in on open (the textarea carries autoFocus), back to the opener on
+  // close, the way ConfirmDialog does it.
+  useEffect(() => {
+    const opener = document.activeElement as HTMLElement | null;
+    return () => {
+      if (opener && document.contains(opener)) opener.focus();
+    };
+  }, []);
+  const trapTab = (e: ReactKeyboardEvent<HTMLDivElement>) => {
+    if (e.key !== "Tab" || !boxRef.current) return;
+    const items = Array.from(boxRef.current.querySelectorAll<HTMLElement>(FOCUSABLE));
+    if (items.length === 0) return;
+    const first = items[0];
+    const last = items[items.length - 1];
+    if (e.shiftKey && document.activeElement === first) {
+      e.preventDefault();
+      last.focus();
+    } else if (!e.shiftKey && document.activeElement === last) {
+      e.preventDefault();
+      first.focus();
+    }
+  };
 
   const ready = description.trim() !== "";
   function describe() {
@@ -45,27 +81,33 @@ export function StartSurface({
       data-testid="start-surface"
     >
       <div
-        className="w-full max-w-lg p-6"
-        style={{
-          background: "var(--bg-secondary)",
-          border: "1px solid var(--border)",
-          boxShadow: "var(--shadow-card-hover)",
-          borderRadius: "var(--radius-md)",
-        }}
+        ref={boxRef}
+        role="dialog"
+        aria-modal="true"
+        aria-labelledby={titleId}
+        aria-describedby={descId}
+        className="w-full max-w-lg rounded-md p-6"
+        style={{ background: "var(--bg-secondary)", border: "1px solid var(--hairline)" }}
         onClick={(e) => e.stopPropagation()}
+        onKeyDown={trapTab}
       >
-        <div className="mb-1 flex items-baseline justify-between">
-          <h2 className="text-lg font-semibold" style={{ fontFamily: "var(--font-display)", color: "var(--text-primary)" }}>
+        <div className="mb-2 flex items-center justify-between gap-4">
+          {/* The name of the thing asked: Cormorant 700 at d3 (rule 5). */}
+          <h2
+            id={titleId}
+            className="font-bold leading-tight"
+            style={{ fontFamily: "var(--font-display)", fontSize: "var(--t-d3)", color: "var(--text-primary)" }}
+          >
             Describe a system
           </h2>
-          <button onClick={onSkip} className="text-xs" style={{ color: "var(--text-muted)" }}>
+          <Button size={28} variant="quiet" onClick={onSkip}>
             skip
-          </button>
+          </Button>
         </div>
-        <p className="mb-3 text-xs" style={{ color: "var(--text-secondary)" }}>
+        <p id={descId} className="mb-3 text-sm leading-5" style={{ color: "var(--text-secondary)" }}>
           Say what it is in plain language. You get a first draft to check, edit, and accept.
         </p>
-        <textarea
+        <Textarea
           value={description}
           autoFocus
           onChange={(e) => setDescription(e.target.value)}
@@ -77,26 +119,15 @@ export function StartSurface({
           }}
           spellCheck
           rows={4}
-          className="w-full resize-none rounded-md p-2 text-sm outline-none"
-          style={{ border: "1px solid var(--border)", background: "var(--bg-primary)", color: "var(--text-primary)" }}
+          aria-label="Describe a system"
+          className="w-full resize-none"
           placeholder="e.g. a home thermostat with a sensor, a controller, and a furnace"
         />
-        <div className="mt-3 flex items-center gap-3">
-          <button
-            onClick={describe}
-            disabled={!ready}
-            className="rounded-full px-5 py-1.5 text-sm font-semibold"
-            style={{
-              background: "var(--accent)",
-              color: "var(--text-on-accent)",
-              opacity: ready ? 1 : 0.5,
-              cursor: ready ? "pointer" : "not-allowed",
-            }}
-            title="Draft a model from the description (⌘⏎)"
-          >
+        <div className="mt-3 flex flex-wrap items-center gap-3">
+          <Button onClick={describe} disabled={!ready} title="Draft a model from the description (⌘⏎)">
             Draft
-          </button>
-          <span className="text-[11px]" style={{ color: "var(--text-muted)" }}>
+          </Button>
+          <span className="text-xs" style={{ color: "var(--text-muted)" }}>
             {reasoner.enabled
               ? `Drafts with ${isHosted(reasoner.endpoint) ? "the facets reasoner" : "your reasoner"}.`
               : "The co-author is off. You choose where it runs before anything is sent."}
@@ -104,17 +135,17 @@ export function StartSurface({
         </div>
 
         <div
-          className="mt-5 flex flex-wrap items-baseline gap-x-4 gap-y-1 border-t pt-3 text-xs"
+          className="mt-4 flex flex-wrap items-center gap-x-3 gap-y-2 border-t pt-3 text-xs"
           style={{ borderColor: "var(--hairline)", color: "var(--text-muted)" }}
         >
           <span>or</span>
-          <button onClick={onSkip} className="underline" style={{ color: "var(--text-secondary)" }}>
+          <Button size={28} variant="quiet" onClick={onSkip}>
             Draw it by hand
-          </button>
+          </Button>
           {onOpenLibrary && (
-            <button onClick={onOpenLibrary} className="underline" style={{ color: "var(--text-secondary)" }}>
+            <Button size={28} variant="quiet" onClick={onOpenLibrary}>
               Open an example
-            </button>
+            </Button>
           )}
         </div>
       </div>

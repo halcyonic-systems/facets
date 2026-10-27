@@ -32,17 +32,24 @@
 //
 // Visual language: docs/design/visual-language.md. A white sheet on a neutral
 // ground, hairline rules for structure, and colour ONLY where it names
-// something: --seal marks a selected filter and the one exception tag, and
-// --world-* names a tradition. These tokens are scoped to this file's root, so
-// the workspace surface is untouched.
+// something: a Pill tone marks a capability or a provenance (rule 9d), the
+// accent marks a selected filter, --world-* names a tradition and --chart-*
+// a genus.
 //
 // The printed-page devices this surface briefly carried (a rubric rule opening
 // every title block, a display serif on the masthead, roman folios, a narrow
 // measure) came from a design brief, not from a stated preference, and were
 // withdrawn 2026-08-12 when asked about directly.
 //
-// Names keep their authored case — small caps, never text-transform (the model
-// is named `hal`, not `HAL`).
+// Names keep their authored case — never text-transform (the model is named
+// `hal`, not `HAL`).
+//
+// Makeover slice C (2026-10-26, docs/design/makeover-2026-10.md): the type sits
+// on the eight --t-* tokens (rule 5), every control is a primitive from ui.tsx
+// or a real link at the 24px floor (rules 10, 11), every glyph is an <Icon>
+// (rule 14), cards are 8px with a hairline edge (rules 2, 3), and the page
+// reflows at 390 (rule 16). The --paper/--ink names stay as aliases in
+// index.css; this file reads --bg-* and --text-*.
 import { useState, useRef, useEffect, type CSSProperties, type ReactNode } from "react";
 import type { Demo } from "./demos";
 import type { CorpusEntry } from "./corpus";
@@ -67,6 +74,8 @@ import { openExternal } from "./desktop";
 import { buildInfo, provenanceLines } from "./buildInfo";
 import Thumbnail from "./canvas/Thumbnail";
 import { useThumbnailModel } from "./canvas/useThumbnail";
+import { Icon, type IconName } from "./icons";
+import { Button, Input, Pill, type Tone } from "./ui";
 
 // The rendered docs on the site (#368): the LIVE doc set, published with the
 // rest of facets.systems by scripts/publish-site.sh.
@@ -103,20 +112,20 @@ export function HomeScreen(props: HomeProps) {
   return (
     <div
       className="flex min-h-0 flex-1 flex-col overflow-y-auto"
-      style={{ backgroundColor: "var(--paper-ground)", color: "var(--ink)" }}
+      style={{ backgroundColor: "var(--bg-surface)", color: "var(--text-primary)" }}
     >
       {/* One page, one measure. Every level sets inside the same reading column
           — there is no full-bleed device, because the page ground IS the
           identity and a band would interrupt it.
 
-          The sheet: the content sits on --paper against a --paper-ground that
+          The sheet: the content sits on --bg-secondary against a --bg-surface that
           is one neutral step away, so the page has an edge without a border,
           a shadow, or a tint doing the work. Its measure is wider than the
           reading column's, so the type keeps real margins rather than running
           to the paper's edge. */}
       <div
         className="mx-auto w-full max-w-4xl flex-1 border-x"
-        style={{ backgroundColor: "var(--paper)", borderColor: "var(--rule-soft)" }}
+        style={{ backgroundColor: "var(--bg-secondary)", borderColor: "var(--hairline)" }}
       >
         {route.view === "home" && (
           <HomeMenu
@@ -144,13 +153,9 @@ export function HomeScreen(props: HomeProps) {
         )}
         {props.onClose && (
           <Column className="pb-12">
-            <button
-              onClick={props.onClose}
-              className="text-[11px] uppercase tracking-[0.2em]"
-              style={{ fontFamily: "var(--font-mono)", color: "var(--ink-muted)" }}
-            >
-              ‹ back to the model on the canvas
-            </button>
+            <Button size={28} variant="quiet" icon="back" onClick={props.onClose}>
+              back to the model on the canvas
+            </Button>
           </Column>
         )}
       </div>
@@ -195,7 +200,7 @@ function countLibrary(tree: LibraryNode[]): number {
  *  a page-margin habit rather than a legibility need. */
 function Column({ children, className = "" }: { children: ReactNode; className?: string }) {
   return (
-    <div className={`mx-auto w-full max-w-4xl px-8 ${className}`}>
+    <div className={`mx-auto w-full max-w-4xl px-4 sm:px-8 ${className}`}>
       {children}
     </div>
   );
@@ -204,31 +209,35 @@ function Column({ children, className = "" }: { children: ReactNode; className?:
 const mono = "var(--font-mono)";
 const display = "var(--font-display)";
 
-/** A folio: the small letterspaced mono line that sits above a title block and
- *  under a table. Back links and kickers are the same object. */
-const folioStyle: CSSProperties = {
-  fontFamily: mono,
-  color: "var(--ink-muted)",
+/** The label (rule 5): Inter 11/600 uppercase at the one tracking token. Group
+ *  marks, kickers, tags and the colophon links are all this one object. The
+ *  mono face is for numerals and dates only (`.tabular`), never for a label. */
+const LABEL = "text-[11px] font-semibold uppercase";
+const labelStyle: CSSProperties = {
+  letterSpacing: "var(--tracking-label)",
+  color: "var(--text-muted)",
 };
 
-/** A name as this instrument sets names: letterspaced small caps with the
- *  AUTHORED case intact. text-transform would print `hal` as `HAL` and lie
- *  about the model's name; small caps buys the same even ledger colour without
- *  touching the string. */
+/** A name as this instrument sets names: Cormorant 700 with the AUTHORED case
+ *  intact. text-transform would print `hal` as `HAL` and lie about the model's
+ *  name, so the string is never touched. The size is one of the three display
+ *  tokens, set at the call. */
 const nameStyle: CSSProperties = {
   fontFamily: display,
-  fontVariantCaps: "small-caps",
-  letterSpacing: "0.045em",
-  color: "var(--ink)",
+  fontWeight: 700,
+  color: "var(--text-primary)",
 };
 
-/** UI copy that names a door rather than a record — set in the serif at full
- *  case, so a DOOR ("Create a model") and a NAME (`hal`) are visibly different
- *  kinds of thing on the same page. */
-const doorStyle: CSSProperties = {
-  fontFamily: display,
-  color: "var(--ink)",
-};
+/** UI copy that names a door rather than a record. Since the makeover both are
+ *  the display face at 700; what tells a DOOR ("Open a model") from a NAME
+ *  (`hal`) is its place on the page, not a second face. */
+const doorStyle: CSSProperties = nameStyle;
+
+/** A name set at a display size: d1 the page, d2 a section, d3 a shelf, a door
+ *  or a row. */
+const d1: CSSProperties = { fontSize: "var(--t-d1)" };
+const d2: CSSProperties = { fontSize: "var(--t-d2)" };
+const d3: CSSProperties = { fontSize: "var(--t-d3)" };
 
 /** The title block. A page opens the way a title page opens: a rubric rule, the
  *  name in the serif at a size nothing else on the page approaches, the count
@@ -270,41 +279,35 @@ function Masthead({
   return (
     <Column className={dense ? "pt-8" : "pt-12"}>
       {back && (
-        <button
-          onClick={back.onClick}
-          className={`${dense ? "mb-6" : "mb-10"} block text-[11px] uppercase tracking-[0.22em]`}
-          style={folioStyle}
-        >
-          ‹ {back.label}
-        </button>
+        <div className={dense ? "mb-6" : "mb-8"}>
+          <Button size={28} variant="quiet" icon="back" onClick={back.onClick}>
+            {back.label}
+          </Button>
+        </div>
       )}
-      <div className={`flex items-start justify-between gap-10 ${dense ? "pt-1" : "pt-6"}`}>
-        <div className="flex min-w-0 items-center gap-6">
+      <div className={`flex flex-col gap-6 sm:flex-row sm:items-start sm:justify-between sm:gap-8 ${dense ? "pt-1" : "pt-6"}`}>
+        <div className="flex min-w-0 items-center gap-4 sm:gap-6">
           {mark}
           <div className="min-w-0">
             {eyebrow && (
-              <div className="mb-3 text-[11px] uppercase tracking-[0.3em]" style={folioStyle}>
+              <div className={`mb-2 ${LABEL}`} style={labelStyle}>
                 {eyebrow}
               </div>
             )}
-            <h1
-              className={`${dense ? "text-5xl" : "text-6xl"} leading-[0.95] tracking-tight`}
-              style={{ fontWeight: 600, color: "var(--ink)", letterSpacing: "-0.02em" }}
-            >
+            {/* The name of the page is the one d1 on it (rule 5): Cormorant 700
+                at 30, the same on every level. */}
+            <h1 className="leading-tight" style={{ ...nameStyle, ...d1 }}>
               {title}
             </h1>
           </div>
         </div>
-        {aside && <div className="shrink-0 pt-2">{aside}</div>}
+        {aside && <div className="w-full shrink-0 sm:w-auto sm:pt-2">{aside}</div>}
         {stat !== undefined && (
           <div className="shrink-0 pt-1 text-right">
-            <div
-              className="text-5xl leading-none"
-              style={{ fontWeight: 600, color: "var(--ink)" }}
-            >
+            <div className="text-2xl font-semibold leading-none tabular" style={{ color: "var(--text-primary)" }}>
               {stat}
             </div>
-            <div className="mt-2 text-[10px] uppercase tracking-[0.24em]" style={folioStyle}>
+            <div className={`mt-2 ${LABEL}`} style={labelStyle}>
               {statLabel}
             </div>
           </div>
@@ -312,19 +315,19 @@ function Masthead({
       </div>
       {lede && (
         <p
-          className={`${dense ? "mt-4 max-w-2xl text-lg" : "mt-6 max-w-xl text-xl"} leading-snug`}
-          style={{ color: "var(--ink-secondary)" }}
+          className={`${dense ? "mt-4" : "mt-6"} max-w-2xl text-base leading-6`}
+          style={{ color: "var(--text-secondary)" }}
         >
           {lede}
           {note ? ` — ${note}` : ""}
         </p>
       )}
       {!lede && note && (
-        <p className="mt-5 max-w-2xl text-sm leading-relaxed" style={{ color: "var(--ink-secondary)" }}>
+        <p className="mt-4 max-w-2xl text-sm leading-5" style={{ color: "var(--text-secondary)" }}>
           {note}
         </p>
       )}
-      <div className={dense ? "mt-6" : "mt-8"} style={{ borderTop: "1px solid var(--rule)" }} />
+      <div className={dense ? "mt-6" : "mt-8"} style={{ borderTop: "1px solid var(--rule-strong)" }} />
     </Column>
   );
 }
@@ -335,12 +338,12 @@ function Masthead({
 function BlockHeader({ label, count }: { label: string; count?: string }) {
   return (
     <div className="flex items-baseline gap-4 pb-3">
-      <span className="text-[11px] uppercase tracking-[0.28em]" style={folioStyle}>
+      <span className={LABEL} style={labelStyle}>
         {label}
       </span>
-      <span className="h-px min-w-6 flex-1" style={{ background: "var(--rule-soft)" }} />
+      <span className="h-px min-w-6 flex-1" style={{ background: "var(--hairline)" }} />
       {count && (
-        <span className="shrink-0 text-[11px] tabular" style={{ color: "var(--ink-muted)" }}>
+        <span className="shrink-0 text-xs tabular" style={{ color: "var(--text-muted)" }}>
           {count}
         </span>
       )}
@@ -350,32 +353,40 @@ function BlockHeader({ label, count }: { label: string; count?: string }) {
 
 /** The table. It opens on a head rule; its entries close on hairlines. */
 function Ledger({ children }: { children: ReactNode }) {
-  return <div style={{ borderTop: "1px solid var(--rule)" }}>{children}</div>;
+  return <div style={{ borderTop: "1px solid var(--rule-strong)" }}>{children}</div>;
 }
 
 /** The folio column: a numeral in the left margin of the entry, in mono so the
  *  column stays true, separated from the entry by nothing but space. It takes
  *  the rubric under the cursor (see .record-row in index.css). */
-function Gutter({ index, folio }: { index?: number; folio?: string }) {
+function Gutter({ index, folio }: { index?: number; folio?: ReactNode }) {
   return (
     <span
-      className="record-folio flex items-start justify-end pr-5 pt-5 text-[11px] tabular"
-      style={{ color: "var(--ink-muted)", transition: "color var(--transition-base)" }}
+      className="record-folio flex items-start justify-end pr-5 pt-5 text-xs tabular"
+      style={{ color: "var(--text-muted)", transition: "color var(--transition-base)" }}
     >
       {folio ?? (index === undefined ? "·" : String(index).padStart(2, "0"))}
     </span>
   );
 }
 
-/** The exception mark. Not a chip — a printed marginal note: the rubric, in the
- *  serif italic, set small beside the name. */
-function Chip({ children }: { children: ReactNode }) {
+/** A marker's meaning, read off its words (rule 9d): "runs" is a capability,
+ *  "with Nora" a collaborator, "drafted" the co-author, "after X" a bench
+ *  provenance; anything else is neutral. The Pill's tone carries the colour
+ *  and the word carries the meaning (rule 12). */
+function markerTone(text: string): Tone {
+  if (text === "runs") return "runs";
+  if (text.startsWith("with ")) return "with";
+  if (text.startsWith("drafted")) return "drafted";
+  if (text.startsWith("after ")) return "bench";
+  return "neutral";
+}
+
+/** The exception mark on a row: a chip with a word, coloured by what it says. */
+function Chip({ children }: { children: string }) {
   return (
-    <span
-      className="ml-auto shrink-0 self-baseline text-sm"
-      style={{ fontFamily: display, fontStyle: "italic", color: "var(--seal)" }}
-    >
-      {children}
+    <span className="ml-auto shrink-0 self-center">
+      <Pill tone={markerTone(children)}>{children}</Pill>
     </span>
   );
 }
@@ -398,7 +409,7 @@ function LedgerRow({
   href,
 }: {
   index?: number;
-  folio?: string;
+  folio?: ReactNode;
   name: string;
   description: string;
   trailing?: ReactNode;
@@ -412,14 +423,14 @@ function LedgerRow({
       <Gutter index={index} folio={folio} />
       <span className="block py-4 pr-2">
         <span className="flex items-baseline gap-4">
-          <span className={door ? "text-2xl leading-tight" : "text-xl leading-tight"} style={door ? doorStyle : nameStyle}>
+          <span className="leading-tight" style={{ ...(door ? doorStyle : nameStyle), ...d3 }}>
             {name}
           </span>
           {tag && <Chip>{tag}</Chip>}
         </span>
         <span
-          className="mt-1.5 block max-w-xl text-sm leading-relaxed"
-          style={{ color: "var(--ink-secondary)" }}
+          className="mt-1 block max-w-xl text-sm leading-5"
+          style={{ color: "var(--text-secondary)" }}
         >
           {description}
         </span>
@@ -427,7 +438,7 @@ function LedgerRow({
       </span>
     </>
   );
-  const style = { borderColor: "var(--rule-soft)" };
+  const style = { borderColor: "var(--hairline)" };
   return href ? (
     <a href={href} target="_blank" rel="noreferrer" onClick={openExternal} className={ROW_GRID} style={style}>
       {body}
@@ -470,7 +481,7 @@ function Gem() {
     <svg viewBox="0 0 80 80" width="72" height="72" aria-hidden="true" className="shrink-0">
       <polygon
         points={GEM_RIM.map((p) => p.join(",")).join(" ")}
-        style={{ fill: "var(--paper)", stroke: "var(--ink)", strokeWidth: 0.35 }}
+        style={{ fill: "var(--bg-secondary)", stroke: "var(--text-primary)", strokeWidth: 0.35 }}
       />
       {GEM_FACETS.map((f) => (
         <polygon key={f.points} points={f.points} style={{ fill: f.token, opacity: f.opacity }} />
@@ -482,72 +493,28 @@ function Gem() {
           y1={40}
           x2={x}
           y2={y}
-          style={{ stroke: "var(--ink)", strokeWidth: 0.2, opacity: 0.5 }}
+          style={{ stroke: "var(--text-primary)", strokeWidth: 0.2, opacity: 0.5 }}
         />
       ))}
     </svg>
   );
 }
 
-// The door glyphs: line drawings in the instrument's own vocabulary — a
-// boundary holding processes and flows, a table of observations, a stack of
-// saved sheets, a loop that runs. Stroke and fill take the row's ink so the
-// hover tint carries through (see .home-panel in index.css).
-const glyphStroke: CSSProperties = { stroke: "currentColor", fill: "none" };
-const glyphFill: CSSProperties = { fill: "currentColor" };
-// A closed shape in a glyph wears the soft accent: colour as a filled region
-// with an edge, never a fade — the one tint the page carries at rest.
-const glyphWash: CSSProperties = { stroke: "currentColor", fill: "var(--accent-soft)" };
-
-function DrawGlyph() {
+// The door glyphs are the four door icons in icons.tsx (`draw`, `describe`,
+// `open`, `sandbox`, drawn for 32 on the 24 grid, rule 14), each in a tinted
+// well in its card's hue (rule 9c): Draw and Describe wear the accent, Open
+// the Buffering blue (a stack that holds), Sandbox the Splitting orange (a run
+// that branches). The well is the hue at 14% over the sheet and the icon the
+// full hue, so the four doors read as four colours before their names do.
+function DoorWell({ icon, hue, soft }: { icon: IconName; hue: string; soft?: string }) {
   return (
-    <svg viewBox="0 0 96 64" width="96" height="64" aria-hidden="true" className="home-glyph shrink-0">
-      <ellipse cx={48} cy={32} rx={44} ry={27} style={glyphStroke} strokeWidth={1} strokeDasharray="3 3" />
-      <circle cx={26} cy={40} r={7} style={glyphWash} strokeWidth={1.2} />
-      <circle cx={48} cy={20} r={7} style={glyphWash} strokeWidth={1.2} />
-      <circle cx={70} cy={40} r={7} style={glyphWash} strokeWidth={1.2} />
-      <line x1={31.5} y1={35} x2={41} y2={26.5} style={glyphStroke} strokeWidth={1.2} />
-      <polygon points="39,24 44,23.5 41.5,28" style={glyphFill} />
-      <line x1={55} y1={26.5} x2={64.5} y2={35} style={glyphStroke} strokeWidth={1.2} />
-      <polygon points="62,37.5 67,37 64.5,32.5" style={glyphFill} />
-    </svg>
-  );
-}
-
-function DescribeGlyph() {
-  // Lines of prose becoming a drafted model: three text rules, and a small
-  // checked box where the kernel's verdict lands.
-  return (
-    <svg viewBox="0 0 96 64" width="96" height="64" aria-hidden="true" className="home-glyph shrink-0">
-      <line x1={10} y1={16} x2={62} y2={16} style={glyphStroke} strokeWidth={1.2} />
-      <line x1={10} y1={28} x2={54} y2={28} style={glyphStroke} strokeWidth={1.2} />
-      <line x1={10} y1={40} x2={58} y2={40} style={glyphStroke} strokeWidth={1.2} />
-      <line x1={10} y1={52} x2={34} y2={52} style={glyphStroke} strokeWidth={1.2} />
-      <rect x={70} y={22} width={18} height={18} style={glyphStroke} strokeWidth={1} />
-      <polyline points="74,31 78,35 85,26" style={glyphStroke} strokeWidth={1.2} fill="none" />
-    </svg>
-  );
-}
-
-function OpenGlyph() {
-  return (
-    <svg viewBox="0 0 48 48" width="44" height="44" aria-hidden="true" className="home-glyph shrink-0">
-      <rect x={12} y={6} width={26} height={32} style={{ ...glyphStroke, fill: "var(--paper)" }} strokeWidth={1} />
-      <rect x={8} y={10} width={26} height={32} style={glyphWash} strokeWidth={1} />
-      <line x1={14} y1={20} x2={28} y2={20} style={glyphStroke} strokeWidth={0.8} />
-      <line x1={14} y1={26} x2={28} y2={26} style={glyphStroke} strokeWidth={0.8} />
-    </svg>
-  );
-}
-
-function SandboxGlyph() {
-  return (
-    <svg viewBox="0 0 48 48" width="44" height="44" aria-hidden="true" className="home-glyph shrink-0">
-      <circle cx={14} cy={24} r={6} style={glyphWash} strokeWidth={1.1} />
-      <circle cx={36} cy={24} r={6} style={glyphWash} strokeWidth={1.1} />
-      <path d="M20 24 Q25 14 30 24" style={glyphStroke} strokeWidth={1.1} />
-      <path d="M30 24 Q25 34 20 24" style={glyphStroke} strokeWidth={1.1} strokeDasharray="2 2" />
-    </svg>
+    <span
+      aria-hidden
+      className="flex h-14 w-14 shrink-0 items-center justify-center rounded-sm"
+      style={{ background: soft ?? `color-mix(in srgb, ${hue} 14%, var(--bg-secondary))`, color: hue }}
+    >
+      <Icon name={icon} size={32} />
+    </span>
   );
 }
 
@@ -566,16 +533,16 @@ function Panel({
   onClick?: () => void;
   href?: string;
 }) {
-  const cls = "home-panel flex h-full w-full items-center gap-5 border px-6 py-5 text-left";
-  const style = { borderColor: "var(--rule-soft)", color: "var(--ink)" };
+  const cls = "home-panel flex h-full w-full items-center gap-4 rounded-md border px-6 py-4 text-left";
+  const style = { borderColor: "var(--hairline)", color: "var(--text-primary)" };
   const body = (
     <>
       {glyph}
       <span className="flex min-w-0 flex-col gap-1">
-        <span className="text-2xl leading-tight" style={doorStyle}>
+        <span className="leading-tight" style={{ ...doorStyle, ...d3 }}>
           {name}
         </span>
-        <span className="text-sm leading-relaxed" style={{ color: "var(--ink-secondary)" }}>
+        <span className="text-sm leading-5" style={{ color: "var(--text-secondary)" }}>
           {description}
         </span>
       </span>
@@ -592,24 +559,23 @@ function Panel({
   );
 }
 
-/** A group mark for a set of doors — the section head, with the lead group in
- *  the accent so the eye lands on Start. */
-function GroupHeader({ label, lead }: { label: string; lead?: boolean }) {
+/** A group mark for a set of doors: the label and a hairline out to the margin.
+ *  The lead group used to take the accent; the accent names an action, not an
+ *  emphasis (rule 8), so every group is the same mark. `lead` stays on the
+ *  prop so callers need no edit. */
+function GroupHeader({ label }: { label: string; lead?: boolean }) {
   return (
-    <div className="flex items-baseline gap-4 pb-3.5">
-      <span
-        className="text-[11px] uppercase tracking-[0.28em]"
-        style={{ ...folioStyle, color: lead ? "var(--accent)" : "var(--ink-muted)" }}
-      >
+    <div className="flex items-baseline gap-4 pb-3">
+      <span className={LABEL} style={labelStyle}>
         {label}
       </span>
-      <span className="h-px min-w-6 flex-1" style={{ background: "var(--rule-soft)" }} />
+      <span className="h-px min-w-6 flex-1" style={{ background: "var(--hairline)" }} />
     </div>
   );
 }
 
 const ledeLink: CSSProperties = {
-  color: "var(--ink)",
+  color: "var(--text-primary)",
   borderBottom: "1px solid var(--accent)",
   paddingBottom: 1,
 };
@@ -641,15 +607,11 @@ export function HomeMenu({
   return (
     <div>
       <Masthead
-        title={
-          <span>
-            facets&#8202;·&#8202;<span style={{ color: "var(--accent)" }}>model</span>
-          </span>
-        }
+        title={<span>facets&#8202;·&#8202;model</span>}
         mark={<Gem />}
         lede={lede}
       />
-      <Column className="pb-16 pt-10">
+      <Column className="pb-12 pt-8">
         <GroupHeader label="Start" lead />
         {/* Two doors in, one model underneath. The data-first door that stood
             here (#309, the Klir source-and-data rungs) left the face in the
@@ -657,25 +619,25 @@ export function HomeMenu({
             and a model here starts from the system, not from a table. The
             surface still exists behind `?data=1` for the parked issue; the CSV
             attach path on an open model is untouched. */}
-        <div className="grid grid-cols-2 gap-5">
+        <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
           <Panel
-            glyph={<DrawGlyph />}
+            glyph={<DoorWell icon="draw" hue="var(--accent)" soft="var(--accent-soft)" />}
             name="Draw your system"
             description="Components, flows, a boundary. Every step is checked as you draw."
             onClick={() => onCreate()}
           />
           <Panel
-            glyph={<DescribeGlyph />}
+            glyph={<DoorWell icon="describe" hue="var(--accent)" soft="var(--accent-soft)" />}
             name="Describe your system"
             description="A few plain sentences. The co-author drafts it in SL; the kernel checks it; you accept or discard."
             onClick={() => onCreate({ sl: true })}
           />
         </div>
-        <div className="mt-9 grid grid-cols-2 items-stretch gap-5">
+        <div className="mt-8 grid grid-cols-1 items-stretch gap-4 sm:grid-cols-2">
           <div className="flex flex-col">
             <GroupHeader label="Continue" />
             <Panel
-              glyph={<OpenGlyph />}
+              glyph={<DoorWell icon="open" hue="var(--prim-buffering)" />}
               name="Open a model"
               description="Library, your saved models, or a file."
               onClick={onOpenLibrary}
@@ -684,7 +646,7 @@ export function HomeMenu({
           <div className="flex flex-col">
             <GroupHeader label="Try" />
             <Panel
-              glyph={<SandboxGlyph />}
+              glyph={<DoorWell icon="sandbox" hue="var(--prim-splitting)" />}
               name="Sandbox"
               description="Drop in processes, wire them, press Run. Change a rate mid-run and watch the flow answer."
               href="?sandbox=1"
@@ -696,27 +658,26 @@ export function HomeMenu({
             page's claim rests on, so it belongs on the page, quietly, rather
             than among the doors. The docs sit beside it: a reference, not a door. */}
         <div
-          className="mt-14 flex items-baseline gap-8 border-t pt-4"
-          style={{ borderColor: "var(--rule-soft)" }}
+          className="mt-12 flex flex-wrap items-center gap-4 border-t pt-4"
+          style={{ borderColor: "var(--hairline)" }}
         >
           {onAbout && (
-            <button
-              onClick={onAbout}
-              className="record-folio text-[11px] uppercase tracking-[0.2em]"
-              style={folioStyle}
-            >
+            <Button size={28} variant="quiet" onClick={onAbout}>
               This build
-            </button>
+            </Button>
           )}
+          {/* A real link (right-click, copy): the quiet button's look at the
+              24px floor, with the external mark (rule 11, icons.md). */}
           <a
             href={DOCS_URL}
             target="_blank"
             rel="noreferrer"
             onClick={openExternal}
-            className="record-folio text-[11px] uppercase tracking-[0.2em]"
-            style={folioStyle}
+            className="inline-flex h-7 items-center gap-1.5 rounded-sm px-2.5 text-sm font-medium"
+            style={{ color: "var(--text-primary)", border: "1px solid var(--rule-strong)" }}
           >
             Documentation
+            <Icon name="external" size={16} />
           </a>
         </div>
       </Column>
@@ -739,30 +700,25 @@ export function AboutPage({ onBack }: { onBack: () => void }) {
         lede="Every verdict is machine-checked against Lean proofs in another repository. These are the ones."
         back={{ label: "Home", onClick: onBack }}
       />
-      <Column className="pb-20 pt-12">
+      <Column className="pb-12 pt-12">
         <BlockHeader label="Provenance" count={buildInfo.gitSha} />
-        <div style={{ borderTop: "1px solid var(--rule)" }}>
+        <div style={{ borderTop: "1px solid var(--rule-strong)" }}>
           {provenanceLines().map((line) => (
             <div
               key={line.label}
-              className="grid grid-cols-[10rem_1fr] gap-5 border-b py-3"
-              style={{ borderColor: "var(--rule-soft)" }}
+              className="grid grid-cols-1 gap-1 border-b py-3 sm:grid-cols-[10rem_1fr] sm:gap-4"
+              style={{ borderColor: "var(--hairline)" }}
             >
-              <span
-                className="text-[11px] uppercase tracking-[0.18em]"
-                style={folioStyle}
-              >
+              <span className={LABEL} style={labelStyle}>
                 {line.label}
               </span>
               <span className="min-w-0">
-                <span
-                  className="block break-all text-[11px]"
-                  style={{ fontFamily: mono, color: "var(--ink)" }}
-                >
+                {/* A commit, a version, a hash: the machine's numbers, so mono. */}
+                <span className="block break-all text-xs tabular" style={{ color: "var(--text-primary)" }}>
                   {line.value}
                 </span>
                 {line.note && (
-                  <span className="mt-1 block text-[11px]" style={{ color: "var(--ink-muted)" }}>
+                  <span className="mt-1 block text-xs" style={{ color: "var(--text-muted)" }}>
                     {line.note}
                   </span>
                 )}
@@ -770,7 +726,7 @@ export function AboutPage({ onBack }: { onBack: () => void }) {
             </div>
           ))}
         </div>
-        <p className="mt-5 max-w-xl text-sm leading-relaxed" style={{ color: "var(--ink-muted)" }}>
+        <p className="mt-4 max-w-xl text-sm leading-5" style={{ color: "var(--text-muted)" }}>
           Licence and third-party notices ship beside this app, in its{" "}
           <span style={{ fontFamily: mono }}>Contents/Resources</span> folder.
         </p>
@@ -803,6 +759,9 @@ const GENUS_HUE: Record<string, string> = {
   Biological: "var(--chart-4)",
   Social: "var(--chart-3)",
   Technical: "var(--chart-1)",
+  // The fourth kingdom takes the fourth chart ink (audit #41: a shelf with no
+  // hue was uncoloured by omission, not by meaning).
+  Physical: "var(--chart-2)",
 };
 
 function hueOf(tag: Tag): string | undefined {
@@ -839,21 +798,23 @@ function FacetButton({
       onClick={onClick}
       title={facet.note || undefined}
       aria-pressed={selected}
-      className="record-row flex items-baseline gap-2 pb-1.5 pt-1 text-left"
+      className="record-row flex min-h-7 items-baseline gap-2 pb-1.5 pt-1 text-left"
       style={{
-        borderBottom: selected
-          ? `2px solid ${hue ?? "var(--seal)"}`
-          : "1px solid var(--rule-soft)",
+        // The selected facet is underscored by its tradition's hue, or by the
+        // accent (rule 8: a selection is an action, so it wears the accent).
+        borderBottom: selected ? `2px solid ${hue ?? "var(--accent)"}` : "1px solid var(--hairline)",
       }}
     >
       {hue && <span aria-hidden className="h-2 w-0.5 shrink-0 self-center" style={{ background: hue }} />}
+      {/* A filter is a control, so it is set in Inter 14 (rule 5), not the
+          display face; the count is a numeral and keeps the mono column. */}
       <span
-        className="text-base leading-none"
-        style={{ ...nameStyle, color: selected ? "var(--ink)" : "var(--ink-secondary)" }}
+        className="text-sm font-medium leading-none"
+        style={{ color: selected ? "var(--text-primary)" : "var(--text-secondary)" }}
       >
         {facet.label}
       </span>
-      <span className="shrink-0 text-[10px] tabular" style={{ color: "var(--ink-muted)" }}>
+      <span className="shrink-0 text-xs tabular" style={{ color: "var(--text-muted)" }}>
         {facet.count}
       </span>
     </button>
@@ -873,7 +834,7 @@ function FilterLine({
 }) {
   return (
     <div className="flex flex-wrap items-baseline gap-x-6 gap-y-1 py-1">
-      <span className="w-24 shrink-0 text-[11px] uppercase tracking-[0.22em]" style={folioStyle}>
+      <span className={`w-24 shrink-0 ${LABEL}`} style={labelStyle}>
         {label}
       </span>
       {children}
@@ -901,7 +862,7 @@ const RECENT_WELL = { fill: "var(--accent-soft)", edge: "var(--accent)" };
 /** A saved model belongs to no shelf and no tradition, and inventing a colour
  *  for it would invent a fact. Its well is the page's own paper edge, drawn
  *  round in slate so it still reads as a well and not as a hole. */
-const YOURS_WELL = { fill: "var(--paper-edge)", edge: "var(--accent-slate)" };
+const YOURS_WELL = { fill: "var(--bg-primary)", edge: "var(--accent-slate)" };
 
 /** A shelf's colour: a tradition's world hue, or a genus's chart ink. */
 function shelfHue(shelf: Shelf): string | undefined {
@@ -949,13 +910,13 @@ function CardThumb({
   const compiled = useThumbnailModel(cacheKey, source, kind);
   return (
     <span
-      className="flex h-11 w-11 shrink-0 items-center justify-center border"
+      className="flex h-11 w-11 shrink-0 items-center justify-center rounded-sm border"
       style={{
-        borderColor: well?.edge ?? hue ?? "var(--rule-soft)",
+        borderColor: well?.edge ?? hue ?? "var(--hairline)",
         // 22% (operator, 2026-09-04: 14 read as bland): three shelves read as
         // three colours at a glance, and the drawing inside the well still
         // reads as ink on paper.
-        background: well?.fill ?? (hue ? `color-mix(in oklab, ${hue} 22%, var(--paper))` : "var(--paper-edge)"),
+        background: well?.fill ?? (hue ? `color-mix(in oklab, ${hue} 22%, var(--bg-secondary))` : "var(--bg-primary)"),
       }}
     >
       {compiled && <Thumbnail model={compiled} size={34} />}
@@ -1004,47 +965,36 @@ function ModelCard({
               structures differ in their last three words, so a single truncated
               line prints the same string on three cards and the shelf stops
               being readable. */}
-          <span className="line-clamp-2 text-lg leading-tight" style={nameStyle}>
+          {/* A card name is scanned across a grid, so it is Inter 14/500 (rule
+              5's row size), not the display face. */}
+          <span className="line-clamp-2 text-sm font-medium leading-tight" style={{ color: "var(--text-primary)" }}>
             {name}
           </span>
-          {runs && (
-            <span
-              className="shrink-0 text-[10px]"
-              style={{ fontFamily: mono, letterSpacing: "0.12em", color: "var(--seal)" }}
-            >
-              runs
-            </span>
-          )}
+          {runs && <Pill tone="runs">runs</Pill>}
           {marker && (
             /* A bench card's provenance can run long ("after X 1983 (the run as
                a switch); Mobus §11.2.1.1"); the marker truncates in its row and
                carries the full text as its title, instead of drifting past the
                card into the next column. */
-            <span
-              className="min-w-0 truncate text-[10px]"
-              style={{ fontFamily: mono, letterSpacing: "0.12em", color: "var(--ink-muted)" }}
-              title={marker}
-              data-testid="card-marker"
-            >
-              {marker}
+            <span className="min-w-0 truncate" title={marker} data-testid="card-marker">
+              <Pill tone={markerTone(marker)}>{marker}</Pill>
             </span>
           )}
         </span>
-        <span className="mt-0.5 block truncate text-[11px]" style={{ color: "var(--ink-secondary)" }}>
+        <span className="mt-0.5 block truncate text-xs" style={{ color: "var(--text-secondary)" }}>
           {sub}
         </span>
       </span>
     </>
   );
   const style = {
-    borderColor: "var(--rule-soft)",
-    borderRadius: "var(--radius-sm)",
-    background: "var(--paper)",
+    borderColor: "var(--hairline)",
+    background: "var(--bg-secondary)",
     // The hover hue, read by .hue-panel in index.css. A card with no hue falls
     // back to the app accent, which is what .home-panel does everywhere else.
     ...(hue ? { "--card-hue": hue } : {}),
   } as CSSProperties;
-  const panel = `${hue ? "hue-panel" : "home-panel"} flex min-w-0 items-center gap-3 border px-3 py-2.5 text-left`;
+  const panel = `${hue ? "hue-panel" : "home-panel"} flex min-w-0 items-center gap-3 rounded-md border px-3 py-2 text-left`;
   return trailing ? (
     <div className={panel} style={style}>
       {body}
@@ -1061,7 +1011,7 @@ function ModelCard({
  *  Recent strip. */
 function CardGrid({ across, children }: { across: 3 | 4; children: ReactNode }) {
   return (
-    <div className={`grid gap-2.5 ${across === 4 ? "grid-cols-4" : "grid-cols-3"}`}>{children}</div>
+    <div className={`grid gap-3 ${across === 4 ? "grid-cols-2 md:grid-cols-4" : "grid-cols-1 sm:grid-cols-3"}`}>{children}</div>
   );
 }
 
@@ -1069,20 +1019,20 @@ function CardGrid({ across, children }: { across: 3 | 4; children: ReactNode }) 
  *  strip's gloss, the arrangement toggle, the Yours count and its manage link.
  *  `BlockHeader` above is the same object with a count; this one takes a node,
  *  because these are controls rather than facts. */
-function SectionHead({ label, right, lead }: { label: string; right?: ReactNode; lead?: boolean }) {
+function SectionHead({ label, right }: { label: string; right?: ReactNode; lead?: boolean }) {
   // #472 (2026-10-10): the doors are the page's major categories and should
-  // pull the eye before any card does — the display face at a size above the
-  // card names, not a folio whisper. The rule and the right-hand control stay.
+  // pull the eye before any card does — the display face at d2, above the card
+  // names. The rule and the right-hand control stay. `lead` once put the
+  // accent on the first head; the accent names an action (rule 8), so the prop
+  // is kept for callers and does nothing.
   return (
     <div
-      className="mb-4 flex items-baseline gap-4 border-b pb-2"
-      style={{ borderColor: "var(--ink)", borderBottomWidth: "2px" }}
+      // Wraps, so at 390 a long head ("Start from one of ours") keeps its
+      // control on the next line instead of past the sheet's edge (rule 16).
+      className="mb-4 flex flex-wrap items-baseline gap-x-4 gap-y-2 border-b pb-2"
+      style={{ borderColor: "var(--rule-strong)" }}
     >
-      <span
-        className="shrink-0 text-2xl leading-none"
-        style={{ ...nameStyle, color: lead ? "var(--accent)" : "var(--ink)" }}
-        data-testid="section-head"
-      >
+      <span className="shrink-0 leading-none" style={{ ...nameStyle, ...d2 }} data-testid="section-head">
         {label}
       </span>
       <span className="min-w-6 flex-1" />
@@ -1112,24 +1062,25 @@ function ShelfHead({
   onExpand: () => void;
 }) {
   return (
-    <div className="flex items-baseline gap-2.5 pb-2">
+    <div className="flex items-baseline gap-3 pb-2">
       {hue && <span aria-hidden className="h-4 w-[3px] shrink-0 self-center" style={{ background: hue }} />}
       {/* A shelf is the second level: the display face a step below the
           section head, a step above the card names, so the three sizes read
           as three levels down the page. */}
-      <span className="text-lg leading-none" style={{ ...nameStyle, color: "var(--ink-secondary)" }}>
+      <span className="leading-none" style={{ ...nameStyle, ...d3, color: "var(--text-secondary)" }}>
         {label}
       </span>
       {note && (
-        <span className="text-[10px] tracking-[0.12em]" style={folioStyle}>
+        <span className="text-xs" style={{ color: "var(--text-muted)" }}>
           {note}
         </span>
       )}
       <span className="flex-1" />
       {shown < total && (
-        <button onClick={onExpand} className="record-folio shrink-0 text-[10px] tracking-[0.1em]" style={folioStyle}>
-          all {total} →
-        </button>
+        <Button size={28} variant="quiet" onClick={onExpand}>
+          all {total}
+          <Icon name="forward" size={16} />
+        </Button>
       )}
     </div>
   );
@@ -1261,7 +1212,7 @@ export function LibraryBrowser({
         dense
       />
 
-      <Column className="pb-14 pt-5">
+      <Column className="pb-12 pt-4">
         {view === "list" ? (
           <LedgerView
             all={all}
@@ -1293,7 +1244,7 @@ export function LibraryBrowser({
                   lead
                   label="Recent"
                   right={
-                    <span className="shrink-0 text-[10px] tracking-[0.12em]" style={{ fontFamily: mono, color: "var(--ink-muted)" }}>
+                    <span className="shrink-0 text-xs" style={{ color: "var(--text-muted)" }}>
                       yours, and ours you have touched
                     </span>
                   }
@@ -1340,7 +1291,7 @@ export function LibraryBrowser({
                 system the instrument is pointed at first, then two that teach
                 its two depths. Shown unless a search has named something. */}
             {!q && featuredCards.length > 0 && (
-              <section className={recentCards.length > 0 ? "mt-14" : ""}>
+              <section className={recentCards.length > 0 ? "mt-12" : ""}>
                 <SectionHead label="Start here" lead={recentCards.length === 0} />
                 <CardGrid across={3}>
                   {featuredCards.map((m) => (
@@ -1359,7 +1310,7 @@ export function LibraryBrowser({
             )}
 
             {libraryOpen && (
-            <section className={recentCards.length > 0 || featuredCards.length > 0 ? "mt-14" : ""}>
+            <section className={recentCards.length > 0 || featuredCards.length > 0 ? "mt-12" : ""}>
               <SectionHead
                 label="Start from one of ours"
                 // A search has put the shelves away, and the toggle only cuts
@@ -1435,18 +1386,18 @@ export function LibraryBrowser({
                 control on every card: renaming and deleting are not what a
                 reader came here to do, and a × on every card invites the one
                 click this page cannot undo. */}
-            <section className="mt-14">
+            <section className="mt-12">
               <SectionHead
                 label="Yours"
                 right={
-                  <span className="flex shrink-0 items-baseline gap-3 text-[10px] tracking-[0.12em]" style={{ fontFamily: mono, color: "var(--ink-muted)" }}>
+                  <span className="flex shrink-0 items-center gap-3 text-xs" style={{ color: "var(--text-muted)" }}>
                     <span>
-                      {savedCount} · newest first
+                      <span className="tabular">{savedCount}</span> · newest first
                     </span>
                     {savedCount > 0 && (
-                      <button onClick={() => setManage((m) => !m)} className="record-folio" style={folioStyle}>
-                        {manage ? "done" : "manage →"}
-                      </button>
+                      <Button size={28} variant="quiet" onClick={() => setManage((m) => !m)} aria-pressed={manage}>
+                        {manage ? "done" : "manage"}
+                      </Button>
                     )}
                   </span>
                 }
@@ -1457,15 +1408,16 @@ export function LibraryBrowser({
                   reading, not a nag. Both only once something is saved. */}
               {savedCount > 0 && storageLine && (
                 <div
-                  className="mb-3 flex flex-wrap items-baseline gap-x-4 gap-y-1 text-[10px] tracking-[0.12em]"
-                  style={{ fontFamily: mono, color: "var(--ink-muted)" }}
+                  className="mb-3 flex flex-wrap items-baseline gap-x-4 gap-y-1 text-xs"
+                  style={{ color: "var(--text-muted)" }}
                 >
                   <span>{storageLine}</span>
                   <span>last exported: {exportedAt === null ? "never" : whenLabel(exportedAt)}</span>
                   {manage && onExportLibrary && (
-                    <button onClick={onExportLibrary} className="record-folio" style={folioStyle}>
-                      export library (.sl) →
-                    </button>
+                    <Button size={28} variant="quiet" onClick={onExportLibrary}>
+                      export library (.sl)
+                      <Icon name="forward" size={16} />
+                    </Button>
                   )}
                 </div>
               )}
@@ -1488,13 +1440,12 @@ export function LibraryBrowser({
                     ))}
                   </CardGrid>
                   {!showAllSaved && !q && shownSaved.length > SHELF_CARDS && (
-                    <button
-                      onClick={() => setShowAllSaved(true)}
-                      className="record-folio mt-2.5 text-[10px] tracking-[0.12em]"
-                      style={folioStyle}
-                    >
-                      and {shownSaved.length - SHELF_CARDS} more →
-                    </button>
+                    <div className="mt-3">
+                      <Button size={28} variant="quiet" onClick={() => setShowAllSaved(true)}>
+                        and {shownSaved.length - SHELF_CARDS} more
+                        <Icon name="forward" size={16} />
+                      </Button>
+                    </div>
                   )}
                 </>
               )}
@@ -1519,38 +1470,36 @@ export function LibraryBrowser({
               )}
             </section>
 
-            <section className="mt-14">
+            <section className="mt-12">
               <SectionHead label="From a file" />
               <button
                 onClick={onOpenFile}
-                className="home-panel flex w-full items-center gap-4 border px-3 py-2.5 text-left"
-                style={{ borderColor: "var(--rule-soft)", borderRadius: "var(--radius-sm)", background: "var(--paper)" }}
+                className="home-panel flex w-full items-center gap-4 rounded-md border px-3 py-2 text-left"
+                style={{ borderColor: "var(--hairline)", background: "var(--bg-secondary)" }}
               >
                 <span
-                  className="flex h-11 w-11 shrink-0 items-center justify-center border text-[11px]"
-                  style={{ borderColor: "var(--rule-soft)", background: "var(--paper-edge)", fontFamily: mono, color: "var(--ink-muted)" }}
+                  aria-hidden
+                  className="flex h-11 w-11 shrink-0 items-center justify-center rounded-sm border"
+                  style={{ borderColor: "var(--hairline)", background: "var(--bg-primary)", color: "var(--text-muted)" }}
                 >
-                  ·
+                  <Icon name="file" size={20} />
                 </span>
                 <span className="min-w-0">
-                  <span className="block text-lg leading-tight" style={doorStyle}>
+                  <span className="block leading-tight" style={{ ...doorStyle, ...d3 }}>
                     Open a file…
                   </span>
-                  <span className="mt-0.5 block truncate text-[11px]" style={{ color: "var(--ink-secondary)" }}>
+                  <span className="mt-0.5 block truncate text-xs" style={{ color: "var(--text-secondary)" }}>
                     a model .json from your computer
                   </span>
                 </span>
               </button>
             </section>
 
-            <div className="mt-8 pt-3.5" style={{ borderTop: "1px solid var(--rule-soft)" }}>
-              <button
-                onClick={() => setView("list")}
-                className="record-folio text-[11px] uppercase tracking-[0.2em]"
-                style={folioStyle}
-              >
+            <div className="mt-8 pt-4" style={{ borderTop: "1px solid var(--hairline)" }}>
+              <Button size={28} variant="quiet" onClick={() => setView("list")}>
                 Browse all {all.length + savedCount} as a list
-              </button>
+                <Icon name="forward" size={16} />
+              </Button>
             </div>
           </>
         )}
@@ -1564,46 +1513,50 @@ export function LibraryBrowser({
  *  reader searching for "ribosome" does not know or care which section holds
  *  it. */
 function SearchField({ value, onChange }: { value: string; onChange: (v: string) => void }) {
+  // The Input primitive (32 tall, 4px, the global focus ring) with the drawn
+  // search mark set inside its left padding (rules 10, 14).
   return (
-    <label
-      className="flex min-w-[18rem] items-center gap-2.5 border px-3.5 py-2.5"
-      style={{ borderColor: "var(--rule-soft)", borderRadius: "var(--radius-sm)" }}
-    >
-      <svg viewBox="0 0 16 16" width="14" height="14" aria-hidden style={{ color: "var(--ink-muted)" }}>
-        <circle cx="7" cy="7" r="5" fill="none" stroke="currentColor" strokeWidth="1.4" />
-        <line x1="11" y1="11" x2="15" y2="15" stroke="currentColor" strokeWidth="1.4" />
-      </svg>
-      <input
+    <label className="relative flex w-full items-center sm:w-72">
+      <Icon name="search" size={16} className="pointer-events-none absolute left-2" style={{ color: "var(--text-muted)" }} />
+      <Input
         value={value}
         onChange={(e) => onChange(e.target.value)}
         placeholder="Find a model"
         aria-label="Find a model"
-        className="w-full min-w-0 bg-transparent text-sm outline-none"
-        style={{ color: "var(--ink)" }}
+        className="w-full min-w-0 pl-8"
       />
     </label>
   );
 }
 
-/** By lens | By domain. One control with two states, set as a printed toggle:
- *  the chosen half is reversed out of the ink, the other sits on the paper. */
+/** By lens | By domain. One control with two states, a segmented pair: 28px
+ *  cells in the label style (rules 5, 11), the chosen one filled with the
+ *  accent (rule 8: the armed state wears the accent) and saying so with
+ *  `aria-pressed`, the other on the sheet. */
 function ArrangeToggle({ value, onChange }: { value: Arrange; onChange: (v: Arrange) => void }) {
   const cell = (v: Arrange, label: string) => (
     <button
+      type="button"
       onClick={() => onChange(v)}
       aria-pressed={value === v}
-      className="px-2.5 py-1 text-[10px] uppercase tracking-[0.16em]"
+      className={`h-7 px-2.5 ${LABEL}`}
       style={{
-        fontFamily: mono,
-        background: value === v ? "var(--ink)" : "transparent",
-        color: value === v ? "var(--paper)" : "var(--ink-muted)",
+        letterSpacing: "var(--tracking-label)",
+        background: value === v ? "var(--accent)" : "var(--bg-secondary)",
+        color: value === v ? "var(--text-on-accent)" : "var(--text-secondary)",
+        transition: "background-color var(--motion-fast) ease-out",
       }}
     >
       {label}
     </button>
   );
   return (
-    <span className="inline-flex shrink-0 border" style={{ borderColor: "var(--rule-soft)" }}>
+    <span
+      className="inline-flex shrink-0 overflow-hidden rounded-sm border"
+      style={{ borderColor: "var(--rule-strong)" }}
+      role="group"
+      aria-label="Arrange the shelves"
+    >
       {cell("domain", "By domain")}
       {cell("lens", "By lens")}
     </span>
@@ -1611,18 +1564,11 @@ function ArrangeToggle({ value, onChange }: { value: Arrange; onChange: (v: Arra
 }
 
 /** A section that has nothing to show, saying so in one line on the rule. The
- *  page keeps its shape: an empty section is a sentence, never a gap. */
+ *  page keeps its shape: an empty section is a sentence, never a gap. Plain
+ *  Inter: the italic serif lede is on the charter's withdrawn list. */
 function EmptyLine({ children }: { children: ReactNode }) {
   return (
-    <div
-      className="border-t py-3 text-sm"
-      style={{
-        borderColor: "var(--rule-soft)",
-        color: "var(--ink-muted)",
-        fontFamily: display,
-        fontStyle: "italic",
-      }}
-    >
+    <div className="border-t py-3 text-sm" style={{ borderColor: "var(--hairline)", color: "var(--text-muted)" }}>
       {children}
     </div>
   );
@@ -1675,11 +1621,11 @@ function SavedCard({
   if (draft !== null) {
     return (
       <div
-        className="flex min-w-0 items-center gap-3 border px-3 py-2.5"
-        style={{ borderColor: "var(--rule-soft)", borderRadius: "var(--radius-sm)", background: "var(--paper)" }}
+        className="flex min-w-0 items-center gap-3 rounded-md border px-3 py-2"
+        style={{ borderColor: "var(--hairline)", background: "var(--bg-secondary)" }}
       >
         <CardThumb cacheKey={`saved:${node.name}`} source={node.json} kind="archive" well={YOURS_WELL} />
-        <input
+        <Input
           autoFocus
           value={draft}
           onChange={(e) => setDraft(e.target.value)}
@@ -1692,8 +1638,7 @@ function SavedCard({
           }}
           onBlur={() => void commit()}
           aria-label={`Rename ${node.name}`}
-          className="min-w-0 flex-1 px-1 text-sm outline-none"
-          style={{ background: "var(--paper-edge)", border: "1px solid var(--rule-soft)", color: "var(--ink)" }}
+          className="min-w-0 flex-1"
         />
       </div>
     );
@@ -1709,26 +1654,27 @@ function SavedCard({
       onClick={manage ? undefined : () => onLoad(node.name)}
       trailing={
         manage ? (
-          <span className="flex shrink-0 items-center gap-0.5">
-            <button
+          <span className="flex shrink-0 items-center gap-1">
+            <Button
+              size={28}
+              variant="quiet"
+              icon="edit"
               onClick={() => {
                 cancelled.current = false;
                 setDraft(node.name);
               }}
               title={`Rename ${node.name} — same model, new library name`}
-              className="px-1.5 text-sm"
-              style={{ color: "var(--ink-muted)" }}
-            >
-              ✎
-            </button>
-            <button
+              aria-label={`Rename ${node.name}`}
+            />
+            <Button
+              size={28}
+              variant="quiet"
+              icon="delete"
               onClick={() => onDelete(node.name)}
               title={`Delete ${node.name}`}
-              className="px-1.5 text-sm"
+              aria-label={`Delete ${node.name}`}
               style={{ color: "var(--verdict-error)" }}
-            >
-              ×
-            </button>
+            />
           </span>
         ) : undefined
       }
@@ -1791,13 +1737,11 @@ function LedgerView({
   const toggle = (f: Facet) => setFacet(isSelected(f) ? null : f);
   return (
     <>
-      <button
-        onClick={onBackToDoors}
-        className="record-folio mb-4 block text-[11px] uppercase tracking-[0.2em]"
-        style={folioStyle}
-      >
-        ‹ Doors
-      </button>
+      <div className="mb-4">
+        <Button size={28} variant="quiet" icon="back" onClick={onBackToDoors}>
+          Doors
+        </Button>
+      </div>
 
       {/* The filter, immediately above the models — genus and tradition are
           facts about a model, not places a model lives, so they narrow the list
@@ -1820,13 +1764,9 @@ function LedgerView({
             />
           ))}
           {facet && (
-            <button
-              onClick={() => setFacet(null)}
-              className="record-folio pb-1.5 pt-1 text-[11px] uppercase tracking-[0.2em]"
-              style={folioStyle}
-            >
+            <Button size={28} variant="quiet" icon="close" onClick={() => setFacet(null)}>
               clear · show all {all.length}
-            </button>
+            </Button>
           )}
         </FilterLine>
       </section>
@@ -1857,39 +1797,38 @@ function LedgerView({
           a release ships a handful of models and everything else is the
           user's own. Saved models carry no genus or tradition, so a facet
           selection empties this section rather than silently ignoring it. */}
-      <section className="mt-16">
+      <section className="mt-12">
         <BlockHeader label="Yours" count={`${savedCount} model${savedCount === 1 ? "" : "s"}`} />
         {facet ? (
           <EmptyLine>your models carry no genus or tradition tag — clear the filter to see them</EmptyLine>
         ) : tree.length === 0 && drafted.length === 0 ? (
           <EmptyLine>no saved models yet</EmptyLine>
         ) : (
-          <div style={{ borderTop: "1px solid var(--rule)" }}>
+          <div style={{ borderTop: "1px solid var(--rule-strong)" }}>
             {shownRoots.map((root, i) => (
               <div
                 key={root.name}
                 className="grid w-full grid-cols-[3rem_1fr] items-stretch border-b"
-                style={{ borderColor: "var(--rule-soft)" }}
+                style={{ borderColor: "var(--hairline)" }}
               >
                 <span
-                  className="flex items-start justify-end pr-5 pt-3 text-[11px] tabular"
-                  style={{ color: "var(--ink-muted)" }}
+                  className="flex items-start justify-end pr-4 pt-3 text-xs tabular"
+                  style={{ color: "var(--text-muted)" }}
                 >
                   {String(i + 1).padStart(2, "0")}
                 </span>
-                <div className="py-2.5 pr-2">
+                <div className="py-2 pr-2">
                   <LibraryRow node={root} depth={0} onLoad={onLoad} onDelete={onDelete} onRename={onRename} />
                 </div>
               </div>
             ))}
             {foldedRoots > 0 && (
-              <button
-                onClick={() => setShowAllSaved(true)}
-                className="block w-full border-b py-2.5 text-left text-[11px] uppercase tracking-[0.18em]"
-                style={{ borderColor: "var(--rule-soft)", ...folioStyle }}
-              >
-                show all {tree.length} saved models
-              </button>
+              <div className="border-b py-2 pl-12" style={{ borderColor: "var(--hairline)" }}>
+                <Button size={28} variant="quiet" onClick={() => setShowAllSaved(true)}>
+                  show all {tree.length} saved models
+                  <Icon name="forward" size={16} />
+                </Button>
+              </div>
             )}
             {/* #472 fold: drafts are yours too — rows in the same list, the
                 chip saying so and naming the model that answered. */}
@@ -1907,12 +1846,12 @@ function LedgerView({
         )}
       </section>
 
-      <section className="mt-16">
+      <section className="mt-12">
         <BlockHeader label="From a file" />
         <Ledger>
           <LedgerRow
             door
-            folio="·"
+            folio={<Icon name="file" size={16} />}
             name="Open a file…"
             description="a model .json from your computer"
             tag="disk"
@@ -1950,8 +1889,8 @@ function ModelGutter({ model, index }: { model: ShippedModel; index: number }) {
   const compiled = useThumbnailModel(model.key, sl);
   return (
     <span
-      className="record-folio flex items-start justify-end pr-1 pt-1 text-[11px] tabular"
-      style={{ color: "var(--ink-muted)", transition: "color var(--transition-base)" }}
+      className="record-folio flex items-start justify-end pr-1 pt-1 text-xs tabular"
+      style={{ color: "var(--text-muted)", transition: "color var(--transition-base)" }}
     >
       {compiled ? <Thumbnail model={compiled} size={40} /> : String(index).padStart(2, "0")}
     </span>
@@ -1970,45 +1909,31 @@ function ModelRow({
   return (
     <button
       onClick={onClick}
-      className="record-row grid w-full grid-cols-[3rem_minmax(0,1fr)_auto] items-start gap-x-4 border-b py-3 text-left"
-      style={{ borderColor: "var(--rule-soft)" }}
+      className="record-row grid w-full grid-cols-[3rem_minmax(0,1fr)] items-start gap-x-4 border-b py-3 text-left sm:grid-cols-[3rem_minmax(0,1fr)_auto]"
+      style={{ borderColor: "var(--hairline)" }}
     >
       <ModelGutter model={model} index={index} />
       <span className="block min-w-0">
         <span className="flex items-baseline gap-3">
-          <span className="truncate text-2xl leading-tight" style={nameStyle}>
+          <span className="truncate leading-tight" style={{ ...nameStyle, ...d3 }}>
             {model.name}
           </span>
-          {model.runs && (
-            <span
-              className="shrink-0 text-xs"
-              style={{ fontFamily: mono, letterSpacing: "0.12em", color: "var(--seal)" }}
-            >
-              runs
-            </span>
-          )}
+          {model.runs && <Pill tone="runs">runs</Pill>}
           {model.with && (
-            <span
-              className="shrink-0 text-xs"
-              style={{ fontFamily: mono, letterSpacing: "0.12em", color: "var(--ink-muted)" }}
-              data-testid="row-marker"
-            >
-              with {model.with}
+            <span className="shrink-0" data-testid="row-marker">
+              <Pill tone="with">with {model.with}</Pill>
             </span>
           )}
         </span>
-        <span className="mt-0.5 block truncate text-sm" style={{ color: "var(--ink-secondary)" }}>
+        <span className="mt-0.5 block truncate text-sm" style={{ color: "var(--text-secondary)" }}>
           {model.description}
         </span>
       </span>
-      <span className="block max-w-[16rem] shrink-0 pt-1 text-right">
-        <span className="flex flex-wrap items-center justify-end gap-x-3 gap-y-1">
+      <span className="col-start-2 block min-w-0 pt-1 text-left sm:col-start-3 sm:max-w-[16rem] sm:shrink-0 sm:text-right">
+        <span className="flex flex-wrap items-center justify-start gap-x-3 gap-y-1 sm:justify-end">
+          {/* Tags and the set name are labels; the citation is prose at meta. */}
           {model.tags.map((t) => (
-            <span
-              key={`${t.kind}:${t.id}`}
-              className="inline-flex items-center gap-1.5 text-[10px] tracking-[0.14em]"
-              style={{ fontFamily: mono, color: "var(--ink-muted)" }}
-            >
+            <span key={`${t.kind}:${t.id}`} className={`inline-flex items-center gap-1.5 ${LABEL}`} style={labelStyle}>
               {hueOf(t) && (
                 <span aria-hidden className="h-2.5 w-0.5 shrink-0" style={{ background: hueOf(t) }} />
               )}
@@ -2016,19 +1941,13 @@ function ModelRow({
             </span>
           ))}
           {model.set && (
-            <span
-              className="text-[10px] tracking-[0.14em]"
-              style={{ fontFamily: mono, color: "var(--ink-muted)" }}
-            >
+            <span className={LABEL} style={labelStyle}>
               {model.set}
             </span>
           )}
         </span>
         {model.citation && (
-          <span
-            className="mt-1 block text-[10px] leading-snug tracking-[0.04em]"
-            style={{ fontFamily: mono, color: "var(--ink-muted)" }}
-          >
+          <span className="mt-1 block text-xs leading-4" style={{ color: "var(--text-muted)" }}>
             {model.citation}
           </span>
         )}
@@ -2091,15 +2010,13 @@ function LibraryRow({
     <>
       <div
         className={depth === 0 ? "flex items-center gap-2" : "mt-1 flex items-center gap-2"}
-        style={{ paddingLeft: depth === 0 ? 0 : (depth - 1) * 14 }}
+        style={{ paddingLeft: depth === 0 ? 0 : (depth - 1) * 16 }}
       >
         {depth > 0 && (
-          <span aria-hidden className="shrink-0 text-xs" style={{ color: "var(--ink-muted)" }}>
-            └
-          </span>
+          <Icon name="tree" size={16} className="shrink-0" style={{ color: "var(--text-muted)" }} />
         )}
         {draft !== null ? (
-          <input
+          <Input
             autoFocus
             value={draft}
             onChange={(e) => setDraft(e.target.value)}
@@ -2111,21 +2028,18 @@ function LibraryRow({
               }
             }}
             onBlur={() => void commit()}
-            className={depth === 0 ? "min-w-0 flex-1 px-1 text-sm" : "min-w-0 flex-1 px-1 text-xs"}
-            style={{
-              background: "var(--paper-edge)",
-              border: "1px solid var(--rule-soft)",
-              borderRadius: "var(--radius-sm)",
-              color: "var(--ink)",
-            }}
+            className="min-w-0 flex-1"
             aria-label={`Rename ${node.name}`}
           />
         ) : (
           <button onClick={() => onLoad(node.name)} className="min-w-0 flex-1 text-left" title={node.name}>
-            <div className={depth === 0 ? "truncate text-lg leading-tight" : "truncate text-sm"} style={nameStyle}>
+            <div
+              className={depth === 0 ? "truncate leading-tight" : "truncate text-sm font-medium"}
+              style={depth === 0 ? { ...nameStyle, ...d3 } : { color: "var(--text-primary)" }}
+            >
               {node.name}
             </div>
-            <div className="text-[10px]" style={{ fontFamily: mono, color: "var(--ink-muted)" }}>
+            <div className="text-xs" style={{ color: "var(--text-muted)" }}>
               saved {relTime(node.savedAt)}
               {node.missingReferents > 0 &&
                 ` · ${node.missingReferents} referent${node.missingReferents === 1 ? "" : "s"} missing`}
@@ -2133,26 +2047,27 @@ function LibraryRow({
           </button>
         )}
         {draft === null && (
-          <button
+          <Button
+            size={28}
+            variant="quiet"
+            icon="edit"
             onClick={() => {
               cancelled.current = false;
               setDraft(node.name);
             }}
             title={`Rename ${node.name} — same model, new library name`}
-            className="shrink-0 px-1.5 text-sm"
-            style={{ color: "var(--ink-muted)" }}
-          >
-            ✎
-          </button>
+            aria-label={`Rename ${node.name}`}
+          />
         )}
-        <button
+        <Button
+          size={28}
+          variant="quiet"
+          icon="delete"
           onClick={() => onDelete(node.name)}
           title={`Delete ${node.name}`}
-          className="shrink-0 px-1.5 text-sm"
-          style={{ color: "var(--ink-muted)" }}
-        >
-          ×
-        </button>
+          aria-label={`Delete ${node.name}`}
+          style={{ color: "var(--verdict-error)" }}
+        />
       </div>
       {node.children.map((c) => (
         <LibraryRow key={c.name} node={c} depth={depth + 1} onLoad={onLoad} onDelete={onDelete} onRename={onRename} />
