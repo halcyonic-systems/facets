@@ -25,3 +25,4 @@ _site/
 
 # audit output (scripts/author_audit.py); the table goes in the issue, not the tree
 runs/
+web/node_modules
