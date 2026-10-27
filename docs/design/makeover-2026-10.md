@@ -9,7 +9,7 @@
 - R8 corners: three radii only, 8px for a window or card, 4px for a box nested inside one, 4px for chips, buttons and inputs; 0 for grid cells, rows and bars; 50% only for a true circle.
 - No shadows. Hierarchy comes from flat surface steps and 1px hairlines.
 - One drawn icon grammar: 24px grid, 2px stroke, square caps, mitre joins, sizes 20 in a square, 16 standalone, 1em inline. No unicode glyphs doing an icon's job.
-- Colour only where it names something. If a colour cannot say what it means, it is a bug (visual-language.md, 2026-08-12).
+- Colour only where it names something. If a colour cannot say what it means, it is a bug (visual-language.md, 2026-08-12). Read with 9a to 9e: this is a rule about surfaces, not a ration on marks. Icons, glyphs, chips and tabs should be boldly coloured.
 - Withdrawn and not to return: the per-lens world tint on chrome or canvas, the rubric rule over title blocks, the italic serif lede, roman folios, the narrow reading column (visual-language.md §2). A blind pick licenses the artifact, not the brief behind it: do not promote a treatment's rationale into a rule the owner never stated.
 - The register: a considered scientific instrument that is also fun to use (AGENTS.md invariant 6). Bold, clear, accessible, professional.
 
@@ -31,6 +31,13 @@ Every rule below is one an agent can check on the page. "Arcadia" means `~/halcy
 7. Paper and ink from Nord: paper `#ffffff`, paper-2 `#f3f6f9`, paper-3 `#e5edf4`, rule `#d8dee9`, rule-strong `#aebdcf`, ink `#2e3440`, ink-2 `#3b4252`, mute `#5b6577`. Facets keeps its own semantic tokens (`--accent` teal, `--kind-*`, `--verdict-*`, `--chart-*`, `--world-*`), re-tuned so every text pair meets 4.5:1 and every control pair 3:1 in light and in dark. The tuning is recorded as a table in the audit, pair by pair. (WCAG 2.2 AA; Radix Colors for the method of documented steps.)
 8. Action is Frost blue or the accent; the deep step carries text, the lighter steps fill areas. Status is solid when urgent and tinted when calm. Never a raw hex in a component; never white ink on a fill without `--text-on-accent`. (Arcadia; DESIGN.md.)
 9. Substance colour (`--kind-*`) is constant across lenses and themes and is the only colour a flow may carry. Verdicts use ok, warning, error tokens. (DESIGN.md.)
+
+### Colour, the freedom (owner's note, 2026-10-26: "more colour around icons, in general")
+9a. Surfaces stay neutral; everything that names a thing may carry colour, and should. The whole Nord range is open: Frost (the four blues and the teal) and Aurora (red, orange, yellow, green, purple), each used at a step that passes contrast on paper. Where colour rides a mark rather than a surface, it is welcome, not rationed.
+9b. The ten process primitives each get a hue as well as a silhouette, one per primitive, stated once in tokens, carried on the palette rail, the canvas badge and the inspector alike, so a primitive is recognisable by colour before its glyph is read. The four substances keep `--kind-*` and the palette rail icons wear them.
+9c. The lens tabs wear their lens hue on the active tab (slate, indigo, teal) and the tool rail's armed tool wears the accent as a filled square. Icon squares on Home and in the library take a tinted well in their card's hue.
+9d. Chips and markers are coloured by meaning: verdict ok, warning, error; runs; drafted; with-someone; bench. Each is a filled or tinted chip with a word, never a bare dot.
+9e. What stays out: tinted page grounds, tinted header bands, the per-lens world wash on the canvas, beige. A colour on a surface is still a bug. A colour on a mark is the point.
 
 ### Controls and accessibility
 10. Every control has a visible focus ring, 2px, the accent, offset 2px, on keyboard focus; never removed. (WCAG 2.4.7, 2.4.11; Radix, GOV.UK.)
