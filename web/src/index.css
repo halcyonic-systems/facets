@@ -555,14 +555,35 @@ input[type="range"]:focus-visible {
 
 /* ── The SL editor (CodeMirror host, #353 Tier 2) ─────────────────────────
    Classes only; every color is a token. The KIND words carry their own
-   channels because KIND is ontology, not decoration. */
+   channels because KIND is ontology, not decoration.
+
+   Type (makeover rule 5, sl audit #1): JetBrains Mono at --t-sm on a 22px
+   line. CodeMirror's injected base theme sets `font-family: monospace;
+   line-height: 1.4` on `.cm-scroller`, one level INSIDE `.cm-editor`, so a
+   rule on the editor alone is inherited and then overridden; the scroller and
+   the content are named here at three classes deep, which outranks the
+   injected `.ͼ1 .cm-scroller` whatever order the two sheets load in. The
+   gutter marks (band labels, glyphs) are built for the same 22px line.
+
+   Height (sl audit #8): the editor keeps a floor of eight lines; the fault
+   list, the details block and the docked drafter shrink first (SlPane). */
+.sl-editor {
+  min-height: 176px;
+}
 .sl-editor .cm-editor {
   height: 100%;
   background: var(--bg-primary);
   color: var(--text-secondary);
-  font-family: var(--font-mono, ui-monospace, monospace);
-  font-size: 0.8125rem;
-  line-height: 1.375rem;
+  font-family: var(--font-mono);
+  font-size: var(--t-sm);
+  line-height: 22px;
+}
+.sl-editor .cm-editor .cm-scroller,
+.sl-editor .cm-editor .cm-content,
+.sl-editor .cm-editor .cm-gutters {
+  font-family: var(--font-mono);
+  font-size: var(--t-sm);
+  line-height: 22px;
 }
 .sl-editor .cm-editor.cm-focused {
   outline: var(--focus-ring);
@@ -610,33 +631,40 @@ input[type="range"]:focus-visible {
   box-shadow: inset 0 1px var(--hairline), inset 2px 0 var(--verdict-error);
 }
 .sl-editor .sl-band-gutter {
-  width: 4.25rem;
+  width: 6.5rem;
   background: var(--bg-primary);
   border-right: 1px solid var(--hairline);
 }
+/* The band label is the 11/600 uppercase label (rule 5; it was 9px). Inter,
+   not mono: it names the band, it is not SL. */
 .sl-band-label {
   display: block;
   padding: 0 0.5rem;
-  font-size: 0.5625rem;
-  letter-spacing: 0.08em;
+  font-family: var(--font-body);
+  font-size: var(--t-label);
+  font-weight: 600;
+  letter-spacing: var(--tracking-label);
   text-transform: uppercase;
   color: var(--text-muted);
-  line-height: 1.375rem;
+  line-height: 22px;
 }
 .sl-editor .sl-glyph-gutter {
-  width: 1.1rem;
+  width: 1.25rem;
   background: var(--bg-primary);
 }
 .sl-glyph {
   display: flex;
   align-items: center;
   justify-content: center;
-  height: 1.375rem;
+  height: 22px;
   color: var(--text-muted);
 }
+/* The fault mark is the drawn 16px `error` glyph (rule 14), not a `!`. */
 .sl-glyph-error {
   color: var(--verdict-error);
-  font-weight: 700;
+}
+.sl-glyph-error svg {
+  display: block;
 }
 .sl-glyph-dot {
   width: 6px;

@@ -451,7 +451,7 @@ export function SlPane({
           />
           {errors.length > 0 && (
             <div
-              className="max-h-40 overflow-y-auto border-t px-3 py-2 text-xs"
+              className="max-h-40 min-h-0 shrink overflow-y-auto border-t px-3 py-2 text-xs"
               style={{
                 borderColor: "var(--hairline)",
                 color: "var(--verdict-error)",
@@ -506,7 +506,7 @@ export function SlPane({
             </span>
           </div>
           {detailsOpen && (
-            <div className="overflow-y-auto" style={{ maxHeight: "45%" }}>
+            <div className="min-h-0 shrink overflow-y-auto" style={{ maxHeight: "45%" }}>
               <div
                 className="flex flex-wrap items-center gap-2 border-t px-3 py-2"
                 style={{ borderColor: "var(--hairline)" }}
@@ -523,7 +523,12 @@ export function SlPane({
             </div>
           )}
           {drafterDocked && coauthor && (
-            <div className="shrink-0 border-t" style={{ borderColor: "var(--hairline)", background: "var(--bg-primary)" }}>
+            <div
+              // Yields to the editor's eight-line floor (sl audit #8) and
+              // scrolls inside itself when it has to.
+              className="min-h-0 shrink overflow-y-auto border-t"
+              style={{ borderColor: "var(--hairline)", background: "var(--bg-primary)" }}
+            >
               <CoAuthorMode
                 docked
                 folded={drafterFolded}
