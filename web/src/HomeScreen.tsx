@@ -50,7 +50,7 @@
 // (rule 14), cards are 8px with a hairline edge (rules 2, 3), and the page
 // reflows at 390 (rule 16). The --paper/--ink names stay as aliases in
 // index.css; this file reads --bg-* and --text-*.
-import { useState, useRef, useEffect, useId, type CSSProperties, type ReactNode } from "react";
+import { useState, useRef, useEffect, type CSSProperties, type ReactNode } from "react";
 import type { Demo } from "./demos";
 import type { CorpusEntry } from "./corpus";
 import type { LibraryNode } from "./libraryTree";
@@ -74,7 +74,7 @@ import { openExternal } from "./desktop";
 import { buildInfo, provenanceLines } from "./buildInfo";
 import Thumbnail from "./canvas/Thumbnail";
 import { useThumbnailModel } from "./canvas/useThumbnail";
-import { Icon, ICONS, renderShapes, type IconName } from "./icons";
+import { Icon } from "./icons";
 import { Button, Input, Pill, type Tone } from "./ui";
 
 // The rendered docs on the site (#368): the LIVE doc set, published with the
@@ -520,282 +520,72 @@ function Gem({ size = 72 }: { size?: number }) {
 }
 
 // ---------------------------------------------------------------------------
-// The front door (2026-10-27, the entry pass). A desktop page, not a phone
-// column: the promise and the two actions on the left, a system drawn the way
-// the canvas draws one on the right, and the proof line at the foot. The two
-// doors are the only actions on the page; the lede no longer repeats them as
-// links.
+// The front door (the entry pass, 2026-10-27). It leads with the language: a
+// handful of generic words that describe a system in any domain, each with its
+// shape on the canvas and its keyword in SL. The two doors are the only
+// actions; the worked example is one link away, and the proof claim is folded
+// into the foot with its limits.
 // ---------------------------------------------------------------------------
 
-type Kind = "energy" | "informational";
-
-/** The front-door figure is the library's LLM serving market
- *  (assets/examples/llm-market.sl), drawn by hand at the model's own grain:
- *  every node and flow here is one the SL declares, with its kind. Drawn
- *  rather than mounted because the canvas at this size would be a screenshot
- *  of an instrument; the drawing is a promise the open button keeps. If the
- *  model's structure changes, this table changes with it. */
-interface FigNode {
-  x: number;
-  y: number;
-  /** One or two lines. */
-  label: string[];
-  shape: "source" | "sink" | "interface" | "component" | "port";
-  prim?: { icon: IconName; hue: string };
-  /** Where an outside label sits relative to its square. */
-  side?: "left" | "right" | "above" | "below";
-  /** A port's label, placed outside the ring by hand: offset and anchor. */
-  at?: { dx: number; dy: number; anchor: "start" | "end" };
-}
-
-const RING = { cx: 388, cy: 266, rx: 226, ry: 184 };
-const onRing = (deg: number) => ({
-  x: RING.cx + RING.rx * Math.cos((deg * Math.PI) / 180),
-  y: RING.cy + RING.ry * Math.sin((deg * Math.PI) / 180),
-});
-const SQ = 40;
-const PORT = 16;
-const r180 = onRing(180);
-const r150 = onRing(148);
-const r250 = onRing(250);
-const r110 = onRing(110);
-const r0 = onRing(0);
-
-const AMP = { icon: "amplifying" as IconName, hue: "var(--prim-amplifying)" };
-
-const FIG_NODES: Record<string, FigNode> = {
-  routed: { x: 64, y: r180.y, label: ["Routed", "demand"], shape: "source", side: "above" },
-  selfd: { x: 92, y: 440, label: ["Self-hosted", "demand"], shape: "source", side: "below" },
-  flabs: { x: r250.x, y: 34, label: ["Frontier labs"], shape: "source", side: "right" },
-  olabs: { x: r110.x, y: 500, label: ["Open-weight labs"], shape: "source", side: "right" },
-  customers: { x: 718, y: r0.y, label: ["Customers"], shape: "sink", side: "above" },
-  router: { ...r180, label: ["Router"], shape: "interface", prim: { icon: "splitting", hue: "var(--prim-splitting)" } },
-  selfhost: { ...r150, label: ["Self-hosting"], shape: "port", at: { dx: -14, dy: -10, anchor: "end" } },
-  frel: { ...r250, label: ["Frontier release"], shape: "port", at: { dx: -14, dy: -8, anchor: "end" } },
-  orel: { ...r110, label: ["Open-weight release"], shape: "port", at: { dx: -14, dy: 22, anchor: "end" } },
-  endpoint: { ...r0, label: ["Serving endpoint"], shape: "port", at: { dx: 0, dy: 34, anchor: "start" } },
-  fserve: { x: 404, y: 180, label: ["Frontier", "serving"], shape: "component", prim: AMP },
-  oserve: { x: 404, y: 352, label: ["Open-weight", "serving"], shape: "component", prim: AMP },
-};
-
-const FIG_FLOWS: { from: string; to: string; kind: Kind; bend?: number }[] = [
-  { from: "routed", to: "router", kind: "energy" },
-  { from: "selfd", to: "selfhost", kind: "energy", bend: 10 },
-  { from: "router", to: "fserve", kind: "energy", bend: -26 },
-  { from: "router", to: "oserve", kind: "energy", bend: 26 },
-  { from: "selfhost", to: "oserve", kind: "energy", bend: 10 },
-  { from: "flabs", to: "frel", kind: "informational" },
-  { from: "frel", to: "fserve", kind: "informational", bend: -10 },
-  { from: "olabs", to: "orel", kind: "informational" },
-  { from: "orel", to: "oserve", kind: "informational", bend: 10 },
-  { from: "fserve", to: "endpoint", kind: "informational", bend: -18 },
-  { from: "oserve", to: "endpoint", kind: "informational", bend: 18 },
-  { from: "endpoint", to: "customers", kind: "informational" },
-];
-
-const KIND_VAR: Record<Kind, string> = {
+const KIND_VAR = {
+  matter: "var(--kind-matter)",
   energy: "var(--kind-energy)",
   informational: "var(--kind-informational)",
+} as const;
+
+const ink = { fill: "none", stroke: "var(--text-primary)", strokeWidth: 2 } as const;
+
+/** Each term's shape, drawn as the canvas draws it, on a 40×32 plate. */
+const TERM_GLYPH: Record<string, ReactNode> = {
+  system: <ellipse cx="20" cy="16" rx="16" ry="12" style={ink} />,
+  component: (
+    <circle
+      cx="20"
+      cy="16"
+      r="10"
+      style={{
+        fill: "color-mix(in srgb, var(--prim-amplifying) 14%, var(--bg-secondary))",
+        stroke: "var(--prim-amplifying)",
+        strokeWidth: 2,
+      }}
+    />
+  ),
+  interface: (
+    <>
+      <path d="M4 26 Q20 2 36 26" style={ink} />
+      <rect x="15" y="9" width="10" height="10" style={{ ...ink, fill: "var(--bg-secondary)" }} />
+    </>
+  ),
+  source: (
+    <>
+      <path d="M17 6 H5 V26 H17" style={ink} />
+      <path d="M23 6 H35 V26 H23" style={ink} />
+    </>
+  ),
+  flow: (
+    <>
+      <line x1="4" y1="7" x2="36" y2="7" style={{ stroke: KIND_VAR.matter, strokeWidth: 2.5 }} />
+      <line x1="4" y1="16" x2="36" y2="16" style={{ stroke: KIND_VAR.energy, strokeWidth: 2.5 }} />
+      <line x1="4" y1="25" x2="36" y2="25" style={{ stroke: KIND_VAR.informational, strokeWidth: 2.5, strokeDasharray: "5 4" }} />
+    </>
+  ),
 };
 
-const COMP_R = 56;
-const ROUTER_R = 30;
-const reach = (n: FigNode) =>
-  n.shape === "component" ? COMP_R + 4 : n.shape === "interface" ? ROUTER_R + 4 : n.shape === "port" ? PORT / 2 + 4 : SQ / 2 + 6;
-
-function flowPath(a: FigNode, b: FigNode, bend = 0) {
-  const dx = b.x - a.x;
-  const dy = b.y - a.y;
-  const len = Math.hypot(dx, dy);
-  const ux = dx / len;
-  const uy = dy / len;
-  const p0 = { x: a.x + ux * reach(a), y: a.y + uy * reach(a) };
-  const p2 = { x: b.x - ux * reach(b), y: b.y - uy * reach(b) };
-  const c = { x: (p0.x + p2.x) / 2 - uy * bend, y: (p0.y + p2.y) / 2 + ux * bend };
-  return `M${p0.x},${p0.y} Q${c.x},${c.y} ${p2.x},${p2.y}`;
-}
-
-/** Mobus's open square: three sides, open toward the system. */
-function openSquare(n: FigNode) {
-  const h = SQ / 2;
-  const [x0, y0, x1, y1] = [n.x - h, n.y - h, n.x + h, n.y + h];
-  const dx = RING.cx - n.x;
-  const dy = RING.cy - n.y;
-  if (Math.abs(dx) / RING.rx > Math.abs(dy) / RING.ry) {
-    return dx > 0 ? `M${x1},${y0} H${x0} V${y1} H${x1}` : `M${x0},${y0} H${x1} V${y1} H${x0}`;
-  }
-  return dy > 0 ? `M${x0},${y1} V${y0} H${x1} V${y1}` : `M${x0},${y0} V${y1} H${x1} V${y0}`;
-}
-
-const svgText: CSSProperties = {
-  fontFamily: "var(--font-body)",
-  fontWeight: 600,
-  fontSize: "var(--t-body)",
-  fill: "var(--text-primary)",
-};
-const svgNote: CSSProperties = { ...svgText, fontWeight: 500, fontSize: "var(--t-sm)", fill: "var(--text-secondary)" };
-
-function Lines({ x, y, lines, anchor, style }: { x: number; y: number; lines: string[]; anchor: "start" | "middle" | "end"; style: CSSProperties }) {
-  return (
-    <text x={x} y={y} textAnchor={anchor} style={style}>
-      {lines.map((l, i) => (
-        <tspan key={l} x={x} dy={i === 0 ? 0 : "1.15em"}>
-          {l}
-        </tspan>
-      ))}
-    </text>
-  );
-}
-
-function Glyph({ x, y, prim, scale = 1.25 }: { x: number; y: number; prim: { icon: IconName; hue: string }; scale?: number }) {
-  const half = 12 * scale;
-  return (
-    <g
-      transform={`translate(${x - half} ${y - half}) scale(${scale})`}
-      fill="none"
-      strokeWidth={2}
-      strokeLinecap="square"
-      strokeLinejoin="miter"
-      style={{ stroke: prim.hue, color: prim.hue }}
-    >
-      {renderShapes(ICONS[prim.icon])}
-    </g>
-  );
-}
-
-/** The LLM serving market in the canvas's vocabulary: the boundary as the one
- *  ring, interfaces as notches on it, the two serving subsystems as circles in
- *  their primitive's hue (doubled, because each decomposes into a model of its
- *  own), sources and the sink as open squares, every flow in its kind's
- *  colour. A picture, not a model: nothing here runs. */
-export function FrontFigure() {
-  const uid = useId().replace(/:/g, "");
-  const marker = (k: Kind) => `${uid}-arrow-${k}`;
-  return (
-    <svg viewBox="24 0 740 540" className="block h-auto w-full" role="img" aria-labelledby={`${uid}-t`}>
-      <title id={`${uid}-t`}>
-        The LLM serving market drawn as a system: routed and self-hosted demand bring compute in through a router and a
-        self-hosting interface, the labs release weights, frontier and open-weight serving turn both into tokens, and
-        the tokens leave for customers through the serving endpoint.
-      </title>
-      <defs>
-        {(Object.keys(KIND_VAR) as Kind[]).map((k) => (
-          <marker key={k} id={marker(k)} viewBox="0 0 10 10" refX="8" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse">
-            <path d="M0,0 L10,5 L0,10 Z" style={{ fill: KIND_VAR[k] }} />
-          </marker>
-        ))}
-      </defs>
-      <ellipse
-        cx={RING.cx}
-        cy={RING.cy}
-        rx={RING.rx}
-        ry={RING.ry}
-        style={{ fill: "var(--bg-secondary)", stroke: "var(--text-primary)", strokeWidth: 2 }}
-      />
-      {FIG_FLOWS.map((f) => (
-        <path
-          key={`${f.from}-${f.to}`}
-          d={flowPath(FIG_NODES[f.from], FIG_NODES[f.to], f.bend)}
-          markerEnd={`url(#${marker(f.kind)})`}
-          style={{
-            fill: "none",
-            stroke: KIND_VAR[f.kind],
-            strokeWidth: 2.5,
-            strokeDasharray: f.kind === "informational" ? "6 5" : undefined,
-          }}
-        />
-      ))}
-      {Object.entries(FIG_NODES).map(([id, n]) => {
-        if (n.shape === "component") {
-          return (
-            <g key={id}>
-              <circle
-                cx={n.x}
-                cy={n.y}
-                r={COMP_R}
-                style={{ fill: `color-mix(in srgb, ${n.prim!.hue} 12%, var(--bg-secondary))`, stroke: n.prim!.hue, strokeWidth: 2.5 }}
-              />
-              <circle cx={n.x} cy={n.y} r={COMP_R - 6} style={{ fill: "none", stroke: n.prim!.hue, strokeWidth: 1 }} />
-              <Glyph x={n.x} y={n.y - 20} prim={n.prim!} />
-              <Lines x={n.x} y={n.y + 10} lines={n.label} anchor="middle" style={{ ...svgText, fontSize: "var(--t-sm)" }} />
-            </g>
-          );
-        }
-        if (n.shape === "interface") {
-          return (
-            <g key={id}>
-              <circle
-                cx={n.x}
-                cy={n.y}
-                r={ROUTER_R}
-                style={{ fill: `color-mix(in srgb, ${n.prim!.hue} 14%, var(--bg-secondary))`, stroke: n.prim!.hue, strokeWidth: 2.5 }}
-              />
-              <Glyph x={n.x} y={n.y} prim={n.prim!} scale={1} />
-              <Lines x={n.x} y={n.y - ROUTER_R - 12} lines={n.label} anchor="middle" style={svgText} />
-            </g>
-          );
-        }
-        if (n.shape === "port") {
-          const angle = (Math.atan2((n.y - RING.cy) / RING.ry, (n.x - RING.cx) / RING.rx) * 180) / Math.PI;
-          const h = PORT / 2;
-          return (
-            <g key={id}>
-              <rect
-                x={n.x - h}
-                y={n.y - h}
-                width={PORT}
-                height={PORT}
-                transform={`rotate(${angle} ${n.x} ${n.y})`}
-                style={{ fill: "var(--bg-secondary)", stroke: "var(--text-primary)", strokeWidth: 2 }}
-              />
-              <Lines x={n.x + n.at!.dx} y={n.y + n.at!.dy} lines={n.label} anchor={n.at!.anchor} style={svgNote} />
-            </g>
-          );
-        }
-        const h = SQ / 2;
-        const pos =
-          n.side === "right"
-            ? { x: n.x + h + 10, y: n.y + 5, a: "start" as const }
-            : n.side === "left"
-              ? { x: n.x - h - 10, y: n.y + 5, a: "end" as const }
-              : n.side === "above"
-                ? { x: n.x, y: n.y - h - 10 - (n.label.length - 1) * 18, a: "middle" as const }
-                : { x: n.x, y: n.y + h + 20, a: "middle" as const };
-        return (
-          <g key={id}>
-            <path d={openSquare(n)} style={{ fill: "none", stroke: "var(--text-primary)", strokeWidth: 2 }} />
-            <Lines x={pos.x} y={pos.y} lines={n.label} anchor={pos.a} style={svgText} />
-          </g>
-        );
-      })}
-    </svg>
-  );
-}
-
-/** A flow kind in the figure's key: its colour on a short stroke, and its
- *  name, so colour is never the only carrier (rule 12). */
-function KeyChip({ kind, label }: { kind: Kind; label: string }) {
-  return (
-    <span className="inline-flex items-center gap-2 text-xs font-medium" style={{ color: "var(--text-secondary)" }}>
-      <svg width="20" height="8" aria-hidden="true">
-        <line
-          x1="0"
-          y1="4"
-          x2="20"
-          y2="4"
-          style={{ stroke: KIND_VAR[kind], strokeWidth: 2.5, strokeDasharray: kind === "informational" ? "4 3" : undefined }}
-        />
-      </svg>
-      {label}
-    </span>
-  );
-}
+/** The language, in five words. The glosses hold in any domain; the keyword is
+ *  the SL word that writes it (docs/language/). */
+const TERMS: { id: string; word: string; sl: string; gloss: string }[] = [
+  { id: "system", word: "System", sl: "system", gloss: "Whatever you draw a boundary around." },
+  { id: "component", word: "Component", sl: "component", gloss: "A part inside it that does something." },
+  { id: "interface", word: "Interface", sl: "interface", gloss: "Where something crosses the boundary." },
+  { id: "source", word: "Source and sink", sl: "source · sink", gloss: "Where flows come from and where they go." },
+  { id: "flow", word: "Flow", sl: "flow", gloss: "Matter, energy or information on the move." },
+];
 
 const THEORY_URL = "https://facets.systems/docs/theory-fidelity.html";
 
-/** What the check means, for a reader who has never met it (2026-10-27). The
- *  claims are the README's "What is proven, stated exactly", in plain words;
- *  if that section changes, this changes with it. */
+/** What the check means, for a reader who has never met it. The claims are the
+ *  README's "What is proven, stated exactly", in plain words; if that section
+ *  changes, this changes with it. */
 const CHECK_NOTES: { label: string; body: ReactNode }[] = [
   {
     label: "What it checks",
@@ -846,8 +636,8 @@ export function HomeMenu({
    *  which is where "describe it in a few lines" lands. */
   onCreate: (opts?: { sl?: boolean }) => void;
   onOpenLibrary: () => void;
-  /** Open the model the figure draws, the LLM serving market. Absent, the
-   *  figure is shown without its open button. */
+  /** Open the worked example, the LLM serving market. Absent, the link is not
+   *  shown. */
   onOpenFeatured?: () => void;
   /** Open the provenance page (#229). Optional so the menu renders standalone. */
   onAbout?: () => void;
@@ -859,15 +649,15 @@ export function HomeMenu({
           Drawing, describing and wiring processes are ways of working on the
           same model, chosen on the blank canvas, not doors here. The sandbox
           surface stays at `?sandbox=1`; the data-first door at `?data=1`. */}
-      <main className="mx-auto grid w-full max-w-6xl flex-1 items-center gap-10 px-4 py-10 sm:px-10 lg:grid-cols-[minmax(0,4fr)_minmax(0,6fr)] lg:gap-12 lg:py-14">
+      <main className="mx-auto grid w-full max-w-6xl flex-1 items-center gap-12 px-4 py-12 sm:px-10 lg:grid-cols-2 lg:gap-20 lg:py-16">
         <div className="min-w-0">
           <Gem size={48} />
           <h1 className="mt-6" style={{ ...nameStyle, fontSize: "var(--t-hero)", lineHeight: 1.05 }}>
-            Model a system, then run it.
+            Systems modeling, grounded in systems science.
           </h1>
           <p className="mt-6 max-w-lg text-lg leading-7" style={{ color: "var(--text-secondary)" }}>
-            Draw what it is made of, what crosses its boundary, and what flows through it. Facets checks each step
-            against systems theory.
+            Parts, a boundary, and the flows between them. Facets checks the structure as you build and runs it when
+            you're ready.
           </p>
           <div className="mt-8 flex flex-wrap gap-3">
             <button
@@ -887,73 +677,96 @@ export function HomeMenu({
               Open a model
             </button>
           </div>
-          <p className="mt-4 max-w-lg text-sm leading-5" style={{ color: "var(--text-muted)" }}>
-            Draw it, describe it in a few lines, or wire processes and press Run. Open the library, your saved models,
-            or a file.
+        </div>
+
+        {/* The language: five words for any system, each with its shape and
+            its SL keyword. */}
+        <section className="min-w-0" aria-labelledby="home-language">
+          <h2 id="home-language" style={{ ...nameStyle, ...d2 }}>
+            One language for any system
+          </h2>
+          <p className="mt-2 text-sm leading-6" style={{ color: "var(--text-secondary)" }}>
+            A cell, a firm and a market, described in the same few words.
           </p>
-        </div>
-
-        <figure className="min-w-0">
-          <div className="rounded-md border" style={{ background: "var(--bg-primary)", borderColor: "var(--hairline)" }}>
-            <div className="flex items-center justify-between gap-3 border-b px-4 py-3 sm:px-5" style={{ borderColor: "var(--hairline)" }}>
-              <span className="whitespace-nowrap" style={{ ...nameStyle, ...d3 }}>
-                LLM Serving Market
-              </span>
-              {onOpenFeatured && (
-                <button type="button" onClick={onOpenFeatured} className={quiet} style={{ color: "var(--accent)" }}>
-                  Open<span className="hidden sm:inline"> this model</span>
-                  <Icon name="forward" size={16} />
-                </button>
-              )}
-            </div>
-            <div className="p-3 sm:p-5">
-              <FrontFigure />
-            </div>
-          </div>
-          <figcaption className="mt-3 flex flex-wrap items-center gap-x-5 gap-y-2">
-            <KeyChip kind="energy" label="Compute (energy)" />
-            <KeyChip kind="informational" label="Weights and tokens (information)" />
-            <span className="text-xs" style={{ color: "var(--text-muted)" }}>
-              From the library. Inside the ring is the market; outside is its environment.
-            </span>
-          </figcaption>
-        </figure>
-      </main>
-
-      {/* What the check means. The claim that sets Facets apart, said with its
-          limits, for a reader who has never heard of Lean. */}
-      <section className="border-t" style={{ borderColor: "var(--hairline)", background: "var(--bg-primary)" }}>
-        <div className="mx-auto grid w-full max-w-6xl gap-6 px-4 py-8 sm:px-10 md:grid-cols-3 md:gap-10">
-          {CHECK_NOTES.map((n) => (
-            <div key={n.label} className="min-w-0">
-              <div className={LABEL} style={labelStyle}>
-                {n.label}
+          <dl className="mt-5 border-t" style={{ borderColor: "var(--hairline)" }}>
+            {TERMS.map((t) => (
+              <div
+                key={t.id}
+                className="grid grid-cols-[40px_minmax(0,1fr)] items-center gap-x-4 border-b py-3 sm:grid-cols-[40px_9rem_minmax(0,1fr)]"
+                style={{ borderColor: "var(--hairline)" }}
+              >
+                <svg width="40" height="32" viewBox="0 0 40 32" aria-hidden="true" className="row-span-2 sm:row-span-1">
+                  {TERM_GLYPH[t.id]}
+                </svg>
+                <dt className="flex items-baseline gap-2">
+                  <span className="text-base font-semibold" style={{ color: "var(--text-primary)" }}>
+                    {t.word}
+                  </span>
+                </dt>
+                <dd className="flex min-w-0 flex-wrap items-baseline justify-between gap-x-3 text-sm" style={{ color: "var(--text-secondary)" }}>
+                  <span>{t.gloss}</span>
+                  <code className="text-xs" style={{ fontFamily: mono, color: "var(--accent)" }}>
+                    {t.sl}
+                  </code>
+                </dd>
               </div>
-              <p className="mt-2 text-sm leading-6" style={{ color: "var(--text-secondary)" }}>
-                {n.body}
-              </p>
-            </div>
-          ))}
-        </div>
-      </section>
-
-      <footer className="border-t" style={{ borderColor: "var(--hairline)" }}>
-        <div className="mx-auto flex w-full max-w-6xl flex-wrap items-center justify-end gap-2 px-4 py-3 sm:px-10">
-          <a href={DOCS_URL} target="_blank" rel="noreferrer" onClick={openExternal} className={quiet} style={{ color: "var(--text-secondary)" }}>
-            Documentation
-            <Icon name="external" size={16} />
-          </a>
-          {onAbout && (
-            <button type="button" onClick={onAbout} className={quiet} style={{ color: "var(--text-secondary)" }}>
-              This build
-              {buildInfo.gitSha && (
-                <span className="tabular text-xs" style={{ color: "var(--text-muted)" }}>
-                  {buildInfo.gitSha.slice(0, 7)}
-                </span>
-              )}
+            ))}
+          </dl>
+          {onOpenFeatured && (
+            <button type="button" onClick={onOpenFeatured} className={`${quiet} -mx-2 mt-3`} style={{ color: "var(--accent)" }}>
+              See it applied to the LLM serving market
+              <Icon name="forward" size={16} />
             </button>
           )}
-        </div>
+        </section>
+      </main>
+
+      {/* The foot: what the check means, folded until asked for, then the docs
+          and the build. */}
+      <footer className="border-t" style={{ borderColor: "var(--hairline)" }}>
+        <details className="home-check mx-auto w-full max-w-6xl px-4 sm:px-10">
+          <summary className="flex cursor-pointer list-none flex-wrap items-center justify-between gap-3 py-3">
+            <span className="inline-flex items-center gap-3 text-sm font-medium" style={{ color: "var(--text-secondary)" }}>
+              <span
+                aria-hidden
+                className="flex h-6 w-6 shrink-0 items-center justify-center rounded-sm"
+                style={{ background: "color-mix(in srgb, var(--verdict-ok) 14%, var(--bg-secondary))", color: "var(--verdict-ok)" }}
+              >
+                <Icon name="check" size={16} />
+              </span>
+              What the structure check means, and what it does not claim
+              <Icon name="chevron-down" size={16} className="home-check-caret" />
+            </span>
+            <span className="flex items-center gap-2" onClick={(e) => e.stopPropagation()}>
+              <a href={DOCS_URL} target="_blank" rel="noreferrer" onClick={openExternal} className={quiet} style={{ color: "var(--text-secondary)" }}>
+                Documentation
+                <Icon name="external" size={16} />
+              </a>
+              {onAbout && (
+                <button type="button" onClick={onAbout} className={quiet} style={{ color: "var(--text-secondary)" }}>
+                  This build
+                  {buildInfo.gitSha && (
+                    <span className="tabular text-xs" style={{ color: "var(--text-muted)" }}>
+                      {buildInfo.gitSha.slice(0, 7)}
+                    </span>
+                  )}
+                </button>
+              )}
+            </span>
+          </summary>
+          <div className="grid gap-6 pb-8 pt-2 md:grid-cols-3 md:gap-10">
+            {CHECK_NOTES.map((n) => (
+              <div key={n.label} className="min-w-0">
+                <div className={LABEL} style={labelStyle}>
+                  {n.label}
+                </div>
+                <p className="mt-2 text-sm leading-6" style={{ color: "var(--text-secondary)" }}>
+                  {n.body}
+                </p>
+              </div>
+            ))}
+          </div>
+        </details>
       </footer>
     </div>
   );

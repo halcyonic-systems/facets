@@ -416,6 +416,16 @@ body {
   background: var(--accent-soft);
   border-color: var(--accent);
 }
+/* the front door's folded proof notes: no browser marker, a caret that turns */
+.home-check summary::-webkit-details-marker {
+  display: none;
+}
+.home-check-caret {
+  transition: transform var(--transition-base);
+}
+.home-check[open] .home-check-caret {
+  transform: rotate(180deg);
+}
 .home-quiet-link {
   transition: color var(--transition-base), background-color var(--transition-base);
 }
