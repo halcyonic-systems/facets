@@ -81,47 +81,54 @@ function rewriteHref(src, href) {
 const esc = (s) => s.replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;").replace(/"/g, "&quot;");
 
 const SHELL_CSS = `
+  /* The docs shell on the makeover rules (docs/design/makeover-2026-10.md):
+     the app's ground, a white sheet, hairlines for every edge, Inter at
+     --t-body on a 72-character measure, Cormorant 700 for the headings at
+     --t-d1/d2/d3, the one label style for kickers, links in the accent, the
+     shared focus ring from /shared/frost.css. Mono is for code only. */
   * { box-sizing: border-box; }
-  body { margin: 0; background: var(--paper-ground); color: var(--ink); font-family: var(--font-body); line-height: 1.6; }
-  a { color: var(--ink); text-decoration: none; border-bottom: 1px solid var(--accent); padding-bottom: 1px; transition: color var(--transition-base); }
-  a:hover { color: var(--accent); }
-  .sheet { max-width: 56rem; margin: 0 auto; min-height: 100vh; background: var(--paper); border-left: 1px solid var(--rule-soft); border-right: 1px solid var(--rule-soft); }
-  header.site { display: flex; align-items: baseline; justify-content: space-between; gap: 1.5rem; padding: 1.25rem 2rem; border-bottom: 1px solid var(--rule-soft); }
-  header.site .wordmark, header.site nav a { font-family: var(--font-mono); font-size: 11px; text-transform: uppercase; letter-spacing: 0.22em; border: 0; }
-  header.site .wordmark { color: var(--ink); }
-  header.site .wordmark span { color: var(--accent); }
-  header.site nav { display: flex; gap: 1.5rem; }
-  header.site nav a { color: var(--ink-muted); }
+  body { margin: 0; background: var(--bg-primary); color: var(--text-primary); font-family: var(--font-body); font-size: var(--t-body); line-height: 1.6; }
+  a { color: var(--accent); text-decoration: underline; text-decoration-color: var(--rule-strong); text-underline-offset: 2px; transition: color var(--motion-fast) ease-out, text-decoration-color var(--motion-fast) ease-out; }
+  a:hover { color: var(--accent-strong); text-decoration-color: currentColor; }
+  .sheet { max-width: 56rem; margin: 0 auto; min-height: 100vh; background: var(--paper); border-left: 1px solid var(--border); border-right: 1px solid var(--border); }
+  header.site { display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: 8px 24px; padding: 12px 24px; border-bottom: 1px solid var(--border); }
+  header.site .wordmark { font-size: var(--t-d3); white-space: nowrap; }
+  header.site nav { display: flex; flex-wrap: wrap; align-items: center; gap: 4px 16px; min-width: 0; }
+  header.site nav a { display: inline-flex; align-items: center; min-height: 32px; font-size: var(--t-sm); color: var(--text-secondary); text-decoration: none; }
   header.site nav a:hover { color: var(--accent); }
-  main { padding: 3rem 2rem 4rem; }
-  .folio { font-family: var(--font-mono); font-size: 11px; text-transform: uppercase; letter-spacing: 0.22em; color: var(--ink-muted); }
-  .status { display: inline-block; margin-left: 0.75rem; padding: 0.1rem 0.5rem; border: 1px solid var(--accent); color: var(--accent); }
-  h1.title { font-family: var(--font-display); font-weight: 500; font-size: 2.6rem; line-height: 1.1; letter-spacing: -0.01em; margin: 0.75rem 0 2rem; }
-  article { max-width: 42rem; }
-  article h2 { font-family: var(--font-display); font-weight: 500; font-size: 1.9rem; line-height: 1.15; margin: 2.75rem 0 0.9rem; padding-top: 1rem; border-top: 1px solid var(--rule); }
-  article h3 { font-family: var(--font-display); font-weight: 600; font-size: 1.4rem; margin: 2rem 0 0.6rem; }
-  article h4 { font-size: 0.95rem; text-transform: uppercase; letter-spacing: 0.08em; margin: 1.6rem 0 0.5rem; color: var(--ink-secondary); }
-  article p, article li { font-size: 1rem; color: var(--ink-secondary); }
-  article p { margin: 0 0 1.1rem; }
-  article strong { color: var(--ink); font-weight: 600; }
-  article ul, article ol { padding-left: 1.4rem; margin: 0 0 1.1rem; }
-  article li { margin: 0.35rem 0; }
+  main { padding: 48px 24px 64px; }
+  .folio { display: flex; align-items: center; gap: 8px; font-size: var(--t-label); font-weight: 600; text-transform: uppercase; letter-spacing: var(--tracking-label); color: var(--text-muted); }
+  .folio a { color: inherit; text-decoration: none; display: inline-flex; align-items: center; gap: 4px; min-height: 24px; }
+  .folio a:hover { color: var(--accent); }
+  .folio svg { width: 1em; height: 1em; }
+  .status { display: inline-block; padding: 2px 8px; border-radius: var(--radius-sm); background: var(--accent-soft); color: var(--accent); }
+  h1.title { font-family: var(--font-display); font-weight: 700; font-size: var(--t-d1); line-height: 1.1; letter-spacing: -0.01em; margin: 12px 0 32px; }
+  article { max-width: 72ch; }
+  article h2 { font-family: var(--font-display); font-weight: 700; font-size: var(--t-d2); line-height: 1.15; margin: 48px 0 12px; }
+  article h3 { font-family: var(--font-display); font-weight: 700; font-size: var(--t-d3); line-height: 1.2; margin: 32px 0 8px; }
+  article h4 { font-size: var(--t-label); font-weight: 600; text-transform: uppercase; letter-spacing: var(--tracking-label); margin: 24px 0 8px; color: var(--text-secondary); }
+  article p, article li { font-size: var(--t-body); color: var(--text-secondary); }
+  article p { margin: 0 0 16px; }
+  article strong { color: var(--text-primary); font-weight: 600; }
+  article ul, article ol { padding-left: 24px; margin: 0 0 16px; }
+  article li { margin: 4px 0; }
   article li > p { margin: 0; }
-  article code { font-family: var(--font-mono); font-size: 0.86em; background: var(--paper-edge); padding: 0.08em 0.35em; }
-  article pre { background: var(--paper-edge); border: 1px solid var(--rule-soft); padding: 1rem 1.2rem; overflow-x: auto; margin: 0 0 1.3rem; }
-  article pre code { background: none; padding: 0; font-size: 0.82rem; line-height: 1.55; color: var(--ink); }
-  article blockquote { margin: 0 0 1.2rem; padding: 0.2rem 0 0.2rem 1.1rem; border-left: 2px solid var(--accent-soft); color: var(--ink-secondary); }
-  article blockquote p { margin: 0.4rem 0; }
-  article table { border-collapse: collapse; width: 100%; margin: 0 0 1.4rem; font-size: 0.9rem; display: block; overflow-x: auto; }
-  article th, article td { text-align: left; padding: 0.5rem 0.7rem; border-bottom: 1px solid var(--rule-soft); vertical-align: top; color: var(--ink-secondary); }
-  article th { color: var(--ink); font-weight: 600; border-bottom: 1px solid var(--rule); font-family: var(--font-mono); font-size: 11px; text-transform: uppercase; letter-spacing: 0.12em; }
-  article hr { border: 0; border-top: 1px solid var(--rule-soft); margin: 2rem 0; }
-  article hr + h2 { border-top: 0; padding-top: 0; margin-top: 0; }
+  article code { font-family: var(--font-mono); font-size: 0.875em; background: var(--bg-surface); border-radius: var(--radius-sm); padding: 1px 4px; }
+  article pre { background: var(--bg-surface); border: 1px solid var(--border); border-radius: var(--radius-sm); padding: 12px 16px; overflow-x: auto; margin: 0 0 24px; }
+  article pre code { background: none; padding: 0; border-radius: 0; font-size: var(--t-num); line-height: 1.55; color: var(--text-primary); }
+  article blockquote { margin: 0 0 16px; padding: 4px 0 4px 16px; border-left: 2px solid var(--accent); color: var(--text-secondary); }
+  article blockquote p { margin: 8px 0; }
+  .table-wrap { overflow-x: auto; margin: 0 0 24px; }
+  article table { border-collapse: collapse; width: 100%; font-size: var(--t-sm); }
+  article th, article td { text-align: left; padding: 8px 12px; border-bottom: 1px solid var(--border); vertical-align: top; color: var(--text-secondary); }
+  article th { color: var(--text-primary); font-weight: 600; border-bottom: 1px solid var(--rule-strong); }
+  article hr { border: 0; border-top: 1px solid var(--border); margin: 32px 0; }
   article img { max-width: 100%; }
-  footer.page { margin-top: 3.5rem; padding-top: 1rem; border-top: 1px solid var(--rule-soft); display: flex; flex-wrap: wrap; gap: 1.5rem; }
-  footer.page a, footer.page span { font-family: var(--font-mono); font-size: 11px; text-transform: uppercase; letter-spacing: 0.2em; color: var(--ink-muted); border: 0; }
+  footer.page { margin-top: 48px; padding-top: 16px; border-top: 1px solid var(--border); display: flex; flex-wrap: wrap; gap: 8px 24px; }
+  footer.page a, footer.page span { font-size: var(--t-meta); color: var(--text-muted); }
+  footer.page a { text-decoration: none; }
   footer.page a:hover { color: var(--accent); }
-  @media (max-width: 640px) { main { padding: 2rem 1.25rem 3rem; } h1.title { font-size: 2rem; } header.site { padding: 1rem 1.25rem; } }
+  @media (max-width: 640px) { main { padding: 32px 16px 48px; } header.site { padding: 12px 16px; } .sheet { border-left: 0; border-right: 0; } }
 `;
 
 function render(src) {
@@ -141,6 +148,8 @@ function render(src) {
   }
   let body = marked.parse(md, { gfm: true, breaks: false });
   body = body.replace(/href="([^"]+)"/g, (_, href) => `href="${esc(rewriteHref(src, href))}"`);
+  // A wide table scrolls inside a wrapper; the table itself stays a table for assistive tech.
+  body = body.replace(/<table>/g, '<div class="table-wrap"><table>').replace(/<\/table>/g, "</table></div>");
   const srcRel = relative(REPO, src).split("\\").join("/");
   const depth = htmlPathOf(src).split("/").length - 1;
   const rootRel = depth ? "../".repeat(depth) : "./";
@@ -152,19 +161,21 @@ function render(src) {
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>${esc(pageTitle)}</title>
-<link rel="icon" type="image/svg+xml" href="data:image/svg+xml,%3Csvg viewBox='0 0 80 80' xmlns='http://www.w3.org/2000/svg'%3E%3Cpolygon points='40,4 68.3,16.6 76,44.9 59.4,70.1 20.6,70.1 4,44.9 11.7,16.6 40,4' stroke='%233d6373' stroke-width='2' fill='%23fafafb'/%3E%3C/svg%3E">
+<link rel="icon" type="image/svg+xml" href="data:image/svg+xml,%3Csvg viewBox='0 0 80 80' xmlns='http://www.w3.org/2000/svg'%3E%3Cpolygon points='40,4 68.3,16.6 76,44.9 59.4,70.1 20.6,70.1 4,44.9 11.7,16.6 40,4' stroke='%233d6373' stroke-width='2' fill='%23ffffff'/%3E%3C/svg%3E">
+<meta name="theme-color" media="(prefers-color-scheme: light)" content="#f3f6f9">
+<meta name="theme-color" media="(prefers-color-scheme: dark)" content="#16181a">
 <link rel="stylesheet" href="/shared/frost.css">
 <style>${SHELL_CSS}</style>
 </head>
 <body>
 <div class="sheet">
   <header class="site">
-    <a class="wordmark" href="${rootRel}">facets&#8202;·&#8202;<span>docs</span></a>
+    <a class="wordmark" href="${rootRel}">facets <span class="face">docs</span></a>
     <nav><a href="/">facets.systems</a><a href="/chat/">Chat</a><a href="/model/">Model</a><a href="${GITHUB}">GitHub</a></nav>
   </header>
   <main>
-    ${isIndex ? "" : `<div class="folio"><a href="${rootRel}" style="border:0;color:inherit">‹ Index</a></div>`}
-    <div class="folio" style="margin-top:${isIndex ? 0 : 1.5}rem">${isIndex ? "Documentation" : "Document"}${status ? `<span class="status">${esc(status)}</span>` : ""}</div>
+    ${isIndex ? "" : `<div class="folio"><a href="${rootRel}"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="square" stroke-linejoin="miter" aria-hidden="true"><path d="M20 12 H5 M11 6 L5 12 L11 18"/></svg>Index</a></div>`}
+    <div class="folio" style="margin-top:${isIndex ? 0 : 24}px">${isIndex ? "Documentation" : "Document"}${status ? `<span class="status">${esc(status)}</span>` : ""}</div>
     <h1 class="title">${isIndex ? "The reference layer" : inlineMd(title)}</h1>
     <article>${body}</article>
     <footer class="page">
