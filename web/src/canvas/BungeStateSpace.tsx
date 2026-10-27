@@ -22,6 +22,7 @@ import {
   ZAxis,
 } from "recharts";
 import type { RunResultRich } from "../kernel/types";
+import { compactTick, timeTicks } from "../RunChart";
 
 // #154 P1: clamp a scrubber tick into a series of length n (or null if the
 // series is empty / no tick given). The live marker never points off the path.
@@ -33,8 +34,8 @@ function markerIndex(tick: number | undefined, n: number): number | null {
 const AXIS_TICK = { fontSize: 11, fill: "var(--text-muted)" } as const;
 const TOOLTIP_STYLE = {
   background: "var(--bg-secondary)",
-  border: "1px solid var(--border)",
-  borderRadius: 8,
+  border: "1px solid var(--hairline)",
+  borderRadius: "var(--radius-md)",
   fontSize: 12,
 } as const;
 
@@ -62,13 +63,13 @@ export function BungeStateSpace({ result, tick }: { result: RunResultRich; tick?
         <ResponsiveContainer width="100%" height={200}>
           <ScatterChart margin={{ top: 8, right: 12, bottom: 4, left: -8 }}>
             <CartesianGrid stroke="var(--hairline)" />
-            <XAxis type="number" dataKey="x" name={a.name} tick={AXIS_TICK} stroke="var(--border)" />
-            <YAxis type="number" dataKey="y" name={b.name} tick={AXIS_TICK} stroke="var(--border)" width={44} />
+            <XAxis type="number" dataKey="x" name={a.name} tick={AXIS_TICK} tickFormatter={compactTick} stroke="var(--hairline)" />
+            <YAxis type="number" dataKey="y" name={b.name} tick={AXIS_TICK} tickFormatter={compactTick} stroke="var(--hairline)" width={44} />
             <ZAxis type="number" dataKey="t" range={[10, 10]} />
-            <Tooltip contentStyle={TOOLTIP_STYLE} cursor={{ stroke: "var(--border)" }} />
+            <Tooltip contentStyle={TOOLTIP_STYLE} cursor={{ stroke: "var(--hairline)" }} />
             <Scatter
               data={points}
-              line={{ stroke: "var(--accent)", strokeWidth: 1.5 }}
+              line={{ stroke: "var(--accent)", strokeWidth: 2 }}
               fill="var(--accent)"
               isAnimationActive={false}
             />
@@ -97,8 +98,8 @@ export function BungeStateSpace({ result, tick }: { result: RunResultRich; tick?
       <ResponsiveContainer width="100%" height={200}>
         <LineChart data={data} margin={{ top: 8, right: 12, bottom: 4, left: -8 }}>
           <CartesianGrid stroke="var(--hairline)" vertical={false} />
-          <XAxis dataKey="t" tick={AXIS_TICK} stroke="var(--border)" />
-          <YAxis tick={AXIS_TICK} stroke="var(--border)" width={44} />
+          <XAxis dataKey="t" ticks={timeTicks(data.length)} tick={AXIS_TICK} stroke="var(--hairline)" />
+          <YAxis tick={AXIS_TICK} tickFormatter={compactTick} stroke="var(--hairline)" width={44} />
           <Tooltip contentStyle={TOOLTIP_STYLE} />
           <Line type="monotone" dataKey="v" stroke="var(--accent)" dot={false} strokeWidth={2} isAnimationActive={false} />
           {mi !== null && (

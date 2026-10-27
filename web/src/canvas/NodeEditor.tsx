@@ -14,7 +14,16 @@
 // the gesture that enters a child.
 import type { AgentRule, Lens, ProcessPrimitive, Thing } from "../kernel/types";
 import { PRIMITIVE_GLOSS, PRIMITIVE_WORD } from "./types";
-import { DescriptionField, GroundingField, InspectorRow as Row, InspectorTitle as Title, ToolButton as SmallButton } from "../ui";
+import {
+  Button,
+  DescriptionField,
+  GroundingField,
+  Input,
+  InspectorRow as Row,
+  InspectorTitle as Title,
+  Select,
+  ToolButton as SmallButton,
+} from "../ui";
 import { AGENT_RULE_DEFAULTS } from "./useCanvasGestures";
 
 /** The decomposition door as the shell hands it to the inspector (#89 step 5b).
@@ -101,11 +110,11 @@ export function NodeEditorRows({
       </Title>
       <Row>
         <span style={{ color: "var(--text-secondary)" }}>name</span>
-        <input
+        <Input
           value={thing.name}
           onChange={(e) => onUpdateThing({ ...thing, name: e.target.value })}
-          className="w-28 rounded-md px-1.5 py-0.5 text-xs"
-          style={{ border: "1px solid var(--border)", background: "var(--bg-primary)", color: "var(--text-primary)" }}
+          className="min-w-0 flex-1"
+          aria-label="name"
         />
       </Row>
       {/* #326: prose about this thing, restored from the original BERT. It sits
@@ -157,7 +166,7 @@ export function NodeEditorRows({
             </SmallButton>
           </div>
         </Row>
-        <p className="mb-1 text-[10px] leading-snug" style={{ color: "var(--text-muted)" }}>
+        <p className="mb-1 text-xs leading-snug" style={{ color: "var(--text-muted)" }}>
           re-cut — the cut is yours to draw; ℰ and 𝒮 follow from it
         </p>
         </>
@@ -165,7 +174,8 @@ export function NodeEditorRows({
       {lens === "Mobus" && isComponent && (
         <Row>
           <span style={{ color: "var(--text-secondary)" }}>work process</span>
-          <select
+          <Select
+            aria-label="work process"
             value={thing.primitive ?? ""}
             onChange={(e) => {
               const v = e.target.value as ProcessPrimitive | "";
@@ -180,8 +190,6 @@ export function NodeEditorRows({
               }
               onUpdateThing(next);
             }}
-            className="rounded-md px-1.5 py-0.5 text-xs"
-            style={{ border: "1px solid var(--border)", background: "var(--bg-primary)", color: "var(--text-primary)" }}
           >
             <option value="">none</option>
             {PRIMITIVES.map((p) => (
@@ -189,7 +197,7 @@ export function NodeEditorRows({
                 {p.toLowerCase()}
               </option>
             ))}
-          </select>
+          </Select>
         </Row>
       )}
       {lens === "Mobus" && isComponent && (
@@ -200,7 +208,8 @@ export function NodeEditorRows({
            run surface read them. */
         <Row>
           <span style={{ color: "var(--text-secondary)" }}>decision rule</span>
-          <select
+          <Select
+            aria-label="decision rule"
             value={thing.rule ?? ""}
             onChange={(e) => {
               const v = e.target.value as AgentRule | "";
@@ -215,8 +224,6 @@ export function NodeEditorRows({
               }
               onUpdateThing(next);
             }}
-            className="rounded-md px-1.5 py-0.5 text-xs"
-            style={{ border: "1px solid var(--border)", background: "var(--bg-primary)", color: "var(--text-primary)" }}
             data-testid="rule-select"
           >
             <option value="">none</option>
@@ -225,7 +232,7 @@ export function NodeEditorRows({
                 {r.rule}
               </option>
             ))}
-          </select>
+          </Select>
         </Row>
       )}
       {lens === "Mobus" && isComponent && thing.rule && (
@@ -233,9 +240,10 @@ export function NodeEditorRows({
           {ruleWords(thing.rule, thing.cognitive_params ?? {}).map((w) => (
             <Row key={w}>
               <span style={{ color: "var(--text-secondary)" }}>{w}</span>
-              <input
+              <Input
                 type="number"
                 step="any"
+                aria-label={w}
                 value={thing.cognitive_params?.[w] ?? ""}
                 placeholder={RULES.find((r) => r.rule === thing.rule)?.optional?.includes(w) ? "none" : undefined}
                 onChange={(e) => {
@@ -249,13 +257,12 @@ export function NodeEditorRows({
                   if (!Number.isFinite(n)) return;
                   onUpdateThing({ ...thing, cognitive_params: { ...bag, [w]: n } });
                 }}
-                className="w-20 rounded-md px-1.5 py-0.5 text-xs"
-                style={{ border: "1px solid var(--border)", background: "var(--bg-primary)", color: "var(--text-primary)" }}
+                className="w-24 tabular"
                 data-testid={`rule-${w}`}
               />
             </Row>
           ))}
-          <p className="mb-2 text-[10px] leading-snug" style={{ color: "var(--text-muted)" }} data-testid="rule-gloss">
+          <p className="mb-2 text-xs leading-snug" style={{ color: "var(--text-muted)" }} data-testid="rule-gloss">
             {RULES.find((r) => r.rule === thing.rule)?.gloss} ·{" "}
             {thing.watches_flow !== undefined
               ? "it reads a declared physical flow, what that flow delivered on the last completed tick (the feedforward form, spec v1.14), drawn as a dotted line from the flow,"
@@ -270,19 +277,19 @@ export function NodeEditorRows({
       {lens === "Mobus" && isComponent && thing.primitive && (
         /* #418 item 4: what the stamped process IS, from the same table the
            rail's hover card reads. */
-        <p className="mb-2 text-[10px] leading-snug" style={{ color: "var(--text-muted)" }} data-testid="primitive-gloss">
+        <p className="mb-2 text-xs leading-snug" style={{ color: "var(--text-muted)" }} data-testid="primitive-gloss">
           {thing.primitive} · {PRIMITIVE_WORD[thing.primitive]} — {PRIMITIVE_GLOSS[thing.primitive]}
         </p>
       )}
       {decompose && <DecomposeRows decompose={decompose} />}
       <div className="flex justify-between">
-        <button onClick={onDelete} className="rounded-full px-3 py-1 text-xs" style={{ color: "var(--verdict-error)" }}>
+        <Button size={28} variant="quiet" icon="delete" onClick={onDelete} style={{ color: "var(--verdict-error)" }}>
           delete
-        </button>
+        </Button>
         {onClose && (
-          <button onClick={onClose} className="rounded-full px-3 py-1 text-xs" style={{ color: "var(--text-muted)" }}>
+          <Button size={28} variant="quiet" icon="close" onClick={onClose}>
             deselect
-          </button>
+          </Button>
         )}
       </div>
     </div>
@@ -295,28 +302,32 @@ export function DecomposeRows({ decompose }: { decompose: DecomposeAffordance })
   return (
     <div className="mb-1 mt-1 border-t pt-2" style={{ borderColor: "var(--hairline)" }}>
       {decompose.kind === "ready" && (
-        <button
+        <Button
+          size={28}
+          variant="quiet"
+          icon="tree"
           onClick={decompose.onDecompose}
-          className="w-full rounded-md px-2 py-1 text-left text-xs font-semibold"
-          style={{ color: "var(--lens-accent)", border: "1px dashed var(--border)" }}
+          className="w-full"
+          style={{ color: "var(--lens-accent)", borderStyle: "dashed" }}
           title="Derive a child model from this component's flows and open it for authoring"
         >
           decompose this component
-        </button>
+        </Button>
       )}
       {decompose.kind === "entered" && (
         <div className="flex items-center justify-between gap-2">
           <span className="min-w-0 truncate text-[11px]" style={{ fontFamily: "var(--font-mono)", color: "var(--text-muted)" }} title={decompose.label}>
             decomposes &ldquo;{decompose.label}&rdquo;
           </span>
-          <button
+          <Button
+            size={28}
+            icon="forward"
             onClick={decompose.onEnter}
-            className="shrink-0 rounded-full px-3 py-1 text-xs font-semibold"
-            style={{ background: "var(--lens-accent)", color: "var(--text-on-accent)" }}
+            style={{ background: "var(--lens-accent)", borderColor: "var(--lens-accent)" }}
             title="Enter the child model (double-clicking the node also enters)"
           >
-            enter →
-          </button>
+            enter
+          </Button>
         </div>
       )}
     </div>

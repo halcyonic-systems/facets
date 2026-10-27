@@ -28,7 +28,8 @@ import { FormalPanel } from "./FormalPanel";
 import { ReviewPanel } from "./ReviewPanel";
 import { AnalystPanel } from "./AnalystPanel";
 import { KernelErrorBoundary } from "./KernelErrorBoundary";
-import { Card, Tabs } from "./ui";
+import { Button, Card, Tabs } from "./ui";
+import { Icon } from "./icons";
 
 /** The dock's faces, in strip order — the single source for both the rendered
  *  tab strip and the width gate in InspectorDock.test.tsx, so a tab cannot be
@@ -226,22 +227,20 @@ export function InspectorDock({
         className="flex w-8 shrink-0 flex-col items-center gap-3 border-l py-2 transition-colors"
         style={{ borderColor: "var(--hairline)", background: "var(--lens-chrome)" }}
       >
-        <span className="text-xs" style={{ color: "var(--text-muted)" }}>
-          ◂
-        </span>
+        <Icon name="chevron-left" size={16} style={{ color: "var(--text-muted)" }} />
         <span
-          className="text-[10px] font-semibold uppercase tracking-wide"
-          style={{ color: "var(--text-muted)", writingMode: "vertical-rl" }}
+          className="text-[11px] font-semibold uppercase"
+          style={{ color: "var(--text-muted)", writingMode: "vertical-rl", letterSpacing: "var(--tracking-label)" }}
         >
           inspector
         </span>
         {issueCount > 0 && (
           <span
-            className="rounded-pill px-1 text-[10px] font-semibold"
+            className="inline-flex h-4 min-w-4 items-center justify-center rounded-sm px-1 text-[11px] font-semibold"
             style={{
-              borderRadius: "var(--radius-pill)",
-              background: "var(--lens-accent)",
+              background: "var(--verdict-warning)",
               color: "var(--text-on-accent)",
+              fontVariantNumeric: "tabular-nums",
             }}
           >
             {issueCount}
@@ -255,7 +254,9 @@ export function InspectorDock({
     <div
       // Shrinkable under pressure (#17): 24rem by preference, yielding down to
       // 18rem at narrow windows instead of pushing the row past the viewport.
-      className={`flex flex-col border-l ${focused ? "min-h-0 flex-1" : frame?.wide ? "min-w-80 shrink basis-[32rem]" : "min-w-72 shrink basis-96"}`}
+      // Never more than half the row (rule 16; audit #36: 24rem was 37.5% of
+      // a 1024 viewport with the run card over what was left of the canvas).
+      className={`flex flex-col border-l ${focused ? "min-h-0 flex-1" : frame?.wide ? "min-w-80 max-w-[50%] shrink basis-[32rem]" : "min-w-72 max-w-[45%] shrink basis-96"}`}
       style={{ borderColor: "var(--hairline)", background: "var(--lens-chrome)" }}
     >
       {/* Tab strip — the instrument's face selector. The active tab carries the
@@ -283,31 +284,35 @@ export function InspectorDock({
         onSelect={(k) => setTab(k as Tab)}
         controls={
           frame ? null : (
-          <>
+          // Two 28px icon buttons with a 4px gap and 4px of side padding: 68px,
+          // the cell width InspectorDock.test.tsx reads as CONTROLS.
+          <div className="flex items-center gap-1 px-1">
             {/* Focus toggle — pops the active tab full-width (hides the canvas)
-                and back. Same quiet glyph-button chrome as the collapse control. */}
-            <button
+                and back. Same quiet icon-button chrome as the collapse control. */}
+            <Button
+              size={28}
+              variant="quiet"
+              icon={focused ? "collapse" : "expand"}
               onClick={onToggleFocus}
-              title={focused ? "Exit focus (show canvas)" : "Focus — expand this tab full-width"}
+              title={focused ? "Exit focus (show canvas)" : "Focus: expand this tab full-width"}
+              aria-label={focused ? "Exit focus" : "Focus this tab full-width"}
               aria-pressed={focused}
-              className="px-3 text-xs"
-              style={{ color: focused ? "var(--lens-accent)" : "var(--text-muted)" }}
-            >
-              {focused ? "⤡" : "⤢"}
-            </button>
+              style={focused ? { color: "var(--lens-accent)" } : undefined}
+            />
             {/* Collapse to a sliver — only meaningful in the docked (non-focus)
                 layout; full-width focus can't collapse to a rail. */}
             {!focused && (
-              <button
+              <Button
+                size={28}
+                variant="quiet"
+                icon="chevron-right"
                 onClick={() => setCollapsed(true)}
                 title="Collapse inspector"
-                className="px-3 text-xs"
-                style={{ color: "var(--text-muted)" }}
-              >
-                ▸
-              </button>
+                aria-label="Collapse inspector"
+                aria-expanded
+              />
             )}
-          </>
+          </div>
           )
         }
       />

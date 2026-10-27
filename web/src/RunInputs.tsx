@@ -25,7 +25,7 @@ import { useState } from "react";
 import type { CanvasModel, EngineField, Manifest, ParamDecl, Relation, Thing } from "./kernel/types";
 import { declaredRelations, forcedByColumn, resolveParamRows } from "./kernel/params";
 import { AmountField, ParamControl, SetByAgent, sliderStep, snapToStep, useCommitOnRelease } from "./ParamControl";
-import { Card } from "./ui";
+import { Button, Card, Input } from "./ui";
 
 
 
@@ -47,7 +47,7 @@ function InputRow({
       </span>
       {forcedBy ? (
         <span
-          className="shrink-0 font-mono text-[11px]"
+          className="min-w-0 truncate font-mono text-[11px]"
           style={{ color: "var(--text-muted)" }}
           title={`This flow is driven by the data column “${forcedBy}” — the series, not a scalar, is what runs.`}
         >
@@ -55,7 +55,7 @@ function InputRow({
         </span>
       ) : relation.ample ? (
         <span
-          className="shrink-0 text-[11px] italic"
+          className="shrink-0 text-[11px]"
           style={{ color: "var(--text-muted)" }}
           title="Declared ample (#9): availability never binds — there is no number to adjust."
         >
@@ -64,7 +64,7 @@ function InputRow({
       ) : (
         <AmountField relation={relation} onEdit={onEdit} />
       )}
-      <span className="w-16 shrink-0 text-[11px]" style={{ color: "var(--text-muted)" }}>
+      <span className="w-16 min-w-0 shrink truncate text-[11px]" style={{ color: "var(--text-muted)" }}>
         {relation.unit ?? ""}
       </span>
     </div>
@@ -98,9 +98,9 @@ function ShareRow({
     if (drag !== null) {
       const s = Math.min(Math.max(drag, 0.5), 95) / 100;
       const next = (s * rest) / (1 - s);
-      const rounded = Number(next.toPrecision(4));
-      if (String(rounded) !== relation.amount) {
-        onEdit({ ...relation, amount: String(rounded) });
+      const snapped = Number(next.toPrecision(4));
+      if (String(snapped) !== relation.amount) {
+        onEdit({ ...relation, amount: String(snapped) });
       }
     }
     setDrag(null);
@@ -112,7 +112,7 @@ function ShareRow({
         {label}
       </span>
       {forcedBy ? (
-        <span className="flex-1 font-mono text-[11px]" style={{ color: "var(--text-muted)" }}>
+        <span className="min-w-0 flex-1 truncate font-mono text-[11px]" style={{ color: "var(--text-muted)" }}>
           driven by “{forcedBy}”
         </span>
       ) : setBy ? (
@@ -182,9 +182,8 @@ export function FieldControl({
         <span className="min-w-0 flex-1 truncate" style={{ color: "var(--text-primary)" }} title={`${thing.name} · ${field}`}>
           {param.name}
         </span>
-        <input
-          className="w-20 rounded border px-1.5 py-0.5 text-right font-mono text-xs"
-          style={{ borderColor: "var(--border)", background: "var(--bg-primary)", color: "var(--text-primary)" }}
+        <Input
+          className="w-24 text-right font-mono tabular"
           value={draft ?? String(value)}
           onChange={(e) => setDraft(e.target.value)}
           onBlur={() => {
@@ -197,7 +196,7 @@ export function FieldControl({
           }}
           aria-label={param.name}
         />
-        <span className="w-16 shrink-0 text-[11px]" style={{ color: "var(--text-muted)" }}>
+        <span className="w-16 min-w-0 shrink truncate text-[11px]" style={{ color: "var(--text-muted)" }}>
           {unit}
         </span>
       </div>
@@ -259,9 +258,8 @@ function EngineRow({
       <span className="min-w-0 flex-1 truncate" style={{ color: "var(--text-primary)" }}>
         {label}
       </span>
-      <input
-        className="w-20 rounded border px-1.5 py-0.5 text-right font-mono text-xs"
-        style={{ borderColor: "var(--border)", background: "var(--bg-primary)", color: "var(--text-primary)" }}
+      <Input
+        className="w-24 text-right font-mono tabular"
         value={draft ?? String(value)}
         onChange={(e) => setDraft(e.target.value)}
         onBlur={commit}
@@ -271,7 +269,7 @@ function EngineRow({
         }}
         aria-label={label}
       />
-      <span className="w-16 shrink-0 text-[11px]" style={{ color: "var(--text-muted)" }}>
+      <span className="w-16 min-w-0 shrink truncate text-[11px]" style={{ color: "var(--text-muted)" }}>
         {unit ?? ""}
       </span>
     </div>
@@ -324,7 +322,7 @@ export function engineRows(
 
 function GroupHeader({ children }: { children: string }) {
   return (
-    <div className="mb-0.5 mt-2 text-[10px] font-semibold uppercase tracking-wide" style={{ color: "var(--text-muted)" }}>
+    <div className="mb-0.5 mt-2 text-[11px] font-semibold uppercase" style={{ letterSpacing: "var(--tracking-label)", color: "var(--text-muted)" }}>
       {children}
     </div>
   );
@@ -405,14 +403,16 @@ export function RunInputs({
   return (
     <Card title="Inputs" source="declared · edits re-run">
       {onReset && (
-        <button
+        <Button
+          size={28}
+          variant="quiet"
+          icon="reset"
           onClick={onReset}
-          className="mb-1 text-[11px]"
-          style={{ color: "var(--text-muted)" }}
+          className="mb-2"
           title="Restore every amount to what the model declares"
         >
-          ↺ reset to declared
-        </button>
+          reset to declared
+        </Button>
       )}
       {paramRows.map(({ param, relation, group, thing: fieldThing, field }) =>
         relation ? (

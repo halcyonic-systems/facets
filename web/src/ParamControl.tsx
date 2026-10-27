@@ -5,6 +5,7 @@
 // re-runs; ADR run-seam-canvas-document). No systems fact is decided here.
 import { useEffect, useState } from "react";
 import type { ParamDecl, Relation } from "./kernel/types";
+import { Input } from "./ui";
 
 /** While a slider drag preview is live, ANY pointer release commits it — the
  *  element's own events miss a release that lands outside it, and a missed
@@ -36,9 +37,8 @@ export function AmountField({
     setDraft(null);
   };
   return (
-    <input
-      className="w-20 rounded border px-1.5 py-0.5 text-right font-mono text-xs"
-      style={{ borderColor: "var(--border)", background: "var(--bg-primary)", color: "var(--text-primary)" }}
+    <Input
+      className="w-24 text-right font-mono tabular"
       value={draft ?? relation.amount ?? ""}
       onChange={(e) => setDraft(e.target.value)}
       onBlur={commit}
@@ -76,7 +76,7 @@ export function snapToStep(v: number, step: number): number {
 export function SetByAgent({ agent }: { agent: string }) {
   return (
     <span
-      className="shrink-0 font-mono text-[11px]"
+      className="min-w-0 truncate font-mono text-[11px]"
       style={{ color: "var(--text-muted)" }}
       title={`This knob is written by the agent “${agent}” at the end of every tick — the policy's command, not a scalar, is what runs. Edit the agent's rule instead.`}
       data-testid="set-by-agent"
@@ -122,7 +122,7 @@ export function ParamControl({
         </span>
         {forcedBy ? (
           <span
-            className="shrink-0 font-mono text-[11px]"
+            className="min-w-0 truncate font-mono text-[11px]"
             style={{ color: "var(--text-muted)" }}
             title={`This flow is driven by the data column “${forcedBy}” — the series, not a scalar, is what runs.`}
           >
@@ -133,7 +133,7 @@ export function ParamControl({
         ) : (
           <AmountField relation={relation} onEdit={onEdit} />
         )}
-        <span className="w-16 shrink-0 text-[11px]" style={{ color: "var(--text-muted)" }}>
+        <span className="w-16 min-w-0 shrink truncate text-[11px]" style={{ color: "var(--text-muted)" }} title={relation.unit}>
           {relation.unit ?? ""}
         </span>
       </div>

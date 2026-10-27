@@ -126,7 +126,7 @@ describe("Fig. 4.3 / Table 4.3 — the behavior-function mask readout", () => {
     // The live row carries the accent wash + step marker; the clamp keeps it on
     // an existing step (tick 1 → the second of two rows).
     expect(m).toContain('aria-current="step"');
-    expect(m).toContain("◂");
+    expect(m).toContain('data-icon="chevron-left"'); // the drawn marker on the current row (slice F)
   });
 
   it("clamps a tick past the last step onto the final row (no off-path marker)", () => {
@@ -160,7 +160,7 @@ describe("Fig. 4.3 / Table 4.3 — the behavior-function mask readout", () => {
       <MaskTable result={null} markovRun={markov([[1, 0], [0.5, 0.5], [0.25, 0.75]])} tick={1} />,
     );
     expect(m).toContain('aria-current="step"');
-    expect(m).toContain("◂");
+    expect(m).toContain('data-icon="chevron-left"'); // the drawn marker on the current row (slice F)
   });
 
   it("prefers markovRun over result when (never happens in App, but) both are passed", () => {
