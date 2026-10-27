@@ -3528,6 +3528,8 @@ function Workspace() {
                               // request the available room still bounds.
                               locSize === "s" ? "h-44 w-72" : locSize === "m" ? "h-64 w-[26rem]" : "h-96 w-[38rem]"
                             }`
+                          : workMode === "structure" && !view3d
+                          ? "absolute inset-x-0 top-0 bottom-7" // the hint band below keeps the last 28px
                           : "absolute inset-0"
                       }
                       style={
@@ -3863,10 +3865,13 @@ function Workspace() {
                     {/* The stage is the canvas here by construction (this is
                         the Structure branch), but the guard says which mode it
                         means rather than which one it is not. */}
+                    {/* The hint sits in a band BELOW the stage (makeover canvas audit
+                        finding 23), never over the diagram's bottom row: the stage
+                        above stops at bottom-7 and fit-to-view reads its own height. */}
                     {workMode === "structure" && !view3d && (
                       <div
-                        className="pointer-events-none absolute bottom-3 right-3 text-[11px] font-mono"
-                        style={{ color: "var(--text-muted)" }}
+                        className="pointer-events-none absolute inset-x-0 bottom-0 flex h-7 items-center truncate border-t px-3 text-[11px] font-body"
+                        style={{ color: "var(--text-muted)", borderColor: "var(--hairline)", background: "var(--bg-primary)" }}
                       >
                         {mode === "read"
                           ? "click an element to read about it · click empty space for the whole model · double-click to enter"
