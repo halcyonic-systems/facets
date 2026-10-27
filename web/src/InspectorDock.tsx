@@ -254,7 +254,9 @@ export function InspectorDock({
     <div
       // Shrinkable under pressure (#17): 24rem by preference, yielding down to
       // 18rem at narrow windows instead of pushing the row past the viewport.
-      className={`flex flex-col border-l ${focused ? "min-h-0 flex-1" : frame?.wide ? "min-w-80 shrink basis-[32rem]" : "min-w-72 shrink basis-96"}`}
+      // Never more than half the row (rule 16; audit #36: 24rem was 37.5% of
+      // a 1024 viewport with the run card over what was left of the canvas).
+      className={`flex flex-col border-l ${focused ? "min-h-0 flex-1" : frame?.wide ? "min-w-80 max-w-[50%] shrink basis-[32rem]" : "min-w-72 max-w-[45%] shrink basis-96"}`}
       style={{ borderColor: "var(--hairline)", background: "var(--lens-chrome)" }}
     >
       {/* Tab strip — the instrument's face selector. The active tab carries the

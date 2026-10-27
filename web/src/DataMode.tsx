@@ -473,10 +473,14 @@ export function DataMode({
     </div>
   );
 
+  // The bindings rail sits beside the table from 1280 up and stacks under it
+  // below that, capped to 40% of the height, so the table keeps the width at
+  // 1024 and renders at 390 (rule 16; audit #8).
   const flowsRail = (
     <section
-      className="w-60 shrink-0 overflow-y-auto"
-      style={{ borderLeft: "1px solid var(--border)", background: "var(--bg-secondary)" }}
+      className="max-h-[40%] shrink-0 overflow-y-auto border-t xl:max-h-none xl:w-60 xl:border-t-0 xl:border-l"
+      style={{ borderColor: "var(--hairline)", background: "var(--bg-secondary)" }}
+      aria-label="Bindings and unbound flows"
     >
       {bindingPanel}
       {/* The unbound rail — a declared flow with no data is a fact worth
@@ -491,14 +495,14 @@ export function DataMode({
           </h2>
           <ul className="text-xs">
             {unbound.map((r) => (
-              <li key={r.id} className="flex items-center gap-1.5 py-0.5">
+              <li key={r.id} className="flex flex-wrap items-center gap-x-1.5 py-1">
                 <span
                   aria-hidden
                   className="inline-block h-[3px] w-3 shrink-0"
                   style={{ background: KIND_COLOR[r.kind] }}
                 />
                 <span style={{ color: "var(--text-secondary)" }}>{r.name}</span>
-                <span className="font-mono text-[11px]" style={{ color: "var(--text-muted)" }}>
+                <span className="basis-full pl-[18px] font-mono text-[11px]" style={{ color: "var(--text-muted)" }}>
                   {thingName(r.a)} → {thingName(r.b)}
                 </span>
               </li>
@@ -584,8 +588,8 @@ export function DataMode({
         </p>
       </div>
 
-      <div className="flex min-h-0 flex-1">
-        <div className="min-w-0 flex-1 overflow-auto" onMouseLeave={() => setHoverCol(null)}>
+      <div className="flex min-h-0 flex-1 flex-col xl:flex-row">
+        <div className="min-h-0 min-w-0 flex-1 overflow-auto" onMouseLeave={() => setHoverCol(null)}>
           {!parsed && (
             <div className="max-w-md p-4">
               <p className="text-xs" style={{ color: "var(--text-secondary)" }}>
@@ -857,7 +861,7 @@ export function DataMode({
                     <th
                       key={c.mapping.column}
                       className="px-2 py-1.5 text-left"
-                      style={{ ...headerCellStyle(ci + 1, false), minWidth: "8rem" }}
+                      style={{ ...headerCellStyle(ci + 1, false), minWidth: "8rem", maxWidth: "14rem" }}
                       onClick={() => clickHeader(ci + 1)}
                       onMouseEnter={() => setHoverCol(ci + 1)}
                     >
@@ -875,7 +879,7 @@ export function DataMode({
                             {caret(ci + 1)}
                           </div>
                           <div
-                            className="whitespace-nowrap font-mono text-[11px] font-normal"
+                            className="font-mono text-[11px] font-normal leading-snug"
                             style={{ color: "var(--text-muted)" }}
                           >
                             {thingName(c.relation.a)} → {thingName(c.relation.b)} ← {c.mapping.column}

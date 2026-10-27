@@ -148,7 +148,7 @@ export function ReadSheet({
       className={
         focus
           ? "flex min-w-0 flex-1 flex-col gap-4 overflow-y-auto p-4 [&>*]:mx-auto [&>*]:w-full [&>*]:max-w-3xl"
-          : "flex min-w-80 shrink basis-[32rem] flex-col gap-4 overflow-y-auto border-l p-4"
+          : "flex min-w-80 max-w-[50%] shrink basis-[32rem] flex-col gap-4 overflow-y-auto border-l p-4"
       }
       style={{ borderColor: "var(--hairline)", background: "var(--lens-chrome)" }}
       data-testid="read-sheet"

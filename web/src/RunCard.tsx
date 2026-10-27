@@ -84,7 +84,7 @@ export function RunCard({
         onClick={() => setCollapsed(false)}
         title="Expand the run card"
         aria-expanded={false}
-        className="absolute right-3 top-3 z-10"
+        className="absolute right-3 top-3 z-10 max-sm:top-auto max-sm:bottom-3"
       >
         Run
       </Button>
@@ -96,9 +96,12 @@ export function RunCard({
   const headReading = result ? (evaluateMetrics(model, result)?.readings[0] ?? null) : null;
 
   return (
+    // 18rem wide and never more than 40% of the stage (rule 16; audit #6: at
+    // 1024 the card covered half the canvas). Under 640px it is a bottom sheet
+    // across the stage, 45% tall at most, so the diagram keeps the top.
     <Panel
       as="aside"
-      className="absolute right-3 top-3 z-10 flex max-h-[calc(100%-1.5rem)] w-72 flex-col overflow-y-auto"
+      className="absolute right-3 top-3 z-10 flex max-h-[calc(100%-1.5rem)] w-72 max-w-[40%] flex-col overflow-y-auto max-sm:inset-x-3 max-sm:top-auto max-sm:bottom-3 max-sm:max-h-[45%] max-sm:w-auto max-sm:max-w-none"
     >
       <Band first className="flex items-center gap-2 py-1.5">
         <span className={LABEL} style={{ ...LABEL_STYLE, color: "var(--text-primary)" }}>

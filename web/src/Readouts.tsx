@@ -201,8 +201,10 @@ export function Readouts({
       className="absolute inset-0 z-20 flex flex-col"
       style={{ background: "var(--bg-primary)" }}
     >
+      {/* The header wraps under width pressure (rule 16; audit #7: at 1024 the
+          transport's tick count ran under the conserved chip). */}
       <div
-        className="flex items-center gap-x-4 px-4 py-1.5"
+        className="flex flex-wrap items-center gap-x-4 gap-y-1 px-4 py-1.5"
         style={{ borderBottom: "1px solid var(--hairline)" }}
       >
         <span
@@ -216,7 +218,7 @@ export function Readouts({
             {model.name.trim()}
           </span>
         )}
-        <div className="min-w-0 flex-1">{transport}</div>
+        <div className="min-w-64 flex-1">{transport}</div>
         {/* #463 move 4: keep this run as the baseline; every later knob
             then reads against it. One button, two states; dropping it is
             the same button. */}
@@ -237,17 +239,22 @@ export function Readouts({
           model
         </Button>
       </div>
-      <div className="flex min-h-0 flex-1">
+      {/* The rail: 18rem beside the readout from 1024 up; below that it stacks
+          on top, capped to 40% of the height, so the readout never leaves the
+          screen (rule 16; audit #5: a fixed 24rem rail was the whole viewport
+          at 390). */}
+      <div className="flex min-h-0 flex-1 flex-col lg:flex-row">
         <aside
-          className="w-96 shrink-0 overflow-y-auto border-r p-3"
+          className="max-h-[40%] shrink-0 overflow-y-auto border-b p-3 lg:max-h-none lg:w-72 lg:border-b-0 lg:border-r"
           style={{ borderColor: "var(--hairline)" }}
+          aria-label="Run inputs"
         >
           <div className="grid gap-3">
             {timeRow}
             {inputs}
           </div>
         </aside>
-        <section className="flex min-w-0 flex-1 flex-col">{readout}</section>
+        <section className="flex min-h-0 min-w-0 flex-1 flex-col">{readout}</section>
       </div>
     </div>
   );
