@@ -5,28 +5,84 @@
 // typesets it with KaTeX — the math is never assembled in JS.
 import katex from "katex";
 import "katex/dist/katex.min.css";
+import { useState } from "react";
 import type { LensDescription } from "./kernel/types";
-import { Card, Pill } from "./ui";
+import { Button, Card, Pill } from "./ui";
 import { Icon } from "./icons";
 
+/** KaTeX at the row size: its own 1.21em would set the math at 17px beside
+ *  14px prose (readouts audit, the #399 rows), so the wrapper pins `.katex`
+ *  to text-sm. The tuple headline keeps display size. */
 function Tex({ tex, block = false }: { tex: string; block?: boolean }) {
   const html = katex.renderToString(tex, { throwOnError: false, displayMode: block });
-  return <span className={block ? "block" : undefined} dangerouslySetInnerHTML={{ __html: html }} />;
-}
-
-function Line({ label, children }: { label: React.ReactNode; children: React.ReactNode }) {
   return (
-    <div className="flex items-baseline gap-3 text-sm">
-      <span className="w-28 shrink-0 text-right" style={{ color: "var(--text-muted)" }}>
-        {label}
-      </span>
-      <span style={{ color: "var(--text-primary)" }}>{children}</span>
-    </div>
+    <span
+      className={block ? "block [&_.katex]:text-base" : "[&_.katex]:text-sm"}
+      dangerouslySetInnerHTML={{ __html: html }}
+    />
   );
 }
 
-function names(xs: string[]): string {
-  return xs.length ? `{ ${xs.join(", ")} }` : "∅";
+/** One slot of the tuple as a compact row under a hairline: the symbol, then
+ *  the reading on one line. A row given `items` (a set) shows its count and
+ *  opens to list the members, instead of wrapping a brace of twelve names
+ *  across four lines (#399). */
+function Line({
+  label,
+  children,
+  items,
+  noun,
+}: {
+  label: React.ReactNode;
+  children?: React.ReactNode;
+  /** The members of a set; the row summarises and expands them. */
+  items?: string[];
+  /** What a member is called, for the summary ("3 components"). */
+  noun?: string;
+}) {
+  const [open, setOpen] = useState(false);
+  const canOpen = items !== undefined && items.length > 0;
+  return (
+    <div className="border-b py-1.5 text-sm" style={{ borderColor: "var(--hairline)" }}>
+      <div className="flex items-center gap-3">
+        <span className="w-24 shrink-0 text-right" style={{ color: "var(--text-muted)" }}>
+          {label}
+        </span>
+        <span className="min-w-0 flex-1 leading-snug" style={{ color: "var(--text-primary)" }}>
+          {items !== undefined ? (
+            <>
+              {items.length === 0 ? "∅" : `${items.length} ${noun ?? "member"}${items.length === 1 ? "" : "s"}`}
+              {!open && items.length > 0 && (
+                <span className="ml-1.5 truncate" style={{ color: "var(--text-muted)" }}>
+                  {`{ ${items.join(", ")} }`}
+                </span>
+              )}
+              {children && <span className="ml-1.5">{children}</span>}
+            </>
+          ) : (
+            children
+          )}
+        </span>
+        {canOpen && (
+          <Button
+            size={28}
+            variant="quiet"
+            icon={open ? "chevron-up" : "chevron-down"}
+            aria-label={open ? "collapse the set" : "list the set"}
+            aria-expanded={open}
+            onClick={() => setOpen((o) => !o)}
+          />
+        )}
+      </div>
+      {open && items && (
+        <ul className="mt-1 grid gap-0.5 pl-[6.75rem] text-xs" style={{ color: "var(--text-secondary)" }}>
+          {items.map((it, i) => (
+            <li key={i}>{it}</li>
+          ))}
+        </ul>
+      )}
+    </div>
+  );
 }
 
 // UI feature-gate, NOT an ontology verdict. Was false while the palette could
@@ -51,8 +107,8 @@ export function FormalPanel({ desc }: { desc: LensDescription }) {
 
 function KlirFace({ d }: { d: Extract<LensDescription, { lens: "Klir" }> }) {
   return (
-    <div className="grid gap-2">
-      <div className="mb-1">
+    <div className="grid">
+      <div className="mb-2">
         <Tex block tex={`S = (T,\\; R), \\qquad R \\subseteq T \\times T`} />
       </div>
       <Line label={<Tex tex="|T|" />}>{d.things} things (thinghood — taken for granted)</Line>
@@ -74,8 +130,8 @@ function KlirFace({ d }: { d: Extract<LensDescription, { lens: "Klir" }> }) {
 function BungeFace({ d }: { d: Extract<LensDescription, { lens: "Bunge" }> }) {
   const isSystem = d.verdict === "system";
   return (
-    <div className="grid gap-2">
-      <div className="mb-1 flex items-baseline justify-between gap-3">
+    <div className="grid">
+      <div className="mb-1 flex flex-wrap items-baseline justify-between gap-3">
         {/* µ(σ) is the four-coordinate CESM object (Bunge 2004); bare σ is the
             1979 CES triple. Label the four-tuple µ(σ) (concordance row 1 / §14.1). */}
         <Tex block tex={`\\mu(\\sigma) = \\langle \\mathcal{C},\\; \\mathcal{E},\\; \\mathcal{S},\\; \\mathcal{M} \\rangle`} />
@@ -87,14 +143,14 @@ function BungeFace({ d }: { d: Extract<LensDescription, { lens: "Bunge" }> }) {
       <p className="mt-1 text-xs" style={{ color: "var(--text-muted)" }}>
         µ(σ) is Bunge's 2004 four-coordinate object; bare σ names the 1979 ⟨C, E, S⟩ triple.
       </p>
-      <Line label={<Tex tex="\mathcal{C}" />}>{names(d.composition)}</Line>
-      <Line label={<Tex tex="\mathcal{E}" />}>{names(d.environment)}</Line>
+      <Line label={<Tex tex="\mathcal{C}" />} items={d.composition} noun="component" />
+      <Line label={<Tex tex="\mathcal{E}" />} items={d.environment} noun="environment thing" />
       <Line label={<Tex tex="\mathcal{S}" />}>
         {d.bondage} bonds ({d.endostructure} endo · {d.exostructure} exo) + {d.mere_relations} mere relation
         {d.mere_relations === 1 ? "" : "s"}
       </Line>
-      <Line label="boundary (1992)">
-        {names(d.boundary_components)} — the components directly coupled to 𝓔; computed, not drawn
+      <Line label="boundary (1992)" items={d.boundary_components} noun="boundary component">
+        — directly coupled to 𝓔; computed, not drawn
       </Line>
       <p className="mt-2 text-xs leading-relaxed" style={{ color: "var(--text-muted)" }}>
         {d.mechanism_note}
@@ -105,8 +161,8 @@ function BungeFace({ d }: { d: Extract<LensDescription, { lens: "Bunge" }> }) {
 
 function MobusFace({ d }: { d: Extract<LensDescription, { lens: "Mobus" }> }) {
   return (
-    <div className="grid gap-2">
-      <div className="mb-1">
+    <div className="grid">
+      <div className="mb-2">
         <Tex
           block
           tex={`S_{i,l} = \\langle C,\\; N,\\; E,\\; G,\\; B,\\; T,\\; H,\\; \\Delta t \\rangle`}
@@ -117,10 +173,10 @@ function MobusFace({ d }: { d: Extract<LensDescription, { lens: "Mobus" }> }) {
           E is the Lean formalization's addition; Mobus's book prints the seven-tuple ⟨C, N, G, B, T, H, Δt⟩.
         </p>
       </div>
-      <Line label={<Tex tex="C" />}>{names(d.c)}</Line>
+      <Line label={<Tex tex="C" />} items={d.c} noun="component" />
       <Line label={<Tex tex="N" />}>{d.n} internal flow{d.n === 1 ? "" : "s"} (the internal network)</Line>
-      <Line label={<Tex tex="E = \langle O, M \rangle" />}>
-        O = {names(d.e_objects)} · {d.milieu_note}
+      <Line label={<Tex tex="E = \langle O, M \rangle" />} items={d.e_objects} noun="environment object">
+        · {d.milieu_note}
       </Line>
       <Line label={<Tex tex="G" />}>
         {d.g} external flow{d.g === 1 ? "" : "s"} — bipartite: environment object ↔ interface
@@ -132,12 +188,10 @@ function MobusFace({ d }: { d: Extract<LensDescription, { lens: "Mobus" }> }) {
         each flow carries one substance (material · energy · message) from its source k to its sink o — direction
         inherent, never the observer&rsquo;s
       </Line>
-      <Line label={<Tex tex="B = \langle P, I \rangle" />}>
-        I = {names(d.b_interfaces)}
+      <Line label={<Tex tex="B = \langle P, I \rangle" />} items={d.b_interfaces} noun="interface">
         {BOUNDARY_PROPS_AUTHORING && (
           <>
-            {" "}· porosity {d.porosity.toFixed(2)} · fuzziness{" "}
-            {d.perceptive_fuzziness.toFixed(2)}
+            · porosity {d.porosity.toFixed(2)} · fuzziness {d.perceptive_fuzziness.toFixed(2)}
           </>
         )}
       </Line>
