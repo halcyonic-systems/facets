@@ -532,7 +532,7 @@ function InlineThingEditor({
             </SmallButton>
           </div>
         </Row>
-        <p className="mb-1 text-[10px] leading-snug" style={{ color: "var(--text-muted)" }}>
+        <p className="mb-1 text-[11px] leading-snug" style={{ color: "var(--text-muted)" }}>
           re-cut — the cut is yours to draw; ℰ and 𝒮 follow from it
         </p>
         {decompose && <DecomposeRows decompose={decompose} />}
@@ -644,13 +644,13 @@ function CouplingMatrix({
       <table className="border-separate" style={{ borderSpacing: 0 }}>
         <thead>
           <tr>
-            <th className="px-2 text-left align-bottom text-[10px] font-normal" style={headerCellStyle}>
+            <th className="px-2 text-left align-bottom text-[11px] font-normal" style={headerCellStyle}>
               r acts on s
             </th>
             {slots.map((s, i) => (
               <th
                 key={slotKey(s)}
-                className="px-1 pb-1 align-bottom text-[10px] font-normal"
+                className="px-1 pb-1 align-bottom text-[11px] font-normal"
                 style={{ ...headerCellStyle, minWidth: CELL, maxWidth: CELL, ...cutLeft(i) }}
                 title={slotTitle(s)}
               >
@@ -673,7 +673,7 @@ function CouplingMatrix({
           {slots.map((a, ai) => (
             <tr key={slotKey(a)}>
               <th
-                className="max-w-28 truncate px-2 text-right text-[10px] font-normal"
+                className="max-w-28 truncate px-2 text-right text-[11px] font-normal"
                 style={{
                   ...headerCellStyle,
                   height: CELL,
@@ -780,7 +780,7 @@ function CouplingMatrix({
           </SmallButton>
         </div>
       )}
-      <p className="mt-1 text-[10px]" style={{ color: "var(--text-muted)" }}>
+      <p className="mt-1 text-[11px]" style={{ color: "var(--text-muted)" }}>
         {enBloc
           ? "0 is the environment en bloc; the heavier rule after it is the cut. kind of action: "
           : "the heavier rule is the cut — 𝒞 before it, ℰ after (re-cut from any thing's editor). kind of action: "}

@@ -498,13 +498,13 @@ function IncidenceMatrix({
       <table className="border-separate" style={{ borderSpacing: 0 }}>
         <thead>
           <tr>
-            <th className="px-2 text-left align-bottom text-[10px] font-normal" style={headerCellStyle}>
+            <th className="px-2 text-left align-bottom text-[11px] font-normal" style={headerCellStyle}>
               row→col
             </th>
             {model.things.map((t) => (
               <th
                 key={t.id}
-                className="px-1 pb-1 align-bottom text-[10px] font-normal"
+                className="px-1 pb-1 align-bottom text-[11px] font-normal"
                 style={{ ...headerCellStyle, minWidth: CELL, maxWidth: CELL }}
                 title={t.name}
               >
@@ -522,7 +522,7 @@ function IncidenceMatrix({
           {model.things.map((a) => (
             <tr key={a.id}>
               <th
-                className="max-w-28 truncate px-2 text-right text-[10px] font-normal"
+                className="max-w-28 truncate px-2 text-right text-[11px] font-normal"
                 style={{ ...headerCellStyle, height: CELL }}
                 title={a.name}
               >
@@ -595,7 +595,7 @@ function IncidenceMatrix({
           </SmallButton>
         </div>
       )}
-      <p className="mt-1 text-[10px]" style={{ color: "var(--text-muted)" }}>
+      <p className="mt-1 text-[11px]" style={{ color: "var(--text-muted)" }}>
         ● neutral (marks both orders) · → directed, read row → col · ↺ self-relation
       </p>
     </div>
@@ -641,7 +641,7 @@ export function SourceSystemTable({
       </p>
     );
   }
-  const th = "px-2 py-1 text-left text-[10px] font-normal";
+  const th = "px-2 py-1 text-left text-[11px] font-normal";
   return (
     <section className="mb-4">
       <div className="mb-1 text-xs" style={{ ...mono, color: "var(--text-secondary)" }}>
@@ -716,7 +716,7 @@ export function SourceSystemTable({
           </tbody>
         </table>
       </div>
-      <p className="mt-1 text-[10px]" style={{ color: "var(--text-muted)" }}>
+      <p className="mt-1 text-[11px]" style={{ color: "var(--text-muted)" }}>
         in/out is read off R; basic/support, scale, and the state set are authored (on environment variables too).
       </p>
     </section>
@@ -781,7 +781,7 @@ function fmtState(v: number | undefined): string {
 function MaskCaption({ kind }: { kind: "conservation" | "markov" }) {
   if (kind === "markov") {
     return (
-      <p className="mt-1 text-[10px] leading-snug" style={{ color: "var(--text-muted)" }}>
+      <p className="mt-1 text-[11px] leading-snug" style={{ color: "var(--text-muted)" }}>
         f: Ḡ → G read off a <strong>Klir/DTMC run</strong> (#67 <code>run_markov</code>) — Ḡ = the
         state distribution at tick t, G = the successor distribution at t+1, the tick-step reading
         (support window = the current tick alone), matching the conservation mask's grammar. The
@@ -791,7 +791,7 @@ function MaskCaption({ kind }: { kind: "conservation" | "markov" }) {
     );
   }
   return (
-    <p className="mt-1 text-[10px] leading-snug" style={{ color: "var(--text-muted)" }}>
+    <p className="mt-1 text-[11px] leading-snug" style={{ color: "var(--text-muted)" }}>
       f: Ḡ → G read off a <strong>Mobus conservation run</strong>'s recorded trajectory — the
       coalgebra step T (dynamics-coalgebra-halfa.md), the first-order deterministic step (support
       window = the current tick alone). Richer declared-support windows and the Transition
@@ -862,7 +862,7 @@ export function MaskTable({
     );
   }
 
-  const th = "px-2 py-1 text-left text-[10px] font-normal";
+  const th = "px-2 py-1 text-left text-[11px] font-normal";
   return (
     <section className="mb-4">
       <div className="mb-1 text-xs" style={{ ...mono, color: "var(--text-secondary)" }}>

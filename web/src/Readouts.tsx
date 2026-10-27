@@ -206,8 +206,8 @@ export function Readouts({
         style={{ borderBottom: "1px solid var(--hairline)" }}
       >
         <span
-          className="shrink-0 text-xs font-semibold uppercase tracking-wide"
-          style={{ color: "var(--text-primary)" }}
+          className="shrink-0 text-[11px] font-semibold uppercase"
+          style={{ color: "var(--text-primary)", letterSpacing: "var(--tracking-label)" }}
         >
           Readouts
         </span>
@@ -286,7 +286,7 @@ export function TimeRow({
     <label className="flex items-center gap-1.5 text-xs" title={title} style={{ color: "var(--text-secondary)" }}>
       {label}
       {symbol && (
-        <span className="text-[10px]" style={{ color: "var(--text-muted)" }}>
+        <span className="text-xs" style={{ color: "var(--text-muted)" }}>
           {symbol}
         </span>
       )}

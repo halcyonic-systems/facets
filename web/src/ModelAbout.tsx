@@ -6,7 +6,6 @@
 // state, no kernel calls, works for every model including a blank one.
 import type { CanvasModel, Manifest } from "./kernel/types";
 import { pendingCrossingsPhrase } from "./canvas/crossings";
-import { InspectorTitle as Title } from "./ui";
 
 function Line({ label, children }: { label: string; children: React.ReactNode }) {
   return (
@@ -67,9 +66,14 @@ export function ModelAbout({
 
   return (
     <div>
-      <Title>{model.name ?? "untitled model"}</Title>
+      <h2
+        className="mb-2 font-bold leading-tight"
+        style={{ color: "var(--text-primary)", fontFamily: "var(--font-display)", fontSize: "var(--t-d3)" }}
+      >
+        {model.name ?? "untitled model"}
+      </h2>
       {kind && (
-        <div className="mb-2 text-[11px] font-medium" style={{ color: "var(--lens-accent)" }}>
+        <div className="mb-2 text-[11px] font-semibold uppercase" style={{ letterSpacing: "var(--tracking-label)", color: "var(--lens-accent)" }}>
           {kind}
         </div>
       )}

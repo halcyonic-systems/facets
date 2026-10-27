@@ -55,7 +55,7 @@ function InputRow({
         </span>
       ) : relation.ample ? (
         <span
-          className="shrink-0 text-[11px] italic"
+          className="shrink-0 text-[11px]"
           style={{ color: "var(--text-muted)" }}
           title="Declared ample (#9): availability never binds — there is no number to adjust."
         >
@@ -322,7 +322,7 @@ export function engineRows(
 
 function GroupHeader({ children }: { children: string }) {
   return (
-    <div className="mb-0.5 mt-2 text-[10px] font-semibold uppercase tracking-wide" style={{ color: "var(--text-muted)" }}>
+    <div className="mb-0.5 mt-2 text-[11px] font-semibold uppercase" style={{ letterSpacing: "var(--tracking-label)", color: "var(--text-muted)" }}>
       {children}
     </div>
   );

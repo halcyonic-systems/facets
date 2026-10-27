@@ -387,8 +387,8 @@ export function DataMode({
   const bindingPanel = onManifestChange && parsed && model.relations.length > 0 && (
     <div className="p-3" style={{ borderBottom: HAIRLINE }}>
       <h2
-        className="mb-1.5 text-[11px] font-semibold uppercase tracking-wide"
-        style={{ color: "var(--text-secondary)" }}
+        className="mb-1.5 text-[11px] font-semibold uppercase"
+        style={{ letterSpacing: "var(--tracking-label)", color: "var(--text-secondary)" }}
       >
         Column bindings
       </h2>
@@ -484,8 +484,8 @@ export function DataMode({
       {unbound.length > 0 && (
         <div className="p-3" style={{ borderBottom: HAIRLINE }}>
           <h2
-            className="mb-1.5 text-[11px] font-semibold uppercase tracking-wide"
-            style={{ color: "var(--text-secondary)" }}
+            className="mb-1.5 text-[11px] font-semibold uppercase"
+            style={{ letterSpacing: "var(--tracking-label)", color: "var(--text-secondary)" }}
           >
             Declared, not bound
           </h2>
@@ -498,7 +498,7 @@ export function DataMode({
                   style={{ background: KIND_COLOR[r.kind] }}
                 />
                 <span style={{ color: "var(--text-secondary)" }}>{r.name}</span>
-                <span className="font-mono text-[10px]" style={{ color: "var(--text-muted)" }}>
+                <span className="font-mono text-[11px]" style={{ color: "var(--text-muted)" }}>
                   {thingName(r.a)} → {thingName(r.b)}
                 </span>
               </li>
@@ -509,8 +509,8 @@ export function DataMode({
       {otherMappings.length > 0 && (
         <div className="p-3">
           <h2
-            className="mb-1.5 text-[11px] font-semibold uppercase tracking-wide"
-            style={{ color: "var(--text-secondary)" }}
+            className="mb-1.5 text-[11px] font-semibold uppercase"
+            style={{ letterSpacing: "var(--tracking-label)", color: "var(--text-secondary)" }}
           >
             Other bindings
           </h2>
@@ -533,11 +533,11 @@ export function DataMode({
     >
       {/* Header band — states the rung, the support, and the one sentence this
           mode exists to teach. */}
-      <div className="px-4 pt-3 pb-2" style={{ borderBottom: "1px solid var(--border)" }}>
+      <div className="px-4 pt-3 pb-2" style={{ borderBottom: "1px solid var(--hairline)" }}>
         <div className="flex flex-wrap items-baseline gap-x-3 gap-y-1">
-          <span className="font-display text-lg" style={{ color: "var(--text-primary)" }}>
+          <h1 className="font-bold leading-tight" style={{ color: "var(--text-primary)", fontFamily: "var(--font-display)", fontSize: "var(--t-d3)" }}>
             {modelName}
-          </span>
+          </h1>
           <Pill tone="neutral">Measurements</Pill>
           {/* The console graft: the shape, stated the moment the sheet opens. */}
           {parsed && (
@@ -628,7 +628,7 @@ export function DataMode({
                         }}
                       >
                         <div style={{ color: "var(--text-primary)" }}>{v.thing.name}</div>
-                        <div className="text-[10px] font-normal" style={{ color: "var(--text-muted)" }}>
+                        <div className="text-[11px] font-normal" style={{ color: "var(--text-muted)" }}>
                           {(v.thing.variable_kind ?? "Basic").toLowerCase()}
                           {v.thing.scale ? ` · ${v.thing.scale.toLowerCase()}` : ""}
                         </div>
@@ -710,7 +710,7 @@ export function DataMode({
                 </tbody>
               </table>
               {observedStates.length > ROW_CAP && (
-                <p className="mt-1 px-2 font-mono text-[10px]" style={{ color: "var(--text-muted)" }}>
+                <p className="mt-1 px-2 font-mono text-[11px]" style={{ color: "var(--text-muted)" }}>
                   … {observedStates.length - ROW_CAP} rarer states not shown (all are counted)
                 </p>
               )}
@@ -750,7 +750,7 @@ export function DataMode({
                       }}
                     >
                       <div style={{ color: "var(--text-primary)" }}>{v.thing.name}</div>
-                      <div className="text-[10px] font-normal" style={{ color: "var(--text-muted)" }}>
+                      <div className="text-[11px] font-normal" style={{ color: "var(--text-muted)" }}>
                         {(v.thing.variable_kind ?? "Basic").toLowerCase()}
                         {v.thing.scale ? ` · ${v.thing.scale.toLowerCase()}` : ""}
                       </div>
@@ -792,7 +792,7 @@ export function DataMode({
                   <tr>
                     <td
                       colSpan={variableCols.length + 1}
-                      className="px-2 py-1 text-center font-mono text-[10px]"
+                      className="px-2 py-1 text-center font-mono text-[11px]"
                       style={{ color: "var(--text-muted)", borderBottom: HAIRLINE }}
                     >
                       … {hiddenCount} rows elided …
@@ -875,7 +875,7 @@ export function DataMode({
                             {caret(ci + 1)}
                           </div>
                           <div
-                            className="whitespace-nowrap font-mono text-[10px] font-normal"
+                            className="whitespace-nowrap font-mono text-[11px] font-normal"
                             style={{ color: "var(--text-muted)" }}
                           >
                             {thingName(c.relation.a)} → {thingName(c.relation.b)} ← {c.mapping.column}
@@ -901,7 +901,7 @@ export function DataMode({
                             {caret(ci + 1)}
                           </div>
                           <div
-                            className="whitespace-nowrap font-mono text-[10px] font-normal"
+                            className="whitespace-nowrap font-mono text-[11px] font-normal"
                             style={{ color: "var(--verdict-error)" }}
                           >
                             ← {c.mapping.column} · broken binding

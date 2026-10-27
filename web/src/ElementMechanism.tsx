@@ -66,7 +66,7 @@ function FlowRow({
 
 function FlowGroupHeader({ children }: { children: string }) {
   return (
-    <div className="mb-0.5 mt-2 text-[10px] font-semibold uppercase tracking-wide" style={{ color: "var(--text-muted)" }}>
+    <div className="mb-0.5 mt-2 text-[11px] font-semibold uppercase" style={{ letterSpacing: "var(--tracking-label)", color: "var(--text-muted)" }}>
       {children}
     </div>
   );
@@ -97,7 +97,7 @@ export function ElementMechanism({
   const at = traj ? traj.series[Math.min(tick, traj.series.length - 1)] : null;
   return (
     <div className="mt-4 border-t pt-3" style={{ borderColor: "var(--hairline)" }}>
-      <div className="mb-1 text-[10px] font-semibold uppercase tracking-wide" style={{ color: "var(--text-muted)" }}>
+      <div className="mb-1 text-[11px] font-semibold uppercase" style={{ letterSpacing: "var(--tracking-label)", color: "var(--text-muted)" }}>
         mechanism
       </div>
       {line && thing.primitive && (
@@ -144,7 +144,7 @@ export function ElementMechanism({
       {traj && at !== null && (
         <div className="mt-2 flex items-center gap-3">
           <Sparkline series={traj.series} tick={tick} />
-          <span className="font-mono text-[11px]" style={{ color: "var(--text-secondary)" }}>
+          <span className="tabular font-semibold" style={{ fontSize: "var(--t-num)", color: "var(--text-secondary)" }}>
             {Number.isFinite(at) ? at.toLocaleString(undefined, { maximumFractionDigits: 1 }) : "—"}
             {traj.unit ? ` ${traj.unit}` : ""} <span style={{ color: "var(--text-muted)" }}>at tick {Math.min(tick, traj.series.length - 1)}</span>
           </span>

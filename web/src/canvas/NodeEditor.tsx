@@ -166,7 +166,7 @@ export function NodeEditorRows({
             </SmallButton>
           </div>
         </Row>
-        <p className="mb-1 text-[10px] leading-snug" style={{ color: "var(--text-muted)" }}>
+        <p className="mb-1 text-xs leading-snug" style={{ color: "var(--text-muted)" }}>
           re-cut — the cut is yours to draw; ℰ and 𝒮 follow from it
         </p>
         </>
@@ -262,7 +262,7 @@ export function NodeEditorRows({
               />
             </Row>
           ))}
-          <p className="mb-2 text-[10px] leading-snug" style={{ color: "var(--text-muted)" }} data-testid="rule-gloss">
+          <p className="mb-2 text-xs leading-snug" style={{ color: "var(--text-muted)" }} data-testid="rule-gloss">
             {RULES.find((r) => r.rule === thing.rule)?.gloss} ·{" "}
             {thing.watches_flow !== undefined
               ? "it reads a declared physical flow, what that flow delivered on the last completed tick (the feedforward form, spec v1.14), drawn as a dotted line from the flow,"
@@ -277,7 +277,7 @@ export function NodeEditorRows({
       {lens === "Mobus" && isComponent && thing.primitive && (
         /* #418 item 4: what the stamped process IS, from the same table the
            rail's hover card reads. */
-        <p className="mb-2 text-[10px] leading-snug" style={{ color: "var(--text-muted)" }} data-testid="primitive-gloss">
+        <p className="mb-2 text-xs leading-snug" style={{ color: "var(--text-muted)" }} data-testid="primitive-gloss">
           {thing.primitive} · {PRIMITIVE_WORD[thing.primitive]} — {PRIMITIVE_GLOSS[thing.primitive]}
         </p>
       )}

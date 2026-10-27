@@ -3,8 +3,31 @@
 import { useState } from "react";
 import { Line, ReferenceArea, ReferenceLine } from "recharts";
 import type { CanvasModel, Comparison, Level, MarkovRunResult, RunResultRich } from "./kernel/types";
-import { Button, Card, Pill, Stat, Verdict, humanize } from "./ui";
+import { Button, Card, Pill, Verdict, humanize } from "./ui";
 import { Icon } from "./icons";
+
+/** The 11/600 uppercase label (rule 5) and the 13/600 numeral (`--t-num`, mono
+ *  for the kernel's numbers), as the pieces a className cannot carry. */
+const LABEL = "text-[11px] font-semibold uppercase";
+const LABEL_STYLE = { letterSpacing: "var(--tracking-label)" } as const;
+const NUM = "tabular font-semibold";
+const NUM_STYLE = { fontSize: "var(--t-num)" } as const;
+
+/** A small figure with its label under it: the Table tab's run stats, at the
+ *  numeral size rather than as a second hero (audit #26). The hero of the
+ *  Readouts view is the glance row's share. */
+function Figure({ label, value, color }: { label: string; value: string; color?: string }) {
+  return (
+    <div>
+      <div className={NUM} style={{ ...NUM_STYLE, color: color ?? "var(--text-primary)" }}>
+        {value}
+      </div>
+      <div className="mt-0.5 text-xs" style={{ color: "var(--text-muted)" }}>
+        {label}
+      </div>
+    </div>
+  );
+}
 import { horizonOf, unitLabel } from "./runViz";
 import { BungeStateSpace } from "./canvas/BungeStateSpace";
 import { evaluateMetrics, type MetricReading } from "./metrics";
@@ -128,7 +151,8 @@ export function RunGlance({
     >
       {head && headValue && (
         <span className="inline-flex items-baseline gap-2" title={head.detail}>
-          <span className="text-2xl font-semibold tabular" style={{ color: "var(--accent-strong)" }}>
+          {/* The view's one hero figure: proportional, ink (dataviz; audit #27, #37). */}
+          <span className="text-2xl font-semibold" style={{ color: "var(--text-primary)" }}>
             {headValue}
           </span>
           <span className="text-xs" style={{ color: "var(--text-secondary)" }}>
@@ -146,7 +170,7 @@ export function RunGlance({
       )}
       {internal && stockValue != null && (
         <span className="inline-flex items-baseline gap-1.5 text-sm">
-          <span className="tabular font-medium" style={{ color: "var(--text-primary)" }}>
+          <span className={NUM} style={{ ...NUM_STYLE, color: "var(--text-primary)" }}>
             {humanize(stockValue)}
           </span>
           <span className="text-xs" style={{ color: "var(--text-muted)" }}>
@@ -321,13 +345,13 @@ export function RunTable({
         <Pill tone={ranEdited ? "warning" : "neutral"}>
           {ranEdited ? "ran your edited model" : "ran the model as shipped"}
         </Pill>
-        <Stat
+        <Figure
           label={WORDING.residualLabel}
           value={residualText(result.residual)}
-          tone={result.conserved ? "ok" : "error"}
+          color={result.conserved ? "var(--verdict-ok)" : "var(--verdict-error)"}
         />
-        <Stat label="ticks" value={String(result.ticks)} />
-        <Stat label="step size (Δt)" value={result.dt.toFixed(1)} />
+        <Figure label="ticks" value={String(result.ticks)} />
+        <Figure label="step size (Δt)" value={result.dt.toFixed(1)} />
       </div>
       <Levels
         levels={result.levels}
@@ -343,10 +367,7 @@ export function RunTable({
 
 function SectionLabel({ children }: { children: React.ReactNode }) {
   return (
-    <div
-      className="mb-2 text-[11px] font-semibold uppercase tracking-wide"
-      style={{ color: "var(--text-muted)" }}
-    >
+    <div className={`mb-2 ${LABEL}`} style={{ ...LABEL_STYLE, color: "var(--text-muted)" }}>
       {children}
     </div>
   );
@@ -622,7 +643,8 @@ export function MetricRow({ r, tick, height = 90, timeUnit, baseline = null }: {
           </div>
         </div>
         <div className="text-right">
-          <div className="text-2xl font-semibold tabular" style={{ color: "var(--accent-strong)" }}>
+          {/* The chart's header value: a numeral, not a second hero (audit #26). */}
+          <div className={NUM} style={{ ...NUM_STYLE, color: "var(--text-primary)" }}>
             {endpoint}
           </div>
           <div className="text-[11px]" style={{ color: "var(--text-muted)" }}>
@@ -707,7 +729,7 @@ function ComparisonChart({ c, tick, height = 150, timeUnit }: { c: Comparison; t
           </span>
         </div>
         {pct != null && (
-          <span className="text-xs tabular" style={{ color: "var(--accent-strong)" }}>
+          <span className={NUM} style={{ ...NUM_STYLE, color: "var(--text-primary)" }}>
             {Math.round(pct)}% off (in-sample)
           </span>
         )}
@@ -791,7 +813,7 @@ function ComparisonChart({ c, tick, height = 150, timeUnit }: { c: Comparison; t
         )}
       </div>
       {forecastTicks > 0 && h != null && (
-        <p className="mt-0.5 text-[11px] italic" style={{ color: "var(--text-muted)" }}>
+        <p className="mt-0.5 text-xs" style={{ color: "var(--text-muted)" }}>
           data ends at tick {h} — beyond it the model is forecasting, nothing to check against
         </p>
       )}
@@ -859,8 +881,8 @@ export function DtmcPanel({
         <div className="flex flex-wrap items-center gap-4">
           <Pill tone="neutral">Markov chain · probability over states</Pill>
           {weights && <Pill tone={WEIGHT_PILL[weights].tone}>{WEIGHT_PILL[weights].text}</Pill>}
-          <Stat label="steps" value={String(steps)} />
-          <Stat label="states" value={String(run.states.length)} />
+          <Figure label="steps" value={String(steps)} />
+          <Figure label="states" value={String(run.states.length)} />
         </div>
       </Card>
 
@@ -1104,21 +1126,19 @@ function Levels({
         const header = categoryHeader(cat, lens);
         return (
           <div key={cat}>
-            <div
-              className="mb-1 text-[11px] font-semibold uppercase tracking-wide"
-              style={{ color: "var(--text-muted)" }}
-            >
+            <div className={`mb-1 ${LABEL}`} style={{ ...LABEL_STYLE, color: "var(--text-muted)" }}>
               {header.label}
-              <span className="ml-1.5 font-normal normal-case tracking-normal">
+              <span className="ml-1.5 font-normal normal-case" style={{ letterSpacing: 0 }}>
                 · {header.sub(ticks)}
               </span>
             </div>
             {/* A real table, not a list of name/number pairs (fresh-eyes pass,
                 2026-08-18): fixed columns so the eye reads DOWN a column
                 instead of re-parsing each row. The at-cursor column exists
-                only mid-scrub — absent, not blank. */}
+                only mid-scrub — absent, not blank. Rows are separated by a
+                hairline, not by whitespace (audit #23). */}
             <div
-              className="grid items-baseline gap-x-6 gap-y-1"
+              className="grid items-baseline gap-x-6"
               style={{
                 gridTemplateColumns: scrubbed
                   ? "minmax(0,1fr) auto auto auto"
@@ -1129,16 +1149,16 @@ function Levels({
                 maxWidth: "42rem",
               }}
             >
-              <span />
+              <span className={CELL} style={CELL_STYLE} />
               {scrubbed && (
-                <span className="text-right text-[10px] uppercase tracking-wide" style={{ color: "var(--text-muted)" }}>
+                <span className={`${CELL} text-right ${LABEL}`} style={{ ...CELL_STYLE, ...LABEL_STYLE, color: "var(--text-muted)" }}>
                   at t={tick}
                 </span>
               )}
-              <span className="text-right text-[10px] uppercase tracking-wide" style={{ color: "var(--text-muted)" }}>
+              <span className={`${CELL} text-right ${LABEL}`} style={{ ...CELL_STYLE, ...LABEL_STYLE, color: "var(--text-muted)" }}>
                 final
               </span>
-              <span className="text-right text-[10px] uppercase tracking-wide" style={{ color: "var(--text-muted)" }}>
+              <span className={`${CELL} text-right ${LABEL}`} style={{ ...CELL_STYLE, ...LABEL_STYLE, color: "var(--text-muted)" }}>
                 unit
               </span>
               {rows.map((l) => (
@@ -1159,6 +1179,10 @@ function Levels({
     </div>
   );
 }
+
+/** One cell of the levels table: a hairline under every row (audit #23). */
+const CELL = "py-1.5";
+const CELL_STYLE = { borderBottom: "1px solid var(--hairline)" } as const;
 
 function LevelRow({
   level: l,
@@ -1189,18 +1213,20 @@ function LevelRow({
   const acceptable = derived && onAcceptUnit !== undefined && !l.unit.includes("Δt");
   return (
     <>
-      <span className="text-sm" style={{ color: "var(--text-primary)" }}>
+      <span className={`${CELL} text-sm`} style={{ ...CELL_STYLE, color: "var(--text-primary)" }}>
         {l.name}
       </span>
+      {/* One numeral style across the numeric columns (audit #24, #37): the
+          at-cursor value is ink, not the action colour. */}
       {scrubbed && (
-        <span className="tabular text-right text-xs" style={{ color: "var(--accent)" }}>
+        <span className={`${CELL} ${NUM} text-right`} style={{ ...CELL_STYLE, ...NUM_STYLE, color: "var(--text-primary)" }}>
           {atTickValue != null ? humanize(atTickValue) : "—"}
         </span>
       )}
-      <span className="tabular text-right text-sm" style={{ color: "var(--text-secondary)" }}>
+      <span className={`${CELL} ${NUM} text-right`} style={{ ...CELL_STYLE, ...NUM_STYLE, color: "var(--text-secondary)" }}>
         {showsMagnitude ? l.value.toFixed(1) : humanize(l.value)}
       </span>
-      <span className="text-right text-sm">
+      <span className={`${CELL} text-right text-sm`} style={CELL_STYLE}>
         <span
           className={unit.abstract ? "italic" : undefined}
           style={{

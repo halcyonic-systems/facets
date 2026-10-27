@@ -270,7 +270,7 @@ export function KlirLadderPanel({ ladder, onClose }: { ladder: KlirLadder; onClo
         >
           {ladder.position}
         </span>
-        <span className="text-[10px] uppercase tracking-wide" style={{ color: "var(--text-muted)" }}>
+        <span className="text-[11px] font-semibold uppercase" style={{ letterSpacing: "var(--tracking-label)", color: "var(--text-muted)" }}>
           this model&rsquo;s position — earned, not chosen
         </span>
       </div>
@@ -286,7 +286,7 @@ export function KlirLadderPanel({ ladder, onClose }: { ladder: KlirLadder; onClo
       <p className="mt-1" style={{ color: "var(--text-muted)" }}>
         greyed rungs need observed data over a named support — not authorable on this canvas
       </p>
-      <p className="mt-2 italic" style={{ color: "var(--text-muted)" }}>
+      <p className="mt-2" style={{ color: "var(--text-muted)" }}>
         to climb — {ladder.to_climb}
       </p>
     </div>

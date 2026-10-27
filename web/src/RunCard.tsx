@@ -19,8 +19,12 @@ import { FUTURE_OPACITY, RunChart, midRun, timeAxisLabel } from "./RunChart";
 import { Line } from "recharts";
 import { TimeRow } from "./Readouts";
 import { evaluateMetrics } from "./metrics";
-import { Button, humanize } from "./ui";
+import { Button, Panel, humanize } from "./ui";
 import { unitLabel } from "./runViz";
+
+/** The 11/600 uppercase label (rule 5). */
+const LABEL = "text-[11px] font-semibold uppercase";
+const LABEL_STYLE = { letterSpacing: "var(--tracking-label)" } as const;
 
 /** One band of the stack. The rule rides the TOP of every band but the first,
  *  so the divisions are the card's own structure and not decoration hung on
@@ -92,20 +96,12 @@ export function RunCard({
   const headReading = result ? (evaluateMetrics(model, result)?.readings[0] ?? null) : null;
 
   return (
-    <div
+    <Panel
+      as="aside"
       className="absolute right-3 top-3 z-10 flex max-h-[calc(100%-1.5rem)] w-72 flex-col overflow-y-auto"
-      style={{
-        background: "var(--bg-secondary)",
-        border: "1px solid var(--border)",
-        borderRadius: "var(--radius-sm)",
-        boxShadow: "var(--shadow-card)",
-      }}
     >
       <Band first className="flex items-center gap-2 py-1.5">
-        <span
-          className="text-xs font-semibold uppercase tracking-wide"
-          style={{ color: "var(--text-primary)" }}
-        >
+        <span className={LABEL} style={{ ...LABEL_STYLE, color: "var(--text-primary)" }}>
           Run
         </span>
         <span className="min-w-0 flex-1" />
@@ -136,9 +132,12 @@ export function RunCard({
                   {facts.head.kind === "sum" ? " · running total" : " · share"}
                 </span>
               </span>
+              {/* The card's one hero figure: proportional figures at display
+                  size (dataviz), ink not the action colour (audit #37). */}
               <span
-                className="shrink-0 text-2xl font-semibold leading-none tabular"
-                style={{ color: "var(--accent-strong)" }}
+                className="shrink-0 text-2xl font-semibold leading-none"
+                style={{ color: "var(--text-primary)" }}
+                data-testid="run-card-head"
               >
                 {facts.headValue}
               </span>
@@ -149,7 +148,7 @@ export function RunCard({
               <span className="min-w-0 truncate" style={{ color: "var(--text-muted)" }}>
                 {facts.internal.name} · level
               </span>
-              <span className="shrink-0 tabular" style={{ color: "var(--text-primary)" }}>
+              <span className="shrink-0 tabular font-semibold" style={{ color: "var(--text-primary)", fontSize: "var(--t-num)" }}>
                 {humanize(facts.stockValue)}
                 {facts.internal.unit ? ` ${unitLabel(facts.internal.unit).text}` : ""}
               </span>
@@ -235,7 +234,7 @@ export function RunCard({
               it here is the instrument owning its grain (the same fact a
               Combining processor's law line carries). */}
           <p
-            className="mb-1 mt-1.5 text-[10px] leading-snug"
+            className="mb-1 mt-1.5 text-xs leading-snug"
             style={{ color: "var(--text-muted)" }}
             title="Transforms produce their matched substance; other inflows drive the work and dissipate. Coupling output to the scarcest input (Liebig's law of the minimum) is named, open engine research."
           >
@@ -248,6 +247,6 @@ export function RunCard({
       <Band className="py-1.5" title="the run's time slice — edits re-run">
         <TimeRow time={time} frame={false} />
       </Band>
-    </div>
+    </Panel>
   );
 }
