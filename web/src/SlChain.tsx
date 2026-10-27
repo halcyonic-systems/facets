@@ -22,6 +22,8 @@ import { useState } from "react";
 import type { CanvasModel, Lens, LensDescription, ValidationResult } from "./kernel/types";
 import { MODE_BY_LENS } from "./review";
 import { openExternal } from "./desktop";
+import { Button } from "./ui";
+import { Icon } from "./icons";
 
 const REPO_BASE = "https://github.com/halcyonic-systems/facets/blob/main/";
 const GRAMMAR_URL = `${REPO_BASE}docs/language/spec.md#4-grammar`;
@@ -58,6 +60,8 @@ function docLabel(doc: string): string {
   return anchor ? `${file} § ${anchor}` : file;
 }
 
+/** An external link: one treatment (rule 8, sl audit #22), the accent with a
+ *  solid underline, the drawn `external` mark after the word (rule 14). */
 function DocLink({ href, children, title }: { href: string; children: string; title: string }) {
   return (
     <a
@@ -66,9 +70,11 @@ function DocLink({ href, children, title }: { href: string; children: string; ti
       rel="noreferrer"
       onClick={openExternal}
       title={title}
-      style={{ color: "var(--lens-accent)", textDecoration: "underline", textDecorationStyle: "dotted" }}
+      className="inline-flex min-h-6 items-center gap-0.5 whitespace-nowrap text-xs"
+      style={{ color: "var(--accent)", textDecoration: "underline" }}
     >
       {children}
+      <Icon name="external" size={16} />
     </a>
   );
 }
@@ -85,8 +91,8 @@ function Step({
   aside?: React.ReactNode;
 }) {
   return (
-    <div className="flex items-baseline gap-2 py-0.5 text-[11px]">
-      <span className="w-3 shrink-0 tabular" style={{ color: "var(--text-muted)" }}>
+    <div className="flex min-h-7 items-center gap-2 text-xs">
+      <span className="w-3 shrink-0 tabular font-semibold" style={{ color: "var(--text-muted)" }}>
         {n}
       </span>
       <span
@@ -167,7 +173,7 @@ export function SlStatusLine({
 export function GrammarLink() {
   return (
     <DocLink href={GRAMMAR_URL} title="the normative SL grammar (EBNF), in the spec">
-      SL grammar ↗
+      SL grammar
     </DocLink>
   );
 }
@@ -195,10 +201,10 @@ export function SlChain({ text, model, desc, verdict, onShowFormal }: SlChainPro
 
   return (
     <div className="border-t px-3 py-2" style={{ borderColor: "var(--hairline)" }}>
-      <div className="flex items-baseline justify-between gap-2 pb-1">
+      <div className="flex items-center justify-between gap-2 pb-1">
         <span
-          className="text-[10px] font-semibold uppercase tracking-[0.2em]"
-          style={{ fontFamily: "var(--font-mono)", color: "var(--text-muted)" }}
+          className="text-[11px] font-semibold uppercase"
+          style={{ letterSpacing: "var(--tracking-label)", color: "var(--text-muted)" }}
         >
           the compile chain
         </span>
@@ -214,14 +220,15 @@ export function SlChain({ text, model, desc, verdict, onShowFormal }: SlChainPro
         call="compile_sl"
         aside={
           model && (
-            <button
+            <Button
+              size={28}
+              variant="quiet"
               onClick={() => setShowJson((s) => !s)}
-              className="px-1 text-[10px] underline"
-              style={{ color: "var(--text-muted)" }}
+              aria-expanded={showJson}
               title="show the compiled model exactly as the kernel returned it"
             >
               {showJson ? "hide JSON" : "show JSON"}
-            </button>
+            </Button>
           )
         }
       >
@@ -237,8 +244,9 @@ export function SlChain({ text, model, desc, verdict, onShowFormal }: SlChainPro
 
       {showJson && model && (
         <pre
-          className="my-1 max-h-40 overflow-auto p-2 font-mono text-[9px] leading-snug"
+          className="my-1 max-h-40 overflow-auto p-2 font-mono leading-snug"
           style={{
+            fontSize: "var(--t-meta)",
             background: "var(--bg-primary)",
             border: "1px solid var(--hairline)",
             borderRadius: "var(--radius-sm)",
@@ -254,14 +262,14 @@ export function SlChain({ text, model, desc, verdict, onShowFormal }: SlChainPro
         call="describe"
         aside={
           desc && (
-            <button
+            <Button
+              size={28}
+              variant="quiet"
               onClick={onShowFormal}
-              className="px-1 text-[10px] underline"
-              style={{ color: "var(--text-muted)" }}
               title="open the Formal tab: the same object, typeset in full"
             >
               open Formal
-            </button>
+            </Button>
           )
         }
       >
@@ -308,14 +316,21 @@ export function SlChain({ text, model, desc, verdict, onShowFormal }: SlChainPro
           verdicts themselves are Rust; nothing here is proved in Lean, and the
           copy below must never say otherwise. Provenance and its caveats:
           docs/lean-provenance.md. */}
-      <p className="pt-1.5 text-[10px] leading-snug" style={{ color: "var(--text-muted)" }}>
-        Steps 2 to 4 all run in the Rust kernel. The compiler is deterministic: same text, same model,
-        no LLM between them. Step 4's mode-entry gate is checked against a Lean-emitted truth table
-        over every kernel of ≤ 2 things, 19 rows, both directions:{" "}
-        <DocLink href={PROVENANCE_URL} title="which Lean, at which commit, and what it does not establish">
-          lean-provenance ↗
-        </DocLink>
-      </p>
+      {/* The provenance, behind a disclosure (rule 6: the paragraph ran to
+          200ch on one line; here it is 72ch at most and closed by default). */}
+      <details className="pt-1.5 text-xs" style={{ color: "var(--text-muted)" }}>
+        <summary className="cursor-pointer select-none rounded-sm py-1" style={{ color: "var(--text-secondary)" }}>
+          Where these steps run, and what is checked
+        </summary>
+        <p className="max-w-[72ch] pt-1 leading-snug">
+          Steps 2 to 4 all run in the Rust kernel. The compiler is deterministic: same text, same model,
+          no LLM between them. Step 4's mode-entry gate is checked against a Lean-emitted truth table
+          over every kernel of ≤ 2 things, 19 rows, both directions:{" "}
+          <DocLink href={PROVENANCE_URL} title="which Lean, at which commit, and what it does not establish">
+            lean-provenance
+          </DocLink>
+        </p>
+      </details>
     </div>
   );
 }

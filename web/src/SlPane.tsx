@@ -265,40 +265,30 @@ export function SlPane({
   // the moment: an empty page wants the whole model, a written one wants only
   // its positions refreshed. The other waits under details.
   const fromCanvasButton = (
-    <button
+    <Button
+      variant="quiet"
+      icon="back"
       onClick={fromCanvas}
       disabled={!canvasModel}
-      className="rounded-full px-3 py-1 text-sm"
-      style={{
-        border: "1px solid var(--hairline)",
-        color: "var(--text-secondary)",
-        opacity: canvasModel ? 1 : 0.45,
-        cursor: canvasModel ? "pointer" : "not-allowed",
-      }}
       title={canvasModel ? "Replace the text with the current canvas model, serialized" : "No model on the canvas yet"}
     >
-      ← From canvas
-    </button>
+      From canvas
+    </Button>
   );
   const layoutOnlyButton = (
-    <button
+    <Button
+      variant="quiet"
+      icon="back"
       onClick={layoutFromCanvas}
       disabled={!canvasModel}
-      className="rounded-full px-3 py-1 text-sm"
-      style={{
-        border: "1px solid var(--hairline)",
-        color: "var(--text-secondary)",
-        opacity: canvasModel ? 1 : 0.45,
-        cursor: canvasModel ? "pointer" : "not-allowed",
-      }}
       title={
         canvasModel
           ? "Update only the @pos lines from the canvas — comments and everything else in this text are left untouched"
           : "No model on the canvas yet"
       }
     >
-      ← Layout only
-    </button>
+      Layout only
+    </Button>
   );
 
   // Folded to a rail: the text is one click away, which is not the same as
@@ -313,12 +303,10 @@ export function SlPane({
         style={{ borderColor: "var(--hairline)", background: "var(--bg-secondary)" }}
         data-testid="sl-rail"
       >
-        <span className="text-xs" style={{ color: "var(--text-muted)" }}>
-          ▸
-        </span>
+        <Icon name="chevron-right" size={16} style={{ color: "var(--text-muted)" }} />
         <span
-          className="text-[10px] font-semibold uppercase tracking-wide"
-          style={{ color: "var(--text-muted)", writingMode: "vertical-rl" }}
+          className="text-[11px] font-semibold uppercase"
+          style={{ color: "var(--text-muted)", writingMode: "vertical-rl", letterSpacing: "var(--tracking-label)" }}
         >
           SL text
         </span>
@@ -350,7 +338,7 @@ export function SlPane({
       >
         <span
           className="text-sm font-semibold"
-          style={{ color: "var(--text-secondary)" }}
+          style={{ color: "var(--text-primary)" }}
           title="SL, the system language"
         >
           {full ? "SL — system language" : "SL"}
@@ -359,8 +347,8 @@ export function SlPane({
           {header}
           {onArrangement && (
             <div
-              className="flex overflow-hidden rounded-full"
-              style={{ border: "1px solid var(--hairline)" }}
+              className="flex overflow-hidden rounded-sm"
+              style={{ border: "1px solid var(--rule-strong)" }}
               role="group"
               aria-label="Arrangement"
             >
@@ -377,22 +365,24 @@ export function SlPane({
           )}
           {coauthor && !drafterDocked && (
             <div
-              className="flex overflow-hidden rounded-full"
-              style={{ border: "1px solid var(--hairline)" }}
+              className="flex overflow-hidden rounded-sm"
+              style={{ border: "1px solid var(--rule-strong)" }}
+              role="group"
+              aria-label="Way of filling the text"
             >
               <ModeButton label="SL" active={mode === "sl"} onClick={() => setMode("sl")} />
               <ModeButton label="Co-author" active={mode === "coauthor"} onClick={() => setMode("coauthor")} />
             </div>
           )}
           {onClose && (
-            <button
+            <Button
+              size={28}
+              variant="quiet"
+              icon="close"
               onClick={onClose}
-              className="px-1 text-sm"
-              style={{ color: "var(--text-muted)" }}
+              aria-label="Close the SL pane"
               title="Close the SL pane"
-            >
-              ✕
-            </button>
+            />
           )}
         </div>
       </div>
@@ -406,28 +396,16 @@ export function SlPane({
           data-testid="sl-preview-gate"
         >
           <span>Previewing a draft. It is not kept until you accept it.</span>
-          <button
-            onClick={preview.onAccept}
-            className="rounded-full px-3 py-1 text-xs font-semibold"
-            style={{ background: "var(--accent)", color: "var(--text-on-accent)" }}
-          >
+          <Button size={28} onClick={preview.onAccept}>
             Accept
-          </button>
-          <button
-            onClick={preview.onDiscard}
-            className="rounded-full px-3 py-1 text-xs"
-            style={{ border: "1px solid var(--hairline)", color: "var(--text-secondary)" }}
-          >
+          </Button>
+          <Button size={28} variant="quiet" onClick={preview.onDiscard}>
             Discard
-          </button>
+          </Button>
           {onArrangement && (
-            <button
-              onClick={() => onArrangement("split")}
-              className="text-xs underline"
-              style={{ color: "var(--text-muted)" }}
-            >
+            <Button size={28} variant="quiet" onClick={() => onArrangement("split")}>
               see the diagram
-            </button>
+            </Button>
           )}
         </div>
       )}
@@ -471,14 +449,9 @@ export function SlPane({
             className="flex flex-wrap items-center gap-x-3 gap-y-1 border-t px-3 py-2"
             style={{ borderColor: "var(--hairline)" }}
           >
-            <button
-              onClick={() => compile()}
-              className="rounded-full px-4 py-1 text-sm font-semibold"
-              style={{ background: "var(--accent)", color: "var(--text-on-accent)" }}
-              title="Compile SL → model (⌘⏎) · deterministic compile, kernel verdicts"
-            >
+            <Button onClick={() => compile()} title="Compile SL → model (⌘⏎) · deterministic compile, kernel verdicts">
               Compile
-            </button>
+            </Button>
             {text.trim() === "" ? fromCanvasButton : layoutOnlyButton}
             <SlStatusLine
               model={canvasModel}
@@ -486,17 +459,18 @@ export function SlPane({
               faults={errors.length}
               edited={editedSinceCompile}
             />
-            <span className="ml-auto flex items-baseline gap-3 text-[11px]">
+            <span className="ml-auto flex items-center gap-3">
               <GrammarLink />
-              <button
+              <Button
+                size={28}
+                variant="quiet"
+                icon={detailsOpen ? "chevron-up" : "chevron-down"}
                 onClick={toggleDetails}
                 aria-expanded={detailsOpen}
-                className="underline"
-                style={{ color: "var(--text-muted)" }}
                 data-testid="sl-details-toggle"
               >
                 {detailsOpen ? "hide details" : "details"}
-              </button>
+              </Button>
             </span>
           </div>
           {detailsOpen && (
@@ -506,8 +480,10 @@ export function SlPane({
                 style={{ borderColor: "var(--hairline)" }}
               >
                 {text.trim() === "" ? layoutOnlyButton : fromCanvasButton}
-                <span className="text-[11px]" style={{ color: "var(--text-muted)" }}>
-                  ⌘⏎ · deterministic compile, kernel verdicts
+                <span className="inline-flex items-center gap-0.5 text-xs" style={{ color: "var(--text-muted)" }}>
+                  <Icon name="command" size={16} />
+                  <Icon name="return" size={16} />
+                  <span className="pl-1">compiles · deterministic compile, kernel verdicts</span>
                 </span>
               </div>
               {/* What the compile produced, named step by step. It stays
@@ -648,18 +624,19 @@ function ModeButton({
   active: boolean;
   onClick: () => void;
 }) {
+  // One segment of a group: the Button primitive at 28 with its own edge and
+  // corners dropped, since the group carries them (rule 3: 4px on the group).
   return (
-    <button
+    <Button
+      size={28}
+      variant={active ? "primary" : "quiet"}
       onClick={onClick}
       title={title}
       aria-pressed={active}
-      className="px-2.5 py-1 text-[11px] font-semibold"
-      style={{
-        background: active ? "var(--accent)" : "transparent",
-        color: active ? "var(--text-on-accent)" : "var(--text-secondary)",
-      }}
+      className="rounded-none"
+      style={{ border: "none" }}
     >
       {label}
-    </button>
+    </Button>
   );
 }
