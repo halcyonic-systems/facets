@@ -265,6 +265,9 @@ function downloadText(filename: string, text: string, type: string) {
   URL.revokeObjectURL(url);
 }
 
+/** Running on stops itself here (one-surface.md, "Bounds"). */
+const RUN_ON_LIMIT = 5000;
+
 export default function App() {
   const [loaded, setLoaded] = useState(false);
   const [loadError, setLoadError] = useState<string | null>(null);
@@ -397,6 +400,14 @@ function Workspace() {
   const handlePlayingChange = useCallback((p: boolean) => {
     setPlaying(p);
   }, []);
+  // Run on (one-surface.md, 2026-10-27): the sandbox's live run, on the Model
+  // surface. With it set, an unforced conservation run's play does not rest
+  // at the last recorded tick; each further frame steps the held engine one
+  // tick, and a knob turned while it plays lands at that tick. Off = the
+  // play-once posture above, exactly. `ranOnRef` marks that the engine was
+  // stepped past the recorded run since the last record was written.
+  const [runOn, setRunOn] = useState(true);
+  const ranOnRef = useRef(false);
   const [selectedRelationId, setSelectedRelationId] = useState<number | null>(null);
   const [selectedThingId, setSelectedThingId] = useState<number | null>(null);
   const [boundaryAnchor, setBoundaryAnchor] = useState<Pt | null>(null);
@@ -2273,6 +2284,33 @@ function Workspace() {
         }
         const structural =
           nextModel.relations.length !== prev.relations.length || nextModel.things.length !== prev.things.length;
+        if (!structural && changed.length + fieldEdits.length > 0 && runOn && playing && !(runCsv ?? "").trim()) {
+          // Running on (one-surface.md): the knob lands at the engine's
+          // current tick and the run carries on from there, stocks kept —
+          // the sandbox's mid-run tweak. The edit log stamps that tick.
+          for (const r of changed) {
+            b.setFlowAmount(r.name, nameOf(r.a), nameOf(r.b), Number(r.amount ?? 0));
+          }
+          for (const e of fieldEdits) {
+            b.setComponentParam(e.name, e.field, e.v);
+          }
+          ranOnRef.current = true;
+          setRanEdited(true);
+          setRunError(null);
+          return;
+        }
+        if (!structural && changed.length + fieldEdits.length > 0 && b.edits().some((e) => e.tick > 0)) {
+          // A paused knob on a run that took knobs while running on: the
+          // engine's edit log would keep those mid-run ticks after a reset,
+          // naming changes this re-stepped trace never had. Reopen the run
+          // from the document instead, at the length on screen, with a clean
+          // log; the scrubber rests at the end as a knob's answer does.
+          const len = Math.max(t, result ? result.ticks * dt : 0);
+          runWith(JSON.stringify(project(nextModel)), runCsv ?? "", manifest, dt, len, true);
+          setPlaying(false);
+          setTick(Math.max(0, (result?.ticks ?? 1) - 1));
+          return;
+        }
         if (!structural && changed.length + fieldEdits.length > 0) {
           // Reset first, so the knob is logged at tick 0: the run re-steps
           // from zero, and an edit stamped with the old run's last tick read
@@ -2284,7 +2322,8 @@ function Workspace() {
           for (const e of fieldEdits) {
             b.setComponentParam(e.name, e.field, e.v);
           }
-          b.stepOver(t);
+          // A run that ran on keeps its length when a paused knob re-steps it.
+          b.stepOver(Math.max(t, result ? result.ticks * dt : 0));
           const r = b.readout();
           setResult(r);
           recordBench(b, r, "knob", runCsv ?? "", manifest, dt, t);
@@ -2450,6 +2489,44 @@ function Workspace() {
     return { runKind, runnable, title, onRun, onStep };
   })();
 
+  // Run on (one-surface.md): one more engine tick, asked for by the scrubber
+  // at the last frame. Held in a ref so the scrubber's clock is not restarted
+  // by every render; the bound keeps a forgotten tab from growing a trace
+  // without limit.
+  const runOnAvailable = runCtl?.runKind === "conservation" && !(runCsv ?? "").trim();
+  const runOnTickRef = useRef<() => void>(() => {});
+  runOnTickRef.current = () => {
+    const b = benchRef.current;
+    if (!b || !result) {
+      setPlaying(false);
+      return;
+    }
+    if (result.ticks >= RUN_ON_LIMIT) {
+      setPlaying(false);
+      setNotice(`Ran on to ${RUN_ON_LIMIT} ticks and paused. Run starts over from the run length.`);
+      return;
+    }
+    try {
+      b.step(1);
+      const r = b.readout();
+      ranOnRef.current = true;
+      setResult(r);
+      setTick(r.ticks - 1);
+    } catch (e) {
+      setPlaying(false);
+      setRunError(e instanceof Error ? e.message : String(e));
+    }
+  };
+  const runOnTick = useCallback(() => runOnTickRef.current(), []);
+  // The record is written when running on stops, not every tick.
+  useEffect(() => {
+    if (playing || !ranOnRef.current) return;
+    ranOnRef.current = false;
+    const b = benchRef.current;
+    if (b && result) recordBench(b, result, "step", runCsv ?? "", manifest, dt, result.ticks * dt);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [playing]);
+
   // The ONE transport spine (#345): mounted under the stage on the Model
   // surface, and in the Readouts header when the expansion is open — never
   // both at once (two scrubbers would double-advance the shared cursor).
@@ -2466,6 +2543,9 @@ function Workspace() {
       onPlayingChange={handlePlayingChange}
       loop={playLoop}
       verdict={result ? { conserved: result.conserved, residual: result.residual } : null}
+      runOn={runOnAvailable ? runOn : undefined}
+      onRunOnChange={setRunOn}
+      onRunOnTick={runOnTick}
     />
   ) : null;
 

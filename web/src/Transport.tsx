@@ -21,6 +21,9 @@ export function Transport({
   onPlayingChange,
   loop,
   verdict,
+  runOn,
+  onRunOnChange,
+  onRunOnTick,
 }: {
   onRun: () => void;
   onStep: () => void;
@@ -38,6 +41,13 @@ export function Transport({
   /** Conservation verdict of the trace on screen; null = no verdict to state
    *  (no run yet, or a run kind with no conservation ledger). */
   verdict: { conserved: boolean; residual: number } | null;
+  /** Run on (one-surface.md): whether play continues past the last recorded
+   *  tick by stepping the engine. Absent = this run cannot run on (forced by
+   *  data, or a Markov run), and the toggle is not shown. */
+  runOn?: boolean;
+  onRunOnChange?: (on: boolean) => void;
+  /** Step the engine one tick; called by the scrubber at the last frame. */
+  onRunOnTick?: () => void;
 }) {
   if (!runnable) {
     return (
@@ -60,6 +70,20 @@ export function Transport({
         aria-label="Step"
         title="Advance the run by one tick (starts one if none has run)"
       />
+      {runOn !== undefined && onRunOnChange && (
+        <ToolButton
+          icon="forward"
+          active={runOn}
+          onClick={() => onRunOnChange(!runOn)}
+          title={
+            runOn
+              ? "Run on: play keeps stepping the engine past the run length, and a knob turned while it plays takes effect at that tick. Click to stop at the run length."
+              : "Stops at the run length. Click to keep running past it, live."
+          }
+        >
+          run on
+        </ToolButton>
+      )}
       {steps > 0 && (
         <ToolButton
           icon="step-back"
@@ -80,6 +104,7 @@ export function Transport({
             playing={playing}
             onPlayingChange={onPlayingChange}
             loop={loop}
+            onRunOn={runOn ? onRunOnTick : undefined}
           />
         </div>
       ) : (
