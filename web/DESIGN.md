@@ -211,46 +211,15 @@ editors' bond / mere) and only becomes the square when a surface passes `icon`
 alone; `Pill` is a chip until the status bar passes `pill`; `Menu` is built and
 tested here and wired to FILE and SWITCH by the chrome slice.
 
-## Open at slice B2
+## Rules 3 and 10 after the 2026-10 makeover
 
-Rule 3 and rule 10 offenders in files the primitives slice does not own, as
-`check:tokens` lists them at this commit (105 warnings; the six in `ui.tsx`
-are cleared and `ui.tsx` fails on any new one). Each surface slice clears its
-own files and adds them to `RADIUS_OUTLINE_STRICT` in `check-tokens.mjs`.
-"pill" is `rounded-full` or `--radius-pill` without `data-pill`; "radius" is a
-literal (`rounded`, `rounded-pill`, numeric `borderRadius`); "outline" is
-`outline-none`.
-
-| File | pill | radius | outline |
-|---|---|---|---|
-| `App.tsx` | 2964, 2972, 2985, 2998, 3011, 3018, 3039, 3051, 3071, 3902, 3910, 3917 | 3672, 3686, 4375, 4390, 4434, 4584 | |
-| `StatusBar.tsx` | 91, 107, 123, 138, 153 | | |
-| `Transport.tsx` | 58, 71 | | |
-| `InspectorDock.tsx` | 242 | 240 | |
-| `AnalystPanel.tsx` | 144 | 289 | |
-| `FormalPanel.tsx` | 82 | | |
-| `ParamControl.tsx` | | 40 | |
-| `RunInputs.tsx` | | 101, 102, 103, 186, 263 | |
-| `RunPanel.tsx` | | 1224 | |
-| `canvas/BoundaryPopover.tsx` | 68 | | |
-| `canvas/BungeRegister.tsx` | 235, 376, 542, 545 | | |
-| `canvas/BungeStateSpace.tsx` | | 37 (`borderRadius: 8`) | |
-| `canvas/EdgePopover.tsx` | 107, 218 | | |
-| `canvas/InterfacePopover.tsx` | 68, 81 | 63 | |
-| `canvas/KlirLadderPanel.tsx` | 211, 237 | | |
-| `canvas/KlirRegister.tsx` | 964, 967, 1019, 1022 | | |
-| `canvas/MilieuPopover.tsx` | 47 | | |
-| `canvas/NodeEditor.tsx` | 279, 283, 314 | | |
-| `canvas/SimScrubber.tsx` | 67 | | |
-| `sandbox/SandboxInspector.tsx` | | 138, 177, 217, 225, 289, 324, 333 | |
-| `sandbox/SandboxMetrics.tsx` | | 97 | |
-| `sandbox/SandboxSurface.tsx` | | 91, 97, 100, 105, 113, 172, 176, 180, 210, 234 | |
-
-Also owed to the surface slices by this one: `StatusBar.tsx:70` passes `pill`
-to the verdict `Pill` so the status bar keeps the one true pill; `Transport.tsx:105`
-and `StatusBar.tsx:73` move their `✓` / `⚠` into the Pill's `icon` slot;
-`canvas/PaletteRail.tsx:92` passes `icon` to `ToolButton` for the 32px square;
-`App.tsx` FILE and SWITCH become `Menu` / `MenuItem` / `MenuSection`.
+Every surface slice cleared its own files and added them to
+`RADIUS_OUTLINE_STRICT` in `check-tokens.mjs`; at the merge of all seven
+(design/makeover, 78ac174) no file outside the strict set carries a pill
+without `data-pill`, a numeric radius, or `outline-none`, and the checker
+prints no warning. The one `rounded-full` left in `src/` is the verdict chip in
+`ui.tsx`, which carries `data-pill`. `RADIUS_OUTLINE_FAIL` can flip to true,
+and the strict set can go, once a pass confirms nothing new has landed.
 
 ## Growing this
 
