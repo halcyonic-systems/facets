@@ -595,11 +595,11 @@ export function HomeMenu({
   const lede = (
     <>
       <button className="home-lede-link" style={ledeLink} onClick={() => onCreate()}>
-        Draw a system
+        Start a model
       </button>
-      , or{" "}
-      <button className="home-lede-link" style={ledeLink} onClick={() => onCreate({ sl: true })}>
-        describe it in a few lines
+      {" "}or{" "}
+      <button className="home-lede-link" style={ledeLink} onClick={onOpenLibrary}>
+        open one
       </button>
       , and the instrument checks the structure as you go.
     </>
@@ -613,45 +613,25 @@ export function HomeMenu({
       />
       <Column className="pb-12 pt-8">
         <GroupHeader label="Start" lead />
-        {/* Two doors in, one model underneath. The data-first door that stood
-            here (#309, the Klir source-and-data rungs) left the face in the
-            2026-10-26 cut: the course it was built for grew its own GSPS path,
-            and a model here starts from the system, not from a table. The
-            surface still exists behind `?data=1` for the parked issue; the CSV
-            attach path on an open model is untouched. */}
+        {/* Two doors: make a model or open one (one-surface.md, 2026-10-27).
+            Drawing, describing and wiring processes are ways of working on
+            the same model, chosen on the blank canvas, not doors here. The
+            sandbox's door went the same day; its surface stays at
+            `?sandbox=1`. The data-first door left in the 2026-10-26 cut and
+            stays behind `?data=1`. */}
         <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
           <Panel
             glyph={<DoorWell icon="draw" hue="var(--accent)" soft="var(--accent-soft)" />}
-            name="Draw your system"
-            description="Components, flows, a boundary. Every step is checked as you draw."
+            name="New model"
+            description="Draw it, describe it in a few lines, or drop in processes and press Run. Every step is checked."
             onClick={() => onCreate()}
           />
           <Panel
-            glyph={<DoorWell icon="describe" hue="var(--accent)" soft="var(--accent-soft)" />}
-            name="Describe your system"
-            description="A few plain sentences. The co-author drafts it in SL; the kernel checks it; you accept or discard."
-            onClick={() => onCreate({ sl: true })}
+            glyph={<DoorWell icon="open" hue="var(--prim-buffering)" />}
+            name="Open a model"
+            description="Library, your saved models, or a file."
+            onClick={onOpenLibrary}
           />
-        </div>
-        <div className="mt-8 grid grid-cols-1 items-stretch gap-4 sm:grid-cols-2">
-          <div className="flex flex-col">
-            <GroupHeader label="Continue" />
-            <Panel
-              glyph={<DoorWell icon="open" hue="var(--prim-buffering)" />}
-              name="Open a model"
-              description="Library, your saved models, or a file."
-              onClick={onOpenLibrary}
-            />
-          </div>
-          <div className="flex flex-col">
-            <GroupHeader label="Try" />
-            <Panel
-              glyph={<DoorWell icon="sandbox" hue="var(--prim-splitting)" />}
-              name="Sandbox"
-              description="Drop in processes, wire them, press Run. Change a rate mid-run and watch the flow answer."
-              href="?sandbox=1"
-            />
-          </div>
         </div>
         {/* The colophon. A printed record states its edition at the foot of the
             page, not in its table of contents — and the provenance is what this

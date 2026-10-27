@@ -22,12 +22,17 @@ const FOCUSABLE = 'button:not([disabled]), textarea, input, select, a[href], [ta
 export function StartSurface({
   onDescribe,
   onSkip,
+  onBuild,
   onOpenLibrary,
 }: {
   /** Open the co-author tab on this description. */
   onDescribe: (description: string) => void;
   /** Leave for the blank canvas. */
   onSkip: () => void;
+  /** Go to the canvas to build by hand (one-surface.md): "draw" for
+   *  components and flows, "wire" for dropping process primitives and
+   *  pressing Run. Absent, "Draw it by hand" falls back to skip. */
+  onBuild?: (how: "draw" | "wire") => void;
   onOpenLibrary?: () => void;
 }) {
   const [description, setDescription] = useState("");
@@ -98,14 +103,14 @@ export function StartSurface({
             className="font-bold leading-tight"
             style={{ fontFamily: "var(--font-display)", fontSize: "var(--t-d3)", color: "var(--text-primary)" }}
           >
-            Describe a system
+            Start your model
           </h2>
           <Button size={28} variant="quiet" onClick={onSkip}>
             skip
           </Button>
         </div>
         <p id={descId} className="mb-3 text-sm leading-5" style={{ color: "var(--text-secondary)" }}>
-          Say what it is in plain language. You get a first draft to check, edit, and accept.
+          Describe it in plain language and get a first draft to check, edit, and accept. Or build it on the canvas.
         </p>
         <Textarea
           value={description}
@@ -139,9 +144,19 @@ export function StartSurface({
           style={{ borderColor: "var(--hairline)", color: "var(--text-muted)" }}
         >
           <span>or</span>
-          <Button size={28} variant="quiet" onClick={onSkip}>
+          <Button size={28} variant="quiet" onClick={() => (onBuild ? onBuild("draw") : onSkip())}>
             Draw it by hand
           </Button>
+          {onBuild && (
+            <Button
+              size={28}
+              variant="quiet"
+              onClick={() => onBuild("wire")}
+              title="Drop process primitives from the rail, wire them, press Run"
+            >
+              Wire processes and run
+            </Button>
+          )}
           {onOpenLibrary && (
             <Button size={28} variant="quiet" onClick={onOpenLibrary}>
               Open an example

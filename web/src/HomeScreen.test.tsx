@@ -84,11 +84,15 @@ const browser = (tree: LibraryNode[] = [], initialFacet: Tag | null = null) =>
 const doors = (opts: Parameters<typeof page>[0] = {}) => page({ ...opts, initialView: "doors" });
 
 describe("home", () => {
-  it("is four doors in three groups, with the docs in the colophon", () => {
+  it("is two doors, new and open, with the docs in the colophon", () => {
     const html = renderToStaticMarkup(<HomeMenu onCreate={noop} onOpenLibrary={noop} />);
-    expect(html).toContain("Draw your system");
+    expect(html).toContain("New model");
     expect(html).toContain("Open a model");
-    expect(html).toContain("Sandbox");
+    // one-surface.md: drawing, describing and the sandbox are ways in on the
+    // blank canvas, not doors; ?sandbox=1 still opens the sandbox surface.
+    expect(html).not.toContain("Draw your system");
+    expect(html).not.toContain("Describe your system");
+    expect(html).not.toContain("?sandbox=1");
     expect(html).toContain("Documentation");
     // The docs link goes to the rendered docs on the site (#368), not a repo tree.
     expect(html).toContain('href="https://facets.systems/docs/"');

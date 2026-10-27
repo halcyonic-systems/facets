@@ -4157,6 +4157,15 @@ function Workspace() {
             setSlOpen(true);
           }}
           onSkip={() => setStartOpen(false)}
+          onBuild={(how) => {
+            // one-surface.md: both canvas ways in open Build; wiring
+            // processes says where the primitives are and what Run does.
+            setStartOpen(false);
+            setWorkspaceMode("build");
+            if (how === "wire") {
+              setNotice("Pick a process on the rail, click to place it, drag from its handle to wire it, then press Run.");
+            }
+          }}
           onOpenLibrary={() => {
             setStartOpen(false);
             openHomeAt({ view: "library" });
