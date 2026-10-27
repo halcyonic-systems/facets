@@ -32,9 +32,9 @@
 //
 // Visual language: docs/design/visual-language.md. A white sheet on a neutral
 // ground, hairline rules for structure, and colour ONLY where it names
-// something: --seal marks a selected filter and the one exception tag, and
-// --world-* names a tradition. These tokens are scoped to this file's root, so
-// the workspace surface is untouched.
+// something: a Pill tone marks a capability or a provenance (rule 9d), the
+// accent marks a selected filter, --world-* names a tradition and --chart-*
+// a genus.
 //
 // The printed-page devices this surface briefly carried (a rubric rule opening
 // every title block, a display serif on the masthead, roman folios, a narrow
@@ -74,6 +74,8 @@ import { openExternal } from "./desktop";
 import { buildInfo, provenanceLines } from "./buildInfo";
 import Thumbnail from "./canvas/Thumbnail";
 import { useThumbnailModel } from "./canvas/useThumbnail";
+import { Icon, type IconName } from "./icons";
+import { Button, Input, Pill, type Tone } from "./ui";
 
 // The rendered docs on the site (#368): the LIVE doc set, published with the
 // rest of facets.systems by scripts/publish-site.sh.
@@ -151,9 +153,9 @@ export function HomeScreen(props: HomeProps) {
         )}
         {props.onClose && (
           <Column className="pb-12">
-            <button onClick={props.onClose} className={LABEL} style={labelStyle}>
-              ‹ back to the model on the canvas
-            </button>
+            <Button size={28} variant="quiet" icon="back" onClick={props.onClose}>
+              back to the model on the canvas
+            </Button>
           </Column>
         )}
       </div>
@@ -277,13 +279,11 @@ function Masthead({
   return (
     <Column className={dense ? "pt-8" : "pt-12"}>
       {back && (
-        <button
-          onClick={back.onClick}
-          className={`${dense ? "mb-6" : "mb-10"} block ${LABEL}`}
-          style={labelStyle}
-        >
-          ‹ {back.label}
-        </button>
+        <div className={dense ? "mb-6" : "mb-10"}>
+          <Button size={28} variant="quiet" icon="back" onClick={back.onClick}>
+            {back.label}
+          </Button>
+        </div>
       )}
       <div className={`flex items-start justify-between gap-10 ${dense ? "pt-1" : "pt-6"}`}>
         <div className="flex min-w-0 items-center gap-6">
@@ -359,7 +359,7 @@ function Ledger({ children }: { children: ReactNode }) {
 /** The folio column: a numeral in the left margin of the entry, in mono so the
  *  column stays true, separated from the entry by nothing but space. It takes
  *  the rubric under the cursor (see .record-row in index.css). */
-function Gutter({ index, folio }: { index?: number; folio?: string }) {
+function Gutter({ index, folio }: { index?: number; folio?: ReactNode }) {
   return (
     <span
       className="record-folio flex items-start justify-end pr-5 pt-5 text-xs tabular"
@@ -370,15 +370,23 @@ function Gutter({ index, folio }: { index?: number; folio?: string }) {
   );
 }
 
-/** The exception mark. Not a chip — a printed marginal note: the rubric, in the
- *  serif italic, set small beside the name. */
-function Chip({ children }: { children: ReactNode }) {
+/** A marker's meaning, read off its words (rule 9d): "runs" is a capability,
+ *  "with Nora" a collaborator, "drafted" the co-author, "after X" a bench
+ *  provenance; anything else is neutral. The Pill's tone carries the colour
+ *  and the word carries the meaning (rule 12). */
+function markerTone(text: string): Tone {
+  if (text === "runs") return "runs";
+  if (text.startsWith("with ")) return "with";
+  if (text.startsWith("drafted")) return "drafted";
+  if (text.startsWith("after ")) return "bench";
+  return "neutral";
+}
+
+/** The exception mark on a row: a chip with a word, coloured by what it says. */
+function Chip({ children }: { children: string }) {
   return (
-    <span
-      className="ml-auto shrink-0 self-baseline text-sm"
-      style={{ fontFamily: display, fontStyle: "italic", color: "var(--seal)" }}
-    >
-      {children}
+    <span className="ml-auto shrink-0 self-center">
+      <Pill tone={markerTone(children)}>{children}</Pill>
     </span>
   );
 }
@@ -401,7 +409,7 @@ function LedgerRow({
   href,
 }: {
   index?: number;
-  folio?: string;
+  folio?: ReactNode;
   name: string;
   description: string;
   trailing?: ReactNode;
@@ -492,65 +500,21 @@ function Gem() {
   );
 }
 
-// The door glyphs: line drawings in the instrument's own vocabulary — a
-// boundary holding processes and flows, a table of observations, a stack of
-// saved sheets, a loop that runs. Stroke and fill take the row's ink so the
-// hover tint carries through (see .home-panel in index.css).
-const glyphStroke: CSSProperties = { stroke: "currentColor", fill: "none" };
-const glyphFill: CSSProperties = { fill: "currentColor" };
-// A closed shape in a glyph wears the soft accent: colour as a filled region
-// with an edge, never a fade — the one tint the page carries at rest.
-const glyphWash: CSSProperties = { stroke: "currentColor", fill: "var(--accent-soft)" };
-
-function DrawGlyph() {
+// The door glyphs are the four door icons in icons.tsx (`draw`, `describe`,
+// `open`, `sandbox`, drawn for 32 on the 24 grid, rule 14), each in a tinted
+// well in its card's hue (rule 9c): Draw and Describe wear the accent, Open
+// the Buffering blue (a stack that holds), Sandbox the Splitting orange (a run
+// that branches). The well is the hue at 14% over the sheet and the icon the
+// full hue, so the four doors read as four colours before their names do.
+function DoorWell({ icon, hue, soft }: { icon: IconName; hue: string; soft?: string }) {
   return (
-    <svg viewBox="0 0 96 64" width="96" height="64" aria-hidden="true" className="home-glyph shrink-0">
-      <ellipse cx={48} cy={32} rx={44} ry={27} style={glyphStroke} strokeWidth={1} strokeDasharray="3 3" />
-      <circle cx={26} cy={40} r={7} style={glyphWash} strokeWidth={1.2} />
-      <circle cx={48} cy={20} r={7} style={glyphWash} strokeWidth={1.2} />
-      <circle cx={70} cy={40} r={7} style={glyphWash} strokeWidth={1.2} />
-      <line x1={31.5} y1={35} x2={41} y2={26.5} style={glyphStroke} strokeWidth={1.2} />
-      <polygon points="39,24 44,23.5 41.5,28" style={glyphFill} />
-      <line x1={55} y1={26.5} x2={64.5} y2={35} style={glyphStroke} strokeWidth={1.2} />
-      <polygon points="62,37.5 67,37 64.5,32.5" style={glyphFill} />
-    </svg>
-  );
-}
-
-function DescribeGlyph() {
-  // Lines of prose becoming a drafted model: three text rules, and a small
-  // checked box where the kernel's verdict lands.
-  return (
-    <svg viewBox="0 0 96 64" width="96" height="64" aria-hidden="true" className="home-glyph shrink-0">
-      <line x1={10} y1={16} x2={62} y2={16} style={glyphStroke} strokeWidth={1.2} />
-      <line x1={10} y1={28} x2={54} y2={28} style={glyphStroke} strokeWidth={1.2} />
-      <line x1={10} y1={40} x2={58} y2={40} style={glyphStroke} strokeWidth={1.2} />
-      <line x1={10} y1={52} x2={34} y2={52} style={glyphStroke} strokeWidth={1.2} />
-      <rect x={70} y={22} width={18} height={18} style={glyphStroke} strokeWidth={1} />
-      <polyline points="74,31 78,35 85,26" style={glyphStroke} strokeWidth={1.2} fill="none" />
-    </svg>
-  );
-}
-
-function OpenGlyph() {
-  return (
-    <svg viewBox="0 0 48 48" width="44" height="44" aria-hidden="true" className="home-glyph shrink-0">
-      <rect x={12} y={6} width={26} height={32} style={{ ...glyphStroke, fill: "var(--paper)" }} strokeWidth={1} />
-      <rect x={8} y={10} width={26} height={32} style={glyphWash} strokeWidth={1} />
-      <line x1={14} y1={20} x2={28} y2={20} style={glyphStroke} strokeWidth={0.8} />
-      <line x1={14} y1={26} x2={28} y2={26} style={glyphStroke} strokeWidth={0.8} />
-    </svg>
-  );
-}
-
-function SandboxGlyph() {
-  return (
-    <svg viewBox="0 0 48 48" width="44" height="44" aria-hidden="true" className="home-glyph shrink-0">
-      <circle cx={14} cy={24} r={6} style={glyphWash} strokeWidth={1.1} />
-      <circle cx={36} cy={24} r={6} style={glyphWash} strokeWidth={1.1} />
-      <path d="M20 24 Q25 14 30 24" style={glyphStroke} strokeWidth={1.1} />
-      <path d="M30 24 Q25 34 20 24" style={glyphStroke} strokeWidth={1.1} strokeDasharray="2 2" />
-    </svg>
+    <span
+      aria-hidden
+      className="flex h-14 w-14 shrink-0 items-center justify-center rounded-sm"
+      style={{ background: soft ?? `color-mix(in srgb, ${hue} 14%, var(--bg-secondary))`, color: hue }}
+    >
+      <Icon name={icon} size={32} />
+    </span>
   );
 }
 
@@ -657,13 +621,13 @@ export function HomeMenu({
             attach path on an open model is untouched. */}
         <div className="grid grid-cols-2 gap-5">
           <Panel
-            glyph={<DrawGlyph />}
+            glyph={<DoorWell icon="draw" hue="var(--accent)" soft="var(--accent-soft)" />}
             name="Draw your system"
             description="Components, flows, a boundary. Every step is checked as you draw."
             onClick={() => onCreate()}
           />
           <Panel
-            glyph={<DescribeGlyph />}
+            glyph={<DoorWell icon="describe" hue="var(--accent)" soft="var(--accent-soft)" />}
             name="Describe your system"
             description="A few plain sentences. The co-author drafts it in SL; the kernel checks it; you accept or discard."
             onClick={() => onCreate({ sl: true })}
@@ -673,7 +637,7 @@ export function HomeMenu({
           <div className="flex flex-col">
             <GroupHeader label="Continue" />
             <Panel
-              glyph={<OpenGlyph />}
+              glyph={<DoorWell icon="open" hue="var(--prim-buffering)" />}
               name="Open a model"
               description="Library, your saved models, or a file."
               onClick={onOpenLibrary}
@@ -682,7 +646,7 @@ export function HomeMenu({
           <div className="flex flex-col">
             <GroupHeader label="Try" />
             <Panel
-              glyph={<SandboxGlyph />}
+              glyph={<DoorWell icon="sandbox" hue="var(--prim-splitting)" />}
               name="Sandbox"
               description="Drop in processes, wire them, press Run. Change a rate mid-run and watch the flow answer."
               href="?sandbox=1"
@@ -698,19 +662,22 @@ export function HomeMenu({
           style={{ borderColor: "var(--rule-soft)" }}
         >
           {onAbout && (
-            <button onClick={onAbout} className={`record-folio ${LABEL}`} style={labelStyle}>
+            <Button size={28} variant="quiet" onClick={onAbout}>
               This build
-            </button>
+            </Button>
           )}
+          {/* A real link (right-click, copy): the quiet button's look at the
+              24px floor, with the external mark (rule 11, icons.md). */}
           <a
             href={DOCS_URL}
             target="_blank"
             rel="noreferrer"
             onClick={openExternal}
-            className={`record-folio ${LABEL}`}
-            style={labelStyle}
+            className="inline-flex h-7 items-center gap-1.5 rounded-sm px-2.5 text-sm font-medium"
+            style={{ color: "var(--text-primary)", border: "1px solid var(--rule-strong)" }}
           >
             Documentation
+            <Icon name="external" size={16} />
           </a>
         </div>
       </Column>
@@ -792,6 +759,9 @@ const GENUS_HUE: Record<string, string> = {
   Biological: "var(--chart-4)",
   Social: "var(--chart-3)",
   Technical: "var(--chart-1)",
+  // The fourth kingdom takes the fourth chart ink (audit #41: a shelf with no
+  // hue was uncoloured by omission, not by meaning).
+  Physical: "var(--chart-2)",
 };
 
 function hueOf(tag: Tag): string | undefined {
@@ -828,11 +798,11 @@ function FacetButton({
       onClick={onClick}
       title={facet.note || undefined}
       aria-pressed={selected}
-      className="record-row flex items-baseline gap-2 pb-1.5 pt-1 text-left"
+      className="record-row flex min-h-7 items-baseline gap-2 pb-1.5 pt-1 text-left"
       style={{
-        borderBottom: selected
-          ? `2px solid ${hue ?? "var(--seal)"}`
-          : "1px solid var(--rule-soft)",
+        // The selected facet is underscored by its tradition's hue, or by the
+        // accent (rule 8: a selection is an action, so it wears the accent).
+        borderBottom: selected ? `2px solid ${hue ?? "var(--accent)"}` : "1px solid var(--rule-soft)",
       }}
     >
       {hue && <span aria-hidden className="h-2 w-0.5 shrink-0 self-center" style={{ background: hue }} />}
@@ -1000,26 +970,14 @@ function ModelCard({
           <span className="line-clamp-2 text-sm font-medium leading-tight" style={{ color: "var(--text-primary)" }}>
             {name}
           </span>
-          {runs && (
-            <span
-              className="shrink-0 text-xs"
-              style={{ letterSpacing: "var(--tracking-label)", color: "var(--seal)" }}
-            >
-              runs
-            </span>
-          )}
+          {runs && <Pill tone="runs">runs</Pill>}
           {marker && (
             /* A bench card's provenance can run long ("after X 1983 (the run as
                a switch); Mobus §11.2.1.1"); the marker truncates in its row and
                carries the full text as its title, instead of drifting past the
                card into the next column. */
-            <span
-              className="min-w-0 truncate text-xs"
-              style={{ letterSpacing: "var(--tracking-label)", color: "var(--text-muted)" }}
-              title={marker}
-              data-testid="card-marker"
-            >
-              {marker}
+            <span className="min-w-0 truncate" title={marker} data-testid="card-marker">
+              <Pill tone={markerTone(marker)}>{marker}</Pill>
             </span>
           )}
         </span>
@@ -1118,9 +1076,10 @@ function ShelfHead({
       )}
       <span className="flex-1" />
       {shown < total && (
-        <button onClick={onExpand} className="record-folio shrink-0 text-xs" style={labelStyle}>
-          all {total} →
-        </button>
+        <Button size={28} variant="quiet" onClick={onExpand}>
+          all {total}
+          <Icon name="forward" size={16} />
+        </Button>
       )}
     </div>
   );
@@ -1430,14 +1389,14 @@ export function LibraryBrowser({
               <SectionHead
                 label="Yours"
                 right={
-                  <span className="flex shrink-0 items-baseline gap-3 text-xs" style={{ color: "var(--text-muted)" }}>
+                  <span className="flex shrink-0 items-center gap-3 text-xs" style={{ color: "var(--text-muted)" }}>
                     <span>
                       <span className="tabular">{savedCount}</span> · newest first
                     </span>
                     {savedCount > 0 && (
-                      <button onClick={() => setManage((m) => !m)} className="record-folio" style={labelStyle}>
-                        {manage ? "done" : "manage →"}
-                      </button>
+                      <Button size={28} variant="quiet" onClick={() => setManage((m) => !m)} aria-pressed={manage}>
+                        {manage ? "done" : "manage"}
+                      </Button>
                     )}
                   </span>
                 }
@@ -1454,9 +1413,10 @@ export function LibraryBrowser({
                   <span>{storageLine}</span>
                   <span>last exported: {exportedAt === null ? "never" : whenLabel(exportedAt)}</span>
                   {manage && onExportLibrary && (
-                    <button onClick={onExportLibrary} className="record-folio" style={labelStyle}>
-                      export library (.sl) →
-                    </button>
+                    <Button size={28} variant="quiet" onClick={onExportLibrary}>
+                      export library (.sl)
+                      <Icon name="forward" size={16} />
+                    </Button>
                   )}
                 </div>
               )}
@@ -1479,13 +1439,12 @@ export function LibraryBrowser({
                     ))}
                   </CardGrid>
                   {!showAllSaved && !q && shownSaved.length > SHELF_CARDS && (
-                    <button
-                      onClick={() => setShowAllSaved(true)}
-                      className="record-folio mt-2.5 text-xs"
-                      style={labelStyle}
-                    >
-                      and {shownSaved.length - SHELF_CARDS} more →
-                    </button>
+                    <div className="mt-3">
+                      <Button size={28} variant="quiet" onClick={() => setShowAllSaved(true)}>
+                        and {shownSaved.length - SHELF_CARDS} more
+                        <Icon name="forward" size={16} />
+                      </Button>
+                    </div>
                   )}
                 </>
               )}
@@ -1518,10 +1477,11 @@ export function LibraryBrowser({
                 style={{ borderColor: "var(--rule-soft)", borderRadius: "var(--radius-sm)", background: "var(--paper)" }}
               >
                 <span
-                  className="flex h-11 w-11 shrink-0 items-center justify-center border text-[11px]"
-                  style={{ borderColor: "var(--rule-soft)", background: "var(--paper-edge)", fontFamily: mono, color: "var(--ink-muted)" }}
+                  aria-hidden
+                  className="flex h-11 w-11 shrink-0 items-center justify-center border"
+                  style={{ borderColor: "var(--rule-soft)", background: "var(--bg-primary)", color: "var(--text-muted)" }}
                 >
-                  ·
+                  <Icon name="file" size={20} />
                 </span>
                 <span className="min-w-0">
                   <span className="block leading-tight" style={{ ...doorStyle, ...d3 }}>
@@ -1535,13 +1495,10 @@ export function LibraryBrowser({
             </section>
 
             <div className="mt-8 pt-3.5" style={{ borderTop: "1px solid var(--rule-soft)" }}>
-              <button
-                onClick={() => setView("list")}
-                className="record-folio text-[11px] font-semibold uppercase"
-                style={labelStyle}
-              >
+              <Button size={28} variant="quiet" onClick={() => setView("list")}>
                 Browse all {all.length + savedCount} as a list
-              </button>
+                <Icon name="forward" size={16} />
+              </Button>
             </div>
           </>
         )}
@@ -1555,46 +1512,50 @@ export function LibraryBrowser({
  *  reader searching for "ribosome" does not know or care which section holds
  *  it. */
 function SearchField({ value, onChange }: { value: string; onChange: (v: string) => void }) {
+  // The Input primitive (32 tall, 4px, the global focus ring) with the drawn
+  // search mark set inside its left padding (rules 10, 14).
   return (
-    <label
-      className="flex min-w-[18rem] items-center gap-2.5 border px-3.5 py-2.5"
-      style={{ borderColor: "var(--rule-soft)", borderRadius: "var(--radius-sm)" }}
-    >
-      <svg viewBox="0 0 16 16" width="14" height="14" aria-hidden style={{ color: "var(--ink-muted)" }}>
-        <circle cx="7" cy="7" r="5" fill="none" stroke="currentColor" strokeWidth="1.4" />
-        <line x1="11" y1="11" x2="15" y2="15" stroke="currentColor" strokeWidth="1.4" />
-      </svg>
-      <input
+    <label className="relative flex min-w-[18rem] items-center">
+      <Icon name="search" size={16} className="pointer-events-none absolute left-2" style={{ color: "var(--text-muted)" }} />
+      <Input
         value={value}
         onChange={(e) => onChange(e.target.value)}
         placeholder="Find a model"
         aria-label="Find a model"
-        className="w-full min-w-0 bg-transparent text-sm outline-none"
-        style={{ color: "var(--ink)" }}
+        className="w-full min-w-0 pl-8"
       />
     </label>
   );
 }
 
-/** By lens | By domain. One control with two states, set as a printed toggle:
- *  the chosen half is reversed out of the ink, the other sits on the paper. */
+/** By lens | By domain. One control with two states, a segmented pair: 28px
+ *  cells in the label style (rules 5, 11), the chosen one filled with the
+ *  accent (rule 8: the armed state wears the accent) and saying so with
+ *  `aria-pressed`, the other on the sheet. */
 function ArrangeToggle({ value, onChange }: { value: Arrange; onChange: (v: Arrange) => void }) {
   const cell = (v: Arrange, label: string) => (
     <button
+      type="button"
       onClick={() => onChange(v)}
       aria-pressed={value === v}
-      className="px-2.5 py-1 text-[11px] font-semibold uppercase"
+      className={`h-7 px-2.5 ${LABEL}`}
       style={{
         letterSpacing: "var(--tracking-label)",
-        background: value === v ? "var(--ink)" : "transparent",
-        color: value === v ? "var(--paper)" : "var(--ink-muted)",
+        background: value === v ? "var(--accent)" : "var(--bg-secondary)",
+        color: value === v ? "var(--text-on-accent)" : "var(--text-secondary)",
+        transition: "background-color var(--motion-fast) ease-out",
       }}
     >
       {label}
     </button>
   );
   return (
-    <span className="inline-flex shrink-0 border" style={{ borderColor: "var(--rule-soft)" }}>
+    <span
+      className="inline-flex shrink-0 overflow-hidden rounded-sm border"
+      style={{ borderColor: "var(--rule-strong)" }}
+      role="group"
+      aria-label="Arrange the shelves"
+    >
       {cell("domain", "By domain")}
       {cell("lens", "By lens")}
     </span>
@@ -1663,7 +1624,7 @@ function SavedCard({
         style={{ borderColor: "var(--rule-soft)", borderRadius: "var(--radius-sm)", background: "var(--paper)" }}
       >
         <CardThumb cacheKey={`saved:${node.name}`} source={node.json} kind="archive" well={YOURS_WELL} />
-        <input
+        <Input
           autoFocus
           value={draft}
           onChange={(e) => setDraft(e.target.value)}
@@ -1676,8 +1637,7 @@ function SavedCard({
           }}
           onBlur={() => void commit()}
           aria-label={`Rename ${node.name}`}
-          className="min-w-0 flex-1 px-1 text-sm outline-none"
-          style={{ background: "var(--paper-edge)", border: "1px solid var(--rule-soft)", color: "var(--ink)" }}
+          className="min-w-0 flex-1"
         />
       </div>
     );
@@ -1693,26 +1653,27 @@ function SavedCard({
       onClick={manage ? undefined : () => onLoad(node.name)}
       trailing={
         manage ? (
-          <span className="flex shrink-0 items-center gap-0.5">
-            <button
+          <span className="flex shrink-0 items-center gap-1">
+            <Button
+              size={28}
+              variant="quiet"
+              icon="edit"
               onClick={() => {
                 cancelled.current = false;
                 setDraft(node.name);
               }}
               title={`Rename ${node.name} — same model, new library name`}
-              className="px-1.5 text-sm"
-              style={{ color: "var(--ink-muted)" }}
-            >
-              ✎
-            </button>
-            <button
+              aria-label={`Rename ${node.name}`}
+            />
+            <Button
+              size={28}
+              variant="quiet"
+              icon="delete"
               onClick={() => onDelete(node.name)}
               title={`Delete ${node.name}`}
-              className="px-1.5 text-sm"
+              aria-label={`Delete ${node.name}`}
               style={{ color: "var(--verdict-error)" }}
-            >
-              ×
-            </button>
+            />
           </span>
         ) : undefined
       }
@@ -1775,13 +1736,11 @@ function LedgerView({
   const toggle = (f: Facet) => setFacet(isSelected(f) ? null : f);
   return (
     <>
-      <button
-        onClick={onBackToDoors}
-        className="record-folio mb-4 block text-[11px] font-semibold uppercase"
-        style={labelStyle}
-      >
-        ‹ Doors
-      </button>
+      <div className="mb-4">
+        <Button size={28} variant="quiet" icon="back" onClick={onBackToDoors}>
+          Doors
+        </Button>
+      </div>
 
       {/* The filter, immediately above the models — genus and tradition are
           facts about a model, not places a model lives, so they narrow the list
@@ -1804,13 +1763,9 @@ function LedgerView({
             />
           ))}
           {facet && (
-            <button
-              onClick={() => setFacet(null)}
-              className="record-folio pb-1.5 pt-1 text-[11px] font-semibold uppercase"
-              style={labelStyle}
-            >
+            <Button size={28} variant="quiet" icon="close" onClick={() => setFacet(null)}>
               clear · show all {all.length}
-            </button>
+            </Button>
           )}
         </FilterLine>
       </section>
@@ -1867,13 +1822,12 @@ function LedgerView({
               </div>
             ))}
             {foldedRoots > 0 && (
-              <button
-                onClick={() => setShowAllSaved(true)}
-                className="block w-full border-b py-2.5 text-left text-[11px] font-semibold uppercase"
-                style={{ borderColor: "var(--rule-soft)", ...labelStyle }}
-              >
-                show all {tree.length} saved models
-              </button>
+              <div className="border-b py-2 pl-12" style={{ borderColor: "var(--rule-soft)" }}>
+                <Button size={28} variant="quiet" onClick={() => setShowAllSaved(true)}>
+                  show all {tree.length} saved models
+                  <Icon name="forward" size={16} />
+                </Button>
+              </div>
             )}
             {/* #472 fold: drafts are yours too — rows in the same list, the
                 chip saying so and naming the model that answered. */}
@@ -1896,7 +1850,7 @@ function LedgerView({
         <Ledger>
           <LedgerRow
             door
-            folio="·"
+            folio={<Icon name="file" size={16} />}
             name="Open a file…"
             description="a model .json from your computer"
             tag="disk"
@@ -1963,21 +1917,10 @@ function ModelRow({
           <span className="truncate leading-tight" style={{ ...nameStyle, ...d3 }}>
             {model.name}
           </span>
-          {model.runs && (
-            <span
-              className="shrink-0 text-xs"
-              style={{ letterSpacing: "var(--tracking-label)", color: "var(--seal)" }}
-            >
-              runs
-            </span>
-          )}
+          {model.runs && <Pill tone="runs">runs</Pill>}
           {model.with && (
-            <span
-              className="shrink-0 text-xs"
-              style={{ letterSpacing: "var(--tracking-label)", color: "var(--text-muted)" }}
-              data-testid="row-marker"
-            >
-              with {model.with}
+            <span className="shrink-0" data-testid="row-marker">
+              <Pill tone="with">with {model.with}</Pill>
             </span>
           )}
         </span>
@@ -2069,12 +2012,10 @@ function LibraryRow({
         style={{ paddingLeft: depth === 0 ? 0 : (depth - 1) * 14 }}
       >
         {depth > 0 && (
-          <span aria-hidden className="shrink-0 text-xs" style={{ color: "var(--ink-muted)" }}>
-            └
-          </span>
+          <Icon name="tree" size={16} className="shrink-0" style={{ color: "var(--text-muted)" }} />
         )}
         {draft !== null ? (
-          <input
+          <Input
             autoFocus
             value={draft}
             onChange={(e) => setDraft(e.target.value)}
@@ -2086,13 +2027,7 @@ function LibraryRow({
               }
             }}
             onBlur={() => void commit()}
-            className={depth === 0 ? "min-w-0 flex-1 px-1 text-sm" : "min-w-0 flex-1 px-1 text-xs"}
-            style={{
-              background: "var(--paper-edge)",
-              border: "1px solid var(--rule-soft)",
-              borderRadius: "var(--radius-sm)",
-              color: "var(--ink)",
-            }}
+            className="min-w-0 flex-1"
             aria-label={`Rename ${node.name}`}
           />
         ) : (
@@ -2111,26 +2046,27 @@ function LibraryRow({
           </button>
         )}
         {draft === null && (
-          <button
+          <Button
+            size={28}
+            variant="quiet"
+            icon="edit"
             onClick={() => {
               cancelled.current = false;
               setDraft(node.name);
             }}
             title={`Rename ${node.name} — same model, new library name`}
-            className="shrink-0 px-1.5 text-sm"
-            style={{ color: "var(--ink-muted)" }}
-          >
-            ✎
-          </button>
+            aria-label={`Rename ${node.name}`}
+          />
         )}
-        <button
+        <Button
+          size={28}
+          variant="quiet"
+          icon="delete"
           onClick={() => onDelete(node.name)}
           title={`Delete ${node.name}`}
-          className="shrink-0 px-1.5 text-sm"
-          style={{ color: "var(--ink-muted)" }}
-        >
-          ×
-        </button>
+          aria-label={`Delete ${node.name}`}
+          style={{ color: "var(--verdict-error)" }}
+        />
       </div>
       {node.children.map((c) => (
         <LibraryRow key={c.name} node={c} depth={depth + 1} onLoad={onLoad} onDelete={onDelete} onRename={onRename} />

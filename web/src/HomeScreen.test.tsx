@@ -418,7 +418,9 @@ describe("the doors", () => {
       expect(lens).toContain(`var(--world-${id})`);
       expect(domain).not.toContain(`var(--world-${id})`);
     }
-    for (const ink of ["--chart-1", "--chart-3", "--chart-4"]) {
+    // Four kingdoms, four chart inks: Physical took --chart-2 in the makeover
+    // (audit #41), so no genus shelf is uncoloured.
+    for (const ink of ["--chart-1", "--chart-2", "--chart-3", "--chart-4"]) {
       expect(domain).toContain(`var(${ink})`);
       expect(lens).not.toContain(`var(${ink})`);
     }
