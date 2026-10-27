@@ -18,6 +18,7 @@
 import { groupedExamples } from "./examples";
 import { groupedCorpus, firstSentence, TRADITIONS, type CorpusEntry } from "./corpus";
 import { isRunnable, type Demo } from "./demos";
+import { klirEnabled } from "./flags";
 import { FIELD } from "./field";
 import { BENCH } from "./bench";
 
@@ -250,7 +251,11 @@ const SHELF_LEAD: Record<string, string> = {
 export function shelves(rows: ShippedModel[] = shippedModels(), arrange: Arrange = "lens"): Shelf[] {
   const kind = arrange === "lens" ? "tradition" : "genus";
   const out: Shelf[] = [];
-  for (const f of facets(rows).filter((f) => f.kind === kind)) {
+  // The Klir shelf stands behind the lens flag (cut 2026-10-26): with the door
+  // closed the lens cut shows Bunge and Mobus. The Klir entries still ship —
+  // search and the list view keep reaching them — only the shelf steps back.
+  const showKlir = klirEnabled();
+  for (const f of facets(rows).filter((f) => f.kind === kind && (showKlir || f.id !== "klir"))) {
     const carried = rows.filter((r) => matchesFacet(r, f));
     const lead = SHELF_LEAD[f.id];
     const pinned = lead ? (carried.find((r) => r.key === lead) ?? rows.find((r) => r.key === lead)) : undefined;
