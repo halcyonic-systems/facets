@@ -220,6 +220,18 @@ the thing the reader actually sees. Same precedent, same reason.
 Tokens themselves live in `web/src/index.css` and are mirrored in
 `web/src/tokens.ts`; this language adds no colours.
 
+## The canvas, 2026-10-26
+
+The makeover's canvas slice applied these rules to the diagram itself, so the
+canvas and the pages now share one register: 2px strokes floored at 1.5 screen
+px, names in Inter at 13px with a 12px floor on paper tabs (rule 7: authored
+case, no mono on a name), the ten process primitives recognisable by their
+`--prim-*` hue on the badge and the rail, flows by `--kind-*`, the membrane
+and environment squares in ink, selection a ring and hover a surface step,
+24px targets on handles and the membrane, the rail as 20px icons in 32px
+squares. The shipped values and what stayed open are in `web/DESIGN.md`
+under "The canvas".
+
 ## Open
 
 - **Dark theme is unverified by eye.** Every token is declared for both schemes,

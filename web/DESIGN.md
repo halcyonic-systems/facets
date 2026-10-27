@@ -80,8 +80,8 @@ primitives and surfaces that consume it follow in later slices.
   themes, at least 3:1 as a filled mark on the sheet. Nord has nine chromatic
   hues, so Amplifying takes an emerald between Aurora green and Frost teal and
   Inverting an indigo between Frost blue and Aurora purple. Mirrored in
-  `tokens.ts` as `prim`, the way `kind` is; carried by the palette rail, the
-  canvas badge and the inspector once the later slices consume them.
+  `tokens.ts` as `prim`, the way `kind` is; carried by the palette rail and
+  the canvas badge (slice E) and by the inspector.
 - **Theme is three states — system / light / dark.** System is the default and is
   the ABSENCE of a stamped attribute, so `color-scheme: light dark` follows
   `prefers-color-scheme` natively; an explicit choice sets
@@ -96,6 +96,65 @@ primitives and surfaces that consume it follow in later slices.
   component. It is **themed**, because dark lightens the accents and verdicts: a
   fixed white put the selected mode, the active lens, ▶ Run and every primary
   button at 1.9–2.7:1 in dark.
+
+## The canvas (makeover slice E, 2026-10-26)
+
+What `web/src/canvas` draws, as shipped; rules are the makeover charter's
+(`docs/design/makeover-2026-10.md`), measurements from the three library
+models at their fit scale.
+
+- **Strokes (rule 17):** node, square, ring, capsule and flow strokes are 2
+  world px and never thinner than `STROKE_FLOOR_PX` 1.5 on screen
+  (`stageScale.ts strokeWorld`; flows are `non-scaling-stroke`, so the same
+  reading is applied as their screen width). The membrane is ink, unfilled.
+  No gradient and no glow filter on the stage.
+- **Type (rules 5, 19; visual-language rule 7):** names are Inter 500,
+  authored case, 13 px with a 12 px screen floor; flow labels and interface
+  protocols Inter 12 with a 10 px floor; the Klir recession is weight and
+  ink, not size. Every label sits on a paper tab (`PaperTab`: a `--paper`
+  rect from `getBBox`, 2 px pad and radius) so it reads over any crossing.
+  JetBrains Mono stays on the kernel's numbers (sim readouts, signatures).
+- **Marks and colour (rules 9a, 9b):** a component's process glyph wears its
+  `--prim-*` hue (centered on the body, and on the rail row and inspector);
+  the regulator triangle takes `--prim-modulating`; flows and the substance
+  glyphs wear `--kind-*`; environment squares and the membrane are ink. The
+  per-node composition halo draws nothing. Nothing tints a surface.
+- **One arrowhead:** `markerUnits="userSpaceOnUse"`, 10 world px held at 1.5x
+  and floored at 8 on screen, filled with the stroke's colour; the exo 2x
+  gain is gone.
+- **States (rule 20):** selection is a ring, the body's outline offset 4
+  screen px in 2 px of `--accent` (a square for an environment object);
+  hover is a surface step (`--bg-surface` on the body, or on a rail square);
+  a drag closes the cursor, steps the fill and hides the handle; the drop
+  target keeps its lens-accent ring; selected and hovered flows thicken by
+  one screen px and never change hue. Selection and hit marks carry
+  `data-export-ignore`.
+- **Targets (rule 11):** the connect handle is an 8 px disc over a 24 px hit
+  disc (`HANDLE`, 1.75x under a coarse pointer); the membrane has a 24 px
+  transparent hit stroke; flows keep their 18 px hit path; the interface
+  chevron is at least 10 px tall and 2 px square-capped.
+- **The rail (rule 21):** 80 px wide, 20 px `<Icon>`s in 32 px squares with a
+  4 px radius and an 11 px word beneath, grouped select | place and the flow
+  gesture | designate | SL, hairlines between; the armed tool is a filled
+  accent square; the rail scrolls inside itself and becomes a strip along
+  the stage's foot under 900 px of width. The hint line is a 28 px band
+  under the stage, never over the diagram.
+- **Popovers (rule 15):** `PopoverDialog` gives the edge, boundary, interface
+  and milieu editors `role="dialog"`, a label, focus in and back, Escape;
+  8 px radius, hairline edge, no shadow. Buttons are `ui.tsx`'s as they are
+  (the pill is slice B2's).
+- **Keyboard:** the stage is tabbable (`role="group"`), each thing is
+  tabbable, Enter or Space selects, arrow keys move the selection to the
+  nearest thing that way.
+- **Measured at fit, 2026-10-26, 1372 px viewport:** LLM Serving Market at
+  0.755: names 12.0 px (floor), flow labels 10.0, node and ring strokes 1.51,
+  flow 1.51, handle 8 over a 24 hit, chevron 10.0, heads 8.0. Federal
+  Reserve and Bitcoin at 1.0: names 13.0, strokes 2.0, handle 8, chevron 10.
+- **Open:** the style register is one table (`canvas/style.ts`); the `?s=`
+  registers are gone. Not done in this slice: a ghost of the armed shape
+  following the pointer, snap guides on drag, hiding flow labels below 0.45
+  zoom, a Sandbox that renders through `NodeBody`/`EdgeScaffold` rather than
+  its own copy of the vocabulary, and Bunge's `▷`/`∼` label glyphs.
 
 ## Fitness functions (#131)
 
