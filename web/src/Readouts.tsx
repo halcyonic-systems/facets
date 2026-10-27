@@ -245,7 +245,7 @@ export function Readouts({
           at 390). */}
       <div className="flex min-h-0 flex-1 flex-col lg:flex-row">
         <aside
-          className="max-h-[40%] shrink-0 overflow-y-auto border-b p-3 lg:max-h-none lg:w-72 lg:border-b-0 lg:border-r"
+          className="max-h-[40%] shrink-0 overflow-y-auto border-b p-3 lg:max-h-none lg:w-80 lg:border-b-0 lg:border-r"
           style={{ borderColor: "var(--hairline)" }}
           aria-label="Run inputs"
         >

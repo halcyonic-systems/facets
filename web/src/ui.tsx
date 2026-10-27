@@ -73,7 +73,7 @@ export function Card({
   return (
     <Panel as="section" className="p-5">
       {(title || source || actions) && (
-        <div className="mb-4 flex items-baseline justify-between gap-3">
+        <div className="mb-4 flex flex-wrap items-baseline justify-between gap-x-3 gap-y-1">
           {title && (
             // A section name is a name of a thing: Cormorant 700 at d3 (rule 5).
             <h2
