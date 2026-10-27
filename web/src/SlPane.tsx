@@ -440,6 +440,7 @@ export function SlPane({
               errors={errors}
               stale={editedSinceCompile}
               onPick={(line) => setFaultFocus({ line, nonce: Date.now() })}
+              tight={Boolean(drafterDocked && coauthor)}
             />
           )}
           {/* One row while authoring: the act, the one canvas action that
@@ -495,8 +496,9 @@ export function SlPane({
           {drafterDocked && coauthor && (
             <div
               // Yields to the editor's eight-line floor (sl audit #8) and
-              // scrolls inside itself when it has to.
-              className="min-h-0 shrink overflow-y-auto border-t"
+              // scrolls inside itself when it has to; 8px of foot so its last
+              // row never sits flush on the pane's edge.
+              className="min-h-0 shrink overflow-y-auto border-t pb-2"
               style={{ borderColor: "var(--hairline)", background: "var(--bg-primary)" }}
             >
               <CoAuthorMode
@@ -528,10 +530,14 @@ function SlFaults({
   errors,
   stale,
   onPick,
+  tight = false,
 }: {
   errors: SlError[];
   stale: boolean;
   onPick: (line: number) => void;
+  /** The drafter is docked below: the list holds three rows and scrolls, so
+   *  the drafter's last row (the co-author's Turn on) stays in view. */
+  tight?: boolean;
 }) {
   const listRef = useRef<HTMLUListElement>(null);
   function onKeyDown(e: React.KeyboardEvent) {
@@ -547,7 +553,7 @@ function SlFaults({
   return (
     <div
       role="alert"
-      className="max-h-40 min-h-0 shrink overflow-y-auto border-t"
+      className={`${tight ? "max-h-28" : "max-h-40"} min-h-0 shrink overflow-y-auto border-t`}
       style={{ borderColor: "var(--hairline)" }}
       data-testid="sl-faults"
     >
