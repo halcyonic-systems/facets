@@ -1,6 +1,6 @@
 import { Suspense, lazy, useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { buildRunRecord, postRunRecord, runRecordFilename, type RunRecord } from "./runRecord";
-import { ready, runMarkov, Bench, openModel, writeArchive, project, analyzeCanvas, checkDecompositionsCanvas, decomposeComponent, compileSl, type ArchiveText, mintModelId, emitSl, sandboxPalette } from "./kernel";
+import { ready, runMarkov, Bench, parseCsv, openModel, writeArchive, project, analyzeCanvas, checkDecompositionsCanvas, decomposeComponent, compileSl, type ArchiveText, mintModelId, emitSl, sandboxPalette } from "./kernel";
 import type {
   TickLog,
   CanvasModel,
@@ -126,6 +126,22 @@ import { diagramFilename, exportDiagramSvg, exportDiagramPng } from "./canvas/ex
 const residueLine = (e: ResidueEntry) => (e.count === 0 ? e.label : `${e.count} ${e.label}`);
 
 const today = () => new Date().toISOString().slice(0, 10);
+
+/** Every CSV column spoken for. The kernel refuses a forced run whose CSV
+ *  carries a column the manifest neither binds nor ignores; the sheet shows an
+ *  untouched column as "ignore", so that is what it means here. Bound columns
+ *  are left exactly as the author wrote them (feel-test 2026-10-26). */
+function spokenFor(csv: string, m: Manifest): Manifest {
+  let headers: string[];
+  try {
+    headers = parseCsv(csv).headers;
+  } catch {
+    return m;
+  }
+  const have = new Set(m.mapping.map((x) => x.column));
+  const ignored = headers.filter((h) => !have.has(h)).map((column) => ({ column, as: "ignore" as const }));
+  return ignored.length ? { ...m, mapping: [...m.mapping, ...ignored] } : m;
+}
 const LENSES: CanvasModel["lens"][] = ["Klir", "Bunge", "Mobus"];
 
 /** The mode axis (#304, extended by #312 move 2), in switch order. Three things
@@ -142,11 +158,11 @@ export const WORK_MODES = ["structure", "data"] as const;
 export type WorkMode = (typeof WORK_MODES)[number];
 const WORK_MODE_LABEL: Record<WorkMode, string> = {
   structure: "Model",
-  data: "Data",
+  data: "Measurements",
 };
 const WORK_MODE_TITLE: Record<WorkMode, string> = {
   structure: "Model — the diagram, its knobs, and the run on one bench (the canvas asserts; Run computes)",
-  data: "Data — the model's data-level face (rows = time, columns = declared flows; observes, never asserts)",
+  data: "Measurements — the attached series against the model's declared flows (rows = time, columns = flows; observes, never asserts)",
 };
 
 // #109 walk choreography — the enter/exit transition's OUT phase length. Must
@@ -843,7 +859,7 @@ function Workspace() {
       // the forcing path runs exactly as before.
       closeBench();
       const b = csv.trim()
-        ? Bench.openForced(modelJson, csv, JSON.stringify(m), dtv, today())
+        ? Bench.openForced(modelJson, csv, JSON.stringify(spokenFor(csv, m)), dtv, today())
         : Bench.openUnforced(modelJson, dtv);
       b.stepOver(tv);
       benchRef.current = b;
@@ -2384,7 +2400,7 @@ function Workspace() {
             ? "Run the forced simulation"
             : canvasModel.things.length > 0
               ? attachedCsv
-                ? "Run from the declared amounts (bind a column in Data mode to force a flow)"
+                ? "Run from the declared amounts (bind a column under Measurements to force a flow)"
                 : "Run from the declared amounts"
               : "Add at least one thing to run."
           : "No mechanism stated (⊘M), so structure alone gives Run nothing to execute.";
@@ -3208,7 +3224,7 @@ function Workspace() {
                   it gets the data rung's own. */}
               {workMode === "data" &&
               (canvasModel.klir_level === "Source" || canvasModel.klir_level === "Data")
-                ? "what did I observe? — variables over a support, their states recorded; nothing behind them is asserted"
+                ? "what did I measure? — variables against time, their values recorded; nothing behind them is asserted"
                 : desc.question}
             </div>
           </div>

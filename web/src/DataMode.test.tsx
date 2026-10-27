@@ -55,7 +55,7 @@ describe("Data mode (#304 M1)", () => {
     expect(html).toContain("536.2");
     expect(html).toContain("2 observations");
     expect(html).toContain("2 rows × 3 columns"); // console graft: shape on open
-    expect(html).toContain("model declares level Structure");
+    expect(html).not.toContain("model declares level");
   });
 
   it("shows a broken binding instead of silently dropping the column", () => {
@@ -87,7 +87,7 @@ describe("Data mode (#304 M1)", () => {
     );
     expect(html).toContain("replace CSV…"); // data present → replace wording
     expect(html).toContain("Column bindings");
-    expect(html).toContain("time (support)");
+    expect(html).toContain("time (what the rows are measured against)");
     expect(html).toContain("→ remittances"); // every declared flow is a bind target
   });
 
@@ -201,7 +201,7 @@ describe("binding a column keeps its declared unit (#535 item 1)", () => {
 
   it("time, stock and ignore write no unit", () => {
     expect(bindingEntry("month", "time", routed)).toEqual({ column: "month", as: "time" });
-    expect(bindingEntry("x", "ignore", routed)).toBeNull();
+    expect(bindingEntry("x", "ignore", routed)).toEqual({ column: "x", as: "ignore" });
     expect(bindingEntry("lvl", "stock:Balance Sheet", routed)).toEqual({ column: "lvl", as: "stock", element: "Balance Sheet" });
   });
 
