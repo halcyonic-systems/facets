@@ -13,13 +13,15 @@ import { EdgeScaffold, NodeBody, NullPortView, type EdgeStyle } from "./common";
 import type { LensEdgeProps, LensNodeProps } from "./registry";
 import { textWorld, useStageHold, useStageScale } from "../stageScale";
 
-function NodeView({ thing, isBoundary, isOrphan, hovered, sim, onPointerDown, onHandlePointerDown, scale, inert }: LensNodeProps) {
+function NodeView({ thing, isBoundary, isOrphan, hovered, selected, dragging, sim, onPointerDown, onHandlePointerDown, scale, inert }: LensNodeProps) {
   return (
     <NodeBody
       scale={scale}
       pending={isOrphan}
       thing={thing}
       hovered={hovered}
+      selected={selected}
+      dragging={dragging}
       sim={sim}
       onPointerDown={onPointerDown}
       onHandlePointerDown={onHandlePointerDown}

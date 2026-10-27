@@ -492,7 +492,7 @@ export default function Canvas({
     portTargets,
     initialScale,
   });
-  const { pan, scale, connectFrom, connectPos, hoverTarget, draft } = gestures.state;
+  const { pan, scale, connectFrom, connectPos, hoverTarget, draft, dragThing, dragMoved } = gestures.state;
 
   // Click-to-edit container label (#116): the membrane/hull/place label writes
   // the model's SELF-name (CanvasModel.name — the field the SL `system "..."`
@@ -957,6 +957,39 @@ export default function Canvas({
       className={`canvas-stage absolute inset-0 h-full w-full touch-none select-none${armed ? " cursor-crosshair" : ""}`}
       data-grid={STYLE.grid.mode}
       data-opaque={opaque ? "true" : undefined}
+      // Keyboard (makeover rule 15): the stage is in the tab order, each
+      // thing after it; Enter or Space on a thing selects it, and with a
+      // selection the arrow keys move it to the nearest thing that way.
+      tabIndex={0}
+      role="group"
+      aria-label={placeName ? `Diagram of ${placeName}` : "Diagram"}
+      onKeyDown={(e) => {
+        if (!onSelectThing || selectedThingId === null) return;
+        const dir =
+          e.key === "ArrowRight" ? { x: 1, y: 0 }
+          : e.key === "ArrowLeft" ? { x: -1, y: 0 }
+          : e.key === "ArrowDown" ? { x: 0, y: 1 }
+          : e.key === "ArrowUp" ? { x: 0, y: -1 }
+          : null;
+        if (!dir) return;
+        const from = thingById(dModel, selectedThingId);
+        if (!from) return;
+        let best: { id: number; score: number } | null = null;
+        for (const t of dModel.things) {
+          if (t.id === from.id || (shownThingIds && !shownThingIds.has(t.id))) continue;
+          const dx = t.x - from.x;
+          const dy = t.y - from.y;
+          const along = dx * dir.x + dy * dir.y;
+          if (along <= 0) continue;
+          const across = Math.abs(dx * dir.y - dy * dir.x);
+          const score = along + across * 2;
+          if (!best || score < best.score) best = { id: t.id, score };
+        }
+        if (best) {
+          e.preventDefault();
+          onSelectThing(best.id);
+        }
+      }}
       style={
         {
           "--grid-gap": `${STYLE.grid.gap}px`,
@@ -1239,6 +1272,30 @@ export default function Canvas({
                 </text>
               </g>
             )}
+            {/* The membrane's hit margin (rule 11, canvas audit finding 4): a
+                transparent stroke 24 screen px wide over the ring, so a click
+                within 12 px either side opens the boundary editor. Drawn
+                before the ring and the ports, so a notch on the ring still
+                takes its own click. Export-ignored. */}
+            {onSelectBoundary && (
+              <ellipse
+                data-export-ignore
+                data-membrane-hit
+                cx={ring.cx}
+                cy={ring.cy}
+                rx={ring.rx}
+                ry={ring.ry}
+                fill="none"
+                stroke="transparent"
+                strokeWidth={screenWorld(24, scale)}
+                pointerEvents="stroke"
+                className="cursor-pointer"
+                onClick={(e) => {
+                  e.stopPropagation();
+                  onSelectBoundary({ x: ring.cx, y: ring.cy - ring.ry });
+                }}
+              />
+            )}
             <ellipse
               cx={ring.cx}
               cy={ring.cy}
@@ -1378,6 +1435,14 @@ export default function Canvas({
           <g
             key={t.id}
             className={openApertureIds.has(t.id) ? "aperture-open" : undefined}
+            tabIndex={onSelectThing ? 0 : undefined}
+            aria-label={t.name}
+            onKeyDown={(e) => {
+              if (!onSelectThing || (e.key !== "Enter" && e.key !== " ")) return;
+              e.preventDefault();
+              e.stopPropagation();
+              onSelectThing(t.id);
+            }}
             onPointerEnter={() => setHoverNodeId(t.id)}
             onPointerLeave={() => setHoverNodeId((id) => (id === t.id ? null : id))}
             onDoubleClick={(e) => {
@@ -1398,6 +1463,8 @@ export default function Canvas({
               isOrphan={orphanSet.has(t.id)}
               inert={inert}
               hovered={hoverTarget === t.id || litThingId === t.id}
+              selected={selectedThingId === t.id}
+              dragging={dragThing === t.id && dragMoved}
               sim={sim?.nodes[t.name]}
               scale={scale}
               onPointerDown={(e) => gestures.onNodePointerDown(e, t)}

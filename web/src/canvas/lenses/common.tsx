@@ -94,6 +94,12 @@ interface NodeBodyProps {
    *  fill); optional so glyph-only callers stay valid. */
   thing: { id: number; x: number; y: number; name: string; role?: CanvasRole; env_kind?: EnvKind; grounding?: Grounding };
   hovered: boolean;
+  /** Rule 20: selection is a ring, the body's outline offset 4 screen px,
+   *  2 screen px of the accent. Driven by the shell's selectedThingId. */
+  selected?: boolean;
+  /** A drag in flight: the body steps to the well surface, the cursor closes
+   *  and the connect handle hides. No lift, no shadow. */
+  dragging?: boolean;
   sim?: { value: number; unit: string; frac: number };
   onPointerDown: (e: ReactPointerEvent) => void;
   onHandlePointerDown: (e: ReactPointerEvent) => void;
@@ -169,6 +175,8 @@ const TRI_PATH = `M 0 ${-TRI_R} L ${TRI_HALF_W} ${TRI_BOT} L ${-TRI_HALF_W} ${TR
 export function NodeBody({
   thing,
   hovered,
+  selected = false,
+  dragging = false,
   sim,
   scale,
   onPointerDown,
@@ -218,6 +226,8 @@ export function NodeBody({
   // between them, so the triangle drains/fills over ITS height, not the circle's.
   const [shapeTop, shapeBot] = regulatorTriangle ? [-TRI_R, TRI_BOT] : [-NODE_R, NODE_R];
   const shapeH = shapeBot - shapeTop;
+  // The surface step: hover or drag lifts the body one step (paper to well).
+  const stepped = (selfHover && !hovered) || dragging;
 
   return (
     <g
@@ -225,7 +235,7 @@ export function NodeBody({
       onPointerDown={onPointerDown}
       onMouseEnter={() => setSelfHover(true)}
       onMouseLeave={() => setSelfHover(false)}
-      className="cursor-grab"
+      className={dragging ? "cursor-grabbing" : "cursor-grab"}
       opacity={pending ? 0.5 : 1}
     >
       {pending && <title>not yet in ℰ — no bond touches this thing (Bunge Def 1.2 ii); connect a flow to admit it</title>}
@@ -240,17 +250,39 @@ export function NodeBody({
           group scales strokes with it, which reads right for a smaller body. */}
       <g transform={bodyScale !== 1 ? `scale(${bodyScale})` : undefined}>
         {groundingTitle && <title>{`grounding: ${groundingTitle}`}</title>}
-      {/* Plain-hover halo — clickable-affordance feedback, softer than the
-          connect-drag target halo (`hovered`) so the two meanings stay apart. */}
-      {selfHover && !hovered && (
-        <circle
-          data-export-ignore
-          r={NODE_R + STYLE.hoverHalo.pad}
-          fill="none"
-          stroke="var(--lens-accent)"
-          strokeWidth={STYLE.hoverHalo.width}
-          strokeOpacity={0.35}
-        />
+      {/* Rule 20: hover is a SURFACE STEP (the body fill steps to the well),
+          selection a RING, the drop target (`hovered`) its own accent ring.
+          Three states, three kinds of change, never the same mark at three
+          alphas. The ring's geometry follows the body: a square for an
+          environment object, a circle for everything else (the triangle
+          sits inside its circumcircle). Export-ignored: a still has no
+          selection. */}
+      {selected && (
+        isSquare ? (
+          <rect
+            data-export-ignore
+            data-selection-ring
+            x={-NODE_R - screenWorld(4, sc)}
+            y={-NODE_R - screenWorld(4, sc)}
+            width={2 * (NODE_R + screenWorld(4, sc))}
+            height={2 * (NODE_R + screenWorld(4, sc))}
+            rx={screenWorld(2, sc)}
+            fill="none"
+            stroke="var(--accent)"
+            strokeWidth={screenWorld(2, sc)}
+            pointerEvents="none"
+          />
+        ) : (
+          <circle
+            data-export-ignore
+            data-selection-ring
+            r={(regulatorTriangle ? TRI_R : NODE_R) + screenWorld(4, sc)}
+            fill="none"
+            stroke="var(--accent)"
+            strokeWidth={screenWorld(2, sc)}
+            pointerEvents="none"
+          />
+        )
       )}
       {/* The composition halo (a lens-accent wash around every component) was
           the last residue of the withdrawn world tint: a colour on a surface
@@ -363,7 +395,7 @@ export function NodeBody({
         <path
           data-node-shape="triangle"
           d={TRI_PATH}
-          fill="color-mix(in srgb, var(--prim-modulating) 18%, var(--bg-secondary))"
+          fill={stepped ? "var(--bg-surface)" : "color-mix(in srgb, var(--prim-modulating) 18%, var(--bg-secondary))"}
           stroke={stroke}
           strokeOpacity={strokeOpacity}
           strokeWidth={strokeWidth}
@@ -380,7 +412,7 @@ export function NodeBody({
           width={NODE_R * 2}
           height={NODE_R * 2}
           rx={STYLE.squareRx}
-          fill={envOpen ? "none" : STYLE.nodeFill}
+          fill={stepped ? "var(--bg-surface)" : envOpen ? "none" : STYLE.nodeFill}
           stroke={stroke}
           strokeOpacity={strokeOpacity}
           strokeWidth={strokeWidth}
@@ -390,7 +422,7 @@ export function NodeBody({
       ) : (
         <circle
           r={NODE_R}
-          fill={STYLE.nodeFill}
+          fill={stepped ? "var(--bg-surface)" : STYLE.nodeFill}
           stroke={stroke}
           strokeOpacity={strokeOpacity}
           strokeWidth={strokeWidth}
@@ -490,7 +522,9 @@ export function NodeBody({
 
       {/* The connect handle is a reading, not a world object: an 8 px disc on
           screen at every zoom (tldraw's 8 / zoom), over a hit disc of r 12
-          (the 24 px target of rule 11; 1.75x under a coarse pointer). */}
+          (the 24 px target of rule 11; 1.75x under a coarse pointer). Hidden
+          while this body is being dragged. */}
+      {!dragging && (<>
       <circle
         data-export-ignore
         data-handle-hit
@@ -512,6 +546,7 @@ export function NodeBody({
         className="cursor-crosshair"
         onPointerDown={onHandlePointerDown}
       />
+      </>)}
     </g>
   );
 }
@@ -609,22 +644,10 @@ export function EdgeScaffold({
           {title && <title>{title}</title>}
         </path>
       ))}
-      {/* Hover feedback — the affordance that tells the reader this is
-          clickable BEFORE they commit; softer than selection so the two states
-          stay distinct. */}
-      {hover && !selected && onSelect &&
-        feltPaths.map((fp, i) => (
-          <path
-            key={i}
-            data-export-ignore
-            d={fp}
-            fill="none"
-            stroke="var(--lens-accent)"
-            strokeWidth={STYLE.selection.width}
-            strokeOpacity={STYLE.selection.opacity * 0.45}
-            pointerEvents="none"
-          />
-        ))}
+      {/* Rule 20: a hovered or selected flow THICKENS by one screen px and
+          never changes hue (the stroke below); selection also keeps its
+          halo behind the stroke so a chosen flow is found at a glance. The
+          old hover halo (the same mark at a lower alpha) is gone. */}
       {selected &&
         feltPaths.map((fp, i) => (
           <path
@@ -659,7 +682,7 @@ export function EdgeScaffold({
           strokeOpacity={style.opacity}
           // Rule 19: 2 world px, floored on screen. The stroke is non-scaling,
           // so the world width is applied here as its screen reading.
-          strokeWidth={Math.max(style.width * scale, STROKE_FLOOR_PX)}
+          strokeWidth={Math.max(style.width * scale, STROKE_FLOOR_PX) + (selected || (hover && onSelect) ? 1 : 0)}
           strokeDasharray={style.dash}
           vectorEffect="non-scaling-stroke"
           filter={style.filter}
