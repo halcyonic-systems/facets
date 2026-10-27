@@ -255,9 +255,13 @@ export default function SandboxCanvas({ snapshot, selected, onSelect, onMoveNode
               ))}
             {open ? (
               /* Source and sink: Mobus's open square, no interior (rule 17);
-                 the stub says which way the substance goes. */
+                 the stub says which way the substance goes. The square is
+                 painted in the stage's own ground, so it still reads as open
+                 but its whole face takes the pointer (a fill of none left only
+                 the 2px outline grabbable, which main's filled box never did)
+                 and the wire ending at its centre stays hidden. */
               <g stroke="var(--text-secondary)" strokeWidth={2} strokeLinecap="square" strokeLinejoin="miter" fill="none">
-                <rect x={-R} y={-R} width={2 * R} height={2 * R} rx={0} />
+                <rect x={-R} y={-R} width={2 * R} height={2 * R} rx={0} fill="var(--bg-primary)" />
                 {/* the stub: leaving a source, entering a sink */}
                 <path d={n.kind === "Source" ? `M ${R} 0 H ${R + 10}` : `M ${-R - 10} 0 H ${-R}`} />
               </g>
