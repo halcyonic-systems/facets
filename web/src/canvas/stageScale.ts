@@ -19,3 +19,32 @@ export const StageScale = createContext(1);
 export function useStageHold(): number {
   return screenHold(useContext(StageScale));
 }
+
+/** The stage's view scale for the frame being rendered. */
+export function useStageScale(): number {
+  return useContext(StageScale);
+}
+
+const safe = (scale: number) => Math.max(scale, 0.0001);
+
+/** World units for a mark that is `px` on screen whatever the zoom (handles,
+ *  hit margins, tab padding): the tldraw `n / zoom` reading. */
+export function screenWorld(px: number, scale: number): number {
+  return px / safe(scale);
+}
+
+/** A world stroke of `world` px that never renders thinner than `floorPx` on
+ *  screen (makeover rule 17: 2 px strokes that do not thin away at fit). */
+export function strokeWorld(world: number, scale: number, floorPx: number): number {
+  return Math.max(world, floorPx / safe(scale));
+}
+
+/** A reading's font size in world units: `size` px, held past 1.5x like every
+ *  other reading, and never below `floorPx` on screen. */
+export function textWorld(size: number, scale: number, floorPx: number): number {
+  return Math.max(size * screenHold(scale), floorPx / safe(scale));
+}
+
+/** Pointer coarseness, read once: a touch pointer gets wider hit discs. */
+export const COARSE_POINTER: boolean =
+  typeof window !== "undefined" && typeof window.matchMedia === "function" && window.matchMedia("(pointer: coarse)").matches;

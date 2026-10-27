@@ -5,7 +5,8 @@
 // area, and this panel says so rather than faking an affordance.
 import type { MilieuVar } from "../kernel/types";
 import type { Pt } from "./geometry";
-import { InspectorRow as Row, InspectorTitle as Title, Popover } from "../ui";
+import { InspectorRow as Row, InspectorTitle as Title, ToolButton } from "../ui";
+import { PopoverDialog } from "./PopoverDialog";
 
 export function MilieuPopover({
   milieu,
@@ -17,7 +18,7 @@ export function MilieuPopover({
   onClose: () => void;
 }) {
   return (
-    <Popover x={anchor.x} y={anchor.y} width={280} accent>
+    <PopoverDialog x={anchor.x} y={anchor.y} width={280} label="The milieu: ambient variables" onClose={onClose}>
       <Title>milieu — M in E = ⟨O, M⟩</Title>
       {milieu.map((m) => (
         <div key={m.name} className="mb-1">
@@ -44,10 +45,8 @@ export function MilieuPopover({
         Authored in SL: <code>milieu &lt;name&gt; value &lt;n&gt; unit &lt;u&gt;</code>
       </div>
       <div className="flex justify-end">
-        <button onClick={onClose} className="rounded-full px-3 py-1 text-xs" style={{ color: "var(--text-muted)" }}>
-          close
-        </button>
+        <ToolButton onClick={onClose}>close</ToolButton>
       </div>
-    </Popover>
+    </PopoverDialog>
   );
 }

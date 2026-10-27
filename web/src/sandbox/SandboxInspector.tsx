@@ -135,7 +135,7 @@ export default function SandboxInspector({ snapshot, palette, selected, mutate, 
                 type="number"
                 min={0}
                 step={0.1}
-                className="w-20 rounded border px-1 py-0.5"
+                className="w-20 rounded-sm border px-1 py-0.5"
                 value={w.rate ?? ""}
                 placeholder="shared"
                 onChange={(e) =>
@@ -174,7 +174,7 @@ export default function SandboxInspector({ snapshot, palette, selected, mutate, 
   return (
     <div className="text-sm">
       <input
-        className="mb-2 w-full rounded border px-2 py-1 text-sm"
+        className="mb-2 w-full rounded-sm border px-2 py-1 text-sm"
         value={n.name}
         onChange={(e) => mutate((sb) => sb.setNodeName(i, e.target.value))}
       />
@@ -214,7 +214,7 @@ export default function SandboxInspector({ snapshot, palette, selected, mutate, 
           <Row label="drain">
             <span className="flex gap-1">
               <button
-                className="rounded border px-2 py-0.5 text-xs"
+                className="rounded-sm border px-2 py-0.5 text-xs"
                 style={fixedDrain ? { background: "var(--accent)", color: "var(--text-on-accent)" } : undefined}
                 title="a fixed amount per tick (zeroth-order)"
                 onClick={() => set("time_constant", 0)}
@@ -222,7 +222,7 @@ export default function SandboxInspector({ snapshot, palette, selected, mutate, 
                 rate
               </button>
               <button
-                className="rounded border px-2 py-0.5 text-xs"
+                className="rounded-sm border px-2 py-0.5 text-xs"
                 style={!fixedDrain ? { background: "var(--accent)", color: "var(--text-on-accent)" } : undefined}
                 title="first-order: ≈ stock/τ per tick — the stock decays exponentially and the outflow smooths the inflow over ~τ ticks. Mobus: Buffering smooths flow over time."
                 onClick={() => fixedDrain && set("time_constant", 5)}
@@ -286,7 +286,7 @@ export default function SandboxInspector({ snapshot, palette, selected, mutate, 
       ) : (
         <Row label="emits">
           <select
-            className="w-full rounded border px-1 py-0.5 text-xs"
+            className="w-full rounded-sm border px-1 py-0.5 text-xs"
             value={n.substance}
             onChange={(e) => {
               const v = e.target.value;
@@ -321,7 +321,7 @@ export default function SandboxInspector({ snapshot, palette, selected, mutate, 
       {/* the transfer function, instantiated live — engine-authored, updates
           as sliders move and the sim runs */}
       <p
-        className="mb-2 rounded border px-2 py-1 font-mono text-[11px]"
+        className="mb-2 rounded-sm border px-2 py-1 font-mono text-[11px]"
         style={{ borderColor: "var(--hairline, var(--border, #e5e7eb))" }}
         title="this node's transfer function with its current values substituted — computed by the kernel, faithful to the step rule"
       >
@@ -330,7 +330,7 @@ export default function SandboxInspector({ snapshot, palette, selected, mutate, 
 
       {/* Troncale provenance: this node is part of a stamped process */}
       {n.process && (
-        <p className="mb-2 rounded border px-2 py-1 text-xs" style={{ color: "var(--text-muted)" }}>
+        <p className="mb-2 rounded-sm border px-2 py-1 text-xs" style={{ color: "var(--text-muted)" }}>
           part of a <strong>{n.process}</strong> process — stamped from primitives, editable freely
         </p>
       )}

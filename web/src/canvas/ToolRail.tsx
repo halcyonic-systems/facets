@@ -1,21 +1,34 @@
-// The tool rail (#409 M2): the palette at 56px. Same rows as PaletteRail, same
-// registry (the lens offers, the kernel decides), drawn as icons with their
-// names as tooltips: select, then the place tools, then the connect gesture,
-// a rule, then the primitives. What the kernel draws on its own (boundary,
-// ports, source and sink identity) is no longer a section; it is the interface
-// tool's tooltip, since that is the tool whose result the kernel completes.
-// At the foot, the SL text as a drawer over the canvas.
+// The tool rail (#409 M2): the palette at rail width. Same rows as
+// PaletteRail, same registry (the lens offers, the kernel decides), drawn as
+// one instrument (makeover rule 21, canvas audit block 7): a 20px <Icon> in a
+// 32px square with a 4px radius, an 11px word beneath, grouped by kind with a
+// hairline between groups: select | place and the connect gesture | designate
+// | the SL drawer pinned at the foot. The armed tool is a filled accent
+// square (rule 9c); a primitive's square wears its --prim-* hue (rule 9b) and
+// its full name, never the two-letter code. What the kernel draws on its own
+// (boundary, ports, source and sink identity) is the interface tool's
+// tooltip, since that is the tool whose result the kernel completes. The
+// rail scrolls inside itself at short heights and, below 900px of width,
+// becomes a strip along the stage's foot so the stage never collapses to 0.
 import type { Lens } from "../kernel/types";
 import { LensPalette, type PaletteTool } from "./lenses/registry";
 import { PRIMITIVE_GLOSS, PRIMITIVE_WORD } from "./types";
 import { useState } from "react";
-import { GestureGlyph, GlyphChip, PasswayChip, RoleChip } from "./PaletteRail";
+import { Icon, PRIMITIVE_ICON, type IconName } from "../icons";
+import { prim } from "../tokens";
 
-function SelectGlyph() {
+/** The narrow-width strip: Tailwind arbitrary variants, so the rule lives
+ *  with the element it shapes. 899 and under is the three-width test's phone
+ *  and most of its Claude-in-Chrome pane. */
+const STRIP = "max-[899px]:absolute max-[899px]:inset-x-0 max-[899px]:bottom-0 max-[899px]:z-10 max-[899px]:w-auto max-[899px]:flex-row max-[899px]:border-r-0 max-[899px]:border-t";
+
+function Rule() {
   return (
-    <svg width={16} height={16} viewBox="0 0 16 16" aria-hidden>
-      <path d="M3 2 L13 8 L8.5 9.2 L11 14 L9.2 14.8 L6.8 10 L3 13 Z" fill="none" stroke="currentColor" strokeWidth={1.3} strokeLinejoin="round" />
-    </svg>
+    <span
+      aria-hidden
+      className="my-1 h-px w-8 shrink-0 max-[899px]:mx-1 max-[899px]:my-0 max-[899px]:h-8 max-[899px]:w-px"
+      style={{ background: "var(--hairline)" }}
+    />
   );
 }
 
@@ -24,6 +37,7 @@ function RailButton({
   title,
   onClick,
   label,
+  hue,
   children,
   testId,
   nativeTip = true,
@@ -31,7 +45,9 @@ function RailButton({
   active?: boolean;
   title: string;
   onClick: () => void;
-  label?: string;
+  label: string;
+  /** The square's ink at rest: a primitive's hue, else the secondary ink. */
+  hue?: string;
   children: React.ReactNode;
   testId?: string;
   /** false when a hover card beside the rail already carries the words:
@@ -45,17 +61,32 @@ function RailButton({
       title={nativeTip ? title : undefined}
       aria-pressed={active}
       aria-label={title}
-      className="flex w-12 flex-col items-center gap-0.5 rounded-md py-1.5"
-      style={{
-        background: active ? "var(--lens-accent)" : "transparent",
-        color: active ? "var(--text-on-accent)" : "var(--text-secondary)",
-      }}
+      className="flex w-full shrink-0 flex-col items-center gap-1 rounded-sm py-1 max-[899px]:w-16"
       data-testid={testId}
     >
-      <span className="[&>svg]:mr-0">{children}</span>
-      {label && <span className="text-[9px] leading-none">{label}</span>}
+      <span
+        className={`flex h-8 w-8 items-center justify-center rounded-sm ${active ? "" : "hover:bg-[var(--bg-surface)]"}`}
+        style={
+          active
+            ? { background: "var(--accent)", color: "var(--text-on-accent)" }
+            : { color: hue ?? "var(--text-secondary)" }
+        }
+      >
+        {children}
+      </span>
+      <span className="text-[11px] leading-none" style={{ color: active ? "var(--text-primary)" : "var(--text-secondary)" }}>
+        {label}
+      </span>
     </button>
   );
+}
+
+/** The shape a place tool stamps, from the icon set (rule 17's vocabulary). */
+function placeIcon(t: PaletteTool, lens: Lens): IconName {
+  if (t.verb !== "place") return "component";
+  if (t.passway) return "interface";
+  if (t.role === "Environment") return lens === "Mobus" ? "environment-open" : "environment";
+  return "component";
 }
 
 export function ToolRail({
@@ -76,111 +107,111 @@ export function ToolRail({
   const derivedTip = spec.derived.length
     ? ` The kernel draws these: ${spec.derived.map((h) => h.label).join(", ")}.`
     : "";
-  const shortLabel = (t: PaletteTool) => (t.id === "env-object" ? "environ." : t.label.split(" ")[0]);
+  const word = (t: PaletteTool) => (t.id === "env-object" || t.id === "env-thing" ? "environment" : t.label.split(" ")[0]);
 
   return (
     <div
-      className="flex w-14 shrink-0 flex-col items-center gap-1 border-r py-2"
+      className={`tool-rail flex w-20 shrink-0 flex-col border-r ${STRIP}`}
       style={{ borderColor: "var(--hairline)", background: "var(--lens-chrome)" }}
       data-testid="tool-rail"
     >
-      <RailButton active={armed === null} title="Select: click a thing or a flow to inspect it" onClick={() => onArm(null)} label="select" testId="tool-select">
-        <SelectGlyph />
-      </RailButton>
-      {spec.place.map((t) => (
-        <RailButton
-          key={t.id}
-          active={armed?.id === t.id}
-          title={`${t.label}: ${t.tip}${t.verb === "place" && t.passway ? derivedTip : ""}`}
-          onClick={() => onArm(armed?.id === t.id ? null : t)}
-          label={shortLabel(t)}
-          testId={`tool-${t.id}`}
-        >
-          {t.verb === "place" && (t.passway ? <PasswayChip /> : <RoleChip role={t.role === "Environment" ? "Environment" : "Component"} />)}
+      <div className="flex min-h-0 flex-1 flex-col items-center gap-1 overflow-y-auto px-1 py-2 max-[899px]:flex-row max-[899px]:overflow-x-auto max-[899px]:overflow-y-hidden max-[899px]:px-2 max-[899px]:py-1">
+        <RailButton active={armed === null} title="Select: click a thing or a flow to inspect it" onClick={() => onArm(null)} label="select" testId="tool-select">
+          <Icon name="select" size={20} />
         </RailButton>
-      ))}
-      {spec.connect.map((h) => (
-        <div
-          key={h.id}
-          title={`${h.label}: ${h.tip} Drag the handle dot off a node.`}
-          className="flex w-12 flex-col items-center gap-0.5 py-1.5"
-          style={{ color: "var(--text-muted)" }}
-        >
-          <span className="[&>svg]:mr-0">
-            <GestureGlyph />
-          </span>
-          <span className="text-[9px] leading-none">flow</span>
-        </div>
-      ))}
-      {spec.designate.length > 0 && (
-        <>
-          <span aria-hidden className="my-1 h-px w-8" style={{ background: "var(--hairline)" }} />
-          {spec.designate.map((t) => (
-            <span
-              key={t.id}
-              className="group relative"
-              onPointerEnter={() => setHoverTool(t.id)}
-              onPointerLeave={() => setHoverTool((h) => (h === t.id ? null : h))}
-            >
-              <RailButton
-                active={armed?.id === t.id}
-                title={`${t.label}: ${t.tip}`}
-                nativeTip={false}
-                onClick={() => onArm(armed?.id === t.id ? null : t)}
-                testId={`tool-${t.id}`}
-              >
-                {t.verb === "designate" && t.designation.type === "primitive" ? (
-                  <span className="flex items-center text-[10px]">
-                    <GlyphChip primitive={t.designation.primitive} />
-                    {t.label}
-                  </span>
-                ) : (
-                  <span className="text-[10px]">{t.label}</span>
-                )}
-              </RailButton>
-              {/* #418 item 4: the meaning, back inside the mode. The palette
-                  panel that carried the primitives' one-line glosses retired
-                  to this rail (#410), and a two-letter stamp with a native
-                  tooltip taught nobody what Buffering is. A card beside the
-                  rail, instant on hover, from the same registry. */}
-              {hoverTool === t.id && t.verb === "designate" && (
+        <Rule />
+        {spec.place.map((t) => (
+          <RailButton
+            key={t.id}
+            active={armed?.id === t.id}
+            title={`${t.label}: ${t.tip}${t.verb === "place" && t.passway ? derivedTip : ""}`}
+            onClick={() => onArm(armed?.id === t.id ? null : t)}
+            label={word(t)}
+            testId={`tool-${t.id}`}
+          >
+            <Icon name={placeIcon(t, lens)} size={20} />
+          </RailButton>
+        ))}
+        {spec.connect.map((h) => (
+          <div
+            key={h.id}
+            title={`${h.label}: ${h.tip} Drag the handle dot off a node.`}
+            className="flex w-full shrink-0 flex-col items-center gap-1 py-1 max-[899px]:w-16"
+            style={{ color: "var(--text-muted)" }}
+          >
+            <span className="flex h-8 w-8 items-center justify-center">
+              <Icon name="flow" size={20} />
+            </span>
+            <span className="text-[11px] leading-none">flow</span>
+          </div>
+        ))}
+        {spec.designate.length > 0 && (
+          <>
+            <Rule />
+            {spec.designate.map((t) => {
+              const primitive = t.verb === "designate" && t.designation.type === "primitive" ? t.designation.primitive : null;
+              return (
                 <span
-                  role="tooltip"
-                  data-testid={`gloss-${t.designation.type === "primitive" ? t.designation.primitive : "agent"}`}
-                  className="pointer-events-none absolute left-full top-0 z-20 ml-2 block w-64 rounded-md px-2.5 py-2 text-left text-[11px] leading-snug"
-                  style={{ background: "var(--bg-secondary)", border: "1px solid var(--border)", color: "var(--text-primary)", boxShadow: "var(--shadow-card)" }}
+                  key={t.id}
+                  className="relative w-full shrink-0 max-[899px]:w-auto"
+                  onPointerEnter={() => setHoverTool(t.id)}
+                  onPointerLeave={() => setHoverTool((h) => (h === t.id ? null : h))}
                 >
-                  {t.designation.type === "primitive" ? (
-                    <>
-                      <span className="font-semibold">{t.designation.primitive}</span>
-                      <span style={{ color: "var(--text-secondary)" }}> · {PRIMITIVE_WORD[t.designation.primitive]} · work process</span>
-                      <br />
-                      <span style={{ color: "var(--text-secondary)" }}>{PRIMITIVE_GLOSS[t.designation.primitive]}</span>
-                    </>
-                  ) : (
-                    <>
-                      <span className="font-semibold">{t.label}</span>
-                      <span style={{ color: "var(--text-secondary)" }}> · a decision maker · watches a stock or a flow, commands a process</span>
-                      <br />
-                      <span style={{ color: "var(--text-secondary)" }}>{t.tip}</span>
-                    </>
+                  <RailButton
+                    active={armed?.id === t.id}
+                    title={primitive ? t.tip : `${t.label}: ${t.tip}`}
+                    nativeTip={false}
+                    onClick={() => onArm(armed?.id === t.id ? null : t)}
+                    label={primitive ?? t.label}
+                    hue={primitive ? prim[primitive] : undefined}
+                    testId={`tool-${t.id}`}
+                  >
+                    <Icon name={primitive ? PRIMITIVE_ICON[primitive] : "agent"} size={20} />
+                  </RailButton>
+                  {/* #418 item 4: the meaning, back inside the mode. A card beside
+                      the rail, instant on hover, from the same registry: a
+                      hairline edge, no shadow (rule 2). */}
+                  {hoverTool === t.id && t.verb === "designate" && (
+                    <span
+                      role="tooltip"
+                      data-testid={`gloss-${primitive ?? "agent"}`}
+                      className="pointer-events-none absolute left-full top-0 z-20 ml-2 block w-64 rounded-md px-2.5 py-2 text-left text-[11px] leading-snug max-[899px]:bottom-full max-[899px]:left-0 max-[899px]:top-auto max-[899px]:mb-2 max-[899px]:ml-0"
+                      style={{ background: "var(--bg-secondary)", border: "1px solid var(--rule-strong)", color: "var(--text-primary)" }}
+                    >
+                      {primitive ? (
+                        <>
+                          <span className="font-semibold" style={{ color: prim[primitive] }}>{primitive}</span>
+                          <span style={{ color: "var(--text-secondary)" }}> · {PRIMITIVE_WORD[primitive]} · work process</span>
+                          <br />
+                          <span style={{ color: "var(--text-secondary)" }}>{PRIMITIVE_GLOSS[primitive]}</span>
+                        </>
+                      ) : (
+                        <>
+                          <span className="font-semibold">{t.label}</span>
+                          <span style={{ color: "var(--text-secondary)" }}> · a decision maker · watches a stock or a flow, commands a process</span>
+                          <br />
+                          <span style={{ color: "var(--text-secondary)" }}>{t.tip}</span>
+                        </>
+                      )}
+                    </span>
                   )}
                 </span>
-              )}
-            </span>
-          ))}
-        </>
-      )}
-      <span className="flex-1" />
-      <RailButton
-        active={slOpen}
-        title="SL: the text of this model, as a drawer over the canvas"
-        onClick={onOpenSl}
-        label="SL"
-        testId="tool-sl"
-      >
-        <span className="font-mono text-[11px] font-semibold">{"{ }"}</span>
-      </RailButton>
+              );
+            })}
+          </>
+        )}
+      </div>
+      <div className="flex shrink-0 items-center border-t px-1 py-1 max-[899px]:border-l max-[899px]:border-t-0" style={{ borderColor: "var(--hairline)" }}>
+        <RailButton
+          active={slOpen}
+          title="SL: the text of this model, as a drawer over the canvas"
+          onClick={onOpenSl}
+          label="SL"
+          testId="tool-sl"
+        >
+          <Icon name="braces" size={20} />
+        </RailButton>
+      </div>
     </div>
   );
 }

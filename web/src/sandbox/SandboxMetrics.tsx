@@ -94,7 +94,7 @@ export default function SandboxMetrics({
         {tabs.map((t) => (
           <button
             key={t}
-            className="rounded px-1.5 py-0.5"
+            className="rounded-sm px-1.5 py-0.5"
             style={
               tab === t
                 ? { background: "var(--accent)", color: "var(--text-on-accent)" }
