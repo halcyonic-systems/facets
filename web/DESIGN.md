@@ -166,8 +166,6 @@ literal (`rounded`, `rounded-pill`, numeric `borderRadius`); "outline" is
 | `StatusBar.tsx` | 91, 107, 123, 138, 153 | | |
 | `Transport.tsx` | 58, 71 | | |
 | `InspectorDock.tsx` | 242 | 240 | |
-| `HomeScreen.tsx` | | | 1581, 1695 |
-| `StartSurface.tsx` | 88 | | 80 |
 | `ReasonerGate.tsx` | 140, 151 | 99, 122 | 122 |
 | `CoAuthorMode.tsx` | 404, 421, 461, 491, 563, 598 | 309, 448, 525, 536 | 448, 525 |
 | `SlPane.tsx` | 263, 279, 354, 372, 403, 410, 482 | | |
