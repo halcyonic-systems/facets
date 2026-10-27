@@ -93,7 +93,8 @@ import {
   type ThemeChoice,
 } from "./theme";
 import type { SlError } from "./kernel/types";
-import { Banner, Button, ConfirmDialog, Tabs, ToolButton } from "./ui";
+import { Banner, Button, ConfirmDialog, Menu, MenuItem, MenuSection, MenuSeparator, Tabs, ToolButton } from "./ui";
+import { Icon } from "./icons";
 import { KernelErrorBoundary } from "./KernelErrorBoundary";
 import { isFolderSupported, pickDirectory, writeModel, type DirHandleLike } from "./fsAccess";
 import { library } from "./library";
@@ -4263,24 +4264,6 @@ export function MenuBar({
   // declaration is legible without opening it. No verdict is computed here.
   const typeLabel =
     [systemType?.kingdom, systemType?.genus, systemType?.domain].filter(Boolean).join(" / ") || "unasserted";
-  const item = (label: string, onClick: () => void, disabled = false) => (
-    <button
-      onClick={() => {
-        if (disabled) return;
-        setFileOpen(false);
-        onClick();
-      }}
-      disabled={disabled}
-      className="block w-full px-3 py-1.5 text-left text-xs"
-      style={{
-        color: disabled ? "var(--text-muted)" : "var(--text-secondary)",
-        opacity: disabled ? 0.5 : 1,
-        cursor: disabled ? "not-allowed" : "pointer",
-      }}
-    >
-      {label}
-    </button>
-  );
   return (
     <div
       className="relative z-30 flex items-center gap-4 border-b px-3 py-1"
@@ -4314,203 +4297,138 @@ export function MenuBar({
       {/* Home / Close (#73): the one route back to the start screen from a
           loaded model. Disabled when already home (no model), so it never
           no-ops silently. */}
-      <button
+      <Button
+        size={28}
+        variant="quiet"
         onClick={onHome}
         disabled={!loaded || !hasModel}
         title={hasModel ? "Close this model and return to the start screen" : "Already at the start screen"}
-        className="rounded px-2 py-1 text-[11px] uppercase tracking-wide"
-        style={{
-          fontFamily: "var(--font-mono)",
-          color: loaded && hasModel ? "var(--text-secondary)" : "var(--text-muted)",
-          opacity: loaded && hasModel ? 1 : 0.5,
-          cursor: loaded && hasModel ? "pointer" : "not-allowed",
-        }}
       >
         Home
-      </button>
+      </Button>
 
-      <div className="relative">
-        <button
-          onClick={() => setFileOpen((o) => !o)}
-          disabled={!loaded}
-          className="rounded px-2 py-1 text-[11px] uppercase tracking-wide"
-          style={{
-            fontFamily: "var(--font-mono)",
-            color: loaded ? "var(--text-secondary)" : "var(--text-muted)",
-            background: fileOpen ? "var(--bg-surface)" : "transparent",
-          }}
-        >
-          File
-        </button>
-        {fileOpen && (
-          <>
-            <div className="fixed inset-0 z-10" onClick={() => setFileOpen(false)} />
-            <div
-              className="absolute left-0 top-full z-20 mt-1 w-40 rounded-md py-1"
-              style={{
-                background: "var(--bg-secondary)",
-                border: "1px solid var(--border)",
-                boxShadow: "var(--shadow-card)",
-                borderRadius: "var(--radius-md)",
-              }}
-            >
-              {item("New", onNew)}
-              {item("Open…", onOpen)}
-              <div className="my-1 border-t" style={{ borderColor: "var(--hairline)" }} />
-              {item("Save ⌘S", onSave, !canExport)}
-              {item("Save to folder…", onSaveToFolder, !canExport)}
-              {item("Save to library as…", onSaveToLibrary, !canExport)}
-              <div className="my-1 border-t" style={{ borderColor: "var(--hairline)" }} />
-              {onDownload && item("Download (.model)", onDownload, !canExport)}
-              {item("Export JSON", onExport, !canExport)}
-              {onExportWalk && item("Export walk (.sl)", onExportWalk, !canExport)}
-              {onExportSvg && item("Export diagram (SVG)", onExportSvg, !canExport)}
-              {onExportPng && item("Export diagram (PNG)", onExportPng, !canExport)}
-            </div>
-          </>
+      {/* Makeover slice D (rule 15): File and Switch are the Menu primitive
+          (APG menu button: roles, Enter/arrows/Escape/Tab, focus return),
+          in controlled mode over the state this bar already held. Every item
+          keeps its handler; the shortcut moves to the right slot. */}
+      <Menu label="File" open={fileOpen} onOpenChange={setFileOpen} disabled={!loaded}>
+        <MenuItem icon="plus" onSelect={onNew}>
+          New
+        </MenuItem>
+        <MenuItem icon="folder" onSelect={onOpen}>
+          Open…
+        </MenuItem>
+        <MenuSeparator />
+        <MenuItem icon="file" onSelect={onSave} disabled={!canExport} shortcut="⌘S">
+          Save
+        </MenuItem>
+        <MenuItem icon="folder" onSelect={onSaveToFolder} disabled={!canExport}>
+          Save to folder…
+        </MenuItem>
+        <MenuItem onSelect={onSaveToLibrary} disabled={!canExport}>
+          Save to library as…
+        </MenuItem>
+        <MenuSeparator />
+        {onDownload && (
+          <MenuItem onSelect={onDownload} disabled={!canExport}>
+            Download (.model)
+          </MenuItem>
         )}
-      </div>
+        <MenuItem icon="external" onSelect={onExport} disabled={!canExport}>
+          Export JSON
+        </MenuItem>
+        {onExportWalk && (
+          <MenuItem icon="external" onSelect={onExportWalk} disabled={!canExport}>
+            Export walk (.sl)
+          </MenuItem>
+        )}
+        {onExportSvg && (
+          <MenuItem icon="external" onSelect={onExportSvg} disabled={!canExport}>
+            Export diagram (SVG)
+          </MenuItem>
+        )}
+        {onExportPng && (
+          <MenuItem icon="external" onSelect={onExportPng} disabled={!canExport}>
+            Export diagram (PNG)
+          </MenuItem>
+        )}
+      </Menu>
       {/* Switch model (#74): an in-canvas quick-open — demos + browser library
           in a compact menu, so switching models never routes through the full
-          Open… dialog. Only meaningful once a model is loaded. */}
-      <div className="relative">
-        <button
-          onClick={() => setSwitchOpen((o) => !o)}
-          disabled={!loaded || !hasModel}
-          className="rounded px-2 py-1 text-[11px] uppercase tracking-wide"
-          style={{
-            fontFamily: "var(--font-mono)",
-            color: loaded && hasModel ? "var(--text-secondary)" : "var(--text-muted)",
-            opacity: loaded && hasModel ? 1 : 0.5,
-            cursor: loaded && hasModel ? "pointer" : "not-allowed",
-            background: switchOpen ? "var(--bg-surface)" : "transparent",
-          }}
-          title="Switch to another model without leaving the canvas"
-        >
-          Switch ▾
-        </button>
-        {switchOpen && (
-          <>
-            <div className="fixed inset-0 z-10" onClick={() => setSwitchOpen(false)} />
-            <div
-              className="absolute left-0 top-full z-20 mt-1 max-h-[70vh] w-56 overflow-y-auto py-1"
-              style={{
-                background: "var(--bg-secondary)",
-                border: "1px solid var(--border)",
-                boxShadow: "var(--shadow-card)",
-                borderRadius: "var(--radius-md)",
-              }}
-            >
-              {workbench.length > 0 && onOpenPin && (
-                <>
-                  <div
-                    className="px-3 pb-1 pt-1 text-[10px] font-semibold uppercase tracking-wide"
-                    style={{ color: "var(--text-muted)" }}
+          Open… dialog. Only meaningful once a model is loaded. The open model
+          is the checked menuitemradio in its group. */}
+      <Menu
+        label="Switch"
+        open={switchOpen}
+        onOpenChange={setSwitchOpen}
+        disabled={!loaded || !hasModel}
+        title="Switch to another model without leaving the canvas"
+        width={256}
+      >
+        <div className="max-h-[70vh] overflow-y-auto">
+          {workbench.length > 0 && onOpenPin && (
+            <>
+              <MenuSection title="Workbench">
+                {workbench.map((w) => (
+                  <MenuItem
+                    key={`${w.pin.kind}:${w.pin.ref}`}
+                    role="menuitemradio"
+                    checked={currentLabel === w.title}
+                    onSelect={() => onOpenPin(w.pin)}
+                    title={w.detail || w.title}
                   >
-                    Workbench
-                  </div>
-                  {workbench.map((w) => {
-                    const active = currentLabel === w.title;
-                    return (
-                      <button
-                        key={`${w.pin.kind}:${w.pin.ref}`}
-                        onClick={() => {
-                          setSwitchOpen(false);
-                          onOpenPin(w.pin);
-                        }}
-                        className="block w-full truncate px-3 py-1.5 text-left text-xs"
-                        style={{ color: active ? "var(--accent-strong)" : "var(--text-secondary)" }}
-                        title={w.detail || w.title}
-                      >
-                        {active ? "• " : ""}
-                        {w.title}
-                      </button>
-                    );
-                  })}
-                  <div className="my-1 border-t" style={{ borderColor: "var(--hairline)" }} />
-                </>
-              )}
-              <div
-                className="px-3 pb-1 pt-1 text-[10px] font-semibold uppercase tracking-wide"
-                style={{ color: "var(--text-muted)" }}
+                    <span className="block truncate">{w.title}</span>
+                  </MenuItem>
+                ))}
+              </MenuSection>
+              <MenuSeparator />
+            </>
+          )}
+          <MenuSection title="Demos">
+            {DEMOS.map((d) => (
+              <MenuItem
+                key={d.key}
+                role="menuitemradio"
+                checked={currentLabel === d.title}
+                onSelect={() => onSwitchDemo(d)}
+                title={d.title}
               >
-                Demos
+                <span className="block truncate">{d.title}</span>
+              </MenuItem>
+            ))}
+          </MenuSection>
+          <MenuSeparator />
+          <MenuSection title="Saved in this browser">
+            {libraryModels.length === 0 ? (
+              <div className="px-3 py-1.5 text-sm" style={{ color: "var(--text-muted)" }}>
+                no saved models yet
               </div>
-              {DEMOS.map((d) => {
-                const active = currentLabel === d.title;
-                return (
-                  <button
-                    key={d.key}
-                    onClick={() => {
-                      setSwitchOpen(false);
-                      onSwitchDemo(d);
-                    }}
-                    className="block w-full truncate px-3 py-1.5 text-left text-xs"
-                    style={{ color: active ? "var(--accent-strong)" : "var(--text-secondary)" }}
-                    title={d.title}
-                  >
-                    {active ? "• " : ""}
-                    {d.title}
-                  </button>
-                );
-              })}
-              <div className="my-1 border-t" style={{ borderColor: "var(--hairline)" }} />
-              <div
-                className="px-3 pb-1 pt-1 text-[10px] font-semibold uppercase tracking-wide"
-                style={{ color: "var(--text-muted)" }}
-              >
-                Saved in this browser
-              </div>
-              {libraryModels.length === 0 ? (
-                <div className="px-3 py-1.5 text-xs" style={{ color: "var(--text-muted)" }}>
-                  no saved models yet
-                </div>
-              ) : (
-                // Depth mirrors the OpenDialog's grouping (#105): children of a
-                // decomposed model indent under their root SOI instead of
-                // reading as top-level peers.
-                libraryModels.map((m) => {
-                  const active = currentLabel === m.name;
-                  return (
-                    <button
-                      key={m.name}
-                      onClick={() => {
-                        setSwitchOpen(false);
-                        onSwitchLibrary(m.name);
-                      }}
-                      className="block w-full truncate py-1.5 pr-3 text-left text-xs"
-                      style={{
-                        paddingLeft: 12 + m.depth * 12,
-                        color: active ? "var(--accent-strong)" : "var(--text-secondary)",
-                      }}
-                      title={m.name}
-                    >
-                      {m.depth > 0 && (
-                        <span aria-hidden style={{ color: "var(--text-muted)" }}>
-                          {"└ "}
-                        </span>
-                      )}
-                      {active ? "• " : ""}
-                      {m.name}
-                    </button>
-                  );
-                })
-              )}
-              <div className="my-1 border-t" style={{ borderColor: "var(--hairline)" }} />
-              <button
-                onClick={() => {
-                  setSwitchOpen(false);
-                  onOpenFull();
-                }}
-                className="block w-full px-3 py-1.5 text-left text-xs"
-                style={{ color: "var(--text-secondary)" }}
-              >
-                More… (Open dialog)
-              </button>
-            </div>
-          </>
-        )}
-      </div>
+            ) : (
+              // Depth mirrors the OpenDialog's grouping (#105): children of a
+              // decomposed model indent under their root SOI instead of
+              // reading as top-level peers.
+              libraryModels.map((m) => (
+                <MenuItem
+                  key={m.name}
+                  role="menuitemradio"
+                  checked={currentLabel === m.name}
+                  onSelect={() => onSwitchLibrary(m.name)}
+                  title={m.name}
+                >
+                  <span className="flex min-w-0 items-center gap-1" style={{ paddingLeft: m.depth * 12 }}>
+                    {m.depth > 0 && <Icon name="tree" size={16} style={{ color: "var(--text-muted)" }} />}
+                    <span className="truncate">{m.name}</span>
+                  </span>
+                </MenuItem>
+              ))
+            )}
+          </MenuSection>
+          <MenuSeparator />
+          <MenuItem icon="forward" onSelect={onOpenFull}>
+            More… (Open dialog)
+          </MenuItem>
+        </div>
+      </Menu>
 
       </div>
 
