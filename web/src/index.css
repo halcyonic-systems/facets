@@ -709,3 +709,42 @@ input[type="range"]:focus-visible {
   color: var(--text-muted);
   opacity: 1;
 }
+
+/* ── CHROME (makeover slice D: App.tsx menu bar, StatusBar.tsx, Transport.tsx)
+   The bar's strips are the Tabs primitive drawn as a segmented well: the strip
+   is the --bg-surface step inside a --border frame (an outline, so it adds no
+   height), 4px corners, and the active tab is a filled 4px chip in the lens's
+   own accent (rule 9c; outside a data-lens scope the seam is the accent) under
+   --text-on-accent. The primitive sets its underline inline, hence !important.
+   The tablist's overflow is opened so the focus ring (2px, offset 2px) is not
+   clipped on the one tab in the tab order. */
+.chrome-strip {
+  height: 32px;
+  border-radius: var(--radius-sm);
+  background: var(--bg-surface);
+  outline: 1px solid var(--border);
+  outline-offset: -1px;
+}
+.chrome-strip > div {
+  border-bottom: 0 !important;
+}
+.chrome-strip [role="tablist"] {
+  overflow: visible !important;
+}
+.chrome-strip [role="tab"] {
+  margin-bottom: 0 !important;
+  border-bottom: 0 !important;
+  border-radius: var(--radius-sm);
+  transition: background-color var(--motion-fast) ease-out, color var(--motion-fast) ease-out;
+}
+.chrome-strip [role="tab"][aria-selected="true"] {
+  background: var(--lens-accent);
+  color: var(--text-on-accent) !important;
+}
+/* A quiet Button used as a toggle (Focus, 3D, Opaque, Grounding): pressed, it
+   fills with the seam's accent and says so with aria-pressed (rule 12). */
+.chrome-toggle[aria-pressed="true"] {
+  background: var(--lens-accent) !important;
+  color: var(--text-on-accent) !important;
+  border-color: var(--lens-accent) !important;
+}

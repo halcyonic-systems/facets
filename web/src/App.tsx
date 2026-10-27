@@ -93,7 +93,7 @@ import {
   type ThemeChoice,
 } from "./theme";
 import type { SlError } from "./kernel/types";
-import { Banner, ConfirmDialog, ToolButton } from "./ui";
+import { Banner, Button, ConfirmDialog, Tabs, ToolButton } from "./ui";
 import { KernelErrorBoundary } from "./KernelErrorBoundary";
 import { isFolderSupported, pickDirectory, writeModel, type DirHandleLike } from "./fsAccess";
 import { library } from "./library";
@@ -2957,75 +2957,48 @@ function Workspace() {
   // ws-D (#345): the workbench controls, dissolved upward from the strip.
   // Wrapped in the data-lens scope so the lens seam re-tints them inside the
   // menu bar (which sits outside the workbench's own data-lens container).
+  // Makeover slice D (rules 3, 9c, 11, 15): each strip is the shared Tabs
+  // primitive (32 tall, role=tablist, arrow keys) drawn as a segmented well
+  // by `.chrome-strip` in index.css; the active tab is a filled 4px chip in
+  // the lens's own accent, since the seam resolves inside this data-lens
+  // scope. Same handlers, same state.
   const workbenchControls = canvasModel ? (
     <div className="flex items-center gap-2" data-lens={canvasModel.lens}>
-      <div
-        className="flex items-center gap-0.5 p-0.5"
-        style={{ background: "var(--bg-surface)", borderRadius: "var(--radius-pill)" }}
-      >
-        {WORK_MODES.map((m) => (
-          <button
-            key={m}
-            onClick={() => setWorkMode(m)}
-            className="px-2 py-0.5 text-xs font-body transition-colors"
-            style={{
-              borderRadius: "var(--radius-pill)",
-              background: workMode === m ? "var(--accent-strong)" : "transparent",
-              color: workMode === m ? "var(--text-on-accent)" : "var(--text-secondary)",
-              transition: "var(--transition-base)",
-            }}
-            title={WORK_MODE_TITLE[m]}
-          >
-            {WORK_MODE_LABEL[m]}
-          </button>
-        ))}
+      <div className="chrome-strip" title={WORK_MODE_TITLE[workMode]}>
+        <Tabs
+          label="Model or Measurements"
+          tabs={WORK_MODES.map((m) => ({ key: m, label: WORK_MODE_LABEL[m] }))}
+          active={workMode}
+          onSelect={(k) => setWorkMode(k as WorkMode)}
+        />
       </div>
       <div
-        className="flex items-center gap-0.5 p-0.5"
-        style={{ background: "var(--bg-surface)", borderRadius: "var(--radius-pill)" }}
+        className="chrome-strip"
         title={
           !lensTouched && canvasModel.lens === "Mobus"
             ? "Mobus by default: the fullest reading. Switch any time."
             : "The active lens — each tradition asks its own question of the model"
         }
       >
-        {lensTabs(canvasModel.lens).map((l) => (
-          <button
-            key={l}
-            onClick={() => setLens(l)}
-            className="px-2 py-0.5 text-xs font-body transition-colors"
-            style={{
-              borderRadius: "var(--radius-pill)",
-              background: canvasModel.lens === l ? "var(--lens-accent)" : "transparent",
-              color: canvasModel.lens === l ? "var(--text-on-accent)" : "var(--text-secondary)",
-              transition: "var(--transition-base)",
-            }}
-          >
-            {l}
-          </button>
-        ))}
+        <Tabs
+          label="Lens"
+          tabs={lensTabs(canvasModel.lens).map((l) => ({ key: l, label: l }))}
+          active={canvasModel.lens}
+          onSelect={(k) => setLens(k as CanvasModel["lens"])}
+        />
       </div>
       {view3dEnabled() && workMode === "structure" && (
-        <div
-          className="flex items-center gap-0.5 p-0.5"
-          style={{ background: "var(--bg-surface)", borderRadius: "var(--radius-pill)" }}
+        <Button
+          size={28}
+          variant="quiet"
+          className="chrome-toggle"
+          onClick={() => setView3d((v) => !v)}
+          aria-pressed={view3d}
+          title="3D exploded view (beta) — a way of looking at the model, read-only"
+          data-testid="view-3d-toggle"
         >
-          <button
-            onClick={() => setView3d((v) => !v)}
-            aria-pressed={view3d}
-            className="px-2 py-0.5 text-xs font-body transition-colors"
-            style={{
-              borderRadius: "var(--radius-pill)",
-              background: view3d ? "var(--lens-accent)" : "transparent",
-              color: view3d ? "var(--text-on-accent)" : "var(--text-secondary)",
-              transition: "var(--transition-base)",
-            }}
-            title="3D exploded view (beta) — a way of looking at the model, read-only"
-            data-testid="view-3d-toggle"
-          >
-            3D · beta
-          </button>
-        </div>
+          3D · beta
+        </Button>
       )}
     </div>
   ) : undefined;
@@ -3034,50 +3007,32 @@ function Workspace() {
   // beside it because they are about the model; the verdict, the review and
   // the SL toggle left for the status bar and the modes.
   const modeSwitch = canvasModel ? (
-    <div
-      className="flex items-center gap-0.5 p-0.5"
-      style={{ background: "var(--bg-surface)", borderRadius: "var(--radius-pill)" }}
-      role="group"
-      aria-label="Mode"
-      data-testid="mode-switch"
-    >
-      {WORKSPACE_MODES.map((m) => (
-        <button
-          key={m.value}
-          onClick={() => setWorkspaceMode(m.value)}
-          aria-pressed={mode === m.value}
-          className="px-3 py-0.5 text-xs font-semibold transition-colors"
-          style={{
-            borderRadius: "var(--radius-pill)",
-            background: mode === m.value ? "var(--accent-strong)" : "transparent",
-            color: mode === m.value ? "var(--text-on-accent)" : "var(--text-secondary)",
-            transition: "var(--transition-base)",
-          }}
-          title={m.title}
-        >
-          {m.label}
-        </button>
-      ))}
+    <div className="flex items-center gap-2" data-testid="mode-switch">
+      <div className="chrome-strip" title={WORKSPACE_MODES.find((m) => m.value === mode)?.title}>
+        <Tabs
+          label="Mode"
+          tabs={WORKSPACE_MODES.map((m) => ({ key: m.value, label: m.label }))}
+          active={mode}
+          onSelect={(k) => setWorkspaceMode(k as WorkspaceMode)}
+        />
+      </div>
       {/* #418 item 1: Focus is the one arrangement choice the frame keeps, and
           tucked in the status bar it read as chrome. It sits here too, at the
           end of the question it modifies — the status-bar toggle stays, since
           in Focus this bar is a strip and that one is how you come back. */}
-      {!narrow && <span aria-hidden className="mx-1 h-4 w-px" style={{ background: "var(--hairline)" }} />}
-      {!narrow && <button
-        onClick={() => setFocus((f) => !f)}
-        aria-pressed={focus}
-        className="px-3 py-0.5 text-xs font-semibold transition-colors"
-        style={{
-          borderRadius: "var(--radius-pill)",
-          background: focus ? "var(--accent)" : "transparent",
-          color: focus ? "var(--text-on-accent)" : "var(--text-secondary)",
-          transition: "var(--transition-base)",
-        }}
-        title="Focus: the mode's primary surface fills the window — ⌃⌥F, Esc to leave"
-        data-testid="mode-focus"
-      >
-        Focus
-      </button>}
+      {!narrow && (
+        <Button
+          size={28}
+          variant="quiet"
+          className="chrome-toggle"
+          onClick={() => setFocus((f) => !f)}
+          aria-pressed={focus}
+          title="Focus: the mode's primary surface fills the window — ⌃⌥F, Esc to leave"
+          data-testid="mode-focus"
+        >
+          Focus
+        </Button>
+      )}
     </div>
   ) : undefined;
 
@@ -3669,7 +3624,7 @@ function Workspace() {
                                 setLocSize(s);
                                 setFitToken((n) => (n ?? 0) + 1); // reframe in the new box
                               }}
-                              className="rounded px-1 text-[9px] uppercase leading-4"
+                              className="rounded-sm px-1 text-[9px] uppercase leading-4"
                               style={{
                                 fontFamily: "var(--font-mono)",
                                 color: locSize === s ? "var(--text-primary)" : "var(--text-muted)",
@@ -3683,7 +3638,7 @@ function Workspace() {
                             ))}
                           <button
                             onClick={() => setLocFull((f) => !f)}
-                            className="rounded px-1 text-[10px] leading-4"
+                            className="rounded-sm px-1 text-[10px] leading-4"
                             style={{
                               fontFamily: "var(--font-mono)",
                               color: "var(--text-muted)",
@@ -3899,26 +3854,17 @@ function Workspace() {
                         style={{
                           background: "var(--bg-secondary)",
                           border: "1px solid var(--accent)",
-                          borderRadius: "var(--radius-pill)",
-                          boxShadow: "var(--shadow-card)",
+                          borderRadius: "var(--radius-md)",
                           color: "var(--text-primary)",
                         }}
                       >
                         <span>Previewing a draft — assess it, then</span>
-                        <button
-                          onClick={acceptPreview}
-                          className="rounded-full px-3 py-1 text-xs font-semibold"
-                          style={{ background: "var(--accent)", color: "var(--text-on-accent)" }}
-                        >
+                        <Button size={28} onClick={acceptPreview}>
                           Accept
-                        </button>
-                        <button
-                          onClick={discardPreview}
-                          className="rounded-full px-3 py-1 text-xs"
-                          style={{ border: "1px solid var(--border)", color: "var(--text-muted)" }}
-                        >
+                        </Button>
+                        <Button size={28} variant="quiet" onClick={discardPreview}>
                           Discard
-                        </button>
+                        </Button>
                       </div>
                     )}
                     {/* #345: the bench — Run is a STATE of this surface, not a
@@ -4337,8 +4283,8 @@ export function MenuBar({
   );
   return (
     <div
-      className="relative z-30 flex items-center gap-4 border-b px-3 py-1.5"
-      style={{ borderColor: "var(--rule-soft)", background: "var(--paper-edge)" }}
+      className="relative z-30 flex items-center gap-4 border-b px-3 py-1"
+      style={{ borderColor: "var(--rule-strong)", background: "var(--bg-secondary)" }}
     >
       {/* Under the facets.systems portal the wordmark is the way back to the
           entry screen; everywhere else (dev, :5190, desktop) there is no portal
