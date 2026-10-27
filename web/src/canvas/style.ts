@@ -37,7 +37,6 @@ export interface StyleSpec {
     energy: number;
     info: number;
   };
-  energyGlow: { enabled: boolean; dev: number; opacity: number };
   hoverHalo: { pad: number; width: number };
   compHalo: { pad: number; opacity: number };
   boundaryRim: { pad: number; width: number; opacity: number };
@@ -65,7 +64,6 @@ const CURRENT: StyleSpec = {
   label: { size: 12, smallSize: 10, mono: false, uppercase: false, tracking: "0", fill: "var(--text-primary)" },
   simReadoutSize: 10,
   edge: { klir: 2.5, bond: 2.5, exo: 1.75, mere: 1.5, matter: 3, energy: 2, info: 1.25 },
-  energyGlow: { enabled: true, dev: 2.2, opacity: 0.55 },
   hoverHalo: { pad: 6, width: 2 },
   compHalo: { pad: 10, opacity: 0.5 },
   boundaryRim: { pad: 4, width: 2.25, opacity: 0.9 },
@@ -79,26 +77,29 @@ const CURRENT: StyleSpec = {
   chipRx: 9999,
 };
 
+// Makeover slice E (2026-10-26, charter rules 17 and 19, canvas audit blocks 1
+// and 2): every world stroke is 2 px and never thins below STROKE_FLOOR_PX on
+// screen; names are Inter, authored case, 13 px with a 12 px screen floor; the
+// register's old 1 px / 10 px mono uppercase values are recorded in the audit.
 const S1: StyleSpec = {
   nodeR: 24,
   curveBow: 14,
-  squareRx: 2,
-  klirNode: { width: 1, opacity: 0.35 },
-  nodeStrokeWidth: 1,
+  squareRx: 0,
+  klirNode: { width: 2, opacity: 0.6 },
+  nodeStrokeWidth: 2,
   nodeFill: "var(--bg-secondary)",
-  badge: { form: "outline", r: 9, strokeWidth: 1 },
-  portRx: 2,
-  portStrokeWidth: 1,
-  label: { size: 10, smallSize: 9, mono: true, uppercase: true, tracking: "0.04em", fill: "var(--text-secondary)" },
+  badge: { form: "outline", r: 9, strokeWidth: 2 },
+  portRx: 4,
+  portStrokeWidth: 2,
+  label: { size: 13, smallSize: 12, mono: false, uppercase: false, tracking: "0", fill: "var(--text-primary)" },
   simReadoutSize: 9,
-  edge: { klir: 1, bond: 1.25, exo: 1, mere: 1, matter: 1.5, energy: 1.25, info: 1 },
-  energyGlow: { enabled: false, dev: 0, opacity: 0 },
+  edge: { klir: 2, bond: 2, exo: 2, mere: 2, matter: 2, energy: 2, info: 2 },
   hoverHalo: { pad: 4, width: 1 },
   compHalo: { pad: 6, opacity: 0.12 },
-  boundaryRim: { pad: 3, width: 1, opacity: 1 },
+  boundaryRim: { pad: 3, width: 2, opacity: 1 },
   selection: { width: 2.5, opacity: 0.35 },
   handle: { r: 5, width: 1 },
-  ring: { fillOpacity: 0.06, strokeWidth: 1 },
+  ring: { fillOpacity: 0.06, strokeWidth: 2 },
   simFillOpacity: 0.2,
   arrowSize: 5,
   grid: { mode: "dots", gap: 20, ink: "var(--hairline)", wash: false },
@@ -119,7 +120,6 @@ const S2: StyleSpec = {
   label: { size: 11, smallSize: 10, mono: false, uppercase: false, tracking: "0", fill: "var(--text-secondary)" },
   simReadoutSize: 10,
   edge: { klir: 1.25, bond: 1.5, exo: 1.25, mere: 1, matter: 2, energy: 1.5, info: 1.25 },
-  energyGlow: { enabled: true, dev: 1.2, opacity: 0.3 },
   hoverHalo: { pad: 5, width: 1.5 },
   compHalo: { pad: 8, opacity: 0.2 },
   boundaryRim: { pad: 4, width: 1.5, opacity: 0.9 },
@@ -146,7 +146,6 @@ const S3: StyleSpec = {
   label: { size: 10, smallSize: 9, mono: true, uppercase: true, tracking: "0.06em", fill: "var(--text-muted)" },
   simReadoutSize: 9,
   edge: { klir: 1.25, bond: 1.5, exo: 1, mere: 1, matter: 1.75, energy: 1.25, info: 1 },
-  energyGlow: { enabled: false, dev: 0, opacity: 0 },
   hoverHalo: { pad: 3, width: 1 },
   compHalo: { pad: 5, opacity: 0.15 },
   boundaryRim: { pad: 3, width: 1.25, opacity: 1 },
@@ -172,6 +171,39 @@ function pick(): StyleSpec {
 }
 
 export const STYLE: StyleSpec = pick();
+
+// ---- Screen-space readings (makeover slice E) ----------------------------------
+// A node body or a membrane IS the world and scales with the view; a stroke, a
+// name, an arrowhead or a handle is a reading of it and has a size the eye
+// needs whatever the zoom. These are the floors and holds, in SCREEN px, that
+// stageScale.ts turns into world units for the frame being drawn. Numbers from
+// the canvas audit § 4 (tldraw handle 8/zoom with a hit half-extent, Excalidraw
+// default stroke 2) and the charter (rule 11: 24 px targets, rule 17: 2 px
+// strokes, visual-language rule 7: authored case, no mono on a name).
+
+/** A world stroke never renders thinner than this on screen. */
+export const STROKE_FLOOR_PX = 1.5;
+
+/** Type on the canvas: Inter, sentence case. `size` is a thing's name, `small`
+ *  the Klir recession (by weight and ink, not by shrinking), `edge` a flow's
+ *  label; the floors keep a fitted model readable. Weight 500 for a name. */
+export const LABEL = { size: 13, small: 12, edge: 12, floorPx: 12, edgeFloorPx: 10, weight: 500 } as const;
+
+/** The paper tab behind a label (rule 19): padding and radius, screen px. */
+export const TAB = { pad: 2, rx: 2 } as const;
+
+/** The connect handle, screen px: an 8 px disc (r 4) with a 2 px stroke, a hit
+ *  disc of r 12 (the 24 px target of rule 11), 1.75x under a coarse pointer. */
+export const HANDLE = { r: 4, width: 2, hitR: 12, coarse: 1.75 } as const;
+
+/** One arrowhead for every flow: 10 world px, floored to 8 on screen, held at
+ *  the 1.5x cap like every other reading. `markerUnits="userSpaceOnUse"` so the
+ *  stroke no longer sizes it (the exo 2x gain and the 0.8 crossing head went). */
+export const ARROW = { size: 10, floorPx: 8 } as const;
+
+/** The interface chevron is the one mark that carries direction: never under
+ *  this many screen px tall. */
+export const CHEVRON_MIN_PX = 10;
 
 /** How many characters of a flow's NAME the canvas will draw before eliding it
  *  (#335). A label is an identifier; a sentence belongs in `description`.

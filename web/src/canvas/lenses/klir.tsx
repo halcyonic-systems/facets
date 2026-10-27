@@ -3,10 +3,10 @@
 // relation is the salient, designed element — labelled by signature (arity /
 // Cartesian form), never by substance type (that vocabulary is Mobus's).
 import { edgeGeometry } from "../geometry";
-import { STYLE, elideEdgeLabel } from "../style";
+import { LABEL, STYLE, elideEdgeLabel } from "../style";
 import { EdgeScaffold, NodeBody, NullPortView, type EdgeStyle } from "./common";
 import type { LensEdgeProps, LensNodeProps } from "./registry";
-import { useStageHold } from "../stageScale";
+import { textWorld, useStageHold, useStageScale } from "../stageScale";
 
 function NodeView({ thing, hovered, sim, onPointerDown, onHandlePointerDown, scale }: LensNodeProps) {
   return (
@@ -34,6 +34,7 @@ const KLIR_STYLE: EdgeStyle = { color: "var(--text-secondary)", width: STYLE.edg
 
 function EdgeView({ model, relation, sigIndex, selected, driven, sim, crowded, onSelect }: LensEdgeProps) {
   const hold = useStageHold();
+  const scale = useStageScale();
   const geo = edgeGeometry(model, relation, false);
   if (!geo) return null;
   const { d, labelAt } = geo;
@@ -52,12 +53,14 @@ function EdgeView({ model, relation, sigIndex, selected, driven, sim, crowded, o
   // to read. Without a name the relation was pure notation — the bounce-off case.
   const sig = `r${sigIndex + 1} ⊆ T×T${relation.klir_directed ? " (directed)" : ""}`;
   const label = relation.name ? (
-    <text x={labelAt.x} y={labelAt.y - 12} textAnchor="middle" className="font-mono">
+    <text x={labelAt.x} y={labelAt.y - 12} textAnchor="middle" className="font-body">
       <title>{relation.name}</title>
-      <tspan x={labelAt.x} fontSize={11 * hold} fill="var(--text-secondary)">
+      {/* The name in Inter (visual-language rule 7); the signature stays mono,
+          it is notation, not a name. */}
+      <tspan x={labelAt.x} fontSize={textWorld(LABEL.edge, scale, LABEL.edgeFloorPx)} fill="var(--text-secondary)">
         {elideEdgeLabel(relation.name)}
       </tspan>
-      <tspan x={labelAt.x} dy={11 * hold} fontSize={9 * hold} fill="var(--text-muted)">
+      <tspan x={labelAt.x} dy={11 * hold} fontSize={9 * hold} fill="var(--text-muted)" className="font-mono">
         {sig}
       </tspan>
     </text>

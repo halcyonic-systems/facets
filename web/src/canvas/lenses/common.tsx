@@ -8,10 +8,65 @@ import { primitiveGlyph } from "./primitive-glyphs";
 import { humanize } from "../../ui";
 import { NODE_R, type Pt } from "../geometry";
 import { groundingLine, groundingStroke, useGroundingOverlay } from "../grounding";
-import { STYLE } from "../style";
-import type { ReactNode, PointerEvent as ReactPointerEvent } from "react";
-import { useState } from "react";
-import { screenHold, useStageHold } from "../stageScale";
+import { HANDLE, LABEL, STROKE_FLOOR_PX, STYLE, TAB } from "../style";
+import type { ReactElement, ReactNode, PointerEvent as ReactPointerEvent, SVGProps } from "react";
+import { Children, cloneElement, isValidElement, useLayoutEffect, useRef, useState } from "react";
+import { COARSE_POINTER, screenHold, screenWorld, strokeWorld, textWorld, useStageHold, useStageScale } from "../stageScale";
+
+/** The text of a label element, flattened, so a paper tab can re-measure only
+ *  when the words change. */
+function flatText(node: ReactNode): string {
+  let out = "";
+  Children.forEach(node, (c) => {
+    if (typeof c === "string" || typeof c === "number") out += String(c);
+    else if (isValidElement<{ children?: ReactNode }>(c) && c.type !== "title") out += flatText(c.props.children);
+  });
+  return out;
+}
+
+/** A reading on a paper tab (makeover rule 19): a `--paper` rect behind the
+ *  text, 2 screen px of padding and radius, so a label reads over any crossing.
+ *  The box is the DOM's own `getBBox`, taken after layout; before it, under SSR
+ *  and in jsdom (no `getBBox`) the text draws bare, which is what the unit
+ *  suite sees. Group attributes (`data-edge-label`, `data-node-label`) go on the
+ *  wrapper so Canvas's crowding pass measures tab and text as one box and the
+ *  aperture CSS hides both. */
+export function PaperTab({ children, ...group }: { children: ReactElement<SVGProps<SVGTextElement>> } & SVGProps<SVGGElement>) {
+  const scale = useStageScale();
+  const ref = useRef<SVGTextElement>(null);
+  const [box, setBox] = useState<{ x: number; y: number; w: number; h: number } | null>(null);
+  const text = flatText(children);
+  const { x, y, fontSize } = children.props;
+  useLayoutEffect(() => {
+    const el = ref.current;
+    if (!el || typeof el.getBBox !== "function") return;
+    const b = el.getBBox();
+    if (b.width === 0 && b.height === 0) return;
+    setBox((prev) =>
+      prev && prev.x === b.x && prev.y === b.y && prev.w === b.width && prev.h === b.height
+        ? prev
+        : { x: b.x, y: b.y, w: b.width, h: b.height },
+    );
+  }, [text, scale, x, y, fontSize]);
+  const pad = screenWorld(TAB.pad, scale);
+  return (
+    <g {...group}>
+      {box && (
+        <rect
+          data-paper-tab
+          x={box.x - pad}
+          y={box.y - pad}
+          width={box.w + 2 * pad}
+          height={box.h + 2 * pad}
+          rx={screenWorld(TAB.rx, scale)}
+          fill="var(--paper)"
+          pointerEvents="none"
+        />
+      )}
+      {cloneElement(children, { ref } as Partial<SVGProps<SVGTextElement>>)}
+    </g>
+  );
+}
 
 
 /** Resolved per-lens stroke styling for a visible edge path. */
@@ -48,8 +103,6 @@ interface NodeBodyProps {
   showHalo: boolean;
   /** Mobus env sources/sinks are open unfilled shapes (out of scope at this bounding — flows only, by choice). */
   envOpen: boolean;
-  /** Mobus components carry the "work sphere" sheen of the house drawings (Fig. 4.5). */
-  sphere?: boolean;
   stroke: string;
   strokeOpacity: number;
   strokeWidth: number;
@@ -122,7 +175,6 @@ export function NodeBody({
   isSquare,
   showHalo,
   envOpen,
-  sphere = false,
   stroke: lensStroke,
   strokeOpacity: lensStrokeOpacity,
   strokeWidth: lensStrokeWidth,
@@ -138,8 +190,9 @@ export function NodeBody({
   bodyScale = 1,
   dash,
 }: NodeBodyProps) {
-  const ctxHold = useStageHold();
-  const hold = scale === undefined ? ctxHold : screenHold(scale);
+  const ctxScale = useStageScale();
+  const sc = scale === undefined ? ctxScale : scale;
+  const hold = screenHold(sc);
   const frac = sim ? Math.max(0, Math.min(1, sim.frac)) : null;
   const clipId = `fill-clip-${thing.id}`;
   const [selfHover, setSelfHover] = useState(false);
@@ -156,7 +209,8 @@ export function NodeBody({
   const gs = overlay ? groundingStroke(thing.grounding) : null;
   const stroke = gs ? gs.color : lensStroke;
   const strokeOpacity = gs ? gs.opacity : lensStrokeOpacity;
-  const strokeWidth = gs ? lensStrokeWidth * 2.2 : lensStrokeWidth;
+  // Rule 17: 2 world px, never thinner than the screen floor at fit.
+  const strokeWidth = strokeWorld(gs ? lensStrokeWidth * 2.2 : lensStrokeWidth, sc, STROKE_FLOOR_PX);
   const strokeDash = gs?.dash ?? dash;
   const groundingTitle = overlay ? (groundingLine(thing.grounding) ?? "ungraded") : null;
   // Vertical extents of the body shape — the sim fill's clip rises bottom-up
@@ -218,7 +272,7 @@ export function NodeBody({
           r={NODE_R + STYLE.boundaryRim.pad}
           fill="none"
           stroke="var(--lens-accent)"
-          strokeWidth={STYLE.boundaryRim.width}
+          strokeWidth={strokeWorld(STYLE.boundaryRim.width, sc, STROKE_FLOOR_PX)}
           strokeOpacity={STYLE.boundaryRim.opacity}
         />
       )}
@@ -305,12 +359,12 @@ export function NodeBody({
         <path
           data-node-shape="triangle"
           d={TRI_PATH}
-          fill="color-mix(in srgb, var(--verdict-warning) 16%, var(--bg-secondary))"
+          fill="color-mix(in srgb, var(--prim-modulating) 18%, var(--bg-secondary))"
           stroke={stroke}
           strokeOpacity={strokeOpacity}
           strokeWidth={strokeWidth}
           strokeDasharray={strokeDash}
-          strokeLinejoin="round"
+          strokeLinejoin="miter"
           fillOpacity={frac !== null && !simPosition && !emitter ? 0 : 1}
         >
           <title>decision ⁄ regulator — a modulating work process (Mobus Fig 4.17)</title>
@@ -332,7 +386,7 @@ export function NodeBody({
       ) : (
         <circle
           r={NODE_R}
-          fill={sphere ? "url(#mobus-sphere)" : STYLE.nodeFill}
+          fill={STYLE.nodeFill}
           stroke={stroke}
           strokeOpacity={strokeOpacity}
           strokeWidth={strokeWidth}
@@ -363,9 +417,9 @@ export function NodeBody({
           style={{ color: "var(--lens-accent)" }}
           fill="none"
           stroke="var(--lens-accent)"
-          strokeWidth={2.1 / ((NODE_R * GLYPH_FRAC) / 6)}
-          strokeLinecap="round"
-          strokeLinejoin="round"
+          strokeWidth={strokeWorld(2, sc, STROKE_FLOOR_PX) / ((NODE_R * GLYPH_FRAC) / 6)}
+          strokeLinecap="square"
+          strokeLinejoin="miter"
           pointerEvents="none"
         >
           <title>{`work process: ${badge.toLowerCase()}`}</title>
@@ -388,9 +442,9 @@ export function NodeBody({
             style={{ color: "var(--lens-accent)" }}
             fill="none"
             stroke="var(--lens-accent)"
-            strokeWidth={1.5}
-            strokeLinecap="round"
-            strokeLinejoin="round"
+            strokeWidth={2}
+            strokeLinecap="square"
+            strokeLinejoin="miter"
           >
             {primitiveGlyph(badge)}
           </g>
@@ -414,25 +468,40 @@ export function NodeBody({
       {/* #335: a thing's NAME is a fixed obstacle in the label-crowding pass —
           an edge label landing on it is the one that goes quiet, since a name
           has no hover gesture to give it back. Tagged, never quieted. */}
-      <text
-        data-node-label={thing.id}
-        y={NODE_R * bodyScale + 16}
-        textAnchor="middle"
-        fontSize={(labelSmall ? STYLE.label.smallSize : STYLE.label.size) * hold}
-        fill={labelSmall ? "var(--text-muted)" : STYLE.label.fill}
-        letterSpacing={STYLE.label.tracking}
-        className={`${STYLE.label.mono ? "font-mono" : "font-body"} pointer-events-none`}
-      >
-        {STYLE.label.uppercase ? thing.name.toUpperCase() : thing.name}
-      </text>
+      <PaperTab data-node-label={thing.id}>
+        <text
+          y={NODE_R * bodyScale + 16}
+          textAnchor="middle"
+          fontSize={textWorld(labelSmall ? LABEL.small : LABEL.size, sc, LABEL.floorPx)}
+          fontWeight={LABEL.weight}
+          fill={labelSmall ? "var(--text-secondary)" : STYLE.label.fill}
+          className="font-body pointer-events-none"
+        >
+          {thing.name}
+        </text>
+      </PaperTab>
 
+      {/* The connect handle is a reading, not a world object: an 8 px disc on
+          screen at every zoom (tldraw's 8 / zoom), over a hit disc of r 12
+          (the 24 px target of rule 11; 1.75x under a coarse pointer). */}
       <circle
+        data-export-ignore
+        data-handle-hit
         cx={NODE_R * 0.75 * bodyScale}
         cy={NODE_R * 0.75 * bodyScale}
-        r={STYLE.handle.r * hold}
+        r={screenWorld(HANDLE.hitR * (COARSE_POINTER ? HANDLE.coarse : 1), sc)}
+        fill="transparent"
+        className="cursor-crosshair"
+        onPointerDown={onHandlePointerDown}
+      />
+      <circle
+        data-handle
+        cx={NODE_R * 0.75 * bodyScale}
+        cy={NODE_R * 0.75 * bodyScale}
+        r={screenWorld(HANDLE.r, sc)}
         fill="var(--bg-primary)"
         stroke="var(--lens-accent)"
-        strokeWidth={STYLE.handle.width * hold}
+        strokeWidth={screenWorld(HANDLE.width, sc)}
         className="cursor-crosshair"
         onPointerDown={onHandlePointerDown}
       />
@@ -491,6 +560,7 @@ export function EdgeScaffold({
   grounding,
 }: EdgeScaffoldProps) {
   const hold = useStageHold();
+  const scale = useStageScale();
   // #411: under the overlay the stroke reads grade, not substance. The
   // arrowhead keeps its marker (direction is not in question) but takes the
   // grade's colour through the generic marker, since kind markers are inked.
@@ -580,7 +650,9 @@ export function EdgeScaffold({
           fill="none"
           stroke={style.color}
           strokeOpacity={style.opacity}
-          strokeWidth={style.width}
+          // Rule 19: 2 world px, floored on screen. The stroke is non-scaling,
+          // so the world width is applied here as its screen reading.
+          strokeWidth={Math.max(style.width * scale, STROKE_FLOOR_PX)}
           strokeDasharray={style.dash}
           vectorEffect="non-scaling-stroke"
           filter={style.filter}
@@ -599,15 +671,24 @@ export function EdgeScaffold({
           fixed point and settles in one pass. `data-edge-label` is the handle
           Canvas queries to measure, and the handle exportDiagram uses to force
           every label back to full strength — a still has no hover. */}
-      {label && (
-        <g
-          data-edge-label={relationId}
-          opacity={crowded && !hover && !selected ? 0 : 1}
-          pointerEvents={crowded && !hover && !selected ? "none" : undefined}
-        >
-          {label}
-        </g>
-      )}
+      {label &&
+        (isValidElement<SVGProps<SVGTextElement>>(label) ? (
+          <PaperTab
+            data-edge-label={relationId}
+            opacity={crowded && !hover && !selected ? 0 : 1}
+            pointerEvents={crowded && !hover && !selected ? "none" : undefined}
+          >
+            {label}
+          </PaperTab>
+        ) : (
+          <g
+            data-edge-label={relationId}
+            opacity={crowded && !hover && !selected ? 0 : 1}
+            pointerEvents={crowded && !hover && !selected ? "none" : undefined}
+          >
+            {label}
+          </g>
+        ))}
       {ample ? (
         <text
           x={labelAt.x}

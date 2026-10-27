@@ -8,10 +8,10 @@
 import { KIND_COLOR } from "../types";
 import type { EdgeFact, Relation } from "../../kernel/types";
 import { edgeGeometry } from "../geometry";
-import { STYLE, elideEdgeLabel } from "../style";
+import { LABEL, STYLE, elideEdgeLabel } from "../style";
 import { EdgeScaffold, NodeBody, NullPortView, type EdgeStyle } from "./common";
 import type { LensEdgeProps, LensNodeProps } from "./registry";
-import { useStageHold } from "../stageScale";
+import { textWorld, useStageHold, useStageScale } from "../stageScale";
 
 function NodeView({ thing, isBoundary, isOrphan, hovered, sim, onPointerDown, onHandlePointerDown, scale, inert }: LensNodeProps) {
   return (
@@ -97,6 +97,7 @@ export function channelCopy(fact: EdgeFact | undefined, isBond: boolean): string
 
 function EdgeView({ model, relation, fact, selected, driven, sim, crowded, onSelect }: LensEdgeProps) {
   const hold = useStageHold();
+  const scale = useStageScale();
   const geo = edgeGeometry(model, relation, true);
   if (!geo) return null;
   const { d, labelAt } = geo;
@@ -122,13 +123,13 @@ function EdgeView({ model, relation, fact, selected, driven, sim, crowded, onSel
       x={labelAt.x + (driven ? 9 : 0)}
       y={labelAt.y - 6}
       textAnchor={driven ? "start" : "middle"}
-      fontSize={10 * hold}
-      fill="var(--text-muted)"
-      className="font-mono"
+      fontSize={textWorld(LABEL.edge, scale, LABEL.edgeFloorPx)}
+      fill="var(--text-secondary)"
+      className="font-body"
     >
       <title>{relation.name}</title>
       {elideEdgeLabel(relation.name)}
-      <tspan fill="var(--text-secondary)">{` ${relation.is_bond ? "▷" : "∼"}`}</tspan>
+      <tspan fill="var(--text-muted)">{` ${relation.is_bond ? "▷" : "∼"}`}</tspan>
     </text>
   ) : null;
 

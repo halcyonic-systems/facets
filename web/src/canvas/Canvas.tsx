@@ -49,24 +49,19 @@ import {
   hasOutLine,
 } from "./frameRebase";
 import { EmbeddedFrame } from "./EmbeddedFrame";
-import { STYLE, elideEdgeLabel } from "./style";
+import { ARROW, HANDLE, LABEL, STROKE_FLOOR_PX, STYLE, elideEdgeLabel } from "./style";
 import { pendingCrossings } from "./crossings";
 import { LensRegistry, type PaletteTool } from "./lenses/registry";
 import { MassOverlay } from "./MassOverlay";
 import { GroundingLegend, GroundingOverlayContext } from "./grounding";
-import { screenHold, StageScale } from "./stageScale";
+import { screenHold, screenWorld, strokeWorld, textWorld, StageScale } from "./stageScale";
+import { PaperTab } from "./lenses/common";
 import type { DecomposeAffordance } from "./NodeEditor";
 
 /** #335: the "nothing is crowded" set. Hoisted to module scope so the common
  *  case allocates nothing per render; the size-and-membership guard on
  *  `setCrowded` is what actually keeps the measure/render pass from looping. */
 const EMPTY_CROWD: ReadonlySet<number> = new Set<number>();
-
-/** How much larger a boundary-crossing flow's arrowhead is drawn than an
- *  interior one. The head is the per-flow direction mark, and at the shipped
- *  register it renders 3-4 screen px on a fitted model — correct and
- *  unreadable, the same failure the port chevron had. */
-const EXO_ARROW_GAIN = 2;
 
 // #139 rule 7 — the ride an accelerator takes to a crossing. One notch per
 // frame at roughly the wheel's own rate, so a double-click and a hand on the
@@ -690,6 +685,9 @@ export default function Canvas({
   // they would grow with the world; edges hold a screen stroke and the heads
   // hold with them.
   const headHold = screenHold(scale);
+  // One arrowhead size for every flow (rule 19): world units, since the
+  // markers are `userSpaceOnUse`, held at 1.5x and floored on screen.
+  const headSize = Math.max(ARROW.size * headHold, screenWorld(ARROW.floorPx, scale));
   const viewW = svgRef.current?.clientWidth ?? 0;
   const viewH = svgRef.current?.clientHeight ?? 0;
   const inViewport = (t: Thing) => {
@@ -984,13 +982,16 @@ export default function Canvas({
     >
       <StageScale.Provider value={scale}>
       <defs>
+        {/* Every head is one size (rule 19): `userSpaceOnUse` so the stroke
+            width no longer sizes it, `headSize` world px held and floored. */}
         <marker
           id="crossing-arrow"
           viewBox="0 0 10 10"
           refX="8"
           refY="5"
-          markerWidth={STYLE.arrowSize * headHold * 0.8}
-          markerHeight={STYLE.arrowSize * headHold * 0.8}
+          markerUnits="userSpaceOnUse"
+          markerWidth={headSize}
+          markerHeight={headSize}
           orient="auto-start-reverse"
         >
           <path d="M 0 0 L 10 5 L 0 10 z" fill="var(--text-muted)" fillOpacity={0.7} />
@@ -1000,8 +1001,9 @@ export default function Canvas({
           viewBox="0 0 10 10"
           refX="8"
           refY="5"
-          markerWidth={STYLE.arrowSize * headHold}
-          markerHeight={STYLE.arrowSize * headHold}
+          markerUnits="userSpaceOnUse"
+          markerWidth={headSize}
+          markerHeight={headSize}
           orient="auto-start-reverse"
         >
           <path d="M 0 0 L 10 5 L 0 10 z" fill="var(--accent-slate)" />
@@ -1014,8 +1016,9 @@ export default function Canvas({
           viewBox="0 0 10 10"
           refX="8"
           refY="5"
-          markerWidth={STYLE.arrowSize * headHold}
-          markerHeight={STYLE.arrowSize * headHold}
+          markerUnits="userSpaceOnUse"
+          markerWidth={headSize}
+          markerHeight={headSize}
           orient="auto-start-reverse"
         >
           <path d="M 0 0 L 10 5 L 0 10 z" fill="context-stroke" />
@@ -1030,23 +1033,20 @@ export default function Canvas({
             viewBox="0 0 10 10"
             refX="8"
             refY="5"
-            markerWidth={STYLE.arrowSize * headHold}
-            markerHeight={STYLE.arrowSize * headHold}
+            markerUnits="userSpaceOnUse"
+            markerWidth={headSize}
+            markerHeight={headSize}
             orient="auto-start-reverse"
           >
             <path d="M 0 0 L 10 5 L 0 10 z" fill={color} />
           </marker>
         ))}
-        {/* #C phase 2: a boundary CROSSING carries a heavier head.
-            Direction is a per-FLOW question and the port cannot answer it — on
-            federal-reserve.sl four of five ports are `hybrid`, carrying inbound
-            and outbound at once, so their glyph says "both" however large it is
-            drawn. The head is the only mark that belongs to one flow.
-            It needed the gain because `markerUnits` defaults to strokeWidth: at
-            arrowSize 5 a matter head is 7.5 world units and an informational
-            one 5, which at a fitted 0.54 render as ~4 and ~2.7 SCREEN px.
-            Endo edges keep the plain head — inside the boundary there is no
-            in/out to read, so amplifying there would be decoration. */}
+        {/* #C phase 2 gave a boundary CROSSING a 2x head because the default
+            `markerUnits` sized heads by stroke width and a fitted model drew
+            them at 3 to 4 screen px. Heads are now one world size with a screen
+            floor, so the exo ids stay (mobus.tsx still names them) at the same
+            size as every other head: the crossing is already shown by the
+            notch (makeover rule 19, canvas audit § 3.2). */}
         {Object.entries(KIND_COLOR).map(([k, color]) => (
           <marker
             key={`${k}-exo`}
@@ -1054,8 +1054,9 @@ export default function Canvas({
             viewBox="0 0 10 10"
             refX="8"
             refY="5"
-            markerWidth={STYLE.arrowSize * EXO_ARROW_GAIN * headHold}
-            markerHeight={STYLE.arrowSize * EXO_ARROW_GAIN * headHold}
+            markerUnits="userSpaceOnUse"
+            markerWidth={headSize}
+            markerHeight={headSize}
             orient="auto-start-reverse"
           >
             <path d="M 0 0 L 10 5 L 0 10 z" fill={color} />
@@ -1067,16 +1068,18 @@ export default function Canvas({
             no end that is the receiving one. Hollow and unfilled on purpose: a
             filled terminus reads as a stop, and a mere relation does not stop
             anything, it simply holds. Klir never uses it (see klir.tsx). */}
-        <marker id="coupling" viewBox="0 0 10 10" refX="5" refY="5" markerWidth={STYLE.arrowSize} markerHeight={STYLE.arrowSize} orient="auto">
-          <circle cx="5" cy="5" r="3" fill="none" stroke="var(--text-muted)" strokeWidth="1.4" />
+        <marker
+          id="coupling"
+          viewBox="0 0 10 10"
+          refX="5"
+          refY="5"
+          markerUnits="userSpaceOnUse"
+          markerWidth={headSize}
+          markerHeight={headSize}
+          orient="auto"
+        >
+          <circle cx="5" cy="5" r="3" fill="none" stroke="var(--text-muted)" strokeWidth="1.6" />
         </marker>
-        {/* the "work sphere" sheen of the house drawings (Fig. 4.5) — a neutral
-            top-left highlight, never a substance color. */}
-        <radialGradient id="mobus-sphere" cx="38%" cy="34%" r="72%">
-          <stop offset="0%" stopColor="var(--bg-surface)" />
-          <stop offset="62%" stopColor="var(--bg-secondary)" />
-          <stop offset="100%" stopColor="var(--bg-surface)" />
-        </radialGradient>
         {/* perceptive fuzziness → membrane edge blur (Mobus B properties) */}
         <filter id="ring-blur" x="-20%" y="-20%" width="140%" height="140%">
           <feGaussianBlur stdDeviation={facts ? facts.boundary_props.perceptive_fuzziness * 6 : 0} />
@@ -1094,16 +1097,6 @@ export default function Canvas({
             <circle cx={f.thing.x} cy={f.thing.y} r={NODE_R} />
           </clipPath>
         ))}
-        {/* energy flows glow (Mobus typed strokes) */}
-        <filter id="energy-glow" x="-40%" y="-40%" width="180%" height="180%">
-          <feDropShadow
-            dx="0"
-            dy="0"
-            stdDeviation={STYLE.energyGlow.dev}
-            floodColor="var(--accent)"
-            floodOpacity={STYLE.energyGlow.opacity}
-          />
-        </filter>
       </defs>
       <g transform={`translate(${pan.x}, ${pan.y}) scale(${scale})`}>
         {lens === "Klir" && containerBox && (
@@ -1115,10 +1108,10 @@ export default function Canvas({
               y={containerBox.y - 40}
               width={containerBox.w + 80}
               height={containerBox.h + 80}
-              rx={24}
+              rx={8}
               fill="none"
-              stroke="var(--border)"
-              strokeWidth={1.5}
+              stroke="var(--rule-strong)"
+              strokeWidth={strokeWorld(2, scale, STROKE_FLOOR_PX)}
               strokeDasharray="6 5"
             />
             <text x={containerBox.x - 34} y={containerBox.y - 18} className="font-mono text-xs" fill="var(--text-muted)">
@@ -1139,11 +1132,11 @@ export default function Canvas({
               y={hull.y}
               width={hull.w}
               height={hull.h}
-              rx={18}
+              rx={8}
               fill="none"
               stroke="var(--lens-accent)"
               strokeOpacity={0.55}
-              strokeWidth={1.5}
+              strokeWidth={strokeWorld(2, scale, STROKE_FLOOR_PX)}
               strokeDasharray="8 6"
             />
             {nameDraft !== null && nameInput({ x: hull.x + 8, y: hull.y - 26, width: 160 })}
@@ -1254,7 +1247,7 @@ export default function Canvas({
               fill="var(--accent-soft)"
               fillOpacity={STYLE.ring.fillOpacity}
               stroke="var(--accent-slate)"
-              strokeWidth={STYLE.ring.strokeWidth}
+              strokeWidth={strokeWorld(STYLE.ring.strokeWidth, scale, STROKE_FLOOR_PX)}
               strokeDasharray={
                 facts && facts.boundary_props.porosity > 0
                   ? `${Math.max(2, 14 - facts.boundary_props.porosity * 12)} ${2 + facts.boundary_props.porosity * 8}`
@@ -1338,21 +1331,23 @@ export default function Canvas({
                 y2={to.y}
                 stroke={KIND_COLOR[c.kind] ?? "var(--text-muted)"}
                 strokeOpacity={0.7}
-                strokeWidth={1.5}
-                strokeDasharray="3 5"
+                strokeWidth={strokeWorld(2, scale, STROKE_FLOOR_PX)}
+                strokeDasharray="6 4"
                 markerEnd="url(#crossing-arrow)"
               />
               {label && (
-                <text
-                  x={mid.x}
-                  y={mid.y - 6}
-                  fontSize={10}
-                  textAnchor="middle"
-                  fill="var(--text-muted)"
-                  className="font-mono"
-                >
-                  {label}
-                </text>
+                <PaperTab>
+                  <text
+                    x={mid.x}
+                    y={mid.y - 6}
+                    fontSize={textWorld(LABEL.edge, scale, LABEL.edgeFloorPx)}
+                    textAnchor="middle"
+                    fill="var(--text-secondary)"
+                    className="font-body"
+                  >
+                    {label}
+                  </text>
+                </PaperTab>
               )}
             </g>
           );
@@ -1462,10 +1457,10 @@ export default function Canvas({
             <circle
               cx={f.thing.x + NODE_R * 0.75}
               cy={f.thing.y + NODE_R * 0.75}
-              r={STYLE.handle.r * headHold}
+              r={screenWorld(HANDLE.r, scale)}
               fill="var(--bg-primary)"
               stroke="var(--lens-accent)"
-              strokeWidth={STYLE.handle.width * headHold}
+              strokeWidth={screenWorld(HANDLE.width, scale)}
               pointerEvents="none"
             />
           </g>
