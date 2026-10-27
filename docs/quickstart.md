@@ -9,10 +9,12 @@ defer to never covered it. New terms link
 to the [terminology concordance](language/terminology-concordance.md) on first
 use; the [glossary](glossary.md) is the fast reference.
 
-Prefer to touch before you read? The **Sandbox** door on the Home screen is the
-no-text on-ramp: stamp a systems process, press Run, and tweak the running flow —
-then come back here when you want the judged-model path. Its design record is
-[`design/sandbox-surface.md`](design/sandbox-surface.md).
+Prefer to touch before you read? Start a **New model** and choose **Wire
+processes and run**: drop work processes from the Build rail, wire them, press
+Run, and turn a knob while it runs. It keeps running past the run length until
+you pause it. Come back here when you want the judged-model path. The design
+record is [`design/one-surface.md`](design/one-surface.md); the older sandbox
+surface, with Troncale stamps, is still at `?sandbox=1`.
 
 ## 0. Install the prerequisites
 
@@ -46,13 +48,13 @@ just dev      # installs web deps if needed, rebuilds the wasm kernel, starts th
 Open the URL it prints (usually http://localhost:5173 — it moves to the next free
 port if that one is taken, so read the URL rather than assuming it).
 
-You land on a **start screen** with four doors: *Draw your system*, *Build from
-data*, *Open a model*, *Sandbox*.
+You land on a **start screen** with two doors: *New model* and *Open a model*.
 
 ## 2. Author a model as text
 
-Click **Draw your system**. A start surface offers to draft a model from a
-plain-language description, which needs a reasoner. Click **skip** for now. (The
+Click **New model**. A start surface offers three ways in: describe the model in
+plain language (which needs a reasoner), draw it by hand, or wire processes and
+run. Click **skip** for now. (The
 model's name, Bunge's kingdom and genus, and a subject domain are set from the
 model's name in the top bar, or by the `system` line of the text below.)
 
