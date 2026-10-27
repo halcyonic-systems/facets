@@ -416,7 +416,8 @@ export function DataMode({
               value={currentBinding(h)}
               onChange={(e) => setBinding(h, e.target.value)}
               aria-label={`Binding for column ${h}`}
-              className="max-w-[10rem] font-mono"
+              className="w-full"
+              style={{ fontSize: "var(--t-meta)" }}
             >
               <option value="ignore">— ignore —</option>
               <option value="time">time (what the rows are measured against)</option>
@@ -464,7 +465,8 @@ export function DataMode({
                 value={manifest.mapping.find((m) => m.column === h)?.unit ?? ""}
                 placeholder="unit"
                 onChange={(e) => setUnit(h, e.target.value)}
-                className="w-20 font-mono"
+                className="font-mono"
+                style={{ width: "calc(9ch + 18px)" }}
               />
             )}
           </li>
@@ -478,7 +480,7 @@ export function DataMode({
   // 1024 and renders at 390 (rule 16; audit #8).
   const flowsRail = (
     <section
-      className="max-h-[40%] shrink-0 overflow-y-auto border-t xl:max-h-none xl:w-60 xl:border-t-0 xl:border-l"
+      className="max-h-[40%] shrink-0 overflow-y-auto border-t xl:max-h-none xl:w-80 xl:border-t-0 xl:border-l"
       style={{ borderColor: "var(--hairline)", background: "var(--bg-secondary)" }}
       aria-label="Bindings and unbound flows"
     >
