@@ -534,52 +534,90 @@ const KIND_VAR = {
 } as const;
 
 const ink = { fill: "none", stroke: "var(--text-primary)", strokeWidth: 2 } as const;
-
-/** Each term's shape, drawn as the canvas draws it, on a 40×32 plate. */
-const TERM_GLYPH: Record<string, ReactNode> = {
-  system: <ellipse cx="20" cy="16" rx="16" ry="12" style={ink} />,
-  component: (
-    <circle
-      cx="20"
-      cy="16"
-      r="10"
-      style={{
-        fill: "color-mix(in srgb, var(--prim-amplifying) 14%, var(--bg-secondary))",
-        stroke: "var(--prim-amplifying)",
-        strokeWidth: 2,
-      }}
-    />
-  ),
-  interface: (
-    <>
-      <path d="M4 26 Q20 2 36 26" style={ink} />
-      <rect x="15" y="9" width="10" height="10" style={{ ...ink, fill: "var(--bg-secondary)" }} />
-    </>
-  ),
-  source: (
-    <>
-      <path d="M17 6 H5 V26 H17" style={ink} />
-      <path d="M23 6 H35 V26 H23" style={ink} />
-    </>
-  ),
-  flow: (
-    <>
-      <line x1="4" y1="7" x2="36" y2="7" style={{ stroke: KIND_VAR.matter, strokeWidth: 2.5 }} />
-      <line x1="4" y1="16" x2="36" y2="16" style={{ stroke: KIND_VAR.energy, strokeWidth: 2.5 }} />
-      <line x1="4" y1="25" x2="36" y2="25" style={{ stroke: KIND_VAR.informational, strokeWidth: 2.5, strokeDasharray: "5 4" }} />
-    </>
-  ),
+const wordStyle: CSSProperties = {
+  fontFamily: "var(--font-body)",
+  fontWeight: 600,
+  fontSize: "var(--t-sm)",
+  fill: "var(--text-primary)",
 };
+const keyStyle: CSSProperties = { fontFamily: mono, fontSize: "var(--t-meta)", fill: "var(--accent)" };
 
-/** The language, in five words. The glosses hold in any domain; the keyword is
- *  the SL word that writes it (docs/language/). */
-const TERMS: { id: string; word: string; sl: string; gloss: string }[] = [
-  { id: "system", word: "System", sl: "system", gloss: "Whatever you draw a boundary around." },
-  { id: "component", word: "Component", sl: "component", gloss: "A part inside it that does something." },
-  { id: "interface", word: "Interface", sl: "interface", gloss: "Where something crosses the boundary." },
-  { id: "source", word: "Source and sink", sl: "source · sink", gloss: "Where flows come from and where they go." },
-  { id: "flow", word: "Flow", sl: "flow", gloss: "Matter, energy or information on the move." },
-];
+/** A word of the language where it sits on the drawing, with its SL keyword
+ *  under it. */
+function Term({ x, y, word, sl }: { x: number; y: number; word: string; sl: string }) {
+  return (
+    <text x={x} y={y} textAnchor="middle">
+      <tspan style={wordStyle}>{word}</tspan>
+      <tspan x={x} dy="1.35em" style={keyStyle}>
+        {sl}
+      </tspan>
+    </text>
+  );
+}
+
+/** The language as one small system: a source outside sends a flow across an
+ *  interface to a component inside the boundary, and on out to a sink. Each
+ *  word is labelled where it sits, with its SL keyword, so the five words read
+ *  as a sentence rather than a list (the entry pass, 2026-10-27). */
+function LanguageFigure() {
+  const R = { cx: 260, cy: 128, rx: 132, ry: 88 };
+  const inL = R.cx - R.rx;
+  const inR = R.cx + R.rx;
+  const arrow = (d: string, color: string, dashed?: boolean) => (
+    <path
+      d={d}
+      style={{ fill: "none", stroke: color, strokeWidth: 2.5, strokeDasharray: dashed ? "6 5" : undefined }}
+      markerEnd={`url(#home-lang-${dashed ? "info" : "matter"})`}
+    />
+  );
+  return (
+    <svg viewBox="0 0 520 228" className="block h-auto w-full" role="img" aria-labelledby="home-lang-t">
+      <title id="home-lang-t">
+        A source sends a flow across an interface to a component inside the system, and on to a sink.
+      </title>
+      <defs>
+        {(
+          [
+            ["matter", KIND_VAR.matter],
+            ["info", KIND_VAR.informational],
+          ] as const
+        ).map(([id, c]) => (
+          <marker key={id} id={`home-lang-${id}`} viewBox="0 0 10 10" refX="8" refY="5" markerWidth="7" markerHeight="7" orient="auto">
+            <path d="M0,0 L10,5 L0,10 Z" style={{ fill: c }} />
+          </marker>
+        ))}
+      </defs>
+      <ellipse cx={R.cx} cy={R.cy} rx={R.rx} ry={R.ry} style={{ ...ink, fill: "var(--bg-primary)" }} />
+      {arrow(`M62,${R.cy} H${inL - 12}`, KIND_VAR.matter)}
+      {arrow(`M${inL + 9},${R.cy} H${R.cx - 34}`, KIND_VAR.matter)}
+      {arrow(`M${R.cx + 30},${R.cy} H${inR - 12}`, KIND_VAR.informational, true)}
+      {arrow(`M${inR + 9},${R.cy} H${458}`, KIND_VAR.informational, true)}
+      {/* source and sink: Mobus's open squares, open toward the system */}
+      <path d={`M60,${R.cy - 18} H24 V${R.cy + 18} H60`} style={ink} />
+      <path d={`M460,${R.cy - 18} H496 V${R.cy + 18} H460`} style={ink} />
+      {/* interfaces: notches on the boundary */}
+      {[inL, inR].map((x) => (
+        <rect key={x} x={x - 8} y={R.cy - 8} width={16} height={16} style={{ ...ink, fill: "var(--bg-secondary)" }} />
+      ))}
+      <circle
+        cx={R.cx}
+        cy={R.cy}
+        r={28}
+        style={{
+          fill: "color-mix(in srgb, var(--prim-amplifying) 16%, var(--bg-secondary))",
+          stroke: "var(--prim-amplifying)",
+          strokeWidth: 2.5,
+        }}
+      />
+      <Term x={R.cx} y={R.cy - R.ry - 22} word="System" sl="system" />
+      <Term x={R.cx} y={R.cy + 50} word="Component" sl="component" />
+      <Term x={inL - 32} y={R.cy - 46} word="Interface" sl="interface" />
+      <Term x={(inR + 458) / 2 + 4} y={R.cy - 46} word="Flow" sl="flow" />
+      <Term x={42} y={R.cy + 44} word="Source" sl="source" />
+      <Term x={478} y={R.cy + 44} word="Sink" sl="sink" />
+    </svg>
+  );
+}
 
 const THEORY_URL = "https://facets.systems/docs/theory-fidelity.html";
 
@@ -679,8 +717,8 @@ export function HomeMenu({
           </div>
         </div>
 
-        {/* The language: five words for any system, each with its shape and
-            its SL keyword. */}
+        {/* The language: its words drawn as one small system, each labelled
+            with its SL keyword. */}
         <section className="min-w-0" aria-labelledby="home-language">
           <h2 id="home-language" style={{ ...nameStyle, ...d2 }}>
             One language for any system
@@ -688,30 +726,12 @@ export function HomeMenu({
           <p className="mt-2 text-sm leading-6" style={{ color: "var(--text-secondary)" }}>
             A cell, a firm and a market, described in the same few words.
           </p>
-          <dl className="mt-5 border-t" style={{ borderColor: "var(--hairline)" }}>
-            {TERMS.map((t) => (
-              <div
-                key={t.id}
-                className="grid grid-cols-[40px_minmax(0,1fr)] items-center gap-x-4 border-b py-3 sm:grid-cols-[40px_9rem_minmax(0,1fr)]"
-                style={{ borderColor: "var(--hairline)" }}
-              >
-                <svg width="40" height="32" viewBox="0 0 40 32" aria-hidden="true" className="row-span-2 sm:row-span-1">
-                  {TERM_GLYPH[t.id]}
-                </svg>
-                <dt className="flex items-baseline gap-2">
-                  <span className="text-base font-semibold" style={{ color: "var(--text-primary)" }}>
-                    {t.word}
-                  </span>
-                </dt>
-                <dd className="flex min-w-0 flex-wrap items-baseline justify-between gap-x-3 text-sm" style={{ color: "var(--text-secondary)" }}>
-                  <span>{t.gloss}</span>
-                  <code className="text-xs" style={{ fontFamily: mono, color: "var(--accent)" }}>
-                    {t.sl}
-                  </code>
-                </dd>
-              </div>
-            ))}
-          </dl>
+          <div className="mt-5">
+            <LanguageFigure />
+          </div>
+          <p className="mt-4 text-sm leading-6" style={{ color: "var(--text-secondary)" }}>
+            A source sends a flow across an interface to a component inside the system, and on to a sink.
+          </p>
           {onOpenFeatured && (
             <button type="button" onClick={onOpenFeatured} className={`${quiet} -mx-2 mt-3`} style={{ color: "var(--accent)" }}>
               See it applied to the LLM serving market
