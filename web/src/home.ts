@@ -280,18 +280,21 @@ export function matchesQuery(row: ShippedModel, query: string): boolean {
 // featured — the three cards the library leads with
 // ---------------------------------------------------------------------------
 
-/** The models a newcomer meets first, in order: the LLM serving market (the
- *  one data-fed observatory model, and the system the instrument is being
- *  pointed at), Bitcoin (a social system with a conserved backbone), and the
- *  steel-plant walk (Mobus's own procedure, two levels deep). An EDITORIAL list
- *  like SHELF_LEAD, decided in the 2026-10-26 cut; a key that no longer ships
- *  is skipped rather than failing, so a retirement cannot blank the row. A
- *  runnable example is keyed by its bundle name and a structural one by
- *  `example:<file>`, so both spellings are accepted for each. */
+/** The models the public face carries, in order (decided 2026-10-26): the LLM
+ *  serving market (the one data-fed observatory model, the system the
+ *  instrument is pointed at first, and the one that decomposes into its two
+ *  serving subsystems, so depth is shown here), the Federal Reserve (the
+ *  second real-data system; its H.4.1 vintage ships in assets/data), and
+ *  Bitcoin (a protocol read as a system). An EDITORIAL list like SHELF_LEAD;
+ *  a key that no longer ships is skipped rather than failing, so a retirement
+ *  cannot blank the row. A runnable example is keyed by its bundle name and a
+ *  structural one by `example:<file>`, so both spellings are accepted. With
+ *  the library door closed (libraryFlag.ts) these three ARE the standard
+ *  library on the page; `?library=all` opens the rest. */
 const FEATURED: string[][] = [
   ["llm-market", "example:llm-market"],
+  ["federal-reserve", "example:federal-reserve"],
   ["bitcoin", "example:bitcoin"],
-  ["example:steel-plant-walk", "steel-plant-walk"],
 ];
 
 export function featured(rows: ShippedModel[] = shippedModels()): ShippedModel[] {
