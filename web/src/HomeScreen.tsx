@@ -1027,7 +1027,9 @@ function SectionHead({ label, right }: { label: string; right?: ReactNode; lead?
   // is kept for callers and does nothing.
   return (
     <div
-      className="mb-4 flex items-baseline gap-4 border-b pb-2"
+      // Wraps, so at 390 a long head ("Start from one of ours") keeps its
+      // control on the next line instead of past the sheet's edge (rule 16).
+      className="mb-4 flex flex-wrap items-baseline gap-x-4 gap-y-2 border-b pb-2"
       style={{ borderColor: "var(--rule-strong)" }}
     >
       <span className="shrink-0 leading-none" style={{ ...nameStyle, ...d2 }} data-testid="section-head">
