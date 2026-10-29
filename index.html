@@ -1,0 +1,153 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Facets</title>
+<meta name="description" content="One system, many true descriptions. Ask a question, or build a model and watch it run.">
+<meta name="theme-color" media="(prefers-color-scheme: light)" content="#f3f6f9">
+<meta name="theme-color" media="(prefers-color-scheme: dark)" content="#16181a">
+<link rel="icon" href="/chat/icon.svg" type="image/svg+xml">
+<link rel="stylesheet" href="shared/frost.css">
+<style>
+  /* The portal: the gem is the interface. Its two lit facets are the doors; the
+     five unlit ones are room for what ships next. Chosen 2026-08-29 from the
+     three-candidate final (winner A; runner-up B preserved at portal/alt-b.html).
+     Copy is a work in progress by declaration — tagline and door lines especially.
+
+     Makeover 2026-10 (docs/design/makeover-2026-10.md): every colour is a token
+     from shared/frost.css, so the page follows the OS theme like the other
+     faces; the gem's fills moved from presentation attributes into the rules
+     below for that reason. Type is on the --t-* scale: the hero wordmark is
+     --t-d1 scaled 2.4x (72px, one size at every width), the tagline --t-body,
+     the facet names --t-d2 in Cormorant, the door lines --t-sm in Inter. The
+     door labels are HTML laid over the gem (pointer-events: none) so they keep
+     those sizes while the SVG doors keep the clicks and the keyboard focus. */
+  * { box-sizing: border-box; margin: 0; }
+  body {
+    background: var(--bg-primary); color: var(--text-primary);
+    font-family: var(--font-body);
+    min-height: 100vh; min-height: 100svh;
+    display: flex; align-items: center; justify-content: center;
+    padding: 32px 24px; overflow-x: hidden;
+  }
+  main {
+    display: flex; align-items: center; gap: 64px;
+    width: 100%; max-width: 72rem; justify-content: center;
+  }
+  .intro { max-width: 30rem; flex-shrink: 0; }
+  h1.wordmark { font-size: calc(var(--t-d1) * 2.4); }
+  .tagline { margin-top: 16px; color: var(--text-secondary); font-size: var(--t-body); line-height: 1.55; }
+
+  .gem { position: relative; width: min(40vw, 560px, 64vh); flex-shrink: 0; }
+  .gem svg { display: block; width: 100%; height: auto; }
+  .gem-body { fill: var(--paper); stroke: var(--text-primary); stroke-width: 0.35; }
+  .spoke { stroke: var(--text-primary); stroke-width: 0.2; opacity: 0.5; }
+  .tint-indigo { fill: var(--accent-indigo); }
+  .tint-teal { fill: var(--accent); }
+  .tint-slate { fill: var(--accent-slate); }
+  svg a { cursor: pointer; }
+  svg a .facet { transition: opacity var(--motion-fast) ease-out; }
+  .facet-chat { fill: var(--accent-indigo); opacity: 0.30; }
+  .facet-model { fill: var(--accent); opacity: 0.32; }
+  svg a:hover .facet, svg a:focus-visible .facet { opacity: 0.55; }
+  /* The shared ring draws on the link's box; the lit facet also takes the
+     accent as a stroke so the focus reads on the gem itself. */
+  svg a:focus-visible .facet { stroke: var(--accent); stroke-width: 0.6; }
+
+  /* Door labels: laid over the gem, named by the links beneath them. */
+  .door {
+    position: absolute; transform: translate(-50%, -50%);
+    display: flex; flex-direction: column; align-items: center; gap: 2px;
+    pointer-events: none; text-align: center; white-space: nowrap;
+  }
+  .door-chat { left: 64.4%; top: 25%; }
+  .door-model { left: 50%; top: 80%; }
+  .door .name {
+    font-family: var(--font-display); font-weight: 700; line-height: 1;
+    font-size: var(--t-d2); color: var(--text-primary);
+  }
+  .door .go {
+    display: inline-flex; align-items: center; gap: 4px;
+    font-size: var(--t-sm); font-weight: 600; line-height: 1;
+  }
+  .door .go svg { width: 1em; height: 1em; }
+  .door-chat .go { color: var(--accent-indigo); }
+  .door-model .go { color: var(--accent); }
+  .gem:has(#chat-door:hover) .door-chat .name,
+  .gem:has(#chat-door:focus-visible) .door-chat .name,
+  .gem:has(#model-door:hover) .door-model .name,
+  .gem:has(#model-door:focus-visible) .door-model .name { text-decoration: underline; text-underline-offset: 3px; }
+
+  /* a slow shimmer says "alive" without shouting; stilled under reduced motion */
+  @keyframes breathe { from { opacity: 0.30; } to { opacity: 0.42; } }
+  .facet-chat { animation: breathe 3.2s ease-in-out infinite alternate; }
+  .facet-model { animation: breathe 3.2s ease-in-out 1.6s infinite alternate; }
+  svg a:hover .facet-chat, svg a:hover .facet-model { animation: none; }
+  @media (prefers-reduced-motion: reduce) { .facet-chat, .facet-model { animation: none; } }
+
+  /* Model dark (pre-launch): the facet waits, unlit and unlinked */
+  .model-dark .facet-model { animation: none; fill: var(--accent-slate); opacity: 0.14; }
+  .model-dark #model-door { cursor: default; pointer-events: none; }
+  .model-dark .door-model .go { color: var(--text-muted); }
+
+  @media (max-width: 760px) {
+    body { padding: 16px 24px; }
+    main { flex-direction: column; gap: 24px; align-items: center; }
+    .gem { width: min(82vw, 400px, 52svh); }
+    .intro { text-align: center; }
+  }
+</style>
+</head>
+<body>
+<main>
+  <div class="intro">
+    <h1 class="wordmark">facets</h1>
+    <p class="tagline">One system, many true descriptions. Ask a question, or build a model and watch it run.</p>
+  </div>
+  <div class="gem">
+    <svg viewBox="0 0 80 80" aria-label="Choose a door: Chat or Model">
+      <polygon class="gem-body" points="40,4 71,19 78,52 57,76 23,76 2,52 9,19"></polygon>
+      <polygon class="tint-indigo" points="71,19 78,52 40,40" opacity="0.07"></polygon>
+      <polygon class="tint-teal" points="78,52 57,76 40,40" opacity="0.08"></polygon>
+      <polygon class="tint-slate" points="23,76 2,52 40,40" opacity="0.05"></polygon>
+      <polygon class="tint-slate" points="2,52 9,19 40,40" opacity="0.03"></polygon>
+      <polygon class="tint-indigo" points="9,19 40,4 40,40" opacity="0.05"></polygon>
+      <a href="/chat/" id="chat-door" aria-label="Chat: ask a question about any system">
+        <polygon class="facet facet-chat" points="40,4 71,19 40,40"></polygon>
+      </a>
+      <a href="/model/" id="model-door" aria-label="Model: build a system and run it">
+        <polygon class="facet facet-model" points="57,76 23,76 40,40"></polygon>
+      </a>
+      <line class="spoke" x1="40" y1="4" x2="40" y2="40"></line>
+      <line class="spoke" x1="71" y1="19" x2="40" y2="40"></line>
+      <line class="spoke" x1="78" y1="52" x2="40" y2="40"></line>
+      <line class="spoke" x1="57" y1="76" x2="40" y2="40"></line>
+      <line class="spoke" x1="23" y1="76" x2="40" y2="40"></line>
+      <line class="spoke" x1="2" y1="52" x2="40" y2="40"></line>
+      <line class="spoke" x1="9" y1="19" x2="40" y2="40"></line>
+    </svg>
+    <div class="door door-chat" aria-hidden="true">
+      <span class="name">Chat</span>
+      <span class="go">ask <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="square" stroke-linejoin="miter"><path d="M4 12 H19 M13 6 L19 12 L13 18"/></svg></span>
+    </div>
+    <div class="door door-model" aria-hidden="true">
+      <span class="name">Model</span>
+      <span class="go" id="model-go">build <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="square" stroke-linejoin="miter"><path d="M4 12 H19 M13 6 L19 12 L13 18"/></svg></span>
+    </div>
+  </div>
+</main>
+<script>
+  // Flipped to true by publish-site.sh --with-model; until then the Model facet
+  // waits unlit, its line reading "coming soon".
+  var MODEL_LIVE = true;
+  if (!MODEL_LIVE) {
+    document.body.classList.add('model-dark');
+    var door = document.getElementById('model-door');
+    door.removeAttribute('href');
+    door.setAttribute('aria-label', 'Model: coming soon');
+    document.getElementById('model-go').textContent = 'coming soon';
+  }
+</script>
+</body>
+</html>

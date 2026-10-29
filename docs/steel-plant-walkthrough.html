@@ -1,0 +1,191 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>The Steel-Plant walk — demo script · facets docs</title>
+<link rel="icon" type="image/svg+xml" href="data:image/svg+xml,%3Csvg viewBox='0 0 80 80' xmlns='http://www.w3.org/2000/svg'%3E%3Cpolygon points='40,4 68.3,16.6 76,44.9 59.4,70.1 20.6,70.1 4,44.9 11.7,16.6 40,4' stroke='%233d6373' stroke-width='2' fill='%23ffffff'/%3E%3C/svg%3E">
+<meta name="theme-color" media="(prefers-color-scheme: light)" content="#f3f6f9">
+<meta name="theme-color" media="(prefers-color-scheme: dark)" content="#16181a">
+<link rel="stylesheet" href="/shared/frost.css">
+<style>
+  /* The docs shell on the makeover rules (docs/design/makeover-2026-10.md):
+     the app's ground, a white sheet, hairlines for every edge, Inter at
+     --t-body on a 72-character measure, Cormorant 700 for the headings at
+     --t-d1/d2/d3, the one label style for kickers, links in the accent, the
+     shared focus ring from /shared/frost.css. Mono is for code only. */
+  * { box-sizing: border-box; }
+  body { margin: 0; background: var(--bg-primary); color: var(--text-primary); font-family: var(--font-body); font-size: var(--t-body); line-height: 1.6; }
+  a { color: var(--accent); text-decoration: underline; text-decoration-color: var(--rule-strong); text-underline-offset: 2px; transition: color var(--motion-fast) ease-out, text-decoration-color var(--motion-fast) ease-out; }
+  a:hover { color: var(--accent-strong); text-decoration-color: currentColor; }
+  .sheet { max-width: 56rem; margin: 0 auto; min-height: 100vh; background: var(--paper); border-left: 1px solid var(--border); border-right: 1px solid var(--border); }
+  header.site { display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: 8px 24px; padding: 12px 24px; border-bottom: 1px solid var(--border); }
+  header.site .wordmark { font-size: var(--t-d3); white-space: nowrap; }
+  header.site nav { display: flex; flex-wrap: wrap; align-items: center; gap: 4px 16px; min-width: 0; }
+  header.site nav a { display: inline-flex; align-items: center; min-height: 32px; font-size: var(--t-sm); color: var(--text-secondary); text-decoration: none; }
+  header.site nav a:hover { color: var(--accent); }
+  main { padding: 48px 24px 64px; }
+  .folio { display: flex; align-items: center; gap: 8px; font-size: var(--t-label); font-weight: 600; text-transform: uppercase; letter-spacing: var(--tracking-label); color: var(--text-muted); }
+  .folio a { color: inherit; text-decoration: none; display: inline-flex; align-items: center; gap: 4px; min-height: 24px; }
+  .folio a:hover { color: var(--accent); }
+  .folio svg { width: 1em; height: 1em; }
+  .status { display: inline-block; padding: 2px 8px; border-radius: var(--radius-sm); background: var(--accent-soft); color: var(--accent); }
+  h1.title { font-family: var(--font-display); font-weight: 700; font-size: var(--t-d1); line-height: 1.1; letter-spacing: -0.01em; margin: 12px 0 32px; }
+  article { max-width: 72ch; overflow-wrap: break-word; }
+  article h2 { font-family: var(--font-display); font-weight: 700; font-size: var(--t-d2); line-height: 1.15; margin: 48px 0 12px; }
+  article h3 { font-family: var(--font-display); font-weight: 700; font-size: var(--t-d3); line-height: 1.2; margin: 32px 0 8px; }
+  article h4 { font-size: var(--t-label); font-weight: 600; text-transform: uppercase; letter-spacing: var(--tracking-label); margin: 24px 0 8px; color: var(--text-secondary); }
+  article p, article li { font-size: var(--t-body); color: var(--text-secondary); }
+  article p { margin: 0 0 16px; }
+  article strong { color: var(--text-primary); font-weight: 600; }
+  article ul, article ol { padding-left: 24px; margin: 0 0 16px; }
+  article li { margin: 4px 0; }
+  article li > p { margin: 0; }
+  article code { font-family: var(--font-mono); font-size: 0.875em; background: var(--bg-surface); border-radius: var(--radius-sm); padding: 1px 4px; overflow-wrap: anywhere; }
+  article pre { background: var(--bg-surface); border: 1px solid var(--border); border-radius: var(--radius-sm); padding: 12px 16px; overflow-x: auto; margin: 0 0 24px; }
+  article pre code { background: none; padding: 0; border-radius: 0; font-size: var(--t-num); line-height: 1.55; color: var(--text-primary); }
+  article blockquote { margin: 0 0 16px; padding: 4px 0 4px 16px; border-left: 2px solid var(--accent); color: var(--text-secondary); }
+  article blockquote p { margin: 8px 0; }
+  .table-wrap { overflow-x: auto; margin: 0 0 24px; }
+  article table { border-collapse: collapse; width: 100%; font-size: var(--t-sm); }
+  article th, article td { text-align: left; padding: 8px 12px; border-bottom: 1px solid var(--border); vertical-align: top; color: var(--text-secondary); }
+  article th { color: var(--text-primary); font-weight: 600; border-bottom: 1px solid var(--rule-strong); }
+  article hr { border: 0; border-top: 1px solid var(--border); margin: 32px 0; }
+  article img { max-width: 100%; }
+  footer.page { margin-top: 48px; padding-top: 16px; border-top: 1px solid var(--border); display: flex; flex-wrap: wrap; gap: 8px 24px; }
+  footer.page a, footer.page span { font-size: var(--t-meta); color: var(--text-muted); }
+  footer.page a { text-decoration: none; }
+  footer.page a:hover { color: var(--accent); }
+  @media (max-width: 640px) { main { padding: 32px 16px 48px; } header.site { padding: 12px 16px; } .sheet { border-left: 0; border-right: 0; } }
+</style>
+</head>
+<body>
+<div class="sheet">
+  <header class="site">
+    <a class="wordmark" href="./">facets <span class="face">docs</span></a>
+    <nav><a href="/">facets.systems</a><a href="/chat/">Chat</a><a href="/model/">Model</a><a href="https://github.com/halcyonic-systems/facets">GitHub</a></nav>
+  </header>
+  <main>
+    <div class="folio"><a href="./"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="square" stroke-linejoin="miter" aria-hidden="true"><path d="M20 12 H5 M11 6 L5 12 L11 18"/></svg>Index</a></div>
+    <div class="folio" style="margin-top:24px">Document<span class="status">LIVE</span></div>
+    <h1 class="title">The Steel-Plant walk — demo script</h1>
+    <article><p><strong>Status: LIVE.</strong></p>
+<p>A live-demo companion for showing George Mobus his own ch. 4 procedure running
+end to end: open the Steel-Plant, decompose it, and walk the hierarchy —
+Fig. 4.16&#39;s transparent box, Fig. 4.17&#39;s inventory room — with the boundary
+contract checked at the seam.</p>
+<p>Two shipped artifacts carry it, both editorial (the citation-gated corpus
+entry <code>assets/corpus/mobus/steel-plant.sl</code> is untouched and stops at Fig. 4.14
+on purpose):</p>
+<div class="table-wrap"><table>
+<thead>
+<tr>
+<th>Level</th>
+<th>Model</th>
+<th>Where it ships</th>
+</tr>
+</thead>
+<tbody><tr>
+<td>1</td>
+<td>Steel-Plant (Figs. 4.15 + 4.16: six boundary interfaces, four subsystems)</td>
+<td><code>assets/walkthroughs/steel-plant/level-1.sl</code> — the root, registered on the examples shelf</td>
+</tr>
+<tr>
+<td>2</td>
+<td>Iron-Inventory (Fig. 4.17: pumps, stock, sensor, decider)</td>
+<td><code>assets/walkthroughs/steel-plant/level-2.{sl,json}</code> — bundled shelf</td>
+</tr>
+</tbody></table></div>
+<p>Until 2026-10-09 a level 0 stood above these: the plant as one component
+inside a frame named for the plant, every crossing on it, decomposing into
+level 1. It was removed under #308 — a system drawn as a component of itself
+is a wrapper, not a level, and its seam could not fail. Fig. 4.14&#39;s opaque box
+is the root with its interior hidden, and the corpus entry keeps the figure.</p>
+<p>The hierarchy needs no setup: the root&#39;s <code>decomposes @id</code> reference resolves
+against the bundled shelf (<code>web/src/walkthroughs.ts</code>), so the walk works in a
+fresh browser with an empty library. The seam is held clean in CI by
+<code>crates/facets-kernel/tests/steel_walkthrough.rs</code>.</p>
+<h2>The click path</h2>
+<ol>
+<li><p><strong>Home → Open a model → &quot;The Steel-Plant, two levels deep&quot;.</strong>
+(The card is registered by hand in <code>web/src/examples.ts</code>; the file is
+<code>assets/walkthroughs/steel-plant/level-1.sl</code>, and <code>Open a file…</code> on it
+still works.) It opens Figs. 4.15 and 4.16 at once: the six transaction
+partners of level −1 ringing the membrane, F-numbers on every flow,
+substances from Listing 4.1&#39;s own subtype attributes; on the membrane,
+Fig. 4.15&#39;s six interfaces (FuseBox, the two loading docks, the two
+shipping docks, Ventilation); inside, Fig. 4.16&#39;s four subsystems,
+including Material-Purchasing — the messages-only hybrid interface, &quot;an
+often overlooked one in real life.&quot;</p>
+<p><em>Say:</em> this is the SOI as a transparent box. The sources and sinks are
+drawn as systems in their own right — the same promotion his Listing 4.4
+makes when it writes Src-1.1 into Iron-Inventory&#39;s environment. The
+message traffic (purchase orders out, shipping documents in) is
+Listing 4.1&#39;s <code>subtype=MESSAGE</code> announcement, cashed early so the seam
+below can carry it. The opaque box of Fig. 4.14 is this same model seen
+from outside; it is not a separate document (#308).</p>
+</li>
+<li><p><strong>Click Iron-Inventory.</strong> The node inspector shows
+<code>decomposes &quot;Iron-Inventory&quot;</code> with an <strong>enter</strong> affordance — the door is
+already stamped.</p>
+</li>
+<li><p><strong>Say what the seam will check before you open it.</strong> The boundary contract
+from the Lean <code>Decomposition</code> structure: same number of crossings in and
+out, kind for kind, and the child&#39;s environment must be exactly the
+parent&#39;s neighborhood of the decomposed component, name for name.</p>
+</li>
+<li><p><strong>Double-click Iron-Inventory.</strong> The view dives through the component and
+the level-2 model arrives; the breadcrumb reads
+<code>✓ Steel-Plant › Iron-Inventory</code>, and the ✓ is the kernel&#39;s live verdict
+on the seam, not decoration. Fig. 4.17&#39;s room: Move-In and
+Move-Out (the pump shapes, Propelling), Iron-Stock (Buffering, stock unit
+tons from Listing 4.3&#39;s <code>units=TONS</code>), the Level-Sensor on the stock, and
+the Inventory-Decider — Listing 4.4&#39;s <code>type=AGENT</code> — managing both pumps
+and sending the purchase request out through the membrane to
+Material-Purchasing.</p>
+<p><em>Say:</em> this is the recursion of Eq. 4.3 made navigable — every subsystem a
+system in its own right, with its own boundary, its own environment (the
+level-1 neighbors, exactly), and its own faster clock: <code>time unit week</code>,
+Listing 4.4&#39;s <code>delta_t WEEKLY</code>, against the parent&#39;s month.</p>
+</li>
+<li><p><strong>Breadcrumb back up.</strong> Click <code>Steel-Plant</code>. The exit re-runs the seam
+check against the stored child — the ✓ glyph is recomputed, not remembered. Reduced-motion users get instant swaps; everyone
+else gets the dive/rise choreography.</p>
+</li>
+<li><p><strong>Optional coda — show the text.</strong> Open the SL pane at any level: every
+modeling choice is justified in the file&#39;s own comments, with the figure
+and listing citations inline. The <code>decomposes &quot;Iron-Inventory&quot; @…</code> line is
+the whole mechanism: a name for humans, an id for the store, a contract for
+the kernel.</p>
+</li>
+</ol>
+<h2>Where the glyphs live</h2>
+<ul>
+<li><strong>Breadcrumb segments</strong> (only while walking): ✓ seams hold / ⚠ violations,
+per level, kernel-fed (<code>SeamGlyph</code> in <code>web/src/App.tsx</code>).</li>
+<li><strong>The verdict pill</strong> on the control strip folds seam issues into the same
+list as every other validation verdict; a broken referent is as loud as a
+dangling flow.</li>
+<li><strong>The node inspector</strong> on a decomposed component names its child. Interface
+components decompose too since #307 lifted the v1 refusal (the crossing
+contract transcribed from SSF #43) — the walkable box at level 1 being an
+interior component is a fact about this model, not a limit of the contract.</li>
+</ul>
+<h2>If something looks wrong</h2>
+<ul>
+<li>A ⚠ on a breadcrumb segment means a seam violation — check the review panel;
+every row navigates to its component. The shipped models cannot do this
+(CI holds the seam clean); a library model shadowing a pinned id can.
+Deleting the like-named library records restores the shipped resolution.</li>
+<li>The walk saves nothing at these levels unless a model is edited: exits
+autosave dirty models only, and only into named library slots.</li>
+</ul>
+</article>
+    <footer class="page">
+      <a href="https://github.com/halcyonic-systems/facets/blob/main/docs/steel-plant-walkthrough.md">Source · docs/steel-plant-walkthrough.md</a>
+      <span>Rendered from 937632a</span>
+    </footer>
+  </main>
+</div>
+</body>
+</html>

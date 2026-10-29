@@ -1,0 +1,261 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Quickstart — from zero to a judged model · facets docs</title>
+<link rel="icon" type="image/svg+xml" href="data:image/svg+xml,%3Csvg viewBox='0 0 80 80' xmlns='http://www.w3.org/2000/svg'%3E%3Cpolygon points='40,4 68.3,16.6 76,44.9 59.4,70.1 20.6,70.1 4,44.9 11.7,16.6 40,4' stroke='%233d6373' stroke-width='2' fill='%23ffffff'/%3E%3C/svg%3E">
+<meta name="theme-color" media="(prefers-color-scheme: light)" content="#f3f6f9">
+<meta name="theme-color" media="(prefers-color-scheme: dark)" content="#16181a">
+<link rel="stylesheet" href="/shared/frost.css">
+<style>
+  /* The docs shell on the makeover rules (docs/design/makeover-2026-10.md):
+     the app's ground, a white sheet, hairlines for every edge, Inter at
+     --t-body on a 72-character measure, Cormorant 700 for the headings at
+     --t-d1/d2/d3, the one label style for kickers, links in the accent, the
+     shared focus ring from /shared/frost.css. Mono is for code only. */
+  * { box-sizing: border-box; }
+  body { margin: 0; background: var(--bg-primary); color: var(--text-primary); font-family: var(--font-body); font-size: var(--t-body); line-height: 1.6; }
+  a { color: var(--accent); text-decoration: underline; text-decoration-color: var(--rule-strong); text-underline-offset: 2px; transition: color var(--motion-fast) ease-out, text-decoration-color var(--motion-fast) ease-out; }
+  a:hover { color: var(--accent-strong); text-decoration-color: currentColor; }
+  .sheet { max-width: 56rem; margin: 0 auto; min-height: 100vh; background: var(--paper); border-left: 1px solid var(--border); border-right: 1px solid var(--border); }
+  header.site { display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: 8px 24px; padding: 12px 24px; border-bottom: 1px solid var(--border); }
+  header.site .wordmark { font-size: var(--t-d3); white-space: nowrap; }
+  header.site nav { display: flex; flex-wrap: wrap; align-items: center; gap: 4px 16px; min-width: 0; }
+  header.site nav a { display: inline-flex; align-items: center; min-height: 32px; font-size: var(--t-sm); color: var(--text-secondary); text-decoration: none; }
+  header.site nav a:hover { color: var(--accent); }
+  main { padding: 48px 24px 64px; }
+  .folio { display: flex; align-items: center; gap: 8px; font-size: var(--t-label); font-weight: 600; text-transform: uppercase; letter-spacing: var(--tracking-label); color: var(--text-muted); }
+  .folio a { color: inherit; text-decoration: none; display: inline-flex; align-items: center; gap: 4px; min-height: 24px; }
+  .folio a:hover { color: var(--accent); }
+  .folio svg { width: 1em; height: 1em; }
+  .status { display: inline-block; padding: 2px 8px; border-radius: var(--radius-sm); background: var(--accent-soft); color: var(--accent); }
+  h1.title { font-family: var(--font-display); font-weight: 700; font-size: var(--t-d1); line-height: 1.1; letter-spacing: -0.01em; margin: 12px 0 32px; }
+  article { max-width: 72ch; overflow-wrap: break-word; }
+  article h2 { font-family: var(--font-display); font-weight: 700; font-size: var(--t-d2); line-height: 1.15; margin: 48px 0 12px; }
+  article h3 { font-family: var(--font-display); font-weight: 700; font-size: var(--t-d3); line-height: 1.2; margin: 32px 0 8px; }
+  article h4 { font-size: var(--t-label); font-weight: 600; text-transform: uppercase; letter-spacing: var(--tracking-label); margin: 24px 0 8px; color: var(--text-secondary); }
+  article p, article li { font-size: var(--t-body); color: var(--text-secondary); }
+  article p { margin: 0 0 16px; }
+  article strong { color: var(--text-primary); font-weight: 600; }
+  article ul, article ol { padding-left: 24px; margin: 0 0 16px; }
+  article li { margin: 4px 0; }
+  article li > p { margin: 0; }
+  article code { font-family: var(--font-mono); font-size: 0.875em; background: var(--bg-surface); border-radius: var(--radius-sm); padding: 1px 4px; overflow-wrap: anywhere; }
+  article pre { background: var(--bg-surface); border: 1px solid var(--border); border-radius: var(--radius-sm); padding: 12px 16px; overflow-x: auto; margin: 0 0 24px; }
+  article pre code { background: none; padding: 0; border-radius: 0; font-size: var(--t-num); line-height: 1.55; color: var(--text-primary); }
+  article blockquote { margin: 0 0 16px; padding: 4px 0 4px 16px; border-left: 2px solid var(--accent); color: var(--text-secondary); }
+  article blockquote p { margin: 8px 0; }
+  .table-wrap { overflow-x: auto; margin: 0 0 24px; }
+  article table { border-collapse: collapse; width: 100%; font-size: var(--t-sm); }
+  article th, article td { text-align: left; padding: 8px 12px; border-bottom: 1px solid var(--border); vertical-align: top; color: var(--text-secondary); }
+  article th { color: var(--text-primary); font-weight: 600; border-bottom: 1px solid var(--rule-strong); }
+  article hr { border: 0; border-top: 1px solid var(--border); margin: 32px 0; }
+  article img { max-width: 100%; }
+  footer.page { margin-top: 48px; padding-top: 16px; border-top: 1px solid var(--border); display: flex; flex-wrap: wrap; gap: 8px 24px; }
+  footer.page a, footer.page span { font-size: var(--t-meta); color: var(--text-muted); }
+  footer.page a { text-decoration: none; }
+  footer.page a:hover { color: var(--accent); }
+  @media (max-width: 640px) { main { padding: 32px 16px 48px; } header.site { padding: 12px 16px; } .sheet { border-left: 0; border-right: 0; } }
+</style>
+</head>
+<body>
+<div class="sheet">
+  <header class="site">
+    <a class="wordmark" href="./">facets <span class="face">docs</span></a>
+    <nav><a href="/">facets.systems</a><a href="/chat/">Chat</a><a href="/model/">Model</a><a href="https://github.com/halcyonic-systems/facets">GitHub</a></nav>
+  </header>
+  <main>
+    <div class="folio"><a href="./"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="square" stroke-linejoin="miter" aria-hidden="true"><path d="M20 12 H5 M11 6 L5 12 L11 18"/></svg>Index</a></div>
+    <div class="folio" style="margin-top:24px">Document<span class="status">LIVE</span></div>
+    <h1 class="title">Quickstart — from zero to a judged model</h1>
+    <article><p><strong>Status: LIVE.</strong> A ten-minute path through the instrument: author a system as
+text, read the kernel&#39;s verdict on it, break it on purpose and watch the refusal
+hand you the repair, then open a model that runs against real data. Text only for
+now: the illustrated walkthrough is unbuilt and untracked — it was recorded in
+<a href="./parked.html#i126"><code>parked.md</code></a> when #126 was retired, and the #80 this line used to
+defer to never covered it. New terms link
+to the <a href="./language/terminology-concordance.html">terminology concordance</a> on first
+use; the <a href="./glossary.html">glossary</a> is the fast reference.</p>
+<p>Prefer to touch before you read? Start a <strong>New model</strong> and choose <strong>Wire
+processes and run</strong>: drop work processes from the Build rail, wire them, press
+Run, and turn a knob while it runs. It keeps running past the run length until
+you pause it. Come back here when you want the judged-model path. The design
+record is <a href="https://github.com/halcyonic-systems/facets/blob/main/docs/design/one-surface.md"><code>design/one-surface.md</code></a>; the older sandbox
+surface, with Troncale stamps, is still at <code>?sandbox=1</code>.</p>
+<h2>0. Install the prerequisites</h2>
+<p>Every command here is a <code>just</code> recipe, so install <code>just</code> first — it is the one
+thing nothing in the repo can install for you:</p>
+<pre><code class="language-bash">brew install just          # macOS
+# Debian/Ubuntu: sudo apt install just   ·   anywhere with Rust: cargo install just
+</code></pre>
+<p>Then let the repo name whatever else is missing:</p>
+<pre><code class="language-bash">just preflight
+</code></pre>
+<p>It checks <code>python3</code>, Rust, the wasm target, clippy, <code>wasm-pack</code> and Node, and
+prints the exact install line for each one it does not find. Run it until it says
+<strong>All set</strong>. The full table, with why each tool is needed, is
+<a href="https://github.com/halcyonic-systems/facets/blob/main/README.md#prerequisites">README&#39;s Prerequisites</a>.</p>
+<h2>1. Open the app</h2>
+<p>From the repo root:</p>
+<pre><code class="language-bash">just dev      # installs web deps if needed, rebuilds the wasm kernel, starts the Vite dev server
+</code></pre>
+<p>Open the URL it prints (usually <a href="http://localhost:5173">http://localhost:5173</a> — it moves to the next free
+port if that one is taken, so read the URL rather than assuming it).</p>
+<p>You land on a <strong>start screen</strong> with two doors: <em>New model</em> and <em>Open a model</em>.</p>
+<h2>2. Author a model as text</h2>
+<p>Click <strong>New model</strong>. A start surface offers three ways in: describe the model in
+plain language (which needs a reasoner), draw it by hand, or wire processes and
+run. Click <strong>skip</strong> for now. (The
+model&#39;s name, Bunge&#39;s kingdom and genus, and a subject domain are set from the
+model&#39;s name in the top bar, or by the <code>system</code> line of the text below.)</p>
+<p>You are on a blank canvas. Click <strong>SL</strong> in the top bar to open the text pane.
+<a href="./glossary.html#sl">SL</a> is the repo&#39;s textual
+<a href="./language/terminology-concordance.html">system</a> notation and the fastest way in.</p>
+<p><strong>The pane is not empty</strong> — it arrives seeded with a worked example, Mobus&#39;s steel
+plant, so there is always something to read. Select all of it and replace it with
+<a href="https://github.com/halcyonic-systems/facets/blob/main/fixtures/sl/bathtub.sl"><code>fixtures/sl/bathtub.sl</code></a>:</p>
+<pre><code>system &quot;Bathtub&quot; : Concrete/Physical
+component Tub primitive Buffering interface
+source Faucet
+sink Drain
+flow Faucet -&gt; Tub : matter &quot;inflow&quot;
+flow Tub -&gt; Drain : matter &quot;outflow&quot;
+
+@lens mobus
+</code></pre>
+<p>A faucet fills a buffering stock (<code>Tub</code>), a drain empties it — the classic
+stock-and-flow first lesson.</p>
+<h2>3. Compile and watch the canvas render</h2>
+<p>Press <strong>Compile</strong> (or <code>⌘⏎</code>). SL is a deterministic compiler, never an LLM: the
+same text always produces the same model.</p>
+<p>What you get first is a <strong>draft preview</strong> with <strong>Accept</strong> and <strong>Discard</strong> — the
+compile is proposed, not imposed. Accept it, and the canvas renders the two flows
+and three things. The text pane and the canvas are two surfaces over one
+<a href="./glossary.html#neutral-spec">neutral spec</a> — edit either, and they round-trip.</p>
+<h2>4. Read the verdict panel</h2>
+<p>The kernel judges the model under each <a href="./glossary.html#lens">lens</a>. The verdict panel
+shows, per lens, whether the model holds as a system and — where it does not — the
+<a href="./glossary.html#precondition">precondition</a> it failed, quoted. Every verdict cites its
+reason; nothing is a shrug. This is <a href="./glossary.html#systemhood">systemhood</a> being
+decided, not styled.</p>
+<p>Switch between <strong>Bunge</strong> and <strong>Mobus</strong> in the top bar and watch the same model
+described in two vocabularies. <strong>Klir</strong>, the relational floor, joins the bar when
+the page is opened with <code>?lens=klir</code>. That is the instrument&#39;s point: one model,
+faithful views.</p>
+<h2>5. Break it on purpose — the step that matters</h2>
+<p>This is where you find out what the tool actually is. Delete the <code>sink Drain</code> line
+from the text pane, leaving the flow that points at it:</p>
+<pre><code>system &quot;Leaky Tub&quot; : Concrete/Physical
+component Tub primitive Buffering interface
+source Faucet
+flow Faucet -&gt; Tub : matter &quot;inflow&quot;
+flow Tub -&gt; Drain : matter &quot;outflow&quot;
+
+@lens mobus
+</code></pre>
+<p>Compile. It refuses, and the refusal reads:</p>
+<pre><code>line 5: `Drain` is not declared (declare things before flows) — fix: add `sink Drain`
+        above this line, or `component Drain` if it sits inside the boundary
+</code></pre>
+<p>Read what that gives you: <strong>what</strong> is wrong, <strong>where</strong> (line 5), <strong>which rule</strong>
+(declare-before-use), and <strong>the line to type</strong>. It does not guess what you meant
+and quietly generate something plausible — it stops, names the rule, and hands
+back a repair. Every fault in the file is reported in one pass, not one at a time.</p>
+<p>Put <code>sink Drain</code> back and compile again. That loop — refuse, name the repair, fix,
+pass — is the instrument.</p>
+<p>More failures to learn from live in
+<a href="https://github.com/halcyonic-systems/facets/tree/main/fixtures/sl/teaching"><code>fixtures/sl/teaching/</code></a>: a graded set starting from a
+two-line first model, including two files that fail on purpose, each documenting
+its own expected error and line number.</p>
+<h2>6. Step up to a real work process</h2>
+<p>Back in the text pane, paste
+<a href="https://github.com/halcyonic-systems/facets/blob/main/fixtures/sl/process-m.sl"><code>fixtures/sl/process-m.sl</code></a> — Mobus&#39;s own textbook
+paragraph (multiple inputs combining into a product plus waste), written in SL:</p>
+<pre><code>system &quot;Process M&quot; : Concrete
+component Work primitive Combining interface
+source &quot;Source 1&quot;
+source &quot;Source 2&quot;
+source &quot;Source 3&quot;
+sink &quot;Sink 5&quot;
+sink &quot;Sink 6&quot;
+flow &quot;Source 1&quot; -&gt; Work : matter &quot;material A&quot;
+flow &quot;Source 2&quot; -&gt; Work : matter &quot;material B&quot;
+flow &quot;Source 3&quot; -&gt; Work : energy &quot;energy E&quot;
+flow Work -&gt; &quot;Sink 5&quot; : matter &quot;product Z&quot;
+flow Work -&gt; &quot;Sink 6&quot; : matter &quot;waste X&quot;
+
+@lens mobus
+</code></pre>
+<p>Compile it, read its verdicts under each lens, and compare how the Bunge and
+Mobus panels (and Klir&#39;s, with <code>?lens=klir</code>) each describe the same model in
+their own vocabulary.</p>
+<h2>7. Watch one run</h2>
+<p>A model you just authored has structure and declared amounts but no data, and
+the readout says so: <em>&quot;Nothing has run yet. Press ▶ Run in the header, or set
+the run length in the rail first. No data is needed: the declared amounts
+govern until a column is bound.&quot;</em> A run driven by observed numbers needs a
+model <em>and</em> a data series <em>and</em> a mapping between them. That bundle is what the
+library&#39;s data-fed entries carry.</p>
+<p>To see one:</p>
+<ol>
+<li><strong>Home</strong> in the top bar → <strong>Open a model</strong>. Leaving unsaved work raises a
+<em>discard?</em> confirmation first — accept it; nothing above was worth keeping.</li>
+<li>The library is one list, filtered by tags: genus, tradition, and <strong>Bench</strong>
+(the models that exist to test the instrument).</li>
+<li>Open <strong>LLM Serving Market</strong>, the data-fed entry. (It opens on its bundle,
+the OpenRouter routed-share vintage in <code>assets/data/</code>, which the bundle is
+generated from.)</li>
+</ol>
+<p>It runs on open. The run panel reports the run, the
+<a href="./glossary.html#conservation-invariant-declared">conservation invariant</a> the model
+declares holding as <strong>nothing lost or created</strong>, and a
+<a href="./glossary.html#run-ledger">run ledger</a> — the per-step accounting that shows the
+invariant holding, or where it does not. <code>▶ Run</code> in the strip under the diagram re-runs it (the trace auto-plays
+once); <code>Δt</code> and <code>T</code> sit in the run card beside the diagram and set the step
+and the horizon.</p>
+<p>The engine&#39;s run is one <a href="./glossary.html#dynamics-kind">dynamics-kind</a>: a
+deterministic map over ℝⁿ stocks under a model-declared additive invariant,
+with the agent layer&#39;s rules inside the same step (ADR 0008); a discrete-time
+Markov chain is the second run mode (<code>run_markov</code>,
+<code>crates/facets-compose/src/markov.rs</code>). Further kinds are declarable. The ledger is a result shown in the panel, not a
+saved tier (<a href="./glossary.html#save-vs-export">Save ≠ Export</a>).</p>
+<p>Two entries carry a bundle today, <strong>LLM Serving Market</strong> and <strong>Translation
+Apparatus</strong> (<code>assets/demos/</code>); every other entry opens on its declared amounts
+and runs from them.</p>
+<h2>Optional: the co-author</h2>
+<p>The SL pane&#39;s <strong>Co-author</strong> tab drafts SL from a description in prose. It is
+<strong>off</strong> until you turn it on, and it sends your text only to the address shown.
+At facets.systems that address is the facets reasoner, Halcyonic&#39;s own service,
+which asks a frontier model on your behalf under an anonymous session; nothing
+you draw on the canvas leaves the page. Change the address to a reasoner you run
+and nothing reaches Halcyonic. The kernel still judges everything the co-author
+produces: it drafts, it never decides systemhood.</p>
+<p>With <code>claude-opus-5</code> or <code>claude-sonnet-5</code> as the drafter, the tab offers
+<strong>Careful</strong> (the default: the drafter thinks first, often 30 to 60 seconds) or
+<strong>Fast</strong> (it answers sooner, often under 20). The choice changes how long the
+drafter deliberates and nothing else: the kernel checks every draft either way,
+and each turn in the history says which one wrote it.</p>
+<p>Running your own needs a service at that address, answering
+<code>POST /analyze</code> and <code>POST /author-sl</code>. The reference implementation, the General
+Systems Reasoner, is <strong>not public</strong>, so the co-author is currently out of reach
+for readers outside Halcyonic. Everything else in this document works without it.</p>
+<h2>Where to go next</h2>
+<ul>
+<li>More models to learn from: <a href="https://github.com/halcyonic-systems/facets/tree/main/fixtures/sl/teaching"><code>fixtures/sl/teaching/</code></a> —
+the graded teaching set, including the two deliberate failures from step 5.</li>
+<li>One model grown line by line: <a href="./tour.html"><code>tour.md</code></a>.</li>
+<li>The language, in full: <a href="https://github.com/halcyonic-systems/facets/tree/main/docs/language"><code>language/</code></a> (spec, corpus, lineage).</li>
+<li>Assessing the theory: <a href="./theory-fidelity.html"><code>theory-fidelity.md</code></a> →
+<a href="./language/terminology-concordance.html"><code>language/terminology-concordance.md</code></a>.</li>
+<li>Every term above, defined: <a href="./glossary.html"><code>glossary.md</code></a>.</li>
+</ul>
+</article>
+    <footer class="page">
+      <a href="https://github.com/halcyonic-systems/facets/blob/main/docs/quickstart.md">Source · docs/quickstart.md</a>
+      <span>Rendered from 937632a</span>
+    </footer>
+  </main>
+</div>
+</body>
+</html>
