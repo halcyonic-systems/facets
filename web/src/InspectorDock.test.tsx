@@ -54,8 +54,10 @@ describe("the model name carries the system type (#312)", () => {
 
   it("stays inert when the shell hands over no writer", () => {
     const html = menuBar({ onSystemTypeChange: undefined });
-    expect(html).toMatch(/<button disabled=""[^>]*aria-label="watershed[^"]*system type"/);
-    expect(html).toContain("cursor:default");
+    // The chip is a quiet Button (makeover slice D): disabled keeps readable
+    // ink and the primitive's not-allowed cursor.
+    expect(html).toMatch(/<button[^>]*disabled=""[^>]*aria-label="watershed[^"]*system type"/);
+    expect(html).toContain("cursor:not-allowed");
   });
 
   it("the editor it opens is the same component the dock used, same contract", () => {
@@ -89,11 +91,12 @@ describe("the run is a state of the Model surface, not a tab and not a mode (#34
 
 describe("the inspector dock's tab strip at 24rem (#312)", () => {
   // What the classes declare. `px-2.5` is 10px a side (it was `px-3.5`/14px
-  // until the width lever landed); the pinned controls cell
-  // is two `px-3` glyph buttons; the dock prefers `basis-96` (24rem) and yields
-  // to `min-w-72` (18rem) under pressure, less the 1px `border-l`.
+  // until the width lever landed); the pinned controls cell is two 28px
+  // icon Buttons with a 4px gap and 4px of padding a side (makeover slice F);
+  // the dock prefers `basis-96` (24rem) and yields to `min-w-72` (18rem)
+  // under pressure, less the 1px `border-l`.
   const TAB_PADDING = 20;
-  const CONTROLS = 2 * (12 + 12 + 10);
+  const CONTROLS = 2 * 28 + 4 + 2 * 4;
   const BADGE = 6 + 17.6; // gap-1.5 + the min-w-[1.1rem] issue count
   // Inter, 12px, semibold, uppercase, tracking-wide (0.025em). MEASURED, not
   // estimated: after move 1 shipped, every tab was read with

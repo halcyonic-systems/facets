@@ -10,7 +10,7 @@ import type { CanvasModel, Manifest, MarkovRunResult, Relation, RunResultRich, T
 import type { RunKind } from "./canvas/lenses/registry";
 import { RunInputs } from "./RunInputs";
 import { DtmcPanel, RunFit, RunGlance, RunStory, RunTable, weightProvenance } from "./RunPanel";
-import { Card, Tabs } from "./ui";
+import { Button, Card, Input, Tabs } from "./ui";
 import { TickLogTable } from "./TickLogTable";
 
 /** The readout tabs. Fit only exists when a CSV is bound — absence is
@@ -139,8 +139,8 @@ export function Readouts({
       ) : (
         <Placeholder>
           Run evolves this state machine as a Markov chain: steps and state
-          occupancy, not Δt. Set the steps in the rail and press ▶ Run, or ⏭
-          Step one tick at a time.
+          occupancy, not Δt. Set the steps in the rail and press Run, or Step
+          one tick at a time.
         </Placeholder>
       )}
     </div>
@@ -165,15 +165,15 @@ export function Readouts({
           <RunStory result={result} lens={lens} tick={tick} model={model} baseline={baseline} />
         )}
         {tab === "fit" && hasFit && (
-          <RunFit result={result} tick={tick} timeUnit={model?.time_unit} />
+          <RunFit result={result} tick={tick} timeUnit={model?.time_unit} model={model} />
         )}
         {tab === "log" && tickLog && (
           <div className="grid gap-3">
             {onExportRun && (
               <div>
-                <button onClick={onExportRun} className="record-folio text-[10px] tracking-[0.12em]" data-testid="export-run">
-                  export run (.json) →
-                </button>
+                <Button size={28} variant="quiet" icon="file" onClick={onExportRun} data-testid="export-run">
+                  export run (.json)
+                </Button>
               </div>
             )}
             <TickLogTable log={tickLog} tick={tick} timeUnit={model?.time_unit} />
@@ -192,7 +192,7 @@ export function Readouts({
     </>
   ) : (
     <Placeholder>
-      {"Nothing has run yet. Press ▶ Run in the header, or set the run length in the rail first. No data is needed: the declared amounts govern until a column is bound."}
+      {"Nothing has run yet. Press Run in the header, or set the run length in the rail first. No data is needed: the declared amounts govern until a column is bound."}
     </Placeholder>
   );
 
@@ -201,13 +201,15 @@ export function Readouts({
       className="absolute inset-0 z-20 flex flex-col"
       style={{ background: "var(--bg-primary)" }}
     >
+      {/* The header wraps under width pressure (rule 16; audit #7: at 1024 the
+          transport's tick count ran under the conserved chip). */}
       <div
-        className="flex items-center gap-x-4 px-4 py-1.5"
+        className="flex flex-wrap items-center gap-x-4 gap-y-1 px-4 py-1.5"
         style={{ borderBottom: "1px solid var(--hairline)" }}
       >
         <span
-          className="shrink-0 text-xs font-semibold uppercase tracking-wide"
-          style={{ color: "var(--text-primary)" }}
+          className="shrink-0 text-[11px] font-semibold uppercase"
+          style={{ color: "var(--text-primary)", letterSpacing: "var(--tracking-label)" }}
         >
           Readouts
         </span>
@@ -216,41 +218,45 @@ export function Readouts({
             {model.name.trim()}
           </span>
         )}
-        <div className="min-w-0 flex-1">{transport}</div>
+        <div className="order-last min-w-0 basis-full xl:order-none xl:basis-auto xl:flex-1">{transport}</div>
         {/* #463 move 4: keep this run as the baseline; every later knob
             then reads against it. One button, two states; dropping it is
             the same button. */}
         {result && onKeepBaseline && (
-          <button
+          <Button
+            size={28}
+            variant="quiet"
+            icon={baseline ? "check" : "pin"}
             onClick={baseline ? onDropBaseline : onKeepBaseline}
-            className="record-folio shrink-0 text-[10px] tracking-[0.12em]"
             title={baseline ? "Drop the kept baseline" : "Keep this run as the baseline: later knobs read against it"}
             data-testid="keep-baseline"
             aria-pressed={Boolean(baseline)}
           >
-            {baseline ? "baseline kept · drop" : "keep baseline →"}
-          </button>
+            {baseline ? "baseline kept · drop" : "keep baseline"}
+          </Button>
         )}
-        <button
-          onClick={onClose}
-          title="Back to the model (Esc)"
-          className="shrink-0 px-2 text-xs"
-          style={{ color: "var(--text-muted)" }}
-        >
-          ⤡ model
-        </button>
+        <Button size={28} variant="quiet" icon="collapse" onClick={onClose} title="Back to the model (Esc)">
+          model
+        </Button>
       </div>
-      <div className="flex min-h-0 flex-1">
+      {/* The rail: 18rem beside the readout from 1024 up; below that it stacks
+          on top, capped to 40% of the height, so the readout never leaves the
+          screen (rule 16; audit #5: a fixed 24rem rail was the whole viewport
+          at 390). */}
+      <div className="flex min-h-0 flex-1 flex-col lg:flex-row">
         <aside
-          className="w-96 shrink-0 overflow-y-auto border-r p-3"
+          className="max-h-[40%] shrink-0 overflow-y-auto border-b p-3 lg:max-h-none lg:w-80 lg:border-b-0 lg:border-r"
           style={{ borderColor: "var(--hairline)" }}
+          aria-label="Run inputs"
         >
-          <div className="grid gap-3">
+          {/* min-w-0 on each card: a grid child's min-width is auto, so a card
+              with a wide row would push past the rail instead of truncating. */}
+          <div className="grid gap-3 [&>*]:min-w-0">
             {timeRow}
             {inputs}
           </div>
         </aside>
-        <section className="flex min-w-0 flex-1 flex-col">{readout}</section>
+        <section className="flex min-h-0 min-w-0 flex-1 flex-col">{readout}</section>
       </div>
     </div>
   );
@@ -289,11 +295,11 @@ export function TimeRow({
     <label className="flex items-center gap-1.5 text-xs" title={title} style={{ color: "var(--text-secondary)" }}>
       {label}
       {symbol && (
-        <span className="text-[10px]" style={{ color: "var(--text-muted)" }}>
+        <span className="text-xs" style={{ color: "var(--text-muted)" }}>
           {symbol}
         </span>
       )}
-      <input
+      <Input
         key={value}
         type="number"
         defaultValue={value}
@@ -306,8 +312,7 @@ export function TimeRow({
         onKeyDown={(e) => {
           if (e.key === "Enter") (e.target as HTMLInputElement).blur();
         }}
-        className="w-16 rounded-md px-1.5 py-0.5 text-xs tabular"
-        style={{ border: "1px solid var(--border)", background: "var(--bg-primary)", color: "var(--text-primary)" }}
+        className="w-20 tabular"
       />
     </label>
   );

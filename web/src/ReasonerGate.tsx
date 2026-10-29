@@ -7,7 +7,8 @@
 // #229: there is no longer a second, hosted option. v0.1 ships no remote
 // address, so the reasoner is one the user runs, and this is a field rather
 // than a pick.
-import { useState } from "react";
+import { useId, useState } from "react";
+import { Button, Input } from "./ui";
 import { isDesktop } from "./desktop";
 import { DEFAULT_ENDPOINT, blockedOnDesktop, isHosted, type ReasonerConfig } from "./reasoner";
 
@@ -55,8 +56,10 @@ function ReasonerStatus({
 }) {
   const hosted = isHosted(config.endpoint);
   return (
+    // One line: who answers and where, then the two quiet actions (rule 11:
+    // 28px targets; the words were 10px underlines).
     <p
-      className="mt-1 flex flex-wrap items-baseline gap-x-2 text-[10px]"
+      className="mt-2 flex flex-wrap items-center gap-x-2 gap-y-1 text-xs"
       style={{ color: "var(--text-muted)" }}
       title={`Your description is sent to ${config.endpoint}`}
       data-testid="reasoner-status"
@@ -65,16 +68,12 @@ function ReasonerStatus({
         {hosted ? "the facets reasoner" : `your reasoner at ${config.endpoint}`}
         {detail ? ` · ${detail}` : ""}
       </span>
-      <button onClick={onChoose} className="underline" style={{ color: "var(--text-secondary)" }}>
+      <Button size={28} variant="quiet" onClick={onChoose}>
         Change
-      </button>
-      <button
-        onClick={() => onChange({ ...config, enabled: false })}
-        className="underline"
-        style={{ color: "var(--text-secondary)" }}
-      >
+      </Button>
+      <Button size={28} variant="quiet" onClick={() => onChange({ ...config, enabled: false })}>
         Turn off
-      </button>
+      </Button>
     </p>
   );
 }
@@ -91,68 +90,64 @@ function ReasonerChoice({
   onCancel?: () => void;
 }) {
   const [url, setUrl] = useState(config.endpoint || DEFAULT_ENDPOINT);
+  const addressId = useId();
   const endpoint = url.trim();
   const cspWarning = isDesktop() && blockedOnDesktop(endpoint);
   const hosted = isHosted(endpoint);
 
   return (
-    <div className="mt-2 rounded p-3" style={panel}>
-      <p className="text-xs font-semibold" style={{ color: "var(--text-primary)" }}>
+    <div className="mt-2 rounded-sm p-3" style={panel}>
+      <p className="text-sm font-semibold" style={{ color: "var(--text-primary)" }}>
         Turn on the co-author
       </p>
-      <p className="mt-1 text-[11px]" style={{ color: "var(--text-secondary)" }}>
+      <p className="mt-1 max-w-[72ch] text-xs" style={{ color: "var(--text-secondary)" }}>
         {hosted
           ? "The co-author sends your description, and the model it is working on, to the facets reasoner, which asks a frontier model on your behalf. It stays off until you turn it on."
           : "The co-author sends your description, and the model it is working on, to a reasoner you run. It stays off until you say where that reasoner is."}
       </p>
 
-      <label className="mt-3 block">
-        <span className="text-[11px] font-semibold" style={{ color: "var(--text-primary)" }}>
+      {/* The field under a visible label (rule 15); where the text goes is a
+          --t-meta disclosure under it rather than a third paragraph (#399). */}
+      <div className="mt-3">
+        <label htmlFor={addressId} className="block text-xs font-semibold" style={{ color: "var(--text-primary)" }}>
           The reasoner's address
-        </span>
-        <span className="block text-[11px]" style={{ color: "var(--text-muted)" }}>
-          {hosted
-            ? "Your text goes to Halcyonic's server at this address, under an anonymous session — nothing you draw on the canvas leaves the page. Point it at a reasoner you run and nothing reaches Halcyonic."
-            : "Your text goes only to the machine at this address. This app ships no other one — nothing reaches Halcyonic."}
-        </span>
-        <input
+        </label>
+        <Input
+          id={addressId}
           value={url}
           onChange={(e) => setUrl(e.target.value)}
           spellCheck={false}
-          className="mt-1 w-full rounded p-1 font-mono text-[11px] outline-none"
-          style={{ background: "var(--bg-primary)", color: "var(--text-secondary)", border: "1px solid var(--hairline)" }}
+          className="mt-1 w-full font-mono"
           placeholder={DEFAULT_ENDPOINT}
         />
-      </label>
+        <details className="mt-1 text-xs" style={{ color: "var(--text-muted)" }}>
+          <summary className="cursor-pointer select-none rounded-sm py-1">Where the text goes</summary>
+          <p className="max-w-[72ch] pt-1">
+            {hosted
+              ? "Your text goes to Halcyonic's server at this address, under an anonymous session — nothing you draw on the canvas leaves the page. Point it at a reasoner you run and nothing reaches Halcyonic."
+              : "Your text goes only to the machine at this address. This app ships no other one — nothing reaches Halcyonic."}
+          </p>
+        </details>
+      </div>
 
       {cspWarning && (
-        <p className="mt-2 text-[11px]" style={{ color: "var(--verdict-warning)" }}>
+        <p className="mt-2 max-w-[72ch] text-xs" style={{ color: "var(--verdict-warning)" }}>
           The desktop app is not permitted to call {endpoint}. Its allowed addresses are
           fixed when the app is built — use one of those, or open this endpoint in the
           browser build.
         </p>
       )}
 
-      <div className="mt-3 flex items-center gap-2">
-        <button
-          onClick={() => onChange({ enabled: true, endpoint: endpoint || DEFAULT_ENDPOINT })}
-          disabled={!endpoint}
-          className="rounded-full px-3 py-1 text-xs font-semibold"
-          style={{
-            background: "var(--accent)",
-            color: "var(--text-on-accent)",
-            opacity: endpoint ? 1 : 0.5,
-            cursor: endpoint ? "pointer" : "not-allowed",
-          }}
-        >
+      <div className="mt-3 flex flex-wrap items-center gap-2">
+        <Button size={28} onClick={() => onChange({ enabled: true, endpoint: endpoint || DEFAULT_ENDPOINT })} disabled={!endpoint}>
           {turnOnLabel ?? "Turn on"}
-        </button>
+        </Button>
         {onCancel && (
-          <button onClick={onCancel} className="rounded-full px-2 py-0.5 text-[10px]" style={quietButton}>
+          <Button size={28} variant="quiet" onClick={onCancel}>
             Cancel
-          </button>
+          </Button>
         )}
-        <span className="text-[11px]" style={{ color: "var(--text-muted)" }}>
+        <span className="text-xs" style={{ color: "var(--text-muted)" }}>
           Turn it off, or change the address, whenever you like.
         </span>
       </div>
@@ -163,9 +158,4 @@ function ReasonerChoice({
 const panel = {
   background: "var(--bg-primary)",
   border: "1px solid var(--hairline)",
-} as const;
-
-const quietButton = {
-  border: "1px solid var(--hairline)",
-  color: "var(--text-secondary)",
 } as const;

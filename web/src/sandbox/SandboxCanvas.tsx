@@ -2,16 +2,28 @@
 // desktop shell's interaction grammar re-expressed for the pointer:
 //
 //   drag a node's BODY   → move it (position is UI state, engine-mirrored)
-//   drag a node's ∘ PORT → wire it (drop on another node; Alt = gradient)
+//   drag a node's handle → wire it (drop on another node; Alt = gradient)
 //   click a node / wire  → select (the inspector shows it)
 //   Delete / Backspace   → remove the selection
 //   Escape               → cancel a pending wire / clear selection
 //
 // The canvas renders the SNAPSHOT — engine truth — and never computes a
 // number itself: activity, storage, and wire deliveries arrive computed.
+//
+// Drawn on the model canvas's own vocabulary (makeover slice E, canvas audit
+// block 8): a component is a circle with its primitive's glyph in its hue, a
+// source or sink the open square, the wire 2px in the substance's --kind-*
+// with one arrowhead, the handle the same 8px disc, names on paper tabs,
+// selection a ring in the accent. Surfaces are the real tokens, so dark works.
 
 import { useEffect, useRef, useState } from "react";
-import type { SandboxSnapshot } from "../kernel/types";
+import type { ProcessPrimitive, SandboxSnapshot } from "../kernel/types";
+import { NODE_R } from "../canvas/geometry";
+import { PaperTab } from "../canvas/lenses/common";
+import { primitiveGlyph } from "../canvas/lenses/primitive-glyphs";
+import { ARROW, HANDLE, LABEL } from "../canvas/style";
+import { PRIMITIVE_ICON } from "../icons";
+import { prim } from "../tokens";
 
 export interface CanvasSelection {
   kind: "node" | "wire";
@@ -27,8 +39,11 @@ interface Props {
   onDelete: (sel: CanvasSelection) => void;
 }
 
-const NODE_W = 92;
-const NODE_H = 40;
+/** The node's hit extent, world px: the canvas's own component radius, so a
+ *  drop or a click lands the way it does on the model canvas. */
+const R = NODE_R;
+/** How far from the body a wire's end is taken as a drop on it. */
+const DROP_PAD = 10;
 
 /** The reserved KIND channel (web/src/tokens.ts / index.css): color means
  *  substance identity here, exactly as it does everywhere else in the app —
@@ -39,34 +54,20 @@ const KIND_COLOR: Record<string, string> = {
   Message: "var(--kind-informational)",
 };
 
-/** The node sparkline path: the spark ring scaled into a strip along the
- *  node's lower edge, normalized to its own max (shape, not magnitude). */
+/** The node sparkline path: the spark ring scaled into a strip above the
+ *  readout, normalized to its own max (shape, not magnitude). */
 function sparkPoints(spark: number[]): string {
   const max = Math.max(...spark, 1e-6);
-  const x0 = 46;
-  const w = NODE_W - x0 - 6;
-  const y0 = NODE_H - 6;
-  const h = 9;
+  const w = 28;
+  const x0 = -w / 2;
+  const y0 = -R - 24;
+  const h = 8;
   return spark
     .map((v, i) => `${(x0 + (i / (spark.length - 1)) * w).toFixed(1)},${(y0 - (v / max) * h).toFixed(1)}`)
     .join(" ");
 }
 
-/** Kind glyph — a compact visual anchor per primitive (full name is below). */
-const GLYPH: Record<string, string> = {
-  Source: "▶",
-  Sink: "◀",
-  Buffering: "▭",
-  Combining: "⊕",
-  Splitting: "⑂",
-  Amplifying: "△",
-  Modulating: "⊗",
-  Sensing: "◉",
-  Inverting: "±",
-  Copying: "⧉",
-  Propelling: "→",
-  Impeding: "⊣",
-};
+const isPrimitive = (kind: string): kind is ProcessPrimitive => kind in PRIMITIVE_ICON;
 
 export default function SandboxCanvas({ snapshot, selected, onSelect, onMoveNode, onWire, onDelete }: Props) {
   const svgRef = useRef<SVGSVGElement | null>(null);
@@ -109,9 +110,7 @@ export default function SandboxCanvas({ snapshot, selected, onSelect, onMoveNode
   const onPointerUp = (e: React.PointerEvent) => {
     if (pendingWire) {
       const p = toCanvas(e);
-      const target = snapshot.nodes.findIndex(
-        (n) => Math.abs(p.x - n.x) <= NODE_W / 2 && Math.abs(p.y - n.y) <= NODE_H / 2 + 8,
-      );
+      const target = snapshot.nodes.findIndex((n) => Math.hypot(p.x - n.x, p.y - n.y) <= R + DROP_PAD);
       if (target >= 0 && target !== pendingWire.from) {
         onWire(pendingWire.from, target, e.altKey ? "gradient" : "pushed");
       }
@@ -125,8 +124,8 @@ export default function SandboxCanvas({ snapshot, selected, onSelect, onMoveNode
   return (
     <svg
       ref={svgRef}
-      className="h-full w-full"
-      style={{ background: "var(--surface, #fff)", touchAction: "none" }}
+      className="h-full w-full select-none"
+      style={{ background: "var(--bg-primary)", touchAction: "none", userSelect: "none" }}
       onPointerMove={onPointerMove}
       onPointerUp={onPointerUp}
       onPointerDown={(e) => {
@@ -134,8 +133,24 @@ export default function SandboxCanvas({ snapshot, selected, onSelect, onMoveNode
       }}
     >
       <defs>
-        <marker id="sb-arrow" viewBox="0 0 8 8" refX="7" refY="4" markerWidth="7" markerHeight="7" orient="auto">
-          <path d="M0,0 L8,4 L0,8 z" fill="var(--text-muted)" />
+        {/* One head per substance, the canvas's size, filled with the stroke. */}
+        {Object.entries(KIND_COLOR).map(([k, color]) => (
+          <marker
+            key={k}
+            id={`sb-arrow-${k}`}
+            viewBox="0 0 10 10"
+            refX="8"
+            refY="5"
+            markerUnits="userSpaceOnUse"
+            markerWidth={ARROW.size}
+            markerHeight={ARROW.size}
+            orient="auto"
+          >
+            <path d="M 0 0 L 10 5 L 0 10 z" fill={color} />
+          </marker>
+        ))}
+        <marker id="sb-arrow" viewBox="0 0 10 10" refX="8" refY="5" markerUnits="userSpaceOnUse" markerWidth={ARROW.size} markerHeight={ARROW.size} orient="auto">
+          <path d="M 0 0 L 10 5 L 0 10 z" fill="var(--text-muted)" />
         </marker>
         {/* The flow animation: a dash marching down the wire. Speed and weight
             carry the delivery (engine's last_amount) — the canvas never
@@ -151,17 +166,22 @@ export default function SandboxCanvas({ snapshot, selected, onSelect, onMoveNode
         return (
           <g key={`w${k}`} onPointerDown={(e) => { e.stopPropagation(); onSelect({ kind: "wire", index: k }); }}>
             {/* wide invisible hit line */}
-            <line x1={a.x} y1={a.y} x2={b.x} y2={b.y} stroke="transparent" strokeWidth={12} />
+            <line x1={a.x} y1={a.y} x2={b.x} y2={b.y} stroke="transparent" strokeWidth={18} />
+            {/* Selection is a halo behind the stroke; the stroke thickens by
+                one px and keeps its substance hue (rule 20). */}
+            {isSel && (
+              <line x1={a.x} y1={a.y} x2={b.x} y2={b.y} stroke="var(--accent)" strokeOpacity={0.35} strokeWidth={6} />
+            )}
             <line
               x1={a.x}
               y1={a.y}
               x2={b.x}
               y2={b.y}
-              stroke={isSel ? "var(--accent)" : KIND_COLOR[w.substance_base] ?? "var(--text-muted)"}
-              strokeOpacity={isSel ? 1 : 0.75}
-              strokeWidth={isSel ? 2 : 1.25}
-              strokeDasharray={w.mode === "gradient" ? "4 3" : undefined}
-              markerEnd="url(#sb-arrow)"
+              stroke={KIND_COLOR[w.substance_base] ?? "var(--text-muted)"}
+              strokeOpacity={0.9}
+              strokeWidth={isSel ? 3 : 2}
+              strokeDasharray={w.mode === "gradient" ? "6 4" : undefined}
+              markerEnd={KIND_COLOR[w.substance_base] ? `url(#sb-arrow-${w.substance_base})` : "url(#sb-arrow)"}
             />
             {w.last_amount > 0.02 && (
               <line
@@ -181,9 +201,9 @@ export default function SandboxCanvas({ snapshot, selected, onSelect, onMoveNode
                 x={(a.x + b.x) / 2}
                 y={(a.y + b.y) / 2 - 5}
                 textAnchor="middle"
-                fontSize={9}
-                fontFamily="monospace"
-                fill="var(--text-muted)"
+                fontSize={10}
+                fill="var(--accent-strong)"
+                className="font-mono tabular"
               >
                 {w.last_amount.toFixed(1)}
               </text>
@@ -200,8 +220,8 @@ export default function SandboxCanvas({ snapshot, selected, onSelect, onMoveNode
           x2={pendingWire.x}
           y2={pendingWire.y}
           stroke="var(--accent)"
-          strokeWidth={1.5}
-          strokeDasharray="3 3"
+          strokeWidth={2}
+          strokeDasharray="4 4"
         />
       )}
 
@@ -210,63 +230,80 @@ export default function SandboxCanvas({ snapshot, selected, onSelect, onMoveNode
         const isSel = selected?.kind === "node" && selected.index === i;
         const onLoop = cycle.has(i);
         const isBuffer = n.kind === "Buffering";
+        const open = n.kind === "Source" || n.kind === "Sink";
+        const hue = isPrimitive(n.kind) ? prim[n.kind] : "var(--text-secondary)";
+        const ring = onLoop ? "var(--verdict-error)" : isSel ? "var(--accent)" : null;
         return (
           <g
             key={`n${i}`}
-            transform={`translate(${n.x - NODE_W / 2}, ${n.y - NODE_H / 2})`}
+            transform={`translate(${n.x}, ${n.y})`}
             onPointerDown={(e) => {
               e.stopPropagation();
               onSelect({ kind: "node", index: i });
               const p = toCanvas(e);
               setDrag({ i, dx: p.x - n.x, dy: p.y - n.y });
             }}
-            style={{ cursor: "grab" }}
+            style={{ cursor: drag?.i === i ? "grabbing" : "grab" }}
           >
-            <rect
-              width={NODE_W}
-              height={NODE_H}
-              rx={3}
-              fill={isBuffer ? "var(--lens-accent-soft, var(--accent-soft, #eef))" : "var(--surface, #fff)"}
-              stroke={onLoop ? "var(--verdict-error)" : isSel ? "var(--accent)" : "var(--text-muted)"}
-              strokeWidth={isSel || onLoop ? 2 : 1}
-            />
-            {/* substance accent: the KIND channel, same meaning as on wires */}
-            <rect
-              x={1}
-              y={1}
-              width={NODE_W - 2}
-              height={3}
-              rx={1.5}
-              fill={KIND_COLOR[n.substance_base] ?? "var(--text-muted)"}
-              opacity={0.9}
-            />
-            <text x={8} y={17} fontSize={11} fill={KIND_COLOR[n.substance_base] ?? "var(--text-primary)"}>
-              {GLYPH[n.kind] ?? "□"}
-            </text>
-            <text x={24} y={16} fontSize={10} fill="var(--text-primary)">
-              {n.kind}
-            </text>
-            <text x={8} y={31} fontSize={9} fontFamily="monospace" fill="var(--text-muted)">
+            <title>{onLoop ? `${n.name}: on a loop of pure relays` : n.name}</title>
+            {/* Selection (and a loop fault) as a ring offset 4 from the body. */}
+            {ring &&
+              (open ? (
+                <rect x={-R - 4} y={-R - 4} width={2 * R + 8} height={2 * R + 8} rx={2} fill="none" stroke={ring} strokeWidth={2} />
+              ) : (
+                <circle r={R + 4} fill="none" stroke={ring} strokeWidth={2} />
+              ))}
+            {open ? (
+              /* Source and sink: Mobus's open square, no interior (rule 17);
+                 the stub says which way the substance goes. The square is
+                 painted in the stage's own ground, so it still reads as open
+                 but its whole face takes the pointer (a fill of none left only
+                 the 2px outline grabbable, which main's filled box never did)
+                 and the wire ending at its centre stays hidden. */
+              <g stroke="var(--text-secondary)" strokeWidth={2} strokeLinecap="square" strokeLinejoin="miter" fill="none">
+                <rect x={-R} y={-R} width={2 * R} height={2 * R} rx={0} fill="var(--bg-primary)" />
+                {/* the stub: leaving a source, entering a sink */}
+                <path d={n.kind === "Source" ? `M ${R} 0 H ${R + 10}` : `M ${-R - 10} 0 H ${-R}`} />
+              </g>
+            ) : (
+              <>
+                <circle r={R} fill="var(--bg-secondary)" stroke="var(--text-secondary)" strokeWidth={2} />
+                {isPrimitive(n.kind) && (
+                  <g
+                    transform={`scale(${(R * 0.56) / 6})`}
+                    style={{ color: hue }}
+                    fill="none"
+                    stroke={hue}
+                    strokeWidth={2 / ((R * 0.56) / 6)}
+                    strokeLinecap="square"
+                    strokeLinejoin="miter"
+                    pointerEvents="none"
+                  >
+                    {primitiveGlyph(n.kind)}
+                  </g>
+                )}
+              </>
+            )}
+            {/* the readout above the body, the canvas's sim register */}
+            <text y={-R - 10} textAnchor="middle" fontSize={10} fill="var(--accent-strong)" className="font-mono tabular pointer-events-none">
               {isBuffer ? `stock ${n.storage.toFixed(1)}` : `act ${n.activity.toFixed(1)}`}
             </text>
             {/* inline sparkline: the node's last SPARK_CAP ticks (engine trace) */}
             {n.spark.length > 1 && (
-              <polyline
-                points={sparkPoints(n.spark)}
-                fill="none"
-                stroke="var(--accent)"
-                strokeWidth={0.75}
-                opacity={0.7}
-              />
+              <polyline points={sparkPoints(n.spark)} fill="none" stroke="var(--accent)" strokeWidth={1} opacity={0.7} pointerEvents="none" />
             )}
-            {/* output port: drag from here to wire */}
+            <PaperTab>
+              <text y={R + 16} textAnchor="middle" fontSize={LABEL.size} fontWeight={LABEL.weight} fill="var(--text-primary)" className="font-body pointer-events-none">
+                {n.name}
+              </text>
+            </PaperTab>
+            {/* output handle: drag from here to wire. The canvas's own 8px disc
+                over a 24px hit disc (rule 11). */}
             <circle
-              cx={NODE_W}
-              cy={NODE_H / 2}
-              r={5}
-              fill="var(--surface, #fff)"
-              stroke={KIND_COLOR[n.substance_base] ?? "var(--accent)"}
-              strokeWidth={1.5}
+              cx={R * 0.75}
+              cy={R * 0.75}
+              r={HANDLE.hitR}
+              fill="transparent"
               style={{ cursor: "crosshair" }}
               onPointerDown={(e) => {
                 e.stopPropagation();
@@ -274,9 +311,15 @@ export default function SandboxCanvas({ snapshot, selected, onSelect, onMoveNode
                 setPendingWire({ from: i, x: p.x, y: p.y });
               }}
             />
-            <text x={NODE_W / 2} y={NODE_H + 12} textAnchor="middle" fontSize={9} fill="var(--text-muted)">
-              {n.name}
-            </text>
+            <circle
+              cx={R * 0.75}
+              cy={R * 0.75}
+              r={HANDLE.r}
+              fill="var(--bg-primary)"
+              stroke={KIND_COLOR[n.substance_base] ?? "var(--accent)"}
+              strokeWidth={HANDLE.width}
+              pointerEvents="none"
+            />
           </g>
         );
       })}

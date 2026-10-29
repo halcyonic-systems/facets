@@ -51,6 +51,32 @@ function shapeSvg(glyph: LineGlyph): SVGSVGElement {
   return svg;
 }
 
+function errorSvg(): SVGSVGElement {
+  const svg = document.createElementNS(SVG_NS, "svg");
+  svg.setAttribute("width", "16");
+  svg.setAttribute("height", "16");
+  svg.setAttribute("viewBox", "0 0 24 24");
+  svg.setAttribute("fill", "none");
+  svg.setAttribute("stroke", "currentColor");
+  svg.setAttribute("stroke-width", "2");
+  svg.setAttribute("stroke-linecap", "square");
+  svg.setAttribute("stroke-linejoin", "miter");
+  svg.setAttribute("role", "img");
+  svg.setAttribute("data-icon", "error");
+  const title = document.createElementNS(SVG_NS, "title");
+  title.textContent = "Fault on this line";
+  svg.appendChild(title);
+  const c = document.createElementNS(SVG_NS, "circle");
+  c.setAttribute("cx", "12");
+  c.setAttribute("cy", "12");
+  c.setAttribute("r", "8");
+  svg.appendChild(c);
+  const p = document.createElementNS(SVG_NS, "path");
+  p.setAttribute("d", "M8 12 H16");
+  svg.appendChild(p);
+  return svg;
+}
+
 class GlyphMarker extends GutterMarker {
   constructor(readonly key: string, readonly glyph: LineGlyph | "error") {
     super();
@@ -61,8 +87,11 @@ class GlyphMarker extends GutterMarker {
   override toDOM() {
     const el = document.createElement("span");
     if (this.glyph === "error") {
+      // The icon set's `error` (icons.tsx: a ring with a bar) drawn here as
+      // DOM, since the gutter is not React: the 24 grid, 2px stroke, square
+      // caps, 16px standalone (makeover rule 14).
       el.className = "sl-glyph sl-glyph-error";
-      el.textContent = "!";
+      el.appendChild(errorSvg());
       return el;
     }
     if (this.glyph.type === "kind") {

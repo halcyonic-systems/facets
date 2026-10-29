@@ -6,7 +6,8 @@
 // density and edge blur re-render from the kernel's boundary_props.
 import type { CanvasBoundaryProps } from "../kernel/types";
 import type { Pt } from "./geometry";
-import { InspectorRow as Row, InspectorTitle as Title, Popover } from "../ui";
+import { InspectorRow as Row, InspectorTitle as Title, ToolButton } from "../ui";
+import { PopoverDialog } from "./PopoverDialog";
 
 export function BoundaryPopover({
   boundary,
@@ -50,7 +51,7 @@ export function BoundaryPopover({
   // Shared viewport-clamped Popover (walkthrough #16 family): same primitive
   // as the edge editor, so a membrane click near the fold stays reachable.
   return (
-    <Popover x={anchor.x} y={anchor.y} width={250} accent>
+    <PopoverDialog x={anchor.x} y={anchor.y} width={250} label="Edit the boundary: porosity and fuzziness" onClose={onClose}>
       <Title>boundary — P = ⟨porosity, fuzziness⟩</Title>
       {range(
         "porosity",
@@ -65,10 +66,8 @@ export function BoundaryPopover({
         "perceptive fuzziness: 0 = crisp → 1 = fuzzy; renders as edge blur",
       )}
       <div className="flex justify-end">
-        <button onClick={onClose} className="rounded-full px-3 py-1 text-xs" style={{ color: "var(--text-muted)" }}>
-          close
-        </button>
+        <ToolButton onClick={onClose}>close</ToolButton>
       </div>
-    </Popover>
+    </PopoverDialog>
   );
 }

@@ -10,7 +10,8 @@ import type { CanvasModel, IssueTarget, LensDescription, ValidationResult } from
 import type { Stage2Report } from "./resolution";
 import { ReviewPanel } from "./ReviewPanel";
 import { thingKind, thingStamps } from "./WriteMargin";
-import { Card } from "./ui";
+import { Button, Card } from "./ui";
+import { Icon } from "./icons";
 import { openExternal } from "./desktop";
 
 export type FormalRow = { label: string; value: string; items?: string[] };
@@ -89,9 +90,7 @@ function Row({ row }: { row: FormalRow }) {
           {row.value}
         </span>
         {canOpen && (
-          <span className="text-[10px]" style={{ color: "var(--text-muted)" }}>
-            {open ? "▾" : "▸"}
-          </span>
+          <Icon name={open ? "chevron-down" : "chevron-right"} size={16} style={{ color: "var(--text-muted)" }} />
         )}
       </button>
       {open && row.items && (
@@ -149,7 +148,7 @@ export function ReadSheet({
       className={
         focus
           ? "flex min-w-0 flex-1 flex-col gap-4 overflow-y-auto p-4 [&>*]:mx-auto [&>*]:w-full [&>*]:max-w-3xl"
-          : "flex min-w-80 shrink basis-[32rem] flex-col gap-4 overflow-y-auto border-l p-4"
+          : "flex min-w-80 max-w-[50%] shrink basis-[32rem] flex-col gap-4 overflow-y-auto border-l p-4"
       }
       style={{ borderColor: "var(--hairline)", background: "var(--lens-chrome)" }}
       data-testid="read-sheet"
@@ -160,9 +159,9 @@ export function ReadSheet({
           title={thing ? thing.name : relation ? relation.name || "unlabeled flow" : ""}
           source={thing ? thingKind(thing) : "flow"}
           actions={
-            <button onClick={onClearSelection} className="text-[11px] underline" style={{ color: "var(--text-muted)" }}>
+            <Button size={28} variant="quiet" icon="back" onClick={onClearSelection}>
               whole model
-            </button>
+            </Button>
           }
         >
           <div className="flex flex-col gap-1 text-xs" style={{ color: "var(--text-secondary)" }} data-testid="read-element">
@@ -216,21 +215,30 @@ export function ReadSheet({
             {formalRows(desc).map((row) => (
               <Row key={row.label} row={row} />
             ))}
-            <button
+            <Button
+              size={28}
+              variant="quiet"
+              icon="info"
               onClick={() => setProvenance((p) => !p)}
               aria-expanded={provenance}
-              className="mt-2 text-[11px] underline"
-              style={{ color: "var(--text-muted)" }}
+              className="mt-2"
             >
               where this comes from
-            </button>
+            </Button>
             {provenance && (
-              <p className="mt-1 text-[11px] leading-snug" style={{ color: "var(--text-muted)" }}>
+              <p className="mt-1 text-xs leading-snug" style={{ color: "var(--text-muted)" }}>
                 The object is the kernel's describe(model, lens), in the browser as wasm. Under Mobus, E as a
                 first-class slot is the Lean formalization's addition; the book prints the seven-tuple
                 ⟨C, N, G, B, T, H, Δt⟩. The formal side, with what it does and does not establish:{" "}
-                <a href={PROVENANCE_URL} target="_blank" rel="noreferrer" onClick={openExternal} className="underline">
-                  math.systems ↗
+                <a
+                  href={PROVENANCE_URL}
+                  target="_blank"
+                  rel="noreferrer"
+                  onClick={openExternal}
+                  className="inline-flex items-center gap-0.5 underline"
+                >
+                  math.systems
+                  <Icon name="external" size={16} />
                 </a>
               </p>
             )}

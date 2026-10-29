@@ -84,6 +84,9 @@ export function SlEditor({
           alignExtension,
           errorLinesField,
           errorDecorations,
+          // The content editable's accessible name (sweeps.md,
+          // aria-input-field-name): the pane's title, said in full.
+          EditorView.contentAttributes.of({ "aria-label": "SL, the system language" }),
           // No line wrapping: SL reads columnar (bands, aligned arrows), so
           // long lines scroll horizontally the way they do in a code editor.
           EditorView.updateListener.of((u) => {
@@ -145,7 +148,9 @@ export function SlEditor({
   return (
     <div
       ref={hostRef}
-      className={`sl-editor min-h-0 flex-1 overflow-auto${stale ? " sl-errors-stale" : ""}`}
+      // The floor (eight lines, index.css .sl-editor) is the one height rule
+      // here; the pane's other blocks yield before the editor does.
+      className={`sl-editor flex-1 overflow-auto${stale ? " sl-errors-stale" : ""}`}
     />
   );
 }

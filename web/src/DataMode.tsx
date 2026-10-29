@@ -12,7 +12,8 @@ import { useMemo, useState, type CSSProperties } from "react";
 import type { CanvasModel, ColumnMapping, Manifest } from "./kernel/types";
 import { parseCsv } from "./kernel";
 import { KIND_COLOR } from "./canvas/types";
-import { Pill } from "./ui";
+import { Button, Input, Pill, Select, ToolButton } from "./ui";
+import { Icon } from "./icons";
 
 const ROW_CAP = 200;
 
@@ -268,9 +269,12 @@ export function DataMode({
 
   const caret = (col: number) =>
     sort && sort.col === col ? (
-      <span aria-hidden className="ml-1" style={{ color: "var(--accent)" }}>
-        {sort.dir === "asc" ? "▲" : "▼"}
-      </span>
+      <Icon
+        name={sort.dir === "asc" ? "chevron-up" : "chevron-down"}
+        size={16}
+        className="ml-1 inline-block align-text-bottom"
+        style={{ color: "var(--accent)" }}
+      />
     ) : null;
 
   const headerCellStyle = (col: number, frozen: boolean): CSSProperties => ({
@@ -289,14 +293,17 @@ export function DataMode({
   // The Data tab's own acquisition affordance — a file picker, no bundle
   // needed. Reads as text; parsing and every judgment stay downstream.
   const importButton = onAttachCsv && (
+    // A <label> over a hidden file input, dressed as the quiet 28px Button
+    // (a <button> cannot open a file picker without a script).
     <label
-      className="cursor-pointer px-2 py-1 font-mono text-[11px] uppercase tracking-wide"
+      className="prim-button prim-quiet inline-flex h-7 shrink-0 cursor-pointer items-center gap-1.5 rounded-sm px-2.5 whitespace-nowrap text-sm font-medium"
       style={{
-        border: "1px solid var(--accent)",
-        color: "var(--accent-strong)",
-        background: "var(--bg-surface)",
+        background: "var(--bg-secondary)",
+        color: "var(--text-primary)",
+        border: "1px solid var(--rule-strong)",
       }}
     >
+      <Icon name="folder" size={16} />
       {csv ? "replace CSV…" : "import CSV…"}
       <input
         type="file"
@@ -352,7 +359,17 @@ export function DataMode({
   };
 
   const proposalLabel = (value: string) =>
-    value === "time" ? "time" : value.startsWith("stock:") ? `▤ ${value.slice(6)}` : `→ ${value}`;
+    value === "time" ? (
+      "time"
+    ) : value.startsWith("stock:") ? (
+      <>
+        <Icon name="buffering" size={16} /> {value.slice(6)}
+      </>
+    ) : (
+      <>
+        <Icon name="forward" size={16} /> {value}
+      </>
+    );
 
   const currentBinding = (column: string): string => {
     const m = manifest?.mapping.find((x) => x.column === column);
@@ -370,42 +387,37 @@ export function DataMode({
   const bindingPanel = onManifestChange && parsed && model.relations.length > 0 && (
     <div className="p-3" style={{ borderBottom: HAIRLINE }}>
       <h2
-        className="mb-1.5 text-[11px] font-semibold uppercase tracking-wide"
-        style={{ color: "var(--text-secondary)" }}
+        className="mb-1.5 text-[11px] font-semibold uppercase"
+        style={{ letterSpacing: "var(--tracking-label)", color: "var(--text-secondary)" }}
       >
         Column bindings
       </h2>
       {proposals.size > 0 && (
-        <button
-          type="button"
+        <Button
+          size={28}
+          variant="quiet"
+          icon="check"
           data-testid="confirm-proposed"
           onClick={confirmProposals}
           title="bind every proposed column as shown; the dropdowns stay the correction surface"
-          className="mb-1.5 w-full px-2 py-1 font-mono text-[11px]"
-          style={{
-            border: "1px dashed var(--accent)",
-            color: "var(--accent-strong)",
-            background: "var(--bg-surface)",
-          }}
+          className="mb-2 w-full"
+          style={{ borderStyle: "dashed", borderColor: "var(--accent)", color: "var(--accent-strong)" }}
         >
           confirm {proposals.size} proposed by name
-        </button>
+        </Button>
       )}
       <ul className="text-xs">
         {parsed.headers.map((h) => (
-          <li key={h} className="flex items-center justify-between gap-2 py-0.5">
-            <span className="truncate font-mono" style={{ color: "var(--text-secondary)" }}>
+          <li key={h} className="flex flex-wrap items-center justify-between gap-2 py-1">
+            <span className="min-w-0 truncate font-mono" style={{ color: "var(--text-secondary)" }} title={h}>
               {h}
             </span>
-            <select
+            <Select
               value={currentBinding(h)}
               onChange={(e) => setBinding(h, e.target.value)}
-              className="max-w-[9rem] border px-1 py-0.5 font-mono text-[11px]"
-              style={{
-                borderColor: "var(--hairline)",
-                background: "var(--bg-primary)",
-                color: "var(--text-primary)",
-              }}
+              aria-label={`Binding for column ${h}`}
+              className="w-full"
+              style={{ fontSize: "var(--t-meta)" }}
             >
               <option value="ignore">— ignore —</option>
               <option value="time">time (what the rows are measured against)</option>
@@ -432,32 +444,29 @@ export function DataMode({
                     ))}
                 </optgroup>
               )}
-            </select>
+            </Select>
             {proposals.has(h) && (
-              <button
-                type="button"
+              <Button
+                size={28}
+                variant="quiet"
                 data-proposed={proposals.get(h)}
                 onClick={() => setBinding(h, proposals.get(h)!)}
                 title="proposed by name, not yet bound: click to bind this column"
-                className="truncate px-1 py-0.5 font-mono text-[11px] italic"
-                style={{ border: "1px dashed var(--hairline)", color: "var(--text-secondary)" }}
+                className="max-w-full font-mono"
+                style={{ borderStyle: "dashed", color: "var(--text-secondary)" }}
               >
                 proposed {proposalLabel(proposals.get(h)!)}
-              </button>
+              </Button>
             )}
             {manifest?.mapping.find((m) => m.column === h && m.as === "flow") && (
-              <input
+              <Input
                 aria-label={`unit of ${h}`}
                 title="the column's unit: what this column measures (defaults to the flow's unit)"
                 value={manifest.mapping.find((m) => m.column === h)?.unit ?? ""}
                 placeholder="unit"
                 onChange={(e) => setUnit(h, e.target.value)}
-                className="w-16 border px-1 py-0.5 font-mono text-[11px]"
-                style={{
-                  borderColor: "var(--hairline)",
-                  background: "var(--bg-primary)",
-                  color: "var(--text-primary)",
-                }}
+                className="font-mono"
+                style={{ width: "calc(9ch + 18px)" }}
               />
             )}
           </li>
@@ -466,10 +475,14 @@ export function DataMode({
     </div>
   );
 
+  // The bindings rail sits beside the table from 1280 up and stacks under it
+  // below that, capped to 40% of the height, so the table keeps the width at
+  // 1024 and renders at 390 (rule 16; audit #8).
   const flowsRail = (
     <section
-      className="w-60 shrink-0 overflow-y-auto"
-      style={{ borderLeft: "1px solid var(--border)", background: "var(--bg-secondary)" }}
+      className="max-h-[40%] shrink-0 overflow-y-auto border-t xl:max-h-none xl:w-80 xl:border-t-0 xl:border-l"
+      style={{ borderColor: "var(--hairline)", background: "var(--bg-secondary)" }}
+      aria-label="Bindings and unbound flows"
     >
       {bindingPanel}
       {/* The unbound rail — a declared flow with no data is a fact worth
@@ -477,21 +490,21 @@ export function DataMode({
       {unbound.length > 0 && (
         <div className="p-3" style={{ borderBottom: HAIRLINE }}>
           <h2
-            className="mb-1.5 text-[11px] font-semibold uppercase tracking-wide"
-            style={{ color: "var(--text-secondary)" }}
+            className="mb-1.5 text-[11px] font-semibold uppercase"
+            style={{ letterSpacing: "var(--tracking-label)", color: "var(--text-secondary)" }}
           >
             Declared, not bound
           </h2>
           <ul className="text-xs">
             {unbound.map((r) => (
-              <li key={r.id} className="flex items-center gap-1.5 py-0.5">
+              <li key={r.id} className="flex flex-wrap items-center gap-x-1.5 py-1">
                 <span
                   aria-hidden
                   className="inline-block h-[3px] w-3 shrink-0"
                   style={{ background: KIND_COLOR[r.kind] }}
                 />
                 <span style={{ color: "var(--text-secondary)" }}>{r.name}</span>
-                <span className="font-mono text-[10px]" style={{ color: "var(--text-muted)" }}>
+                <span className="basis-full pl-[18px] font-mono text-[11px]" style={{ color: "var(--text-muted)" }}>
                   {thingName(r.a)} → {thingName(r.b)}
                 </span>
               </li>
@@ -502,8 +515,8 @@ export function DataMode({
       {otherMappings.length > 0 && (
         <div className="p-3">
           <h2
-            className="mb-1.5 text-[11px] font-semibold uppercase tracking-wide"
-            style={{ color: "var(--text-secondary)" }}
+            className="mb-1.5 text-[11px] font-semibold uppercase"
+            style={{ letterSpacing: "var(--tracking-label)", color: "var(--text-secondary)" }}
           >
             Other bindings
           </h2>
@@ -526,11 +539,11 @@ export function DataMode({
     >
       {/* Header band — states the rung, the support, and the one sentence this
           mode exists to teach. */}
-      <div className="px-4 pt-3 pb-2" style={{ borderBottom: "1px solid var(--border)" }}>
+      <div className="px-4 pt-3 pb-2" style={{ borderBottom: "1px solid var(--hairline)" }}>
         <div className="flex flex-wrap items-baseline gap-x-3 gap-y-1">
-          <span className="font-display text-lg" style={{ color: "var(--text-primary)" }}>
+          <h1 className="font-bold leading-tight" style={{ color: "var(--text-primary)", fontFamily: "var(--font-display)", fontSize: "var(--t-d3)" }}>
             {modelName}
-          </span>
+          </h1>
           <Pill tone="neutral">Measurements</Pill>
           {/* The console graft: the shape, stated the moment the sheet opens. */}
           {parsed && (
@@ -548,16 +561,12 @@ export function DataMode({
           <span className="ml-auto flex items-center gap-2">
             {/* #309: the two readings of one data system, a toggle apart. */}
             {observedStates && (
-              <span className="flex font-mono text-[11px]" style={{ border: HAIRLINE }}>
+              <span className="flex items-center gap-1" role="group" aria-label="reading">
                 {(["observations", "states"] as const).map((v) => (
-                  <button
+                  <ToolButton
                     key={v}
+                    active={dataView === v}
                     onClick={() => setDataView(v)}
-                    className="px-2 py-1 uppercase tracking-wide"
-                    style={{
-                      background: dataView === v ? "var(--accent-soft)" : "var(--bg-surface)",
-                      color: dataView === v ? "var(--accent-strong)" : "var(--text-muted)",
-                    }}
                     title={
                       v === "observations"
                         ? "rows against time — one row per observation"
@@ -565,7 +574,7 @@ export function DataMode({
                     }
                   >
                     {v === "observations" ? "observations" : "observed states"}
-                  </button>
+                  </ToolButton>
                 ))}
               </span>
             )}
@@ -581,8 +590,8 @@ export function DataMode({
         </p>
       </div>
 
-      <div className="flex min-h-0 flex-1">
-        <div className="min-w-0 flex-1 overflow-auto" onMouseLeave={() => setHoverCol(null)}>
+      <div className="flex min-h-0 flex-1 flex-col xl:flex-row">
+        <div className="min-h-0 min-w-0 flex-1 overflow-auto" onMouseLeave={() => setHoverCol(null)}>
           {!parsed && (
             <div className="max-w-md p-4">
               <p className="text-xs" style={{ color: "var(--text-secondary)" }}>
@@ -625,7 +634,7 @@ export function DataMode({
                         }}
                       >
                         <div style={{ color: "var(--text-primary)" }}>{v.thing.name}</div>
-                        <div className="text-[10px] font-normal" style={{ color: "var(--text-muted)" }}>
+                        <div className="text-[11px] font-normal" style={{ color: "var(--text-muted)" }}>
                           {(v.thing.variable_kind ?? "Basic").toLowerCase()}
                           {v.thing.scale ? ` · ${v.thing.scale.toLowerCase()}` : ""}
                         </div>
@@ -707,7 +716,7 @@ export function DataMode({
                 </tbody>
               </table>
               {observedStates.length > ROW_CAP && (
-                <p className="mt-1 px-2 font-mono text-[10px]" style={{ color: "var(--text-muted)" }}>
+                <p className="mt-1 px-2 font-mono text-[11px]" style={{ color: "var(--text-muted)" }}>
                   … {observedStates.length - ROW_CAP} rarer states not shown (all are counted)
                 </p>
               )}
@@ -747,7 +756,7 @@ export function DataMode({
                       }}
                     >
                       <div style={{ color: "var(--text-primary)" }}>{v.thing.name}</div>
-                      <div className="text-[10px] font-normal" style={{ color: "var(--text-muted)" }}>
+                      <div className="text-[11px] font-normal" style={{ color: "var(--text-muted)" }}>
                         {(v.thing.variable_kind ?? "Basic").toLowerCase()}
                         {v.thing.scale ? ` · ${v.thing.scale.toLowerCase()}` : ""}
                       </div>
@@ -789,7 +798,7 @@ export function DataMode({
                   <tr>
                     <td
                       colSpan={variableCols.length + 1}
-                      className="px-2 py-1 text-center font-mono text-[10px]"
+                      className="px-2 py-1 text-center font-mono text-[11px]"
                       style={{ color: "var(--text-muted)", borderBottom: HAIRLINE }}
                     >
                       … {hiddenCount} rows elided …
@@ -854,7 +863,7 @@ export function DataMode({
                     <th
                       key={c.mapping.column}
                       className="px-2 py-1.5 text-left"
-                      style={{ ...headerCellStyle(ci + 1, false), minWidth: "8rem" }}
+                      style={{ ...headerCellStyle(ci + 1, false), minWidth: "8rem", maxWidth: "14rem" }}
                       onClick={() => clickHeader(ci + 1)}
                       onMouseEnter={() => setHoverCol(ci + 1)}
                     >
@@ -872,7 +881,7 @@ export function DataMode({
                             {caret(ci + 1)}
                           </div>
                           <div
-                            className="whitespace-nowrap font-mono text-[10px] font-normal"
+                            className="font-mono text-[11px] font-normal leading-snug"
                             style={{ color: "var(--text-muted)" }}
                           >
                             {thingName(c.relation.a)} → {thingName(c.relation.b)} ← {c.mapping.column}
@@ -891,13 +900,14 @@ export function DataMode({
                               className="mr-1 inline-block h-[3px] w-3 align-middle"
                               style={{ background: "var(--verdict-error)" }}
                             />
-                            <span style={{ color: "var(--verdict-error)" }}>
-                              ⚠ {c.mapping.element ?? "(no target)"}
+                            <span className="inline-flex items-center gap-1" style={{ color: "var(--verdict-error)" }}>
+                              <Icon name="warning" size={16} />
+                              {c.mapping.element ?? "(no target)"}
                             </span>
                             {caret(ci + 1)}
                           </div>
                           <div
-                            className="whitespace-nowrap font-mono text-[10px] font-normal"
+                            className="whitespace-nowrap font-mono text-[11px] font-normal"
                             style={{ color: "var(--verdict-error)" }}
                           >
                             ← {c.mapping.column} · broken binding

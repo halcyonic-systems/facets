@@ -30,6 +30,12 @@ export interface LensNodeProps {
    *  project() drops it, so it is not yet in ℰ. Rendered pending. */
   isOrphan: boolean;
   hovered: boolean;
+  /** The shell's selected thing (makeover rule 20): drawn as a ring offset
+   *  from the body, the same geometry under every lens. */
+  selected?: boolean;
+  /** A drag in flight on this thing: the body steps to the well surface,
+   *  the cursor closes, the handle hides. */
+  dragging?: boolean;
   /** #418 item 6: the canvas is a picker, not an editor (Read). Authoring
    *  hints ("change it in the node editor") are withheld — they were wrong
    *  there, and a native SVG title over an inert layer could stick. */
@@ -40,6 +46,9 @@ export interface LensNodeProps {
   /** Stage scale — marks that must stay a hand's size (the connect handle)
    *  hold a screen size above 1× instead of growing with the world. */
   scale?: number;
+  /** The interface notches riding this thing's rim (Mobus, #306), so its name
+   *  can sit clear of a notch that points down over it. Presentation only. */
+  notches?: Array<{ angle: number; rim: number; screenHw?: number }>;
 }
 
 export interface LensEdgeProps {

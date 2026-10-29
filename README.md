@@ -55,9 +55,9 @@ accept or discard it. No generated text reaches a verdict.
 Open [**facets.systems/model**](https://facets.systems/model/) and draw a
 system, or describe one in a few lines of SL. The kernel runs in your browser as
 WebAssembly: the canvas, the compiler, every verdict, and every run stay on the
-page and make no network request. The [**Sandbox**](https://facets.systems/model/?sandbox=1)
-door is the fastest way to feel it: drop in work processes, wire them, press
-Run, and change a rate mid-run.
+page and make no network request. The fastest way to feel it:
+start a new model, choose **Wire processes and run**, drop in work processes,
+wire them, press Run, and change a rate while it runs.
 
 The one thing that does leave the page is opt-in. The **LLM co-author** in the
 SL pane is off until you turn it on at its gate, and the gate says where the text

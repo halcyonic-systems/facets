@@ -9,8 +9,10 @@
 import type { CanvasModel, PortFact } from "../kernel/types";
 import { KIND_COLOR } from "./types";
 import type { Pt } from "./geometry";
-import { InspectorRow as Row, InspectorTitle as Title, Popover } from "../ui";
+import { InspectorRow as Row, InspectorTitle as Title, ToolButton } from "../ui";
 import { thingById } from "./geometry";
+import { Icon } from "../icons";
+import { PopoverDialog } from "./PopoverDialog";
 
 export function InterfacePopover({
   port,
@@ -38,13 +40,14 @@ export function InterfacePopover({
         : "receives and exports";
 
   return (
-    <Popover x={anchor.x} y={anchor.y} width={280} accent>
+    <PopoverDialog x={anchor.x} y={anchor.y} width={280} label={`Interface${comp ? ` serving ${comp.name}` : ""}`} onClose={onClose}>
       <Title>interface{comp ? ` — serves ${comp.name}` : ""}</Title>
       <Row>
         <span style={{ color: "var(--text-secondary)" }}>{directionCopy}</span>
         {env && (
-          <span style={{ color: "var(--text-muted)" }} className="text-xs">
-            ↔ {env.name}
+          <span style={{ color: "var(--text-muted)" }} className="flex items-center gap-1 text-xs">
+            <Icon name="interface" size={16} title="across the membrane to" />
+            {env.name}
           </span>
         )}
       </Row>
@@ -60,28 +63,35 @@ export function InterfacePopover({
               onSelectRelation(r.id);
               onClose();
             }}
-            className="flex w-full items-center gap-2 rounded px-1.5 py-1 text-left text-xs hover:bg-[var(--bg-secondary)]"
+            className="flex w-full items-center gap-2 rounded-sm px-1.5 py-1 text-left text-xs hover:bg-[var(--bg-surface)]"
             title={`open this flow${inbound ? " (enters the system here)" : " (leaves the system here)"}`}
           >
-            <span
-              aria-hidden
-              className="inline-block h-[3px] w-4 shrink-0 rounded-full"
-              style={{ background: KIND_COLOR[r.kind] }}
-            />
+            {/* The substance as its drawn mark in --kind-* (rule 9b), not a bar. */}
+            <span className="flex shrink-0" style={{ color: KIND_COLOR[r.kind] }}>
+              <Icon name={r.kind === "Unspecified" ? "flow" : (r.kind.toLowerCase() as "matter" | "energy" | "informational" | "field")} size={16} title={r.kind} />
+            </span>
             <span className="min-w-0 flex-1 truncate" style={{ color: "var(--text-primary)" }}>
               {r.name || "(unnamed flow)"}
             </span>
-            <span className="shrink-0" style={{ color: "var(--text-muted)" }}>
-              {inbound ? "→ in" : "out →"}
+            <span className="flex shrink-0 items-center gap-1" style={{ color: "var(--text-muted)" }}>
+              {inbound ? (
+                <>
+                  <Icon name="forward" size={16} />
+                  in
+                </>
+              ) : (
+                <>
+                  out
+                  <Icon name="forward" size={16} />
+                </>
+              )}
             </span>
           </button>
         );
       })}
       <div className="flex justify-end">
-        <button onClick={onClose} className="rounded-full px-3 py-1 text-xs" style={{ color: "var(--text-muted)" }}>
-          close
-        </button>
+        <ToolButton onClick={onClose}>close</ToolButton>
       </div>
-    </Popover>
+    </PopoverDialog>
   );
 }

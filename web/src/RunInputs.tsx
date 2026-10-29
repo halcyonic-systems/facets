@@ -24,8 +24,19 @@
 import { useState } from "react";
 import type { CanvasModel, EngineField, Manifest, ParamDecl, Relation, Thing } from "./kernel/types";
 import { declaredRelations, forcedByColumn, resolveParamRows } from "./kernel/params";
-import { AmountField, ParamControl, SetByAgent, sliderStep, snapToStep, useCommitOnRelease } from "./ParamControl";
-import { Card } from "./ui";
+import {
+  AmountField,
+  ParamControl,
+  RAIL_LABEL,
+  RAIL_LOCK,
+  RAIL_ROW,
+  RAIL_VALUE,
+  SetByAgent,
+  sliderStep,
+  snapToStep,
+  useCommitOnRelease,
+} from "./ParamControl";
+import { Button, Card, Input } from "./ui";
 
 
 
@@ -41,13 +52,14 @@ function InputRow({
   onEdit: (next: Relation) => void;
 }) {
   return (
-    <div className="flex items-center justify-between gap-2 py-0.5 text-xs">
-      <span className="min-w-0 flex-1 truncate" style={{ color: "var(--text-primary)" }} title={relation.name}>
+    <div className={`${RAIL_ROW} py-0.5`}>
+      <span className={RAIL_LABEL} style={{ color: "var(--text-primary)" }} title={relation.name}>
         {label}
       </span>
+      <span className={RAIL_VALUE}>
       {forcedBy ? (
         <span
-          className="shrink-0 font-mono text-[11px]"
+          className={RAIL_LOCK}
           style={{ color: "var(--text-muted)" }}
           title={`This flow is driven by the data column “${forcedBy}” — the series, not a scalar, is what runs.`}
         >
@@ -55,7 +67,7 @@ function InputRow({
         </span>
       ) : relation.ample ? (
         <span
-          className="shrink-0 text-[11px] italic"
+          className="shrink-0 text-[11px]"
           style={{ color: "var(--text-muted)" }}
           title="Declared ample (#9): availability never binds — there is no number to adjust."
         >
@@ -64,8 +76,9 @@ function InputRow({
       ) : (
         <AmountField relation={relation} onEdit={onEdit} />
       )}
-      <span className="w-16 shrink-0 text-[11px]" style={{ color: "var(--text-muted)" }}>
+      <span className="w-16 min-w-0 shrink truncate text-[11px]" style={{ color: "var(--text-muted)" }}>
         {relation.unit ?? ""}
+      </span>
       </span>
     </div>
   );
@@ -98,21 +111,22 @@ function ShareRow({
     if (drag !== null) {
       const s = Math.min(Math.max(drag, 0.5), 95) / 100;
       const next = (s * rest) / (1 - s);
-      const rounded = Number(next.toPrecision(4));
-      if (String(rounded) !== relation.amount) {
-        onEdit({ ...relation, amount: String(rounded) });
+      const snapped = Number(next.toPrecision(4));
+      if (String(snapped) !== relation.amount) {
+        onEdit({ ...relation, amount: String(snapped) });
       }
     }
     setDrag(null);
   };
   useCommitOnRelease(drag !== null, commit);
   return (
-    <div className="flex items-center gap-2 py-0.5 text-xs">
-      <span className="w-24 min-w-0 shrink-0 truncate" style={{ color: "var(--text-primary)" }} title={relation.name}>
+    <div className={`${RAIL_ROW} py-0.5`}>
+      <span className={RAIL_LABEL} style={{ color: "var(--text-primary)" }} title={relation.name}>
         {label}
       </span>
+      <span className={`${RAIL_VALUE} min-w-[10rem] flex-1`}>
       {forcedBy ? (
-        <span className="flex-1 font-mono text-[11px]" style={{ color: "var(--text-muted)" }}>
+        <span className={`${RAIL_LOCK} flex-1 text-right`} style={{ color: "var(--text-muted)" }}>
           driven by “{forcedBy}”
         </span>
       ) : setBy ? (
@@ -138,6 +152,7 @@ function ShareRow({
       <span className="w-12 shrink-0 text-right font-mono text-[11px]" style={{ color: "var(--text-muted)" }}>
         {share.toFixed(1)}%
       </span>
+      </span>
     </div>
   );
 }
@@ -152,11 +167,14 @@ export function FieldControl({
   thing,
   field,
   onEdit,
+  wrap = false,
 }: {
   param: ParamDecl;
   thing: Thing;
   field: EngineField;
   onEdit: (next: Thing) => void;
+  /** The Readouts rail's wrapping row (RAIL_ROW); the run card leaves it off. */
+  wrap?: boolean;
 }) {
   const [drag, setDrag] = useState<number | null>(null);
   const [draft, setDraft] = useState<string | null>(null);
@@ -178,13 +196,13 @@ export function FieldControl({
   const unit = field === "capacity" || field === "maintenance" || field === "release_rate" ? thing.stock_unit ?? "" : "";
   return (
     <div className="py-0.5" data-testid={`field-param-${param.name}`}>
-      <div className="flex items-center justify-between gap-2 text-xs">
-        <span className="min-w-0 flex-1 truncate" style={{ color: "var(--text-primary)" }} title={`${thing.name} · ${field}`}>
+      <div className={wrap ? RAIL_ROW : "flex items-center justify-between gap-2 text-xs"}>
+        <span className={wrap ? RAIL_LABEL : "min-w-0 flex-1 truncate"} style={{ color: "var(--text-primary)" }} title={`${thing.name} · ${field}`}>
           {param.name}
         </span>
-        <input
-          className="w-20 rounded border px-1.5 py-0.5 text-right font-mono text-xs"
-          style={{ borderColor: "var(--border)", background: "var(--bg-primary)", color: "var(--text-primary)" }}
+        <span className={wrap ? RAIL_VALUE : "contents"}>
+        <Input
+          className="w-24 text-right font-mono tabular"
           value={draft ?? String(value)}
           onChange={(e) => setDraft(e.target.value)}
           onBlur={() => {
@@ -197,8 +215,9 @@ export function FieldControl({
           }}
           aria-label={param.name}
         />
-        <span className="w-16 shrink-0 text-[11px]" style={{ color: "var(--text-muted)" }}>
+        <span className="w-16 min-w-0 shrink truncate text-[11px]" style={{ color: "var(--text-muted)" }}>
           {unit}
+        </span>
         </span>
       </div>
       {param.range && (
@@ -255,13 +274,13 @@ function EngineRow({
     setDraft(null);
   };
   return (
-    <div className="flex items-center justify-between gap-2 py-0.5 text-xs">
-      <span className="min-w-0 flex-1 truncate" style={{ color: "var(--text-primary)" }}>
+    <div className={`${RAIL_ROW} py-0.5`}>
+      <span className={RAIL_LABEL} style={{ color: "var(--text-primary)" }}>
         {label}
       </span>
-      <input
-        className="w-20 rounded border px-1.5 py-0.5 text-right font-mono text-xs"
-        style={{ borderColor: "var(--border)", background: "var(--bg-primary)", color: "var(--text-primary)" }}
+      <span className={RAIL_VALUE}>
+      <Input
+        className="w-24 text-right font-mono tabular"
         value={draft ?? String(value)}
         onChange={(e) => setDraft(e.target.value)}
         onBlur={commit}
@@ -271,8 +290,9 @@ function EngineRow({
         }}
         aria-label={label}
       />
-      <span className="w-16 shrink-0 text-[11px]" style={{ color: "var(--text-muted)" }}>
+      <span className="w-16 min-w-0 shrink truncate text-[11px]" style={{ color: "var(--text-muted)" }}>
         {unit ?? ""}
+      </span>
       </span>
     </div>
   );
@@ -324,7 +344,7 @@ export function engineRows(
 
 function GroupHeader({ children }: { children: string }) {
   return (
-    <div className="mb-0.5 mt-2 text-[10px] font-semibold uppercase tracking-wide" style={{ color: "var(--text-muted)" }}>
+    <div className="mb-0.5 mt-2 text-[11px] font-semibold uppercase" style={{ letterSpacing: "var(--tracking-label)", color: "var(--text-muted)" }}>
       {children}
     </div>
   );
@@ -405,14 +425,16 @@ export function RunInputs({
   return (
     <Card title="Inputs" source="declared · edits re-run">
       {onReset && (
-        <button
+        <Button
+          size={28}
+          variant="quiet"
+          icon="reset"
           onClick={onReset}
-          className="mb-1 text-[11px]"
-          style={{ color: "var(--text-muted)" }}
+          className="mb-2"
           title="Restore every amount to what the model declares"
         >
-          ↺ reset to declared
-        </button>
+          reset to declared
+        </Button>
       )}
       {paramRows.map(({ param, relation, group, thing: fieldThing, field }) =>
         relation ? (
@@ -423,10 +445,11 @@ export function RunInputs({
             forcedBy={forcedBy(relation)}
             setBy={setBy.get(param.name)}
             onEdit={onEdit}
+            wrap
           />
         ) : fieldThing && field ? (
           onEditThing ? (
-            <FieldControl key={param.name} param={param} thing={fieldThing} field={field} onEdit={onEditThing} />
+            <FieldControl key={param.name} param={param} thing={fieldThing} field={field} onEdit={onEditThing} wrap />
           ) : null
         ) : (
           <div key={param.name}>

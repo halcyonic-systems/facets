@@ -1,6 +1,6 @@
 # The sandbox surface
 
-**Status: ADOPTED** — shipped on `feature/process-sandbox` (Phases 0–4), 2026-08-17.
+**Status: ADOPTED** — shipped on `feature/process-sandbox` (Phases 0–4), 2026-08-17. Decision 1 (the Home door) superseded 2026-10-27 by [`one-surface.md`](one-surface.md); the surface itself stays at `?sandbox=1`.
 
 The free-play instrument the desktop compose shell was ("touch the system":
 drop work processes, wire them, watch matter/energy/information flow, tweak

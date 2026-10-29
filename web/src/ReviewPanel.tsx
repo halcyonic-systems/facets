@@ -32,6 +32,7 @@ import {
   summaryLine,
 } from "./review";
 import { openExternal } from "./desktop";
+import { Button } from "./ui";
 
 // Where the linked docs live. The anchors are repo-relative
 // (`docs/glossary.md#precondition`), pinned by the kernel's doc_anchors_resolve
@@ -57,7 +58,7 @@ function Stage2Region({ report }: { report: Stage2Report }) {
       <BlockHeader label="Stage 2" count={`${report.candidates.length} candidate${report.candidates.length === 1 ? "" : "s"}`} />
       <div
         className="border-x border-t border-b px-3 py-3 text-sm"
-        style={{ borderColor: "var(--border)", background: "var(--bg-primary)", color: "var(--text-primary)" }}
+        style={{ borderColor: "var(--hairline)", background: "var(--bg-primary)", color: "var(--text-primary)" }}
       >
         <p className="text-xs" style={{ color: "var(--text-muted)" }}>
           This model lands crossings on <code>interface unresolved</code> — Mobus's stage 1, the flows found and
@@ -99,20 +100,22 @@ function Stage2Region({ report }: { report: Stage2Report }) {
   );
 }
 
+/** A block's header: a label over a rule, never a tinted band (rule 1;
+ *  visual-language rule 2; audit #20). The 11/600 uppercase label in ink. */
 function BlockHeader({ label, count }: { label: string; count?: string }) {
   return (
     <div
       className="flex items-baseline justify-between gap-4 border-x border-t px-3 py-2"
-      style={{ background: "var(--accent-soft)", borderColor: "var(--border)" }}
+      style={{ borderColor: "var(--hairline)" }}
     >
       <span
-        className="text-[11px] font-semibold uppercase tracking-[0.2em]"
-        style={{ fontFamily: "var(--font-mono)", color: "var(--accent-strong)" }}
+        className="text-[11px] font-semibold uppercase"
+        style={{ letterSpacing: "var(--tracking-label)", color: "var(--text-secondary)" }}
       >
         {label}
       </span>
       {count && (
-        <span className="shrink-0 text-[11px] tabular" style={{ color: "var(--accent-strong)" }}>
+        <span className="shrink-0 text-[11px] tabular" style={{ color: "var(--text-muted)" }}>
           {count}
         </span>
       )}
@@ -123,8 +126,8 @@ function BlockHeader({ label, count }: { label: string; count?: string }) {
 function Gutter({ index, tone }: { index: number; tone: string }) {
   return (
     <span
-      className="flex items-start justify-end py-3 pr-2 tabular text-[11px]"
-      style={{ background: "var(--accent-soft)", color: tone, borderRight: "1px solid var(--border)" }}
+      className="flex items-start justify-end py-3 pr-2 tabular text-[11px] font-semibold"
+      style={{ color: tone, borderRight: "1px solid var(--hairline)" }}
     >
       {String(index).padStart(2, "0")}
     </span>
@@ -135,7 +138,7 @@ function Gutter({ index, tone }: { index: number; tone: string }) {
 function Citation({ children }: { children: React.ReactNode }) {
   return (
     <span
-      className="shrink-0 px-1.5 py-0.5 text-[10px] font-semibold tracking-[0.08em]"
+      className="shrink-0 px-1.5 py-0.5 text-[11px] font-semibold"
       style={{
         background: "var(--accent)",
         color: "var(--text-on-accent)",
@@ -228,7 +231,7 @@ function IssueRow({
       onMouseLeave={navigable && onHover ? () => onHover(null) : undefined}
       title={navigable ? "click to select the element on the canvas" : undefined}
       className={`grid w-full grid-cols-[2.5rem_1fr] items-stretch border-b text-left${navigable ? " cursor-pointer" : ""}`}
-      style={{ borderColor: "var(--border)" }}
+      style={{ borderColor: "var(--hairline)" }}
     >
       <Gutter index={index} tone={tone} />
       <span className="block py-3 pl-3 pr-3">
@@ -277,10 +280,10 @@ function GroupBlock({
 }) {
   const n = group.rows.length;
   return (
-    <div className="border-x border-t" style={{ borderColor: "var(--border)" }}>
+    <div className="border-x border-t" style={{ borderColor: "var(--hairline)" }}>
       <div
         className="flex items-baseline justify-between gap-4 border-b px-3 py-2"
-        style={{ borderColor: "var(--border)" }}
+        style={{ borderColor: "var(--hairline)" }}
       >
         <span className="text-xs" style={{ fontFamily: "var(--font-mono)", color: "var(--text-primary)" }}>
           {group.label || "unnamed check"}
@@ -290,7 +293,7 @@ function GroupBlock({
         </span>
       </div>
       {group.repair && (
-        <p className="border-b px-3 py-2 text-sm" style={{ borderColor: "var(--border)", color: "var(--text-primary)" }}>
+        <p className="border-b px-3 py-2 text-sm" style={{ borderColor: "var(--hairline)", color: "var(--text-primary)" }}>
           {group.repair}
         </p>
       )}
@@ -321,7 +324,7 @@ function SeverityRegion({
   return (
     <div>
       <BlockHeader label={SEVERITY_HEADING[severity]} count={shapePhrase(groups)} />
-      <div className="border-x border-t px-3 py-2 text-xs" style={{ borderColor: "var(--border)" }}>
+      <div className="border-x border-t px-3 py-2 text-xs" style={{ borderColor: "var(--hairline)" }}>
         <span style={{ color: severity === "Error" ? "var(--verdict-error)" : "var(--verdict-warning)" }}>
           {SEVERITY_GLOSS[severity]}
         </span>
@@ -373,7 +376,7 @@ export function ReviewPanel({
         <BlockHeader label="Review" count="facets-core · wasm" />
         <div
           className="border-x border-t border-b px-3 py-3"
-          style={{ borderColor: "var(--border)", background: "var(--bg-primary)" }}
+          style={{ borderColor: "var(--hairline)", background: "var(--bg-primary)" }}
         >
           <p className="text-sm font-semibold" style={{ color: "var(--text-primary)" }}>
             {summaryLine(model, validation)}
@@ -387,18 +390,9 @@ export function ReviewPanel({
             </p>
           )}
           <div className="mt-3 flex items-center gap-3">
-            <button
-              onClick={onReview}
-              className="px-3 py-1.5 text-xs font-semibold uppercase tracking-[0.14em]"
-              style={{
-                background: "var(--accent-strong)",
-                color: "var(--text-on-accent)",
-                borderRadius: "var(--radius-sm)",
-              }}
-              title="Re-run the kernel's review of this model"
-            >
+            <Button size={28} variant="primary" onClick={onReview} title="Re-run the kernel's review of this model">
               Review model
-            </button>
+            </Button>
             {reviewedAt && (
               <span className="text-xs tabular" style={{ color: "var(--text-muted)" }}>
                 reviewed {reviewedAt}

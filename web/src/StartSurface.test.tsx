@@ -27,11 +27,19 @@ describe("StartSurface", () => {
 
   it("leads with describing a system and keeps a visible way past it", () => {
     const m = renderToStaticMarkup(<StartSurface onDescribe={noop} onSkip={noop} />);
-    expect(m).toContain("Describe a system");
+    expect(m).toContain("Start your model");
+    expect(m).toContain('aria-label="Describe a system"');
     expect(m).toContain("<textarea");
     expect(m).toContain("Draft");
     expect(m).toContain("skip");
     expect(m).toContain("Draw it by hand");
+  });
+
+  it("offers wiring processes as a way in when the shell can open the canvas (one-surface.md)", () => {
+    expect(renderToStaticMarkup(<StartSurface onDescribe={noop} onSkip={noop} />)).not.toContain("Wire processes");
+    const m = renderToStaticMarkup(<StartSurface onDescribe={noop} onSkip={noop} onBuild={noop} />);
+    expect(m).toContain("Draw it by hand");
+    expect(m).toContain("Wire processes and run");
   });
 
   it("no longer asks for a name or a system type", () => {

@@ -1,10 +1,13 @@
 // The run's transport cluster — the bench's spine (run-legibility, 2026-08-17).
-// ONE row carries the whole run grammar: ▶ Run computes a history, ⏭ Step
-// extends it one tick, the scrubber's ▶ plays the recorded trace, and the chip
-// says whether it conserved. Any runnable surface mounts this whole; nothing
-// here decides availability or executes anything — the parent owns both.
+// ONE row carries the whole run grammar: Run computes a history, Step
+// extends it one tick, the scrubber's play runs the recorded trace, and the
+// chip says whether it conserved. Any runnable surface mounts this whole;
+// nothing here decides availability or executes anything — the parent owns
+// both. Makeover slice D (rules 3, 9d, 14): Run is the primary Button with
+// the play icon and its word, Step and the rewind are 32px ToolButtons with
+// drawn icons, and the verdict chip carries its mark in the Pill's icon slot.
 import { SimScrubber } from "./canvas/SimScrubber";
-import { Pill } from "./ui";
+import { Button, Pill, ToolButton } from "./ui";
 
 export function Transport({
   onRun,
@@ -18,6 +21,9 @@ export function Transport({
   onPlayingChange,
   loop,
   verdict,
+  runOn,
+  onRunOnChange,
+  onRunOnTick,
 }: {
   onRun: () => void;
   onStep: () => void;
@@ -35,6 +41,13 @@ export function Transport({
   /** Conservation verdict of the trace on screen; null = no verdict to state
    *  (no run yet, or a run kind with no conservation ledger). */
   verdict: { conserved: boolean; residual: number } | null;
+  /** Run on (one-surface.md): whether play continues past the last recorded
+   *  tick by stepping the engine. Absent = this run cannot run on (forced by
+   *  data, or a Markov run), and the toggle is not shown. */
+  runOn?: boolean;
+  onRunOnChange?: (on: boolean) => void;
+  /** Step the engine one tick; called by the scrubber at the last frame. */
+  onRunOnTick?: () => void;
 }) {
   if (!runnable) {
     return (
@@ -46,45 +59,41 @@ export function Transport({
   return (
     <div
       className="flex min-w-0 flex-1 items-center gap-3"
-      title="▶ Run computes the whole history · the scrubber's ▶ plays the cursor through it"
+      title="Run computes the whole history · the scrubber's play runs the cursor through it"
     >
-      <button
-        onClick={onRun}
-        title={runTitle}
-        className="shrink-0 px-3 py-1 text-xs font-semibold transition-colors"
-        style={{
-          background: "var(--accent)",
-          color: "var(--text-on-accent)",
-          borderRadius: "var(--radius-pill)",
-        }}
-      >
-        ▶ Run
-      </button>
-      <button
+      <Button icon="play" onClick={onRun} title={runTitle}>
+        Run
+      </Button>
+      <ToolButton
+        icon="step"
         onClick={onStep}
+        aria-label="Step"
         title="Advance the run by one tick (starts one if none has run)"
-        className="shrink-0 border px-3 py-1 text-xs font-semibold transition-colors"
-        style={{
-          borderColor: "var(--accent)",
-          color: "var(--accent)",
-          background: "transparent",
-          borderRadius: "var(--radius-pill)",
-        }}
-      >
-        ⏭ Step
-      </button>
+      />
+      {runOn !== undefined && onRunOnChange && (
+        <ToolButton
+          icon="forward"
+          active={runOn}
+          onClick={() => onRunOnChange(!runOn)}
+          title={
+            runOn
+              ? "Run on: play keeps stepping the engine past the run length, and a knob turned while it plays takes effect at that tick. Click to stop at the run length."
+              : "Stops at the run length. Click to keep running past it, live."
+          }
+        >
+          run on
+        </ToolButton>
+      )}
       {steps > 0 && (
-        <button
+        <ToolButton
+          icon="step-back"
           onClick={() => {
             onPlayingChange(false);
             onTick(0);
           }}
+          aria-label="Rewind"
           title="Rewind to the start of the recorded trace"
-          className="shrink-0 px-1 text-xs"
-          style={{ color: "var(--text-secondary)" }}
-        >
-          ⏮
-        </button>
+        />
       )}
       {steps > 0 ? (
         <div className="min-w-0 flex-1">
@@ -95,6 +104,7 @@ export function Transport({
             playing={playing}
             onPlayingChange={onPlayingChange}
             loop={loop}
+            onRunOn={runOn ? onRunOnTick : undefined}
           />
         </div>
       ) : (
@@ -102,8 +112,8 @@ export function Transport({
       )}
       {verdict && (
         <span className="shrink-0" title={`residual ${verdict.residual.toExponential(1)}`}>
-          <Pill tone={verdict.conserved ? "ok" : "error"}>
-            {verdict.conserved ? "✓ conserved" : "⚠ leak"}
+          <Pill tone={verdict.conserved ? "ok" : "error"} icon={verdict.conserved ? "ok" : "warning"}>
+            {verdict.conserved ? "conserved" : "leak"}
           </Pill>
         </span>
       )}

@@ -15,12 +15,25 @@ import { forcedByColumn, resolveParamRows } from "./kernel/params";
 import { ParamControl } from "./ParamControl";
 import { FieldControl } from "./RunInputs";
 import { glanceFacts } from "./RunPanel";
-import { FUTURE_OPACITY, RunChart, midRun, timeAxisLabel } from "./RunChart";
+import {
+  FALLBACK_SLOT,
+  FUTURE_OPACITY,
+  RunChart,
+  STROKES,
+  entitySlots,
+  midRun,
+  surfaceEntities,
+  timeAxisLabel,
+} from "./RunChart";
 import { Line } from "recharts";
 import { TimeRow } from "./Readouts";
 import { evaluateMetrics } from "./metrics";
-import { humanize } from "./ui";
+import { Button, Panel, humanize } from "./ui";
 import { unitLabel } from "./runViz";
+
+/** The 11/600 uppercase label (rule 5). */
+const LABEL = "text-[11px] font-semibold uppercase";
+const LABEL_STYLE = { letterSpacing: "var(--tracking-label)" } as const;
 
 /** One band of the stack. The rule rides the TOP of every band but the first,
  *  so the divisions are the card's own structure and not decoration hung on
@@ -73,61 +86,54 @@ export function RunCard({
 
   if (collapsed) {
     return (
-      <button
+      <Button
+        size={28}
+        variant="quiet"
+        icon="chevron-left"
         onClick={() => setCollapsed(false)}
         title="Expand the run card"
-        className="absolute right-3 top-3 z-10 px-2.5 py-1 text-xs font-semibold uppercase tracking-wide"
-        style={{
-          background: "var(--bg-secondary)",
-          border: "1px solid var(--border)",
-          borderRadius: "var(--radius-sm)",
-          color: "var(--text-secondary)",
-          boxShadow: "var(--shadow-card)",
-        }}
+        aria-expanded={false}
+        className="absolute right-3 top-3 z-10 max-sm:top-auto max-sm:bottom-3"
       >
-        ◂ Run
-      </button>
+        Run
+      </Button>
     );
   }
 
   const paramRows = resolveParamRows(model).filter((row) => row.relation || row.field);
   const facts = result ? glanceFacts(result, model, tick) : null;
   const headReading = result ? (evaluateMetrics(model, result)?.readings[0] ?? null) : null;
+  // The headline draws in its entity's slot, the same stroke the Readouts give
+  // that entity (dataviz: colour follows the entity across the surface).
+  const headSlot = headReading
+    ? entitySlots(surfaceEntities(model, result)).get(headReading.entity) ?? FALLBACK_SLOT
+    : FALLBACK_SLOT;
 
   return (
-    <div
-      className="absolute right-3 top-3 z-10 flex max-h-[calc(100%-1.5rem)] w-72 flex-col overflow-y-auto"
-      style={{
-        background: "var(--bg-secondary)",
-        border: "1px solid var(--border)",
-        borderRadius: "var(--radius-sm)",
-        boxShadow: "var(--shadow-card)",
-      }}
+    // 18rem wide and never more than 40% of the stage (rule 16; audit #6: at
+    // 1024 the card covered half the canvas). Under 640px it is a bottom sheet
+    // across the stage, 45% tall at most, so the diagram keeps the top.
+    <Panel
+      as="aside"
+      className="absolute right-3 top-3 z-10 flex max-h-[calc(100%-1.5rem)] w-72 max-w-[40%] flex-col overflow-y-auto max-sm:inset-x-3 max-sm:top-auto max-sm:bottom-3 max-sm:max-h-[45%] max-sm:w-auto max-sm:max-w-none"
     >
       <Band first className="flex items-center gap-2 py-1.5">
-        <span
-          className="text-xs font-semibold uppercase tracking-wide"
-          style={{ color: "var(--text-primary)" }}
-        >
+        <span className={LABEL} style={{ ...LABEL_STYLE, color: "var(--text-primary)" }}>
           Run
         </span>
         <span className="min-w-0 flex-1" />
-        <button
-          onClick={onOpenReadouts}
-          title="Open Readouts — every chart, full page"
-          className="text-[11px]"
-          style={{ color: "var(--text-muted)" }}
-        >
-          ⤢ readouts
-        </button>
-        <button
+        <Button size={28} variant="quiet" icon="expand" onClick={onOpenReadouts} title="Open Readouts: every chart, full page">
+          readouts
+        </Button>
+        <Button
+          size={28}
+          variant="quiet"
+          icon="chevron-right"
           onClick={() => setCollapsed(true)}
           title="Collapse the run card"
-          className="pl-1 text-xs"
-          style={{ color: "var(--text-muted)" }}
-        >
-          ▸
-        </button>
+          aria-label="Collapse the run card"
+          aria-expanded
+        />
       </Band>
 
       {/* Beat one — the reading. The headline is the AT-CURSOR value, so it
@@ -140,12 +146,15 @@ export function RunCard({
               <span className="min-w-0 truncate text-xs" style={{ color: "var(--text-secondary)" }}>
                 {facts.head.name}
                 <span style={{ color: "var(--text-muted)" }}>
-                  {facts.head.kind === "sum" ? " · running total" : " · share"}
+                  {facts.head.kind === "sum" ? ` · running total${facts.head.unit ? ` · ${facts.head.unit}` : ""}` : " · share"}
                 </span>
               </span>
+              {/* The card's one hero figure: proportional figures at display
+                  size (dataviz), ink not the action colour (audit #37). */}
               <span
-                className="shrink-0 text-2xl font-semibold leading-none tabular"
-                style={{ color: "var(--accent-strong)" }}
+                className="shrink-0 text-2xl font-semibold leading-none"
+                style={{ color: "var(--text-primary)" }}
+                data-testid="run-card-head"
               >
                 {facts.headValue}
               </span>
@@ -156,7 +165,7 @@ export function RunCard({
               <span className="min-w-0 truncate" style={{ color: "var(--text-muted)" }}>
                 {facts.internal.name} · level
               </span>
-              <span className="shrink-0 tabular" style={{ color: "var(--text-primary)" }}>
+              <span className="shrink-0 tabular font-semibold" style={{ color: "var(--text-primary)", fontSize: "var(--t-num)" }}>
                 {humanize(facts.stockValue)}
                 {facts.internal.unit ? ` ${unitLabel(facts.internal.unit).text}` : ""}
               </span>
@@ -166,8 +175,10 @@ export function RunCard({
       )}
 
       {/* Beat two — the shape. The ONE headline chart, drawn bare (the reading
-          above is its header) and given the height at which a curve's turn is
-          actually legible rather than merely present. */}
+          above is its header, and says "share" or the unit, so the axis goes
+          unlabeled) and given the height at which a curve's turn is actually
+          legible rather than merely present. A share draws two gridlines only
+          (0.5 and 1); the time axis shows at most six labels. */}
       {result && headReading && (
         <Band className="pb-1 pt-2">
           <RunChart
@@ -180,25 +191,27 @@ export function RunCard({
             tick={tick}
             height={140}
             xLabel={timeAxisLabel(model.time_unit)}
-            yLabel={headReading.kind === "share" ? "share" : headReading.unit || undefined}
             yDomain={headReading.kind === "share" ? [0, 1] : undefined}
+            yTicks={headReading.kind === "share" ? [0, 0.5, 1] : undefined}
           >
             <Line
               type="monotone"
               dataKey="v"
-              stroke="var(--accent)"
+              stroke={headSlot.color}
+              strokeDasharray={headSlot.dash}
               strokeOpacity={midRun(tick, headReading.series.length) ? FUTURE_OPACITY : 1}
               dot={false}
-              strokeWidth={2.5}
+              strokeWidth={STROKES.executed.width}
               isAnimationActive={false}
             />
             {midRun(tick, headReading.series.length) && (
               <Line
                 type="monotone"
                 dataKey="past"
-                stroke="var(--accent)"
+                stroke={headSlot.color}
+                strokeDasharray={headSlot.dash}
                 dot={false}
-                strokeWidth={2.5}
+                strokeWidth={STROKES.executed.width}
                 isAnimationActive={false}
               />
             )}
@@ -225,14 +238,16 @@ export function RunCard({
             ) : null,
           )}
           {onResetInputs && (
-            <button
+            <Button
+              size={28}
+              variant="quiet"
+              icon="reset"
               onClick={onResetInputs}
-              className="mt-1 text-[11px]"
-              style={{ color: "var(--text-muted)" }}
+              className="mt-1"
               title="Restore every amount to what the model declares"
             >
-              ↺ reset to declared
-            </button>
+              reset to declared
+            </Button>
           )}
           {/* The honest boundary of the knobs, where the knobs live: transforms
               pass their matched substance and dissipate the rest, so a
@@ -240,7 +255,7 @@ export function RunCard({
               it here is the instrument owning its grain (the same fact a
               Combining processor's law line carries). */}
           <p
-            className="mb-1 mt-1.5 text-[10px] leading-snug"
+            className="mb-1 mt-1.5 text-xs leading-snug"
             style={{ color: "var(--text-muted)" }}
             title="Transforms produce their matched substance; other inflows drive the work and dissipate. Coupling output to the scarcest input (Liebig's law of the minimum) is named, open engine research."
           >
@@ -253,6 +268,6 @@ export function RunCard({
       <Band className="py-1.5" title="the run's time slice — edits re-run">
         <TimeRow time={time} frame={false} />
       </Band>
-    </div>
+    </Panel>
   );
 }

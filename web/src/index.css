@@ -4,11 +4,11 @@
 /*
  * facets — Halcyonic Frost design tokens.
  *
- * Inherited from the fleet (trade-observatory / finance-app / germen): a cool,
- * faintly indigo-tinted surface, never flat grey, with one restrained accent.
- * facets takes TEAL as its accent to distinguish the instrument within the
- * Frost family (slate / teal / indigo). Components consume these via var(--x);
- * the JS mirror lives in src/tokens.ts. Any change is mirrored in web/DESIGN.md.
+ * Nord paper and ink, teal as the one instrument accent, colour on marks and
+ * never on surfaces (docs/design/makeover-2026-10.md, rules 1 to 9e). Components
+ * consume these via var(--x); the JS mirror lives in src/tokens.ts; the shared
+ * subset is generated into shared/frost.css. Any change is mirrored in
+ * web/DESIGN.md and gated by scripts/check-tokens.mjs.
  *
  * THEME (2026-08-12, #309 follow-on). Three states — system / light / dark —
  * and the palette is stated ONCE. Every themed token is a single
@@ -28,26 +28,38 @@
  * the other setting opens the app. `light-dark()` removes the second copy
  * rather than trying to keep it honest.
  *
- * Non-themed tokens (--kind-*, --text-on-accent, radii, fonts) stay plain: a
- * value that does not change with the theme must not be written as if it might.
- * `src/theme.ts` owns the attribute; nothing else sets it.
+ * Non-themed tokens (--text-on-accent, radii, type, motion, fonts) stay plain:
+ * a value that does not change with the theme must not be written as if it
+ * might. `src/theme.ts` owns the attribute; nothing else sets it.
  */
 :root {
   color-scheme: light dark;
 
-  /* surface + text — NEUTRAL (2026-08-12). Was a cool, faintly indigo tint;
-     that cast is what read as "green-blue" next to the paper register and what
-     made the canvas feel coloured before any lens touched it. The workspace
-     ground is now plain, and hue on it means a lens. Dark is neutral too, for
-     the same reason. */
-  --bg-primary: light-dark(#f1f2f3, #16181a);
-  --bg-secondary: light-dark(#fafafb, #1d2022);
-  --bg-surface: light-dark(#e6e7e9, #24282a);
-  --stage-from: light-dark(#f5f6f7, #191c1e);
-  --stage-to: light-dark(#eceded, #121415);
-  --text-primary: light-dark(#17181a, #e8eaec);
-  --text-secondary: light-dark(#45484c, #b0b4b8);
-  --text-muted: light-dark(#6d7175, #82868a);
+  /* SURFACES — three steps, no hue cast (makeover rules 1 and 7, 2026-10-26).
+     The sheet is white; the ground it sits on is one step away; a third step
+     carries header bands, chips and wells. The workspace names (--bg-*) and the
+     home register's names (--paper*) are two vocabularies for the SAME three
+     steps, so the two surfaces can no longer drift apart:
+
+       sheet    --bg-secondary = --paper         #ffffff / #1d2022
+       ground   --bg-primary   = --paper-edge    #f3f6f9 / #16181a
+       well     --bg-surface   = --paper-ground  #e5edf4 / #0e0f11
+
+     Light is Nord Snow Storm; dark keeps the neutral dark family it had and
+     applies the same step logic (the well is the step past the ground). The
+     stage tokens collapse onto the same steps: there is no radial wash. */
+  --bg-primary: light-dark(#f3f6f9, #16181a);
+  --bg-secondary: light-dark(#ffffff, #1d2022);
+  --bg-surface: light-dark(#e5edf4, #0e0f11);
+  --stage-from: light-dark(#f3f6f9, #16181a);
+  --stage-to: light-dark(#e5edf4, #0e0f11);
+  /* INK — Nord Polar Night on paper. Mute is #5b6577: 5.9 on the sheet, 5.4 on
+     the ground, 5.0 on the well; the old #6d7175 / #7c8084 sat at 3.2 to 4.4 on
+     the same grounds and was every axe contrast failure in the audit. Dark mute
+     is lifted the same way (#8e9499: 4.9 to 6.3). */
+  --text-primary: light-dark(#2e3440, #e8eaec);
+  --text-secondary: light-dark(#3b4252, #b0b4b8);
+  --text-muted: light-dark(#5b6577, #8e9499);
   /* Ink on a FILLED accent/verdict surface — the mode axis's selected tab, the
      lens toggle's active lens, ▶ Run, every primary button, the error banner.
      It was `#ffffff` in both themes on the reasoning that "the fill carries the
@@ -69,19 +81,22 @@
      modes): identity needs chroma the instrument accents deliberately lack,
      so series get their own four, used ONLY inside charts. Fixed assignment
      order 1→4, never cycled; the interleave is load-bearing (an all-cool set
-     collapses for normal vision, copper beside moss collapses for protan). */
-  --chart-1: light-dark(#0d82a6, #33a0bf);
-  --chart-2: light-dark(#b0642d, #c77436);
-  --chart-3: light-dark(#6b74e0, #8188e8);
+     collapses for normal vision, copper beside moss collapses for protan).
+     Light values stepped down one lightness notch 2026-10-26 (hue held) so
+     each clears 4.5 on the ground as axis text; dark already did. */
+  --chart-1: light-dark(#0c7592, #33a0bf);
+  --chart-2: light-dark(#9e5a28, #c77436);
+  --chart-3: light-dark(#5560d8, #8188e8);
   --chart-4: light-dark(#4a7a35, #699a4e);
   /* Per-lens WORLD hues (#7 follow-on) — deliberately farther apart than the
      accent trio, which are hue-neighbors and converge to the same gray at
      tint strength. Character-matched: Klir = cold steel (data, the mask),
      Bunge = bronze (materialism over mysticism, chosen over violet #6f5fa8,
-     7/29), Mobus = green (living systems). */
+     7/29), Mobus = green (living systems). Bunge and Mobus light stepped down
+     one notch 2026-10-26 to clear 4.5 as library labels on the ground. */
   --world-klir: light-dark(#5a6c85, #8fa2c0);
-  --world-bunge: light-dark(#8a6a4d, #c2a284);
-  --world-mobus: light-dark(#4e7d5b, #83b191);
+  --world-bunge: light-dark(#86664a, #c2a284);
+  --world-mobus: light-dark(#4a7757, #83b191);
   --verdict-error: light-dark(#c2352c, #ef7a72);
   --verdict-warning: light-dark(#8a5c08, #dba448);
   --verdict-ok: light-dark(#1f7351, #4fbc93);
@@ -96,16 +111,41 @@
      Informational 2.88 and Field 2.92 contrast, and a channel you cannot see is
      not a channel. What the contract MEANS is that a substance is recognisable
      as the same substance anywhere, so the HUE is contractual and the lightness
-     adapts to the ground. Every pair below holds hue to under 0.5° and clears
-     4.5 on its own theme's node fill; check-tokens.mjs enforces both, which is
-     the purpose bound by a check rather than a proxy for it. */
+     adapts to the ground. Every pair below holds hue to under 3° and clears
+     4.5 as TEXT on both the sheet and the ground in its own theme (the SL
+     editor sets kind words on the ground; sl.md finding 5); check-tokens.mjs
+     enforces both, which is the purpose bound by a check rather than a proxy
+     for it. Energy and Matter light stepped down one notch 2026-10-26. */
   /* The milieu M's bath tint (E = ⟨O, M⟩): watery slate-teal, quiet by
      construction — the halo renders it at low opacity. */
   --milieu: light-dark(#4e7f8f, #6b9aa8);
-  --kind-matter: light-dark(#57814c, #649457);
-  --kind-energy: light-dark(#bb6c1c, #c6721e);
+  --kind-matter: light-dark(#4f7645, #649457);
+  --kind-energy: light-dark(#9f5c18, #c6721e);
   --kind-informational: light-dark(#8054a0, #9e79b8);
   --kind-field: light-dark(#2f6c9c, #428cc6);
+
+  /* PROCESS PRIMITIVE hues (makeover rule 9b, 2026-10-26). One hue per Mobus
+     primitive, stated once here and carried by the palette rail, the canvas
+     badge and the inspector alike, so a primitive is recognisable by colour
+     before its glyph is read. Nord Aurora and Frost, each held to its hue
+     across themes; the light half is stepped down until it clears 3:1 as a
+     filled mark on the white sheet, the dark half is Nord's own value on the
+     dark sheet (4.0 to 10.5). Nord has nine chromatic hues and there are ten
+     primitives: Amplifying takes an emerald (150°) that fills Nord's widest
+     hue gap, between Aurora green and Frost teal; Inverting takes an indigo
+     (250°) between Frost blue and Aurora purple. Frost's two blues (210°,
+     213°) differ only in lightness, so only the deep one is used. Mirrored in
+     tokens.ts `prim`; check-tokens.mjs holds the hue and the floor. */
+  --prim-buffering: light-dark(#5e81ac, #5e81ac);
+  --prim-modulating: light-dark(#ac83a5, #b48ead);
+  --prim-splitting: light-dark(#cb7b62, #d08770);
+  --prim-combining: light-dark(#769a57, #a3be8c);
+  --prim-impeding: light-dark(#bf616a, #bf616a);
+  --prim-propelling: light-dark(#b98620, #ebcb8b);
+  --prim-copying: light-dark(#3e889d, #5eb2c9);
+  --prim-sensing: light-dark(#5c9a99, #8fbcbb);
+  --prim-amplifying: light-dark(#559e7a, #81bb9e);
+  --prim-inverting: light-dark(#9288c6, #948ac7);
 
   /* per-lens seam — the semantic names the ACTIVE lens redefines (design-
      system-draft §2, lemonaid's data-theme pattern). Set by data-lens on the
@@ -120,54 +160,83 @@
   --lens-wash: var(--bg-primary);
   --lens-node-stroke: var(--accent-slate);
 
-  --border: light-dark(#d5dee4, #33383b);
-  --hairline: light-dark(#e5ecf0, #2a2f3260);
+  /* EDGES (rule 2): every edge is a 1px line or a surface step, never a shadow.
+     --border / --rule is Nord's rule (#d8dee9) and --rule-strong its stronger
+     sibling (#aebdcf); both are hairlines by the charter's own measure (1.3 and
+     1.9 on the sheet) and never a control's only boundary. --hairline is the
+     line that has to READ on its own — chart grids, band dividers, the SL
+     gutter — so it clears 1.5:1 on the sheet and on the ground in both themes
+     (light #c2ccda: 1.62 / 1.50; dark #3b4252: 1.63 / 1.77). The old dark
+     hairline was 38% alpha and measured 1.08:1 (readouts.md finding 4). */
+  --border: light-dark(#d8dee9, #434c5e);
+  --rule-strong: light-dark(#aebdcf, #4c566a);
+  --hairline: light-dark(#c2ccda, #3b4252);
 
+  /* RADII (rule 3): three values. 8 for a window or card, 4 for a box nested
+     inside one and for chips, buttons and inputs; 0 for grid cells, rows and
+     bars; the pill only for the one true pill, the verdict chip. --radius-lg
+     and --radius-card are kept as names and collapse onto 8. Tailwind's
+     rounded-sm / rounded-md / rounded-lg read these same variables. */
   --radius-sm: 4px;
   --radius-md: 8px;
-  --radius-lg: 12px;
-  --radius-card: 10px;
+  --radius-lg: 8px;
+  --radius-card: 8px;
   --radius-pill: 9999px;
 
-  /* Instrument register (#56): panels sit flat on a hairline, not floating
-     on a soft web-card shadow. Base is a near-flat 1px lift; hover stays subtle.
-     `light-dark()` takes a <color>, not a shadow, so the theming happens on the
-     ink and the geometry is shared — which is also the honest reading: the lift
-     is the same lift in both themes, only the ink under it changes. (Dark's
-     hover blur was 10px before this pass and is now 8px, matching light.) */
-  --shadow-ink: light-dark(rgba(22, 35, 43, 0.05), rgba(0, 0, 0, 0.25));
-  --shadow-ink-hover: light-dark(rgba(22, 35, 43, 0.09), rgba(0, 0, 0, 0.34));
-  --shadow-card: 0 1px 2px var(--shadow-ink);
-  --shadow-card-hover: 0 2px 8px var(--shadow-ink-hover);
+  /* SHADOWS (rule 2): none. Hierarchy comes from the surface steps and the
+     hairlines above. The tokens stay so no call site has to change; they
+     resolve to nothing, and check-tokens.mjs fails if they ever stop. */
+  --shadow-ink: transparent;
+  --shadow-ink-hover: transparent;
+  --shadow-card: none;
+  --shadow-card-hover: none;
+
+  /* FOCUS (rule 10): one ring, 2px of the accent, offset 2px, on every control
+     under keyboard focus (the global :focus-visible rule below). 5.95:1 light
+     and 6.11:1 dark on the ground; never removed. */
+  --focus-ring: 2px solid var(--accent);
+
+  /* TYPE (rule 5): two families, eight sizes. Cormorant Garamond 700 for names
+     of things at d1/d2/d3; Inter for everything scanned: body, rows and
+     controls, 600 numerals, meta, and 11/600 uppercase labels at
+     --tracking-label. JetBrains Mono only for the kernel's numbers and SL.
+     Later slices consume these; nothing is re-skinned by their arrival. */
+  /* the front door's headline, the one size above d1, on that page only */
+  --t-hero: clamp(40px, 4.6vw, 60px);
+  --t-d1: 30px;
+  --t-d2: 24px;
+  --t-d3: 20px;
+  --t-body: 16px;
+  --t-sm: 14px;
+  --t-num: 13px;
+  --t-meta: 12px;
+  --t-label: 11px;
+  --tracking-label: 0.06em;
 
   /* ---------------------------------------------------------------------
-   * The PRINTED RECORD register (home surface only).
-   *
-   * The landing surface is not chrome around a canvas; it is the instrument's
-   * title page and its table of contents. It is set on paper, in ink, with
-   * hairline rules and one rubric stroke — the way a monograph or a plate in a
-   * journal is set. These tokens are consumed ONLY by HomeScreen.tsx, applied
-   * at its root, so the workspace keeps the Frost surface unchanged.
+   * The PRINTED RECORD register (home surface) — the same three steps under
+   * the names the home page was written in. Paper is the sheet, paper-edge
+   * the ground it sits on (and its hover tint), paper-ground the well; ink is
+   * text-primary, the rules are the edges above. One palette, two vocabularies.
    * ------------------------------------------------------------------- */
-  /* The sheet is white and the ground behind it is a neutral step darker, so
-     the content has an edge without needing a border, a shadow, or a tint.
-     Neutral, not warm: the first setting was beige and read as plain rather
-     than as paper. Dark keeps the same relationship, inverted: the sheet is a
-     step LIGHTER than the ground it sits on, so the edge reads the same way. */
-  --paper: light-dark(#ffffff, #17191c);
-  --paper-ground: light-dark(#eaecee, #0e0f11);
-  --paper-edge: light-dark(#f4f5f6, #1c1f22);
-  --ink: light-dark(#17181a, #e8eaec);
-  --ink-secondary: light-dark(#45484c, #b0b4b8);
-  --ink-muted: light-dark(#7c8084, #7d8286);
-  --rule: light-dark(#17181a, #e8eaec);
-  --rule-soft: light-dark(#e0e3e5, #2c3034);
+  --paper: light-dark(#ffffff, #1d2022);
+  --paper-ground: light-dark(#e5edf4, #0e0f11);
+  --paper-edge: light-dark(#f3f6f9, #16181a);
+  --ink: light-dark(#2e3440, #e8eaec);
+  --ink-secondary: light-dark(#3b4252, #b0b4b8);
+  --ink-muted: light-dark(#5b6577, #8e9499);
+  --rule: light-dark(#d8dee9, #434c5e);
+  --rule-soft: light-dark(#c2ccda, #3b4252);
   --seal: light-dark(#8a3324, #c9705c);
 
   --font-display: "Cormorant Garamond", Georgia, serif;
   --font-body: "Inter", system-ui, -apple-system, sans-serif;
   --font-mono: "JetBrains Mono", ui-monospace, "SF Mono", monospace;
 
+  /* MOTION (rule 13): 120 to 200ms, ease-out, and absent under
+     prefers-reduced-motion (the global gate below). Nothing loops. */
+  --motion-fast: 140ms;
+  --motion: 200ms;
   --transition-base: 200ms cubic-bezier(0.22, 1, 0.36, 1);
 }
 
@@ -223,6 +292,30 @@
   box-sizing: border-box;
 }
 
+/* FOCUS (makeover rule 10): every control shows the one ring under keyboard
+   focus and nothing under pointer focus. A component may move the ring (an
+   inset offset on a surface that fills its pane) but never removes it;
+   check-tokens.mjs lists every `outline: none` that has no :focus-visible
+   replacement on the same selector. */
+:focus-visible {
+  outline: var(--focus-ring);
+  outline-offset: 2px;
+}
+:focus:not(:focus-visible) {
+  outline: none;
+}
+
+/* MOTION (rule 13): under prefers-reduced-motion nothing animates and nothing
+   eases; the walk choreography's JS also skips its out-phase beat (App.tsx). */
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    animation-duration: 0.01ms !important;
+    transition-duration: 0.01ms !important;
+  }
+}
+
 html,
 body,
 #root {
@@ -233,9 +326,7 @@ body,
 body {
   font-family: var(--font-body);
   color: var(--text-primary);
-  background:
-    radial-gradient(120% 80% at 50% -10%, var(--stage-from), transparent 60%),
-    var(--bg-primary);
+  background: var(--bg-primary);
   -webkit-font-smoothing: antialiased;
   text-rendering: optimizeLegibility;
 }
@@ -298,11 +389,69 @@ body {
   border-color: var(--card-hue) !important;
 }
 
-.home-lede-link {
-  transition: color var(--transition-base);
+/* the front door's two actions (the entry pass, 2026-10-27): New model is the
+   one filled control on the page, Open a model its outlined twin; hover is a
+   surface step, never a shadow */
+.home-door {
+  transition:
+    background-color var(--transition-base),
+    border-color var(--transition-base),
+    color var(--transition-base);
 }
-.home-lede-link:hover {
-  color: var(--accent) !important;
+.home-door-primary {
+  background: var(--accent);
+  color: var(--text-on-accent);
+  border: 1px solid var(--accent);
+}
+.home-door-primary:hover {
+  background: var(--accent-strong);
+  border-color: var(--accent-strong);
+}
+.home-door-secondary {
+  background: var(--bg-secondary);
+  color: var(--text-primary);
+  border: 1px solid var(--rule-strong);
+}
+.home-door-secondary:hover {
+  background: var(--accent-soft);
+  border-color: var(--accent);
+}
+/* the language figure's switch: a quiet chip, the accent when it is the
+   reading on show */
+.lang-tab {
+  color: var(--text-secondary);
+  border-color: var(--hairline);
+  background: var(--bg-secondary);
+  transition:
+    background-color var(--transition-base),
+    border-color var(--transition-base),
+    color var(--transition-base);
+}
+.lang-tab:hover {
+  color: var(--text-primary);
+  background: var(--bg-primary);
+}
+.lang-tab[aria-pressed="true"] {
+  color: var(--accent-strong);
+  border-color: var(--accent);
+  background: var(--accent-soft);
+}
+/* the front door's folded proof notes: no browser marker, a caret that turns */
+.home-check summary::-webkit-details-marker {
+  display: none;
+}
+.home-check-caret {
+  transition: transform var(--transition-base);
+}
+.home-check[open] .home-check-caret {
+  transform: rotate(180deg);
+}
+.home-quiet-link {
+  transition: color var(--transition-base), background-color var(--transition-base);
+}
+.home-quiet-link:hover {
+  color: var(--text-primary) !important;
+  background: var(--bg-primary);
 }
 
 /* faint tabular figures for all the numbers the kernel returns */
@@ -405,7 +554,7 @@ body {
   font-weight: 500;
   line-height: 1.3;
   color: var(--text-secondary);
-  animation: lens-question-settle 0.45s ease-out;
+  animation: lens-question-settle var(--motion) ease-out;
 }
 
 /* Range inputs wear the instrument (#345 sweep, the last non-Frost tell):
@@ -423,7 +572,7 @@ input[type="range"] {
 }
 input[type="range"]::-webkit-slider-runnable-track {
   height: 3px;
-  border-radius: var(--radius-pill);
+  border-radius: var(--radius-sm);
   background: var(--border);
 }
 input[type="range"]::-webkit-slider-thumb {
@@ -432,10 +581,9 @@ input[type="range"]::-webkit-slider-thumb {
   margin-top: -5px; /* centers the 13px thumb on the 3px track */
   height: 13px;
   width: 13px;
-  border-radius: var(--radius-pill);
+  border-radius: 50%;
   background: var(--accent);
   border: 2px solid var(--bg-primary);
-  box-shadow: 0 0 0 1px var(--border);
   transition: var(--transition-base);
 }
 input[type="range"]:hover::-webkit-slider-thumb,
@@ -444,16 +592,15 @@ input[type="range"]:focus-visible::-webkit-slider-thumb {
 }
 input[type="range"]::-moz-range-track {
   height: 3px;
-  border-radius: var(--radius-pill);
+  border-radius: var(--radius-sm);
   background: var(--border);
 }
 input[type="range"]::-moz-range-thumb {
   height: 13px;
   width: 13px;
-  border-radius: var(--radius-pill);
+  border-radius: 50%;
   background: var(--accent);
   border: 2px solid var(--bg-primary);
-  box-shadow: 0 0 0 1px var(--border);
   transition: var(--transition-base);
 }
 input[type="range"]:hover::-moz-range-thumb,
@@ -461,24 +608,46 @@ input[type="range"]:focus-visible::-moz-range-thumb {
   background: var(--accent-strong);
 }
 input[type="range"]:focus-visible {
-  outline: 2px solid var(--accent);
+  outline: var(--focus-ring);
   outline-offset: 2px;
-  border-radius: var(--radius-pill);
+  border-radius: var(--radius-sm);
 }
 
 /* ── The SL editor (CodeMirror host, #353 Tier 2) ─────────────────────────
    Classes only; every color is a token. The KIND words carry their own
-   channels because KIND is ontology, not decoration. */
+   channels because KIND is ontology, not decoration.
+
+   Type (makeover rule 5, sl audit #1): JetBrains Mono at --t-sm on a 22px
+   line. CodeMirror's injected base theme sets `font-family: monospace;
+   line-height: 1.4` on `.cm-scroller`, one level INSIDE `.cm-editor`, so a
+   rule on the editor alone is inherited and then overridden; the scroller and
+   the content are named here at three classes deep, which outranks the
+   injected `.ͼ1 .cm-scroller` whatever order the two sheets load in. The
+   gutter marks (band labels, glyphs) are built for the same 22px line.
+
+   Height (sl audit #8): the editor keeps a floor of eight lines; the fault
+   list, the details block and the docked drafter shrink first (SlPane). */
+.sl-editor {
+  min-height: 176px;
+}
 .sl-editor .cm-editor {
   height: 100%;
   background: var(--bg-primary);
   color: var(--text-secondary);
-  font-family: var(--font-mono, ui-monospace, monospace);
-  font-size: 0.8125rem;
-  line-height: 1.375rem;
+  font-family: var(--font-mono);
+  font-size: var(--t-sm);
+  line-height: 22px;
+}
+.sl-editor .cm-editor .cm-scroller,
+.sl-editor .cm-editor .cm-content,
+.sl-editor .cm-editor .cm-gutters {
+  font-family: var(--font-mono);
+  font-size: var(--t-sm);
+  line-height: 22px;
 }
 .sl-editor .cm-editor.cm-focused {
-  outline: none;
+  outline: var(--focus-ring);
+  outline-offset: -2px;
 }
 .sl-editor .cm-content {
   padding: 0.75rem;
@@ -522,38 +691,45 @@ input[type="range"]:focus-visible {
   box-shadow: inset 0 1px var(--hairline), inset 2px 0 var(--verdict-error);
 }
 .sl-editor .sl-band-gutter {
-  width: 4.25rem;
+  width: 6.5rem;
   background: var(--bg-primary);
   border-right: 1px solid var(--hairline);
 }
+/* The band label is the 11/600 uppercase label (rule 5; it was 9px). Inter,
+   not mono: it names the band, it is not SL. */
 .sl-band-label {
   display: block;
   padding: 0 0.5rem;
-  font-size: 0.5625rem;
-  letter-spacing: 0.08em;
+  font-family: var(--font-body);
+  font-size: var(--t-label);
+  font-weight: 600;
+  letter-spacing: var(--tracking-label);
   text-transform: uppercase;
   color: var(--text-muted);
-  line-height: 1.375rem;
+  line-height: 22px;
 }
 .sl-editor .sl-glyph-gutter {
-  width: 1.1rem;
+  width: 1.25rem;
   background: var(--bg-primary);
 }
 .sl-glyph {
   display: flex;
   align-items: center;
   justify-content: center;
-  height: 1.375rem;
+  height: 22px;
   color: var(--text-muted);
 }
+/* The fault mark is the drawn 16px `error` glyph (rule 14), not a `!`. */
 .sl-glyph-error {
   color: var(--verdict-error);
-  font-weight: 700;
+}
+.sl-glyph-error svg {
+  display: block;
 }
 .sl-glyph-dot {
   width: 6px;
   height: 6px;
-  border-radius: 999px;
+  border-radius: 50%;
   background: currentColor;
 }
 .sl-glyph-kind-energy { color: var(--kind-energy); }
@@ -562,6 +738,11 @@ input[type="range"]:focus-visible {
 .sl-glyph-kind-informational { color: var(--kind-informational); }
 .sl-align-pad {
   display: inline-block;
+}
+/* The fault rows (SlPane SlFaults) sit in a scrolling list, so the ring is
+   drawn inside the row rather than clipped by it (rule 10: moved, not gone). */
+.sl-fault-row:focus-visible {
+  outline-offset: -2px;
 }
 .sl-line-flash {
   background: var(--accent-soft);
@@ -593,4 +774,100 @@ input[type="range"]:focus-visible {
   max-width: none !important;
   flex-basis: auto !important;
   border-left: 0 !important;
+}
+
+/* ── PRIMITIVES (makeover slice B2, src/ui.tsx) ────────────────────────────
+   The states an inline style cannot express. Classes only; every colour is a
+   token. The focus ring stays the global one above (rule 10); the menu item
+   pulls it inside the panel so the panel's overflow cannot clip it. */
+.prim-quiet:hover:not(:disabled) {
+  background-color: var(--bg-surface) !important;
+}
+/* The hover fade is declared on :hover only. A transition on the resting
+   state also fires when the theme flips (every light-dark() pair changes at
+   once), and a tab that is not painting holds the half-way grey: the dark
+   gallery's grey chips (polish pass, 2026-10-27). */
+.prim-button:hover,
+.prim-tool:hover {
+  transition: background-color var(--motion-fast) ease-out;
+}
+.prim-tool:hover:not(:disabled):not([aria-pressed="true"]) {
+  color: var(--text-primary);
+}
+.prim-tab:hover {
+  color: var(--text-primary) !important;
+}
+.prim-menu-item:hover:not([aria-disabled="true"]),
+.prim-menu-item:focus-visible {
+  background-color: var(--bg-surface);
+}
+.prim-menu-item:focus-visible {
+  outline-offset: -2px;
+}
+/* Placeholders at ink-muted (5.4:1 on the ground): Tailwind's default is
+   currentColor at 50% alpha, 3.3:1 in light (sl audit #24). */
+.prim-field::placeholder {
+  color: var(--text-muted);
+  opacity: 1;
+}
+
+/* ── CHROME (makeover slice D: App.tsx menu bar, StatusBar.tsx, Transport.tsx)
+   The bar's strips are the Tabs primitive drawn as a segmented well: the strip
+   is the --bg-surface step inside a --border frame (an outline, so it adds no
+   height), 4px corners, and the active tab is a filled 4px chip in the lens's
+   own accent (rule 9c; outside a data-lens scope the seam is the accent) under
+   --text-on-accent. The primitive sets its underline inline, hence !important.
+   The tablist's overflow is opened so the focus ring (2px, offset 2px) is not
+   clipped on the one tab in the tab order. */
+.chrome-strip {
+  height: 32px;
+  border-radius: var(--radius-sm);
+  background: var(--bg-surface);
+  outline: 1px solid var(--border);
+  outline-offset: -1px;
+}
+.chrome-strip > div {
+  border-bottom: 0 !important;
+}
+.chrome-strip [role="tablist"] {
+  overflow: visible !important;
+}
+.chrome-strip [role="tab"] {
+  margin-bottom: 0 !important;
+  border-bottom: 0 !important;
+  border-radius: var(--radius-sm);
+}
+.chrome-strip [role="tab"]:hover {
+  transition: background-color var(--motion-fast) ease-out, color var(--motion-fast) ease-out;
+}
+.chrome-strip [role="tab"][aria-selected="true"] {
+  background: var(--lens-accent);
+  color: var(--text-on-accent) !important;
+}
+/* A quiet Button used as a toggle (Focus, 3D, Opaque, Grounding): pressed, it
+   fills with the seam's accent and says so with aria-pressed (rule 12). */
+.chrome-toggle[aria-pressed="true"] {
+  background: var(--lens-accent) !important;
+  color: var(--text-on-accent) !important;
+  border-color: var(--lens-accent) !important;
+}
+/* The lens question band (rules 5, 13): 14px Inter in a 32px band; the
+   settle is opacity and a 4px slide over --motion, no scale, and the global
+   reduced-motion gate removes it. */
+@keyframes chrome-question-settle {
+  from {
+    opacity: 0;
+    transform: translateX(-4px);
+  }
+  to {
+    opacity: 1;
+    transform: translateX(0);
+  }
+}
+.chrome-question {
+  font-family: var(--font-body);
+  font-size: var(--t-sm);
+  font-weight: 500;
+  line-height: 1;
+  animation: chrome-question-settle var(--motion) ease-out;
 }

@@ -54,13 +54,12 @@ a vocabulary to grow.
 Theming follows the model app's doctrine: palette stated once as
 `light-dark()` pairs, `color-scheme` decides. Chat therefore has a real dark
 mode (system-following; no toggle yet — `data-theme` on `<html>` is the seam
-when it grows one). The **portal is pinned light** (`color-scheme: light`)
-because the gem SVG's fills are presentation attributes, which cannot read
-`var()`; unpinning requires moving those fills into CSS rules.
+when it grows one). The portal follows the system too since the 2026-10 makeover: the gem's
+fills moved from presentation attributes into CSS classes on the shared
+tokens, so it renders dark with legible labels.
 
 ## Known follow-ups
 
-- Portal dark mode (move gem fills to CSS classes, unpin).
 - Chat theme toggle (adopt `web/src/theme.ts`'s three-state pattern).
 - The structural half of the alignment — chat's linear flow toward the
   workbench paradigm — is specced in the vault

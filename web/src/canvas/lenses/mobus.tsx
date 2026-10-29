@@ -9,12 +9,23 @@
 import type { EdgeFact, PortFact, Relation } from "../../kernel/types";
 import { KIND_COLOR } from "../types";
 import { edgeGeometry, INTERFACE_SCALE, portHalfWidth, rimPoint, ringPoint, siblingStep, straightPath, thingById, NODE_R, type Pt } from "../geometry";
-import { STYLE, elideEdgeLabel } from "../style";
+import { CHEVRON_MIN_PX, LABEL, STROKE_FLOOR_PX, STYLE, elideEdgeLabel } from "../style";
 import { EdgeScaffold, NodeBody, type EdgeStyle } from "./common";
 import type { LensEdgeProps, LensNodeProps } from "./registry";
-import { screenHold, useStageHold } from "../stageScale";
+import { screenHold, strokeWorld, textWorld, useStageScale } from "../stageScale";
 
-function NodeView({ thing, isOrphan, hovered, sim, onPointerDown, onHandlePointerDown, scale, inert }: LensNodeProps) {
+function NodeView({ thing, isOrphan, hovered, selected, dragging, sim, onPointerDown, onHandlePointerDown, scale, inert, notches }: LensNodeProps) {
+  const ctxScale = useStageScale();
+  const sc = scale ?? ctxScale;
+  // The lowest point of any notch on this thing's rim, below its centre: the
+  // capsule is centred on the rim point and rotated to its angle, so its
+  // vertical half-extent is hw|sin| + hh|cos| (plus half its stroke).
+  const labelClear = (notches ?? []).reduce((low, n) => {
+    const { hw, hh } = notchSize(true, sc, n.screenHw);
+    const s = Math.sin(n.angle);
+    const c = Math.cos(n.angle);
+    return Math.max(low, n.rim * s + hw * Math.abs(s) + hh * Math.abs(c) + strokeWorld(STYLE.portStrokeWidth, sc, STROKE_FLOOR_PX) / 2);
+  }, 0);
   // #100 phase 4: the decision/regulator process is the ONE sub-kind Mobus's
   // own drawings give a shape — the warm triangle of Fig 4.17. Kernel taxonomy:
   // Modulating IS that decision/regulation primitive (the regulator monitor;
@@ -41,18 +52,21 @@ function NodeView({ thing, isOrphan, hovered, sim, onPointerDown, onHandlePointe
       pending={isOrphan}
       thing={thing}
       hovered={hovered}
+      selected={selected}
+      dragging={dragging}
       sim={sim}
       onPointerDown={onPointerDown}
       onHandlePointerDown={onHandlePointerDown}
       isSquare={thing.role === "Environment"}
       showHalo={thing.role === "Component" && !iface}
       bodyScale={iface ? INTERFACE_SCALE : undefined}
+      labelClear={labelClear}
       // #308 part A: the reserved pass-way is an interface not yet identified.
       dash={iface && thing.passway && thing.name === "unresolved" ? "4 3" : undefined}
       envOpen={thing.role === "Environment"}
-      sphere={thing.role === "Component" && !regulator}
       regulatorTriangle={regulator}
-      stroke={regulator ? "var(--verdict-warning)" : "var(--lens-node-stroke)"}
+      // The regulator wears Modulating's own hue (rule 9b), not a verdict token.
+      stroke={regulator ? "var(--prim-modulating)" : "var(--lens-node-stroke)"}
       strokeOpacity={1}
       strokeWidth={STYLE.nodeStrokeWidth}
       // Glyph-first (#81 harvest): a stamped component IS its process — the
@@ -98,22 +112,18 @@ function edgeStyle(relation: Relation, fact?: EdgeFact): EdgeStyle {
     case "Matter":
       return { color: KIND_COLOR[relation.kind], width: STYLE.edge.matter, opacity: 0.9, marker };
     case "Energy":
-      return {
-        color: KIND_COLOR[relation.kind],
-        width: STYLE.edge.energy,
-        opacity: 0.9,
-        filter: STYLE.energyGlow.enabled ? "url(#energy-glow)" : undefined,
-        marker,
-      };
+      // No glow (rule 2): the bolt-coloured stroke is the whole mark.
+      return { color: KIND_COLOR[relation.kind], width: STYLE.edge.energy, opacity: 0.9, marker };
     case "Informational":
-      return { color: KIND_COLOR[relation.kind], width: STYLE.edge.info, dash: "1 4", opacity: 0.95, marker };
+      // Dashed, not dotted: `1 4` dots vanish at 2 px once the view scales.
+      return { color: KIND_COLOR[relation.kind], width: STYLE.edge.info, dash: "6 4", opacity: 0.95, marker };
     default:
       return { color: KIND_COLOR[relation.kind], width: STYLE.edge.energy, opacity: 0.85, marker };
   }
 }
 
 function EdgeView({ model, relation, fact, ring, selected, driven, sim, crowded, hideInterior = false, onSelect }: LensEdgeProps) {
-  const hold = useStageHold();
+  const scale = useStageScale();
   const geo = edgeGeometry(model, relation, true);
   if (!geo) return null;
   let { d, labelAt } = geo;
@@ -124,7 +134,7 @@ function EdgeView({ model, relation, fact, ring, selected, driven, sim, crowded,
   const fromAgent = model.things.find((t) => t.id === relation.a)?.rule !== undefined;
   const isCommand = fromAgent && relation.is_bond && relation.kind === "Informational";
   if (isCommand) {
-    style = { ...style, color: "var(--lens-accent)", width: STYLE.edge.info + 0.75, dash: "6 4", opacity: 1 };
+    style = { ...style, color: "var(--lens-accent)", width: STYLE.edge.info + 0.5, dash: "8 4", opacity: 1 };
   }
 
   // Exo flows render as TWO segments — G is bipartite (Tuple.lean): the crossing
@@ -212,9 +222,9 @@ function EdgeView({ model, relation, fact, ring, selected, driven, sim, crowded,
         x={labelAt.x + (driven ? 9 : 0)}
         y={labelAt.y - 6}
         textAnchor={driven ? "start" : "middle"}
-        fontSize={10 * hold}
-        fill="var(--text-muted)"
-        className="font-mono pointer-events-none"
+        fontSize={textWorld(LABEL.edge, scale, LABEL.edgeFloorPx)}
+        fill="var(--text-secondary)"
+        className="font-body pointer-events-none"
       >
         {/* #335: the drawn label is the NAME, elided to a budget. The full
             text is never lost — it is on hover here and in the inspector. */}
@@ -227,7 +237,7 @@ function EdgeView({ model, relation, fact, ring, selected, driven, sim, crowded,
             set, G the flows across the boundary — the same rows the Read
             sheet's formal object counts), and nothing on the canvas said so.
             Hovering the tag names the set. */}
-        <tspan fill="var(--text-secondary)">
+        <tspan fill="var(--text-muted)">
           <title>
             {!relation.is_bond
               ? "∉ N ∪ G: a mere relation, in neither flow set"
@@ -289,6 +299,27 @@ function EdgeView({ model, relation, fact, ring, selected, driven, sim, crowded,
   );
 }
 
+/** The capsule's half-width along the normal (`hw`), half-height across it
+ *  (`hh`) and glyph scale (`k`), in world px. Floored on SCREEN so the chevron
+ *  stays readable when the model is fitted. `compact` keeps its #306
+ *  proportion of the full notch: a pass-way in the boundary, not a peer of the
+ *  processes. Shared by PortView and the owner's name placement. */
+function notchSize(compact: boolean, scale: number, screenHw?: number): { hw: number; hh: number; k: number } {
+  const hw0 = screenHw !== undefined
+    ? Math.min(portHalfWidth(scale), screenHw / Math.max(scale, 0.05)) * (compact ? 0.66 : 1)
+    : portHalfWidth(scale) * screenHold(scale) * (compact ? 0.66 : 1);
+  const hh0 = hw0 * (compact ? 0.62 : 0.58);
+  // The glyph is drawn against a 7px half-height and scaled with the capsule, so
+  // enlarging the notch enlarges the one mark that carries direction. Rule 17:
+  // the chevron (6 glyph units tall at k = 1 for the hybrid pair, 6.8 for
+  // the single) never falls under CHEVRON_MIN_PX on screen; the capsule
+  // grows to keep holding it.
+  const k = Math.max(hh0 / 7, CHEVRON_MIN_PX / (6 * Math.max(scale, 0.05)));
+  const hh = Math.max(hh0, k * 4.6);
+  const hw = Math.max(hw0, hh * 1.3);
+  return { hw, hh, k };
+}
+
 /** A Mobus interface — a round-edged capsule that PENETRATES the boundary (Fig.
  *  4.9), straddling the membrane along its outward normal so it reads as a
  *  pass-way, not a bead on the ring. The direction chevron points the way the
@@ -319,16 +350,7 @@ function PortView({
 }) {
   const label = port.protocol.length > 22 ? `${port.protocol.slice(0, 21)}…` : port.protocol;
   const out = { x: Math.cos(angle), y: Math.sin(angle) };
-  // Capsule half-width along the normal, floored on SCREEN so the chevron stays
-  // readable when the model is fitted. `compact` keeps its #306 proportion of
-  // the full notch — a pass-way in the boundary, not a peer of the processes.
-  const hw = screenHw !== undefined
-    ? Math.min(portHalfWidth(scale), screenHw / Math.max(scale, 0.05)) * (compact ? 0.66 : 1)
-    : portHalfWidth(scale) * screenHold(scale) * (compact ? 0.66 : 1);
-  const hh = hw * (compact ? 0.62 : 0.58);
-  // The glyph is drawn against a 7px half-height and scaled with the capsule, so
-  // enlarging the notch enlarges the one mark that carries direction.
-  const k = hh / 7;
+  const { hw, hh, k } = notchSize(compact, scale, screenHw);
   const n = (v: number) => (v * k).toFixed(2);
   const chevron =
     port.direction === "Receives"
@@ -356,18 +378,19 @@ function PortView({
           y={-hh}
           width={hw * 2}
           height={hh * 2}
-          rx={STYLE.portRx + (compact ? 2 : 4)}
+          rx={STYLE.portRx}
           fill="var(--bg-primary)"
           stroke="var(--lens-accent)"
-          strokeWidth={STYLE.portStrokeWidth}
+          strokeWidth={strokeWorld(STYLE.portStrokeWidth, scale, STROKE_FLOOR_PX)}
         />
         <path
           d={chevron}
           fill="none"
           stroke="var(--lens-accent)"
-          strokeWidth={1.6 * k}
-          strokeLinecap="round"
-          strokeLinejoin="round"
+          strokeWidth={2}
+          vectorEffect="non-scaling-stroke"
+          strokeLinecap="square"
+          strokeLinejoin="miter"
         />
       </g>
       {/* The label sits OUTSIDE the capsule, anchored away from it — centering
@@ -379,9 +402,9 @@ function PortView({
           y={out.y * 16}
           textAnchor={out.x > 0.25 ? "start" : out.x < -0.25 ? "end" : "middle"}
           dominantBaseline="central"
-          fontSize={9 * screenHold(scale)}
-          fill="var(--text-muted)"
-          className="font-mono pointer-events-none"
+          fontSize={textWorld(LABEL.edge, scale, LABEL.edgeFloorPx)}
+          fill="var(--text-secondary)"
+          className="font-body pointer-events-none"
         >
           {label}
         </text>

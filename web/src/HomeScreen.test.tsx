@@ -84,11 +84,15 @@ const browser = (tree: LibraryNode[] = [], initialFacet: Tag | null = null) =>
 const doors = (opts: Parameters<typeof page>[0] = {}) => page({ ...opts, initialView: "doors" });
 
 describe("home", () => {
-  it("is four doors in three groups, with the docs in the colophon", () => {
+  it("is two doors, new and open, with the docs in the colophon", () => {
     const html = renderToStaticMarkup(<HomeMenu onCreate={noop} onOpenLibrary={noop} />);
-    expect(html).toContain("Draw your system");
+    expect(html).toContain("New model");
     expect(html).toContain("Open a model");
-    expect(html).toContain("Sandbox");
+    // one-surface.md: drawing, describing and the sandbox are ways in on the
+    // blank canvas, not doors; ?sandbox=1 still opens the sandbox surface.
+    expect(html).not.toContain("Draw your system");
+    expect(html).not.toContain("Describe your system");
+    expect(html).not.toContain("?sandbox=1");
     expect(html).toContain("Documentation");
     // The docs link goes to the rendered docs on the site (#368), not a repo tree.
     expect(html).toContain('href="https://facets.systems/docs/"');
@@ -100,6 +104,18 @@ describe("home", () => {
     expect(html).not.toContain("Start blank");
     expect(html).not.toContain("Write SL");
     expect(html).not.toContain("Open a folder");
+  });
+
+  // The front door's proof claim is stated with its limits (2026-10-27): it
+  // says what the check is, why a proof is involved, and what it does not
+  // claim, and it never says every verdict is proven.
+  it("says what the check means and what it does not claim", () => {
+    const html = renderToStaticMarkup(<HomeMenu onCreate={noop} onOpenLibrary={noop} />);
+    expect(html).toContain("What it checks");
+    expect(html).toContain("Why proofs");
+    expect(html).toContain("What it does not claim");
+    expect(html).toContain("theory-fidelity.html");
+    expect(html).not.toContain("Every verdict is machine-checked");
   });
 
   // #229 — the landing page asserts the kernel judges under Klir, Bunge and
@@ -418,12 +434,14 @@ describe("the doors", () => {
       expect(lens).toContain(`var(--world-${id})`);
       expect(domain).not.toContain(`var(--world-${id})`);
     }
-    for (const ink of ["--chart-1", "--chart-3", "--chart-4"]) {
+    // Four kingdoms, four chart inks: Physical took --chart-2 in the makeover
+    // (audit #41), so no genus shelf is uncoloured.
+    for (const ink of ["--chart-1", "--chart-2", "--chart-3", "--chart-4"]) {
       expect(domain).toContain(`var(${ink})`);
       expect(lens).not.toContain(`var(${ink})`);
     }
     // The colour is a fill with an edge, never a gradient or a left border.
-    expect(lens).toContain("color-mix(in oklab, var(--world-mobus) 22%, var(--paper))");
+    expect(lens).toContain("color-mix(in oklab, var(--world-mobus) 22%, var(--bg-secondary))");
     expect(lens).not.toContain("gradient");
   });
 

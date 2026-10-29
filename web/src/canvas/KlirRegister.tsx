@@ -13,7 +13,8 @@ import "katex/dist/katex.min.css";
 import type { CanvasModel, KlirCell, KlirLadder, KlirVarKind, MarkovRunResult, Relation, RunResultRich, ScaleType, Thing } from "../kernel/types";
 import { klirIncidenceCells, validateConnection } from "../kernel";
 import { observations, refusal } from "./connectionVerdict";
-import { InspectorRow as Row, InspectorTitle as Title, ToolButton as SmallButton } from "../ui";
+import { Button, Input, InspectorRow as Row, InspectorTitle as Title, Select, ToolButton as SmallButton } from "../ui";
+import { Icon } from "../icons";
 import { DecomposeRows, type DecomposeAffordance } from "./NodeEditor";
 import { KlirLadderPanel, LadderChip } from "./KlirLadderPanel";
 import { FormalismLine, klirFormalism } from "./lenses/glossary";
@@ -186,10 +187,11 @@ export function KlirRegister({
       <div className="max-w-2xl">
         {/* the place line (#100 phase 0 / #116) — where you are, click to rename */}
         {nameDraft !== null ? (
-          <input
+          <Input
             autoFocus
-            className="mb-1 w-48 rounded-md border px-2 py-1 text-xs"
-            style={{ ...mono, borderColor: "var(--lens-accent)", background: "var(--bg-secondary)", color: "var(--text-primary)" }}
+            aria-label="system name"
+            className="mb-1 w-48"
+            style={{ ...mono, borderColor: "var(--lens-accent)" }}
             value={nameDraft}
             placeholder="name this system…"
             onChange={(e) => setNameDraft(e.target.value)}
@@ -296,10 +298,10 @@ export function KlirRegister({
                 title={`t${t.id} ∈ T — click to edit`}
               >
                 {t.name || `t${t.id}`}
-                {t.child_model && <span style={{ color: "var(--text-muted)" }}> ▸</span>}
+                {t.child_model && <Icon name="chevron-right" size={16} className="ml-0.5 inline-block align-text-bottom" style={{ color: "var(--text-muted)" }} />}
               </button>
             ))}
-            <input
+            <Input
               value={thingDraft}
               onChange={(e) => setThingDraft(e.target.value)}
               onKeyDown={(e) => {
@@ -307,9 +309,10 @@ export function KlirRegister({
                 if (e.key === "Escape") setThingDraft("");
               }}
               placeholder="+ thing…"
+              aria-label="add a thing to T"
               title="Type a name and press Enter to add a member to T"
-              className="w-24 rounded-md px-2 py-0.5 text-sm"
-              style={{ ...mono, border: "1px dashed var(--border)", background: "transparent", color: "var(--text-primary)" }}
+              className="w-28"
+              style={{ ...mono, borderStyle: "dashed", background: "transparent" }}
             />
           </div>
           {selectedThing && (
@@ -430,19 +433,14 @@ function PairSelect({
   things: Thing[];
 }) {
   return (
-    <select
-      value={value}
-      onChange={(e) => onChange(e.target.value)}
-      className="rounded-md px-1.5 py-0.5 text-xs"
-      style={{ border: "1px solid var(--border)", background: "var(--bg-primary)", color: "var(--text-primary)" }}
-    >
+    <Select value={value} onChange={(e) => onChange(e.target.value)} aria-label="thing">
       <option value="">…</option>
       {things.map((t) => (
         <option key={t.id} value={t.id}>
           {t.name || `t${t.id}`}
         </option>
       ))}
-    </select>
+    </Select>
   );
 }
 
@@ -500,13 +498,13 @@ function IncidenceMatrix({
       <table className="border-separate" style={{ borderSpacing: 0 }}>
         <thead>
           <tr>
-            <th className="px-2 text-left align-bottom text-[10px] font-normal" style={headerCellStyle}>
+            <th className="px-2 text-left align-bottom text-[11px] font-normal" style={headerCellStyle}>
               row→col
             </th>
             {model.things.map((t) => (
               <th
                 key={t.id}
-                className="px-1 pb-1 align-bottom text-[10px] font-normal"
+                className="px-1 pb-1 align-bottom text-[11px] font-normal"
                 style={{ ...headerCellStyle, minWidth: CELL, maxWidth: CELL }}
                 title={t.name}
               >
@@ -524,7 +522,7 @@ function IncidenceMatrix({
           {model.things.map((a) => (
             <tr key={a.id}>
               <th
-                className="max-w-28 truncate px-2 text-right text-[10px] font-normal"
+                className="max-w-28 truncate px-2 text-right text-[11px] font-normal"
                 style={{ ...headerCellStyle, height: CELL }}
                 title={a.name}
               >
@@ -597,7 +595,7 @@ function IncidenceMatrix({
           </SmallButton>
         </div>
       )}
-      <p className="mt-1 text-[10px]" style={{ color: "var(--text-muted)" }}>
+      <p className="mt-1 text-[11px]" style={{ color: "var(--text-muted)" }}>
         ● neutral (marks both orders) · → directed, read row → col · ↺ self-relation
       </p>
     </div>
@@ -643,7 +641,7 @@ export function SourceSystemTable({
       </p>
     );
   }
-  const th = "px-2 py-1 text-left text-[10px] font-normal";
+  const th = "px-2 py-1 text-left text-[11px] font-normal";
   return (
     <section className="mb-4">
       <div className="mb-1 text-xs" style={{ ...mono, color: "var(--text-secondary)" }}>
@@ -676,37 +674,35 @@ export function SourceSystemTable({
                     </button>
                   </td>
                   <td className="px-2 py-1" style={{ borderBottom: "1px solid var(--hairline)" }}>
-                    <select
+                    <Select
                       value={t.variable_kind ?? "Basic"}
                       onChange={(e) =>
                         // Basic is the default — clear to None rather than store it.
                         onUpdateThing({ ...t, variable_kind: e.target.value === "Support" ? "Support" : undefined })
                       }
-                      className="rounded-md px-1 py-0.5 text-xs"
-                      style={{ border: "1px solid var(--border)", background: "var(--bg-primary)", color: "var(--text-primary)" }}
+                      aria-label={`basic or support: ${t.name || `t${t.id}`}`}
                     >
                       {VAR_KINDS.map((k) => (
                         <option key={k} value={k}>{k}</option>
                       ))}
-                    </select>
+                    </Select>
                   </td>
                   <td className="px-2 py-1 text-xs" style={{ ...mono, color: "var(--text-muted)", borderBottom: "1px solid var(--hairline)" }}>
                     {io}
                   </td>
                   <td className="px-2 py-1" style={{ borderBottom: "1px solid var(--hairline)" }}>
-                    <select
+                    <Select
                       value={t.scale ?? ""}
                       onChange={(e) =>
                         onUpdateThing({ ...t, scale: (e.target.value || undefined) as ScaleType | undefined })
                       }
-                      className="rounded-md px-1 py-0.5 text-xs"
-                      style={{ border: "1px solid var(--border)", background: "var(--bg-primary)", color: "var(--text-primary)" }}
+                      aria-label={`scale: ${t.name || `t${t.id}`}`}
                     >
                       <option value="">—</option>
                       {SCALES.map((s) => (
                         <option key={s} value={s}>{s}</option>
                       ))}
-                    </select>
+                    </Select>
                   </td>
                   <td className="px-2 py-1" style={{ borderBottom: "1px solid var(--hairline)" }}>
                     <StatesInput
@@ -720,7 +716,7 @@ export function SourceSystemTable({
           </tbody>
         </table>
       </div>
-      <p className="mt-1 text-[10px]" style={{ color: "var(--text-muted)" }}>
+      <p className="mt-1 text-[11px]" style={{ color: "var(--text-muted)" }}>
         in/out is read off R; basic/support, scale, and the state set are authored (on environment variables too).
       </p>
     </section>
@@ -747,7 +743,7 @@ function StatesInput({
     onCommit(labels.length ? labels : undefined);
   };
   return (
-    <input
+    <Input
       value={draft}
       onChange={(e) => setDraft(e.target.value)}
       onBlur={commit}
@@ -759,8 +755,9 @@ function StatesInput({
         }
       }}
       placeholder="e.g. Green, Yellow, Red"
-      className="w-40 rounded-md px-1.5 py-0.5 text-xs"
-      style={{ ...mono, border: "1px solid var(--border)", background: "var(--bg-primary)", color: "var(--text-primary)" }}
+      aria-label="state set"
+      className="w-40"
+      style={mono}
     />
   );
 }
@@ -784,7 +781,7 @@ function fmtState(v: number | undefined): string {
 function MaskCaption({ kind }: { kind: "conservation" | "markov" }) {
   if (kind === "markov") {
     return (
-      <p className="mt-1 text-[10px] leading-snug" style={{ color: "var(--text-muted)" }}>
+      <p className="mt-1 text-[11px] leading-snug" style={{ color: "var(--text-muted)" }}>
         f: Ḡ → G read off a <strong>Klir/DTMC run</strong> (#67 <code>run_markov</code>) — Ḡ = the
         state distribution at tick t, G = the successor distribution at t+1, the tick-step reading
         (support window = the current tick alone), matching the conservation mask's grammar. The
@@ -794,7 +791,7 @@ function MaskCaption({ kind }: { kind: "conservation" | "markov" }) {
     );
   }
   return (
-    <p className="mt-1 text-[10px] leading-snug" style={{ color: "var(--text-muted)" }}>
+    <p className="mt-1 text-[11px] leading-snug" style={{ color: "var(--text-muted)" }}>
       f: Ḡ → G read off a <strong>Mobus conservation run</strong>'s recorded trajectory — the
       coalgebra step T (dynamics-coalgebra-halfa.md), the first-order deterministic step (support
       window = the current tick alone). Richer declared-support windows and the Transition
@@ -865,7 +862,7 @@ export function MaskTable({
     );
   }
 
-  const th = "px-2 py-1 text-left text-[10px] font-normal";
+  const th = "px-2 py-1 text-left text-[11px] font-normal";
   return (
     <section className="mb-4">
       <div className="mb-1 text-xs" style={{ ...mono, color: "var(--text-secondary)" }}>
@@ -898,7 +895,7 @@ export function MaskTable({
                   style={{ background: current ? "color-mix(in srgb, var(--lens-accent) 18%, transparent)" : undefined }}
                 >
                   <td className="px-2 py-1 text-xs" style={{ ...mono, color: "var(--text-muted)", borderBottom: "1px solid var(--hairline)" }}>
-                    {t}{current ? " ◂" : ""}
+                    {t}{current && <Icon name="chevron-left" size={16} className="ml-0.5 inline-block align-text-bottom" />}
                   </td>
                   {columns.map((c, i) => (
                     <td key={`g-${i}`} className="px-2 py-1 text-sm tabular" style={{ ...mono, color: "var(--text-primary)", borderBottom: "1px solid var(--hairline)" }}>
@@ -925,7 +922,6 @@ const editorBox = {
   border: "1px solid var(--lens-accent)",
   background: "var(--bg-secondary)",
   borderRadius: "var(--radius-md)",
-  boxShadow: "var(--shadow-card-hover)",
 } as const;
 
 // Inline counterparts of the Klir popover bodies (NodePopover / EdgePopover's
@@ -952,21 +948,21 @@ function ThingEditor({
       </Title>
       <Row>
         <span style={{ color: "var(--text-secondary)" }}>name</span>
-        <input
+        <Input
           value={thing.name}
           onChange={(e) => onUpdate({ ...thing, name: e.target.value })}
-          className="w-28 rounded-md px-1.5 py-0.5 text-xs"
-          style={{ border: "1px solid var(--border)", background: "var(--bg-primary)", color: "var(--text-primary)" }}
+          className="min-w-0 flex-1"
+          aria-label="name"
         />
       </Row>
       {decompose && <DecomposeRows decompose={decompose} />}
       <div className="flex justify-between">
-        <button onClick={onDelete} className="rounded-full px-3 py-1 text-xs" style={{ color: "var(--verdict-error)" }}>
+        <Button size={28} variant="quiet" icon="delete" onClick={onDelete} style={{ color: "var(--verdict-error)" }}>
           delete
-        </button>
-        <button onClick={onClose} className="rounded-full px-3 py-1 text-xs" style={{ color: "var(--text-muted)" }}>
+        </Button>
+        <Button size={28} variant="quiet" icon="close" onClick={onClose}>
           close
-        </button>
+        </Button>
       </div>
     </div>
   );
@@ -996,12 +992,12 @@ function RelationEditor({
       <FormalismLine parts={klirFormalism(sigIndex)} />
       <Row>
         <span style={{ color: "var(--text-secondary)" }}>name</span>
-        <input
+        <Input
           value={relation.name}
           onChange={(e) => onUpdate({ ...relation, name: e.target.value })}
           placeholder="e.g. referral"
-          className="w-32 rounded-md px-1.5 py-0.5 text-xs"
-          style={{ border: "1px solid var(--border)", background: "var(--bg-primary)", color: "var(--text-primary)" }}
+          className="min-w-0 flex-1"
+          aria-label="name"
         />
       </Row>
       <Row>
@@ -1016,12 +1012,12 @@ function RelationEditor({
         </div>
       </Row>
       <div className="flex justify-between border-t pt-1" style={{ borderColor: "var(--hairline)" }}>
-        <button onClick={onDelete} className="rounded-full px-3 py-1 text-xs" style={{ color: "var(--verdict-error)" }}>
+        <Button size={28} variant="quiet" icon="delete" onClick={onDelete} style={{ color: "var(--verdict-error)" }}>
           delete
-        </button>
-        <button onClick={onClose} className="rounded-full px-3 py-1 text-xs" style={{ color: "var(--text-muted)" }}>
+        </Button>
+        <Button size={28} variant="quiet" icon="close" onClick={onClose}>
           close
-        </button>
+        </Button>
       </div>
     </div>
   );

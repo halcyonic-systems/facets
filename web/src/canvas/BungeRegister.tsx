@@ -33,7 +33,8 @@ import type {
 import { bungeCouplingCells, validateConnection } from "../kernel";
 import { observations, refusal } from "./connectionVerdict";
 import { KIND_COLOR } from "./types";
-import { InspectorRow as Row, InspectorTitle as Title, ToolButton as SmallButton } from "../ui";
+import { Button, Input, InspectorRow as Row, InspectorTitle as Title, Pill, ToolButton as SmallButton } from "../ui";
+import { Icon } from "../icons";
 import { DecomposeRows, type DecomposeAffordance } from "./NodeEditor";
 import { BungeBody, FlowDescriptionField, FlowGroundingField, FlowNameField } from "./EdgePopover";
 import { CELL, confirmStripClass, confirmStripStyle, headerCellStyle } from "./registerChrome";
@@ -203,10 +204,11 @@ export function BungeRegister({
       <div className="max-w-2xl">
         {/* the place line (#100 phase 0 / #116) — where you are, click to rename */}
         {nameDraft !== null ? (
-          <input
+          <Input
             autoFocus
-            className="mb-1 w-48 rounded-md border px-2 py-1 text-xs"
-            style={{ ...mono, borderColor: "var(--lens-accent)", background: "var(--bg-secondary)", color: "var(--text-primary)" }}
+            aria-label="system name"
+            className="mb-1 w-48"
+            style={{ ...mono, borderColor: "var(--lens-accent)" }}
             value={nameDraft}
             placeholder="name this system…"
             onChange={(e) => setNameDraft(e.target.value)}
@@ -231,15 +233,9 @@ export function BungeRegister({
           <span className="flex items-baseline gap-3 text-lg" style={{ color: "var(--text-primary)" }}>
             <Tex tex={"\\mu(\\sigma) = \\langle \\mathcal{C},\\; \\mathcal{E},\\; \\mathcal{S},\\; \\mathcal{M} \\rangle"} />
             {/* Systemhood is EARNED (Def 1.1) — the kernel's verdict, announced. */}
-            <span
-              className="rounded-full px-2.5 py-0.5 text-xs font-semibold"
-              style={{
-                background: aggregate ? "var(--verdict-error)" : "var(--accent-soft)",
-                color: aggregate ? "var(--text-on-accent)" : "var(--accent-strong)",
-              }}
-            >
+            <Pill tone={aggregate ? "error" : "ok"} icon={aggregate ? "warning" : "check"}>
               {aggregate ? "aggregate — 𝔹 = ∅" : "system — 𝔹 ≠ ∅"}
-            </span>
+            </Pill>
           </span>
           <div className="flex items-center gap-1">
             <SmallButton onClick={onViewGraph} title="the coupling graph — things, bonds, and the hull (the observer's cut)">
@@ -371,13 +367,15 @@ export function BungeRegister({
                   onClose={() => onSelectRelation(null)}
                 />
                 <div className="flex justify-start border-t pt-1" style={{ borderColor: "var(--hairline)" }}>
-                  <button
+                  <Button
+                    size={28}
+                    variant="quiet"
+                    icon="delete"
                     onClick={() => onDeleteRelation(selectedRelation.id)}
-                    className="rounded-full px-3 py-1 text-xs"
                     style={{ color: "var(--verdict-error)" }}
                   >
                     delete
-                  </button>
+                  </Button>
                 </div>
               </div>
             </div>
@@ -444,10 +442,10 @@ function ThingSection({
             title={`${t.name || `#${t.id}`} ∈ ${label} — click to edit (the cut is re-drawable)`}
           >
             {t.name || `#${t.id}`}
-            {t.child_model && <span style={{ color: "var(--text-muted)" }}> ▸</span>}
+            {t.child_model && <Icon name="chevron-right" size={16} className="ml-0.5 inline-block align-text-bottom" style={{ color: "var(--text-muted)" }} />}
           </button>
         ))}
-        <input
+        <Input
           value={draft}
           onChange={(e) => setDraft(e.target.value)}
           onKeyDown={(e) => {
@@ -455,9 +453,10 @@ function ThingSection({
             if (e.key === "Escape") setDraft("");
           }}
           placeholder={placeholder}
+          aria-label={`add to ${label}`}
           title={draftTip}
-          className="w-28 rounded-md px-2 py-0.5 text-sm"
-          style={{ ...mono, border: "1px dashed var(--border)", background: "transparent", color: "var(--text-primary)" }}
+          className="w-32"
+          style={{ ...mono, borderStyle: "dashed", background: "transparent" }}
         />
       </div>
     </section>
@@ -468,7 +467,6 @@ const editorBox = {
   border: "1px solid var(--lens-accent)",
   background: "var(--bg-secondary)",
   borderRadius: "var(--radius-md)",
-  boxShadow: "var(--shadow-card-hover)",
 } as const;
 
 // Inline counterpart of the Bunge NodePopover (the Klir register's
@@ -499,11 +497,11 @@ function InlineThingEditor({
         </Title>
         <Row>
           <span style={{ color: "var(--text-secondary)" }}>name</span>
-          <input
+          <Input
             value={thing.name}
             onChange={(e) => onUpdate({ ...thing, name: e.target.value })}
-            className="w-28 rounded-md px-1.5 py-0.5 text-xs"
-            style={{ border: "1px solid var(--border)", background: "var(--bg-primary)", color: "var(--text-primary)" }}
+            className="min-w-0 flex-1"
+            aria-label="name"
           />
         </Row>
         <Row>
@@ -534,17 +532,17 @@ function InlineThingEditor({
             </SmallButton>
           </div>
         </Row>
-        <p className="mb-1 text-[10px] leading-snug" style={{ color: "var(--text-muted)" }}>
+        <p className="mb-1 text-[11px] leading-snug" style={{ color: "var(--text-muted)" }}>
           re-cut — the cut is yours to draw; ℰ and 𝒮 follow from it
         </p>
         {decompose && <DecomposeRows decompose={decompose} />}
         <div className="flex justify-between">
-          <button onClick={onDelete} className="rounded-full px-3 py-1 text-xs" style={{ color: "var(--verdict-error)" }}>
+          <Button size={28} variant="quiet" icon="delete" onClick={onDelete} style={{ color: "var(--verdict-error)" }}>
             delete
-          </button>
-          <button onClick={onClose} className="rounded-full px-3 py-1 text-xs" style={{ color: "var(--text-muted)" }}>
+          </Button>
+          <Button size={28} variant="quiet" icon="close" onClick={onClose}>
             close
-          </button>
+          </Button>
         </div>
       </div>
     </div>
@@ -646,13 +644,13 @@ function CouplingMatrix({
       <table className="border-separate" style={{ borderSpacing: 0 }}>
         <thead>
           <tr>
-            <th className="px-2 text-left align-bottom text-[10px] font-normal" style={headerCellStyle}>
+            <th className="px-2 text-left align-bottom text-[11px] font-normal" style={headerCellStyle}>
               r acts on s
             </th>
             {slots.map((s, i) => (
               <th
                 key={slotKey(s)}
-                className="px-1 pb-1 align-bottom text-[10px] font-normal"
+                className="px-1 pb-1 align-bottom text-[11px] font-normal"
                 style={{ ...headerCellStyle, minWidth: CELL, maxWidth: CELL, ...cutLeft(i) }}
                 title={slotTitle(s)}
               >
@@ -675,7 +673,7 @@ function CouplingMatrix({
           {slots.map((a, ai) => (
             <tr key={slotKey(a)}>
               <th
-                className="max-w-28 truncate px-2 text-right text-[10px] font-normal"
+                className="max-w-28 truncate px-2 text-right text-[11px] font-normal"
                 style={{
                   ...headerCellStyle,
                   height: CELL,
@@ -782,7 +780,7 @@ function CouplingMatrix({
           </SmallButton>
         </div>
       )}
-      <p className="mt-1 text-[10px]" style={{ color: "var(--text-muted)" }}>
+      <p className="mt-1 text-[11px]" style={{ color: "var(--text-muted)" }}>
         {enBloc
           ? "0 is the environment en bloc; the heavier rule after it is the cut. kind of action: "
           : "the heavier rule is the cut — 𝒞 before it, ℰ after (re-cut from any thing's editor). kind of action: "}
