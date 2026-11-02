@@ -1004,3 +1004,22 @@ is read off the projected interaction, so an undeclared flow reports the amount
 it runs at (`DEFAULT_FLOW_AMOUNT`, 1, or the amount a fused crossing leg takes
 from its interior leg). A relation that does not project, or is ample, is not
 listed.
+
+### `flow_kinds(canvas_json: string) → FlowKind[]`
+What every bond carries in the run. Additive (2026-11-02, the walk's row 29).
+`FlowKind` is `{ relation, kind, said, from, mixed, waits_on }`. A written kind is
+`said`. An unwritten one takes the kind that comes into its source when that is
+one kind (signals do not count while anything physical comes in), and `from`
+lists those inflows. When the inflows differ, `kind` is `null` and `mixed`
+lists them; when nothing comes in, `kind` is `null` and `mixed` is empty.
+`waits_on` lists the flows into its source that are not worked out either, when
+those are the only reason; answering them settles this one.
+`project` reads an unwritten kind this way; one that cannot be worked out keeps
+the historical Energy reading there.
+
+### `run_projection(canvas_json: string) → WorldModel`
+`project` for a run. Throws when any bond's kind cannot be worked out, naming
+the flows to answer (not those that only wait on them, which it counts):
+`"N flows do not say what they carry (K more after them follow once they are
+said):"` then one `"\n· A -> B: …"` line per flow, the same shape as the run's
+not-executable message.

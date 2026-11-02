@@ -30,6 +30,8 @@ vi.mock("./lenses/mobus", () => ({
 }));
 
 import Canvas from "./Canvas";
+import { DoorSettings } from "./InterfacePopover";
+import type { Thing } from "../kernel/types";
 
 const model: CanvasModel = {
   lens: "Mobus",
@@ -135,5 +137,45 @@ describe("flow-carrying interface capsule click (2026-08-09)", () => {
     );
     expect(html).toContain("2 protocols");
     expect(html).toContain("refine each crossing");
+  });
+});
+
+// Walk row 29: a door's settings where the interface is clicked. The protocol
+// is the author's words (written to SL, never read by the run); what the door
+// does is the run's side, and only pass and gate are offered (resist waits on
+// an SL word for its share, walk row 18).
+
+const door = (over: Partial<Thing> = {}): Thing => ({
+  id: 3,
+  name: "I3",
+  x: 0,
+  y: 0,
+  role: "Component",
+  interface: true,
+  passway: true,
+  ...over,
+});
+const show = (t: Thing) => renderToStaticMarkup(<DoorSettings thing={t} onEditThing={() => {}} onEditBehaviour={() => {}} />);
+
+describe("a door's settings", () => {
+  it("offers pass and gate, with the protocol in the author's words", () => {
+    const html = show(door({ protocol: "graded ore only" }));
+    expect(html).toContain("passes everything");
+    expect(html).toContain("gates it");
+    expect(html).not.toContain("resist");
+    expect(html).toContain("graded ore only");
+    expect(html).toContain("The run does not read these words");
+  });
+
+  it("reads a Modulating door as a gate and says how to close it", () => {
+    const html = show(door({ passway: false, primitive: "Modulating" }));
+    expect(html).toMatch(/<option value="gate" selected="">/);
+    expect(html).toContain("until a message flow into it closes the gate");
+  });
+
+  it("leaves a process sited on the membrane alone, saying what it runs", () => {
+    const html = show(door({ passway: false, primitive: "Combining" }));
+    expect(html).not.toContain("door-behaviour");
+    expect(html).toContain("It runs as Combining");
   });
 });

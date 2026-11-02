@@ -67,7 +67,8 @@ function NodeView({ thing, isSource, isOrphan, hovered, selected, dragging, sim,
       envOpen={thing.role === "Environment"}
       regulatorTriangle={regulator}
       // The regulator wears Modulating's own hue (rule 9b), not a verdict token.
-      stroke={regulator ? "var(--prim-modulating)" : "var(--lens-node-stroke)"}
+      // Walk row 29: most of what entered was lost here; the strip says how much.
+      stroke={sim?.lost ? "var(--verdict-warning)" : regulator ? "var(--prim-modulating)" : "var(--lens-node-stroke)"}
       strokeOpacity={1}
       strokeWidth={STYLE.nodeStrokeWidth}
       // Glyph-first (#81 harvest): a stamped component IS its process — the
@@ -123,12 +124,25 @@ function edgeStyle(relation: Relation, fact?: EdgeFact): EdgeStyle {
   }
 }
 
-function EdgeView({ model, relation, fact, ring, selected, driven, sim, crowded, hideInterior = false, onSelect }: LensEdgeProps) {
+function EdgeView({ model, relation, fact, ring, selected, driven, sim, crowded, hideInterior = false, carried, onSelect }: LensEdgeProps) {
   const scale = useStageScale();
   const geo = edgeGeometry(model, relation, true);
   if (!geo) return null;
   let { d, labelAt } = geo;
   let style = edgeStyle(relation, fact);
+  // Walk row 29: a flow with no written kind is drawn as what the run carries
+  // on it (the kernel's `flow_kinds`), and one the kernel cannot work out is
+  // drawn amber and dotted, so the gap is on the canvas and not only in a
+  // refused run.
+  const unsaid = relation.is_bond && relation.kind === "Unspecified" && carried && !carried.said;
+  const unworked = unsaid && carried.kind === null;
+  if (unsaid && carried.kind) style = edgeStyle({ ...relation, kind: carried.kind }, fact);
+  if (unworked) style = { ...style, color: "var(--verdict-warning)", dash: "3 3", opacity: 1 };
+  const kindNote = !unsaid
+    ? null
+    : unworked
+      ? "no kind: the run cannot tell what this flow carries. Click it and say matter, energy or message"
+      : `${carried.kind === "Informational" ? "message" : carried.kind!.toLowerCase()}, carried on from what comes in (not written; click to write it)`;
   // A command (facets#269): a message leaving an agent for the work process it
   // manages. Drawn as its own line — not a substance moving, an instruction —
   // heavier and longer-dashed than a reading, in the lens accent.
@@ -293,7 +307,9 @@ function EdgeView({ model, relation, fact, ring, selected, driven, sim, crowded,
       title={
         isCommand
           ? `command · ${relation.name ? `"${relation.name}"` : "flow"} — the agent's instruction to the work process it manages (Mobus §11.2.1: "its output signals command an actuator"); drawn heavy and long-dashed so it never reads as a substance moving`
-          : title
+          : kindNote
+            ? `${kindNote}${title ? ` · ${title}` : ""}`
+            : title
       }
     />
     </g>

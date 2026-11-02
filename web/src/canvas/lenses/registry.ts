@@ -9,6 +9,7 @@ import type {
   CanvasModel,
   CanvasRole,
   EdgeFact,
+  FlowKind,
   Lens,
   PortFact,
   ProcessPrimitive,
@@ -43,7 +44,7 @@ export interface LensNodeProps {
    *  hints ("change it in the node editor") are withheld — they were wrong
    *  there, and a native SVG title over an inert layer could stick. */
   inert?: boolean;
-  sim?: { value: number; unit: string; frac: number };
+  sim?: { value: number; unit: string; frac: number; lost?: boolean };
   onPointerDown: (e: ReactPointerEvent) => void;
   onHandlePointerDown: (e: ReactPointerEvent) => void;
   /** Stage scale — marks that must stay a hand's size (the connect handle)
@@ -72,6 +73,9 @@ export interface LensEdgeProps {
   /** #308 part B: the opaque view draws a crossing up to the membrane and no
    *  further — the dashed interior segment to a hidden resident is omitted. */
   hideInterior?: boolean;
+  /** The kernel's `flow_kinds` row for this flow (walk row 29): what an
+   *  unwritten kind carries in the run, or that it cannot be worked out. */
+  carried?: FlowKind;
   onSelect?: (id: number) => void;
 }
 

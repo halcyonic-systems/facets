@@ -68,7 +68,9 @@ export const LENS_TO_MODE: Record<Lens, "Core" | "Structural" | "Operational"> =
 /** The per-tick readout the scrubber indexes out of the kernel's RunResultRich
  *  and hands to the canvas — pure array indexing, no dynamics computed here. */
 export interface SimFrame {
-  nodes: Record<string, { value: number; unit: string; frac: number }>;
+  /** `lost`: most of what entered the run was lost at this thing (walk row
+   *  29), so the canvas outlines it. */
+  nodes: Record<string, { value: number; unit: string; frac: number; lost?: boolean }>;
   edges: Record<string, { value: number; unit: string }>;
 }
 

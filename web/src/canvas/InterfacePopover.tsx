@@ -6,10 +6,11 @@
 // (2026-08-09 field report); the boundary editor now belongs to the membrane
 // stroke alone. Each crossing flow is listed and clicks through to the flow
 // itself, so the capsule is the index of what passes there, not a dead end.
-import type { CanvasModel, PortFact } from "../kernel/types";
+import { useState } from "react";
+import type { CanvasModel, PortFact, Thing } from "../kernel/types";
 import { KIND_COLOR } from "./types";
 import type { Pt } from "./geometry";
-import { InspectorRow as Row, InspectorTitle as Title, ToolButton } from "../ui";
+import { Input, InspectorRow as Row, InspectorTitle as Title, Select, ToolButton } from "../ui";
 import { thingById } from "./geometry";
 import { Icon } from "../icons";
 import { PopoverDialog } from "./PopoverDialog";
@@ -20,12 +21,18 @@ export function InterfacePopover({
   anchor,
   onSelectRelation,
   onClose,
+  onEditThing,
+  onEditBehaviour,
 }: {
   port: PortFact;
   model: CanvasModel;
   anchor: Pt;
   onSelectRelation: (id: number) => void;
   onClose: () => void;
+  /** Writes the interface's own words (its protocol). Absent = read only. */
+  onEditThing?: (next: Thing) => void;
+  /** Writes what the door does in the run; re-runs when a run is showing. */
+  onEditBehaviour?: (next: Thing) => void;
 }) {
   const comp = thingById(model, port.component);
   const env = thingById(model, port.env);
@@ -89,9 +96,111 @@ export function InterfacePopover({
           </button>
         );
       })}
+      {comp && comp.interface && onEditThing && (
+        <DoorSettings thing={comp} onEditThing={onEditThing} onEditBehaviour={onEditBehaviour ?? onEditThing} />
+      )}
       <div className="flex justify-end">
         <ToolButton onClick={onClose}>close</ToolButton>
       </div>
     </PopoverDialog>
   );
 }
+
+/** What a door is set to do (walk row 29, Shingai: set protocol rules where
+ *  the interface is clicked). Two settings, kept apart because only one of
+ *  them runs:
+ *
+ *  - **protocol**: the door's admission rule in the author's words (SL
+ *    `protocol "…"`, #333, Mobus Listing 4.2). Prose the run never reads; the
+ *    spec gives up per-element protocol logic for a checkable language.
+ *  - **what it does here**: the run's side. A pass-way passes everything; a
+ *    gate is the Modulating work process sited on the door (SL's merged form
+ *    `component X primitive Modulating interface`), which passes everything
+ *    until a message flow into it throttles it. Mobus ch. 4: an interface
+ *    passes, gates or filters. Resisting (Impeding) is left out until its
+ *    share has an SL word (walk row 18): offered now, it would lose half of
+ *    what passes with no way to set or save the half.
+ *
+ *  A door that already runs another work process (a process sited on the
+ *  membrane) is not reset from here; the line says what it runs. */
+export function DoorSettings({
+  thing,
+  onEditThing,
+  onEditBehaviour,
+}: {
+  thing: Thing;
+  onEditThing: (next: Thing) => void;
+  onEditBehaviour: (next: Thing) => void;
+}) {
+  const [draft, setDraft] = useState<string | null>(null);
+  const commit = () => {
+    if (draft === null) return;
+    const next = draft.trim();
+    if (next !== (thing.protocol ?? "")) onEditThing({ ...thing, protocol: next });
+    setDraft(null);
+  };
+  const behaviour = thing.passway && !thing.primitive ? "pass" : thing.primitive === "Modulating" ? "gate" : null;
+  const other = behaviour === null && !thing.rule;
+  return (
+    <div className="mt-2 border-t pt-2" style={{ borderColor: "var(--hairline)" }} data-testid="door-settings">
+      <div className="text-[10px] uppercase tracking-wide" style={{ color: "var(--text-muted)" }}>
+        at this door
+      </div>
+      {behaviour !== null ? (
+        <>
+          <Row>
+            <span style={{ color: "var(--text-secondary)" }}>what it does</span>
+            <Select
+              className="text-xs"
+              value={behaviour}
+              onChange={(e) => {
+                const v = e.target.value;
+                if (v === behaviour) return;
+                if (v === "pass") {
+                  const { primitive: _p, ...rest } = thing;
+                  onEditBehaviour({ ...(rest as Thing), passway: true });
+                } else {
+                  onEditBehaviour({ ...thing, passway: false, primitive: "Modulating" });
+                }
+              }}
+              data-testid="door-behaviour"
+              aria-label={`what ${thing.name} does`}
+            >
+              <option value="pass">passes everything</option>
+              <option value="gate">gates it</option>
+            </Select>
+          </Row>
+          <p className="text-[11px] leading-snug" style={{ color: "var(--text-muted)" }}>
+            {behaviour === "pass"
+              ? "Everything that arrives goes through, unchanged."
+              : "Passes everything until a message flow into it closes the gate: draw one from a sensor or an agent. Edits re-run."}
+          </p>
+        </>
+      ) : other && thing.primitive ? (
+        <p className="text-[11px] leading-snug" style={{ color: "var(--text-muted)" }}>
+          {`It runs as ${thing.primitive}, a work process on the membrane; change that by clicking it.`}
+        </p>
+      ) : null}
+      <label className="mt-1 block text-xs" style={{ color: "var(--text-secondary)" }}>
+        protocol
+        <Input
+          className="mt-0.5 w-full text-xs"
+          value={draft ?? thing.protocol ?? ""}
+          placeholder="what this door admits, in your words"
+          onChange={(e) => setDraft(e.target.value)}
+          onBlur={commit}
+          onKeyDown={(e) => {
+            if (e.key === "Enter") (e.target as HTMLInputElement).blur();
+            if (e.key === "Escape") setDraft(null);
+          }}
+          data-testid="door-protocol"
+          aria-label={`protocol of ${thing.name}`}
+        />
+      </label>
+      <p className="text-[11px] leading-snug" style={{ color: "var(--text-muted)" }}>
+        Written into the SL as the door's rule. The run does not read these words; what it does, above, is what runs.
+      </p>
+    </div>
+  );
+}
+

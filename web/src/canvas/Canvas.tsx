@@ -6,7 +6,7 @@
 // in the `LensRegistry` (stateless views, one set per lens). This file is the
 // stage: backdrops, the render loop, and the node-name draft input.
 import { useEffect, useLayoutEffect, useRef, useState } from "react";
-import type { CanvasModel, EdgeFact, Lens, LensFacts, PortFact, Thing } from "../kernel/types";
+import type { CanvasModel, EdgeFact, FlowKind, Lens, LensFacts, PortFact, Thing } from "../kernel/types";
 import { KIND_COLOR, type SimFrame } from "./types";
 import {
   bungeHull,
@@ -156,6 +156,9 @@ interface Props {
    *  aggregate verdict). Every ontology-bearing visual below READS these —
    *  the canvas derives no systems fact itself. */
   facts?: LensFacts | null;
+  /** The kernel's `flow_kinds` (walk row 29): what each flow carries in the
+   *  run, so an unwritten kind is drawn as what runs, or flagged. */
+  flowKinds?: FlowKind[];
   onModelChange: (m: CanvasModel) => void;
   onReject: (message: string) => void;
   /** The soft channel for a Warning that rides along with a legal edge. */
@@ -278,6 +281,7 @@ export default function Canvas({
   model,
   lens,
   facts = null,
+  flowKinds,
   onModelChange,
   onReject,
   onNotice,
@@ -1388,6 +1392,7 @@ export default function Canvas({
             relation={r}
             fact={edgeFactById.get(r.id)}
             hideInterior={opaque}
+            carried={flowKinds?.find((k) => k.relation === r.id)}
             ring={ring}
             sigIndex={dModel.relations.indexOf(r)}
             selected={selectedRelationId === r.id || litRelationId === r.id}

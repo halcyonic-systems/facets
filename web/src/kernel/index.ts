@@ -31,6 +31,8 @@ import init, {
   sync_sl as wasmSyncSl,
   engine_knobs as wasmEngineKnobs,
   flow_knobs as wasmFlowKnobs,
+  flow_kinds as wasmFlowKinds,
+  run_projection as wasmRunProjection,
   model_identity as wasmModelIdentity,
   mint_model_id as wasmMintModelId,
   check_decompositions as wasmCheckDecompositions,
@@ -50,6 +52,7 @@ import wasmUrl from "facets-kernel/facets_kernel_bg.wasm?url";
 import type {
   EngineKnob,
   FlowKnob,
+  FlowKind,
   SlAgreement,
   ValidationResult,
   OperationalOutcome,
@@ -392,6 +395,18 @@ export function engineKnobs(model: CanvasModel): EngineKnob[] {
  *  Read off the projection, so "1 default" is what runs (walk row 21). */
 export function flowKnobs(model: CanvasModel): FlowKnob[] {
   return call("flow_knobs", () => wasmFlowKnobs(JSON.stringify(model))) as FlowKnob[];
+}
+
+/** What each flow carries in the run: written, inherited, or not worked out
+ *  (walk row 29). The kernel decides; the face only shows it. */
+export function flowKinds(model: CanvasModel): FlowKind[] {
+  return call("flow_kinds", () => wasmFlowKinds(JSON.stringify(model))) as FlowKind[];
+}
+
+/** `project` for a run: throws a KernelError naming each flow whose kind the
+ *  kernel cannot work out, in the not-executable message shape. */
+export function runProjection(model: CanvasModel): unknown {
+  return call("run_projection", () => wasmRunProjection(JSON.stringify(model)));
 }
 
 /** Whether an SL text and a model mean the same model, layout and lens set

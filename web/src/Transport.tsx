@@ -30,6 +30,8 @@ export function Transport({
   changedAt = [],
   time,
   error,
+  onError,
+  loss,
 }: {
   onRun: () => void;
   onStep: () => void;
@@ -68,6 +70,15 @@ export function Transport({
   /** Why the last Run was refused, in the kernel's words. Shown on the strip
    *  so a refused Run never looks like nothing happened (walk row 27). */
   error?: string | null;
+  /** Where clicking the refusal takes the author, when the refusal has one
+   *  place to answer it (walk row 29: the first flow with no kind). Absent =
+   *  the readouts, where every reason is listed. */
+  onError?: () => void;
+  /** Most of what entered the run was lost (walk row 29): the share, and the
+   *  things it was lost at, from the kernel's per-component dissipation. A
+   *  balanced ledger still says "conserved" when everything is shed, so the
+   *  strip says this beside it. Absent = under half was lost. */
+  loss?: { share: number; at: string[]; onShow?: () => void } | null;
 }) {
   const [timeOpen, setTimeOpen] = useState(false);
   if (!runnable) {
@@ -137,7 +148,7 @@ export function Transport({
           className="min-w-0 max-w-[40%] shrink truncate text-left text-[11px]"
           style={{ color: "var(--verdict-error)" }}
           title={error}
-          onClick={readouts && !readouts.open ? readouts.onToggle : undefined}
+          onClick={onError ?? (readouts && !readouts.open ? readouts.onToggle : undefined)}
           data-testid="run-refused"
         >
           {`Run refused: ${error.split("\n")[1]?.replace(/^· /, "") ?? error}`}
@@ -182,6 +193,18 @@ export function Transport({
             {verdict.conserved ? "conserved" : "leak"}
           </Pill>
         </span>
+      )}
+      {loss && (
+        <button
+          type="button"
+          className="min-w-0 shrink truncate text-left text-[11px]"
+          style={{ color: "var(--verdict-warning)" }}
+          title={`Of everything that came in over the run, ${Math.round(loss.share * 100)}% left as loss: waste heat, overflow, upkeep, or flow a process cannot use. The books still balance, which is why it says conserved. Most was lost at ${loss.at.join(" and ")}${loss.onShow ? "; click to select it" : ""}.`}
+          onClick={loss.onShow}
+          data-testid="run-loss"
+        >
+          {`lost ${Math.round(loss.share * 100)}% of what came in, at ${loss.at.join(", ")}`}
+        </button>
       )}
       {readouts && (
         <Button

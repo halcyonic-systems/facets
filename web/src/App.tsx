@@ -1,6 +1,6 @@
 import { Suspense, lazy, useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { buildRunRecord, postRunRecord, runRecordFilename, type RunRecord } from "./runRecord";
-import { ready, runMarkov, Bench, parseCsv, openModel, writeArchive, project, analyzeCanvas, checkDecompositionsCanvas, decomposeComponent, compileSl, type ArchiveText, mintModelId, emitSl, sandboxPalette, slAgreement, syncSl, engineKnobs, flowKnobs } from "./kernel";
+import { ready, runMarkov, Bench, parseCsv, openModel, writeArchive, project, analyzeCanvas, checkDecompositionsCanvas, decomposeComponent, compileSl, type ArchiveText, mintModelId, emitSl, sandboxPalette, slAgreement, syncSl, engineKnobs, flowKnobs, flowKinds, runProjection } from "./kernel";
 import type {
   TickLog,
   CanvasModel,
@@ -916,14 +916,23 @@ function Workspace() {
    *  keeps the stored artifact, which sl_demos CI proves identical to the
    *  projection for every shipped demo. Null = nothing runnable (projection
    *  refused, or no bundle). */
+  // A run the kernel refuses before it starts (walk row 29: a flow whose kind
+  // it cannot work out) says so on the strip, like a run that cannot execute.
+  const refuseRun = (e: unknown) => {
+    closeBench();
+    setResult(null);
+    setPlaying(false);
+    setRunError(e instanceof Error ? e.message : String(e));
+  };
+
   const modelForRun = (): { json: string; edited: boolean } | null => {
     // No bundle = no stored artifact to prefer, so a clean canvas projects
     // too (#304 run-from-attached) — `edited` still means dirty-since-open.
     if (canvasModel && (dirty || !demo)) {
       try {
-        return { json: JSON.stringify(project(canvasModel)), edited: dirty };
+        return { json: JSON.stringify(runProjection(canvasModel)), edited: dirty };
       } catch (e) {
-        setToast(e instanceof Error ? e.message : String(e));
+        refuseRun(e);
         return null;
       }
     }
@@ -1303,6 +1312,16 @@ function Workspace() {
   // a model the text no longer says. Through the same path as the Compile
   // button (a preview to Accept or Discard); a faulted text stays in the pane
   // and the notice says the canvas is the last good compile.
+  // An open flow or door popover belongs to the canvas: leaving Build closes
+  // it, or it floats over the SL pane and takes the typing meant for the text
+  // (found in the 2026-11-02 walk, row 29's browser check).
+  useEffect(() => {
+    if (mode === "write") {
+      setSelectedRelationId(null);
+      setInterfaceSel(null);
+    }
+  }, [mode]);
+
   const prevMode = useRef(mode);
   useEffect(() => {
     const was = prevMode.current;
@@ -2215,6 +2234,34 @@ function Workspace() {
     [manifest],
   );
 
+  // Walk row 29: a balanced ledger reads "conserved" even when everything that
+  // came in was shed (a process given a substance it cannot pass). The kernel
+  // reports each component's dissipation per tick; this only adds them up and
+  // says so when more than half of what the sources sent was lost.
+  const loss = useMemo(() => {
+    if (!result || !tickLog || !canvasModel) return null;
+    const sourceIds = new Set(facts?.source_thing_ids ?? []);
+    const sources = new Set(canvasModel.things.filter((x) => sourceIds.has(x.id)).map((x) => x.name));
+    let entered = 0;
+    let lost = 0;
+    const at = new Map<string, number>();
+    for (const row of tickLog) {
+      for (const w of row.wires) if (sources.has(w.from)) entered += w.delivered;
+      for (const n of row.nodes) {
+        if (n.dissipated && n.dissipated > 0) {
+          lost += n.dissipated;
+          at.set(n.name, (at.get(n.name) ?? 0) + n.dissipated);
+        }
+      }
+    }
+    if (!(entered > 0) || lost / entered <= 0.5) return null;
+    const where = [...at.entries()]
+      .sort((x, y) => y[1] - x[1])
+      .filter(([, v]) => v >= 0.25 * lost)
+      .map(([name]) => name);
+    return { share: Math.min(1, lost / entered), at: where };
+  }, [result, tickLog, canvasModel, facts]);
+
   // The scrubber's per-tick readout: indexing into the kernel's trajectories /
   // comparisons at `tick`. No dynamics computed here — only array lookups.
   const simFrame: SimFrame | null = useMemo(() => {
@@ -2241,8 +2288,9 @@ function Workspace() {
       const value = c.simulated[Math.min(tick, c.simulated.length - 1)] ?? 0;
       edges[c.element] = { value, unit: c.unit };
     }
+    for (const name of loss?.at ?? []) if (nodes[name]) nodes[name] = { ...nodes[name], lost: true };
     return { nodes, edges };
-  }, [result, tick]);
+  }, [result, tick, loss]);
 
   // #67 J9: probability mass per state at the scrubbed tick — the row of the
   // distribution trajectory `history[tick]`, keyed by state name so the canvas
@@ -2309,6 +2357,17 @@ function Workspace() {
   // Walk row 21: every flow's amount as the run uses it, so an undeclared
   // rate reads "1 default" and not "not set". The kernel reads it off the
   // projection the run is built from.
+  // Walk row 29: what each flow carries in the run, written or inherited, or
+  // that the kernel cannot work it out (the run then refuses, naming it).
+  const carried = useMemo(() => {
+    if (!canvasModel || canvasModel.lens === "Klir") return [];
+    try {
+      return flowKinds(canvasModel);
+    } catch {
+      return [];
+    }
+  }, [canvasModel]);
+
   const flows = useMemo(() => {
     if (!canvasModel || canvasModel.lens === "Klir") return [];
     try {
@@ -2423,7 +2482,14 @@ function Workspace() {
           // log; the scrubber rests at the end as a knob's answer does.
           const len = Math.max(t, result ? result.ticks * dt : 0);
           setKnobTicks([]);
-          runWith(JSON.stringify(project(nextModel)), runCsv ?? "", manifest, dt, len, true);
+          let json: string;
+          try {
+            json = JSON.stringify(runProjection(nextModel));
+          } catch (e) {
+            refuseRun(e);
+            return;
+          }
+          runWith(json, runCsv ?? "", manifest, dt, len, true);
           setPlaying(false);
           setTick(Math.max(0, (result?.ticks ?? 1) - 1));
           return;
@@ -2460,9 +2526,9 @@ function Workspace() {
       }
     }
     try {
-      runWith(JSON.stringify(project(nextModel)), runCsv ?? "", manifest, dt, t, true, true);
+      runWith(JSON.stringify(runProjection(nextModel)), runCsv ?? "", manifest, dt, t, true, true);
     } catch (e) {
-      setToast(e instanceof Error ? e.message : String(e));
+      refuseRun(e);
     }
   }
 
@@ -2672,6 +2738,23 @@ function Workspace() {
       changedAt={knobTicks}
       time={canvasModel ? { dt, t, klir: canvasModel.lens === "Klir", onCommit: applyTime } : undefined}
       error={runError}
+      loss={
+        loss && {
+          ...loss,
+          onShow: () => {
+            const id = canvasModel?.things.find((x) => x.name === loss.at[0])?.id;
+            if (id !== undefined) {
+              setSelectedRelationId(null);
+              setSelectedThingId(id);
+            }
+          },
+        }
+      }
+      onError={(() => {
+        // A refusal over a flow's kind opens that flow, where it is answered.
+        const first = carried.find((k) => k.kind === null && k.waits_on.length === 0) ?? carried.find((k) => k.kind === null);
+        return first ? () => setSelectedRelationId(first.relation) : undefined;
+      })()}
     />
   ) : null;
 
@@ -3830,6 +3913,7 @@ function Workspace() {
                       model={canvasModel}
                       lens={canvasModel.lens}
                       facts={facts}
+                      flowKinds={carried}
                       onModelChange={(m) => {
                         setCanvasModel(m);
                         setDirty(true);
@@ -3987,6 +4071,19 @@ function Workspace() {
                         anchor={toScreen(interfaceSel.at)}
                         onSelectRelation={setSelectedRelationId}
                         onClose={() => setInterfaceSel(null)}
+                        onEditThing={updateThing}
+                        onEditBehaviour={(next) => {
+                          // What the door does decides the run, so with a run
+                          // on screen it re-runs, as a knob does.
+                          if (result || runError) {
+                            commitInputModel({
+                              ...canvasModel,
+                              things: canvasModel.things.map((x) => (x.id === next.id ? next : x)),
+                            });
+                          } else {
+                            updateThing(next);
+                          }
+                        }}
                       />
                     )}
                     {selectedRelation && popoverAnchor && !registerActive && (
@@ -4023,7 +4120,26 @@ function Workspace() {
                         }
                         fromName={canvasModel.things.find((t) => t.id === selectedRelation.a)?.name}
                         toName={canvasModel.things.find((t) => t.id === selectedRelation.b)?.name}
-                        onUpdateRelation={updateRelation}
+                        onUpdateRelation={(next) => {
+                          // Walk row 29: a kind decides what the run carries,
+                          // so with a run on screen (or a refused one) it
+                          // re-runs like an amount does, instead of leaving
+                          // the old run showing as if the change did nothing.
+                          if (next.kind !== selectedRelation.kind && (result || runError)) {
+                            commitInputModel({
+                              ...canvasModel,
+                              relations: canvasModel.relations.map((r) => (r.id === next.id ? next : r)),
+                            });
+                          } else {
+                            updateRelation(next);
+                          }
+                        }}
+                        carried={carried.find((k) => k.relation === selectedRelation.id)}
+                        carriedFrom={(id) => {
+                          const r = canvasModel.relations.find((x) => x.id === id);
+                          const n = (t: number) => canvasModel.things.find((x) => x.id === t)?.name ?? "";
+                          return r ? `${n(r.a)} -> ${n(r.b)}` : "";
+                        }}
                         onDelete={() => deleteRelation(selectedRelation.id)}
                         onClose={() => setSelectedRelationId(null)}
                         amount={(() => {

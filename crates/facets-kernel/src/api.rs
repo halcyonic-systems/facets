@@ -439,6 +439,26 @@ pub fn flow_knobs(canvas_json: &str) -> Result<JsValue, JsError> {
     to_js(&crate::knobs::flow_knobs(&model))
 }
 
+/// What every flow carries in the run: the written kind, or the one it
+/// inherits from what comes into its source, or none when that cannot be
+/// worked out (walk row 29). Shape: `FlowKind[]` in API.md.
+#[wasm_bindgen]
+pub fn flow_kinds(canvas_json: &str) -> Result<JsValue, JsError> {
+    let model: facets_canvas::canvas::CanvasModel = serde_json::from_str(canvas_json)
+        .map_err(|e| JsError::new(&format!("invalid canvas model: {e}")))?;
+    to_js(&facets_canvas::canvas::flow_kinds(&model))
+}
+
+/// `project` for a run: refuses, naming each flow, when a flow's kind cannot
+/// be worked out, so the run never guesses what a flow carries (walk row 29).
+#[wasm_bindgen]
+pub fn run_projection(canvas_json: &str) -> Result<JsValue, JsError> {
+    let model: facets_canvas::canvas::CanvasModel = serde_json::from_str(canvas_json)
+        .map_err(|e| JsError::new(&format!("invalid canvas model: {e}")))?;
+    let world = facets_canvas::canvas::run_projection(&model).map_err(|e| JsError::new(&e))?;
+    to_js(&world)
+}
+
 /// Whether an SL text and a canvas model mean the same model (layout and lens
 /// set aside), with the canonical lines each has that the other lacks. The one
 /// definition of agreement the face uses (2026-11-02 walk).

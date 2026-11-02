@@ -27,7 +27,7 @@ use std::process::ExitCode;
 use clap::{Parser, Subcommand, ValueEnum};
 use serde::Serialize;
 
-use facets_canvas::canvas::{project, CanvasModel, EnvKind, Lens, Role};
+use facets_canvas::canvas::{run_projection, CanvasModel, EnvKind, Lens, Role};
 use facets_canvas::lenses::{analyze, describe};
 use facets_core::validate::Severity;
 
@@ -375,7 +375,16 @@ fn run_cmd(file: PathBuf, t: f64, dt: f64) -> u8 {
         Ok(m) => m,
         Err(code) => return code,
     };
-    let world = project(&model);
+    // The run never guesses what a flow carries (walk row 29): a flow whose
+    // kind the kernel cannot work out is refused by name, as in the app.
+    let world = match run_projection(&model) {
+        Ok(w) => w,
+        Err(reason) => {
+            eprintln!("facets: {}: {reason}", file.display());
+            let code = emit(&RunRefused { refused: &reason });
+            return if code == exit::OK { exit::REFUSED } else { code };
+        }
+    };
     let spec = match facets_core::operational::validate_operational(&world) {
         Ok(spec) => spec,
         Err(errors) => {
@@ -495,7 +504,14 @@ fn bench_cmd(file: PathBuf, t: f64, dt: f64, sets: Vec<String>, no_log: bool) ->
         }
     }
     knobs.sort_by_key(|k| k.tick);
-    let world = project(&model);
+    let world = match run_projection(&model) {
+        Ok(w) => w,
+        Err(reason) => {
+            eprintln!("facets: {}: {reason}", file.display());
+            let code = emit(&RunRefused { refused: &reason });
+            return if code == exit::OK { exit::REFUSED } else { code };
+        }
+    };
     let mut bench = match facets_tether::bench::BenchSession::open_unforced(world, dt) {
         Ok(b) => b,
         Err(reason) => {

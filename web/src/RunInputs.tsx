@@ -342,6 +342,12 @@ function KnobRow({ knob, thing, onEdit }: { knob: EngineKnob; thing: Thing; onEd
   const [draft, setDraft] = useState<string | null>(null);
   const [unitDraft, setUnitDraft] = useState("");
   const [hint, setHint] = useState<string | null>(null);
+  // Walk row 29: a starting level typed before the stock has a unit cannot be
+  // declared (SL writes the two together). The number used to sit in the
+  // field looking taken while the row still said "default"; now it is held
+  // as waiting, the cursor moves to the unit, and the two land together.
+  const [waiting, setWaiting] = useState(false);
+  const unitId = `stock-unit-${thing.id}`;
   const needsUnit = knob.needs_unit === "";
   const shown = knob.declared && knob.value !== null ? String(knob.value) : "";
   const placeholder = knob.value === null ? "none" : `${fmtDefault(knob.value)} default`;
@@ -358,7 +364,14 @@ function KnobRow({ knob, thing, onEdit }: { knob: EngineKnob; thing: Thing; onEd
       return;
     }
     const next = applyKnob(thing, knob.field, v, unit);
+    if (next === null && knob.field === "initial_storage" && v !== null && v >= 0 && needsUnit && unit.trim() === "") {
+      setWaiting(true);
+      setHint(`${t} waits for a unit: type it beside it (litres, people, …), then Enter`);
+      setTimeout(() => document.getElementById(unitId)?.focus(), 0);
+      return;
+    }
     if (next === null) {
+      setWaiting(false);
       setHint(
         knob.field === "initial_storage" && v !== null && v >= 0
           ? "name the unit first (litres, people, …)"
@@ -369,6 +382,7 @@ function KnobRow({ knob, thing, onEdit }: { knob: EngineKnob; thing: Thing; onEd
       return;
     }
     setHint(null);
+    setWaiting(false);
     setDraft(null);
     onEdit(next);
   };
@@ -398,17 +412,26 @@ function KnobRow({ knob, thing, onEdit }: { knob: EngineKnob; thing: Thing; onEd
             if (e.key === "Escape") {
               setDraft(null);
               setHint(null);
+              setWaiting(false);
             }
           }}
+          style={waiting ? { borderColor: "var(--verdict-warning)", color: "var(--verdict-warning)" } : undefined}
+          title={waiting ? "Not set yet: a starting level needs the stock's unit" : undefined}
           aria-label={`${thing.name} ${knob.word}`}
+          data-waiting={waiting || undefined}
         />
         {needsUnit ? (
           <Input
+            id={unitId}
             className="w-16"
             value={unitDraft}
             placeholder="unit"
             onChange={(e) => setUnitDraft(e.target.value)}
             onBlur={() => draft !== null && commit(draft, unitDraft)}
+            onKeyDown={(e) => {
+              if (e.key === "Enter") (e.target as HTMLInputElement).blur();
+            }}
+            style={waiting ? { borderColor: "var(--verdict-warning)" } : undefined}
             aria-label={`${thing.name} stock unit`}
           />
         ) : (

@@ -578,6 +578,21 @@ export interface FlowKnob {
   declared: boolean;
 }
 
+/** flow_kinds: what a flow carries in the run (walk row 29). `said` when the
+ *  author wrote it; otherwise inherited from the flows into its source
+ *  (`from`), or `null` when that cannot be worked out: `mixed` lists the
+ *  differing kinds that come in, empty when nothing comes in. */
+export interface FlowKind {
+  relation: number;
+  kind: Kind | null;
+  said: boolean;
+  from: number[];
+  mixed: Kind[];
+  /** Not worked out only because these flows into its source are not
+   *  either; answering them settles this one. */
+  waits_on: number[];
+}
+
 /** sl_agreement: whether a text and a model mean the same model (layout and
  *  lens set aside), and the canonical lines each has that the other lacks. */
 export interface SlAgreement {

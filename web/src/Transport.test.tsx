@@ -59,3 +59,18 @@ describe("a refused run", () => {
     expect(html).toContain("flow sink does not resolve");
   });
 });
+
+describe("a run that lost most of what came in (walk row 29)", () => {
+  it("says so beside conserved, naming where", () => {
+    const html = renderToStaticMarkup(
+      <Transport {...base} verdict={{ conserved: true, residual: 0 }} loss={{ share: 1, at: ["T2"] }} />,
+    );
+    expect(html).toContain("conserved");
+    expect(html).toContain("lost 100% of what came in, at T2");
+  });
+
+  it("is silent when nothing is said to be lost", () => {
+    expect(renderToStaticMarkup(<Transport {...base} verdict={{ conserved: true, residual: 0 }} />)).not.toContain("run-loss");
+  });
+});
+
