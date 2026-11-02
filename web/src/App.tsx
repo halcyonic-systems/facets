@@ -1,6 +1,6 @@
 import { Suspense, lazy, useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { buildRunRecord, postRunRecord, runRecordFilename, type RunRecord } from "./runRecord";
-import { ready, runMarkov, Bench, parseCsv, openModel, writeArchive, project, analyzeCanvas, checkDecompositionsCanvas, decomposeComponent, compileSl, type ArchiveText, mintModelId, emitSl, sandboxPalette } from "./kernel";
+import { ready, runMarkov, Bench, parseCsv, openModel, writeArchive, project, analyzeCanvas, checkDecompositionsCanvas, decomposeComponent, compileSl, type ArchiveText, mintModelId, emitSl, sandboxPalette, slAgreement, syncSl } from "./kernel";
 import type {
   TickLog,
   CanvasModel,
@@ -211,6 +211,10 @@ interface WalkSegment {
    *  when the crossing was a REBASE, which is what lets the way back out be the
    *  same picture rather than a fit. Null for a plain document swap. */
   embed: Embed | null;
+  /** The SL pane's text at this level when we descended, restored verbatim on
+   *  the way back out: inside a child the pane shows the child (2026-11-02
+   *  walk: it went on showing the parent's text beside the child's canvas). */
+  slText: string;
 }
 
 // The SL pane's seed text — Mobus's steel plant (Ch.4 §4.3.1) as a system
@@ -1240,6 +1244,10 @@ function Workspace() {
   // state; nothing the draft touched survives.
   function discardPreview() {
     if (!preview) return;
+    // The text stays as typed: Discard reverts the canvas, not the author's
+    // words. Forgetting the base stops the sync from rewriting the text back
+    // to the stash; the pane then says the two differ, never silently.
+    slBase.current = null;
     setCanvasModel(preview.stash);
     setDirty(preview.priorDirty);
     setResult(null);
@@ -1251,6 +1259,70 @@ function Workspace() {
       setActiveTurnId(null);
     }
   }
+
+  // ---- SL text and the canvas: one model, two views (2026-11-02 walk) ----
+  // The kernel decides agreement (sl_agreement) and does the rewriting
+  // (sync_sl, which keeps the author's comments); this only decides WHEN.
+  // `slBase` is the last model the text is known to mean. A canvas change
+  // (a drag, a knob, a stamp, a delete) reaches the text when the text still
+  // means that base; a text that does not holds the author's own uncompiled
+  // edits, or a discarded draft, and is left alone for the pane to flag.
+  // Settles after a short pause so a drag or a slider rewrites once.
+  const slBase = useRef<CanvasModel | null>(null);
+  const slTextRef = useRef(slText);
+  slTextRef.current = slText;
+  useEffect(() => {
+    if (!canvasModel) return;
+    const timer = setTimeout(() => {
+      const text = slTextRef.current;
+      try {
+        if (slAgreement(text, canvasModel).agrees) {
+          const next = syncSl(text, canvasModel); // only positions can differ here
+          if (next !== text) setSlText(next);
+          slBase.current = canvasModel;
+          return;
+        }
+        const base = slBase.current;
+        if (base && base !== canvasModel && slAgreement(text, base).agrees) {
+          setSlText(syncSl(text, canvasModel));
+          setSlErrors([]);
+          slBase.current = canvasModel;
+        }
+      } catch {
+        // Faulted text or a model SL cannot say (§7.3): the text stays as it
+        // is, and the pane's status names the difference.
+      }
+    }, 250);
+    return () => clearTimeout(timer);
+  }, [canvasModel]);
+
+  // Leaving Write compiles (decision 2026-11-02): Build must not quietly show
+  // a model the text no longer says. Through the same path as the Compile
+  // button (a preview to Accept or Discard); a faulted text stays in the pane
+  // and the notice says the canvas is the last good compile.
+  const prevMode = useRef(mode);
+  useEffect(() => {
+    const was = prevMode.current;
+    prevMode.current = mode;
+    if (was !== "write" || mode === "write") return;
+    const text = slTextRef.current;
+    if (text.trim() === "") return;
+    try {
+      if (canvasModel && syncSl(text, canvasModel) === text) return; // already says the canvas
+    } catch {
+      // faulted: fall through to the compile, which reports the faults
+    }
+    const outcome = compileSl(text);
+    if ("errors" in outcome) {
+      setSlErrors(outcome.errors);
+      const n = outcome.errors.length;
+      setNotice(`The SL has ${n} fault${n === 1 ? "" : "s"}, so the canvas still shows the last model that compiled. Back in Write, the faults are listed under the text.`);
+      return;
+    }
+    setSlErrors([]);
+    void onSlCompiled(outcome.ok, outcome.lens_explicit, true);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [mode]);
 
   // #10 resident co-author, folded into the SL pane as a mode: description ->
   // draft -> compile -> Rung-0 preview, recorded as a turn in the pane's
@@ -2895,10 +2967,12 @@ function Workspace() {
           currentName,
           dirty,
           embed: arrival?.embed ?? null,
+          slText,
         },
       ]);
       setDemo(null); setAttachedCsv(null);
       setCanvasModel(cm);
+      syncSlPane(null, cm);
       setManifest({ model: "", data: "", t: 12, mapping: [] });
       setResult(null);
       setRunError(null);
@@ -2989,6 +3063,8 @@ function Workspace() {
       setWalk(walk.slice(0, index));
       setDemo(target.demo); setAttachedCsv(null);
       setCanvasModel(target.canvas);
+      setSlText(target.slText);
+      setSlErrors([]);
       setManifest(target.manifest);
       setDt(target.dt);
       setT(target.t);

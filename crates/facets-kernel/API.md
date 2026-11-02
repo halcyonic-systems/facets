@@ -399,6 +399,28 @@ trailing newline is preserved if present and not invented if absent.
 
 Throws (JsError) on the same name shapes `emit_sl` rejects.
 
+### `sl_agreement(source: string, canvas_json: string) → SlAgreement`
+Whether an SL text and a canvas model mean the same model. Additive
+(2026-11-02); no existing signature changed. `{ parses, agrees, only_in_text,
+only_in_model }`: the two `emit_sl` forms compared as a multiset of lines, with
+layout and view lines (`@pos`, `@system`, `@lens`) and blank lines set aside;
+the two lists are the canonical lines one side has and the other lacks. A
+faulted text reports `parses: false, agrees: false` and no lines. The one
+definition of agreement the face uses. Throws only when the model cannot be
+written as SL (§7.3 of the spec).
+
+### `sync_sl(source: string, canvas_json: string) → string`
+Rewrite an SL text so it means what the model means, keeping its comments.
+Additive (2026-11-02). Empty text: the model's canonical form. A text that
+already agrees: returned unchanged, except that a text pinning positions has
+them brought in step (`splice_positions`). A disagreeing text: `emit_sl_with`
+(the formatter's path) with the source's trivia re-keyed onto the model by
+name, since ids renumber; comments whose declaration is gone move to the end of
+the file rather than being dropped. A text that pinned any position pins every
+thing. Throws on a faulted text, so text mid-edit is never rewritten. Held over
+every corpus file by `crates/facets-canvas/tests/sl_sync.rs`: the result means
+the model, keeps every comment, and an agreeing text comes back byte for byte.
+
 **v1.5 (#399) — a description may sit beneath its declaration.** `compile_sl`
 accepts `description "<prose>"` on its own indented line directly under the
 thing, interface, milieu, or flow line it describes; `emit_sl` always writes it

@@ -418,6 +418,26 @@ pub fn splice_positions(source: &str, canvas_json: &str) -> Result<String, JsErr
     facets_canvas::sl::splice_positions(source, &model).map_err(|e| JsError::new(&e))
 }
 
+/// Whether an SL text and a canvas model mean the same model (layout and lens
+/// set aside), with the canonical lines each has that the other lacks. The one
+/// definition of agreement the face uses (2026-11-02 walk).
+#[wasm_bindgen]
+pub fn sl_agreement(source: &str, canvas_json: &str) -> Result<JsValue, JsError> {
+    let model: facets_canvas::canvas::CanvasModel = serde_json::from_str(canvas_json)
+        .map_err(|e| JsError::new(&format!("invalid canvas model: {e}")))?;
+    to_js(&facets_canvas::sl::sl_agreement(source, &model).map_err(|e| JsError::new(&e))?)
+}
+
+/// Rewrite an SL text to mean what the canvas model means, keeping the
+/// author's comments; unchanged when it already agrees; refused (an error)
+/// when the text has faults, so text mid-edit is never eaten.
+#[wasm_bindgen]
+pub fn sync_sl(source: &str, canvas_json: &str) -> Result<String, JsError> {
+    let model: facets_canvas::canvas::CanvasModel = serde_json::from_str(canvas_json)
+        .map_err(|e| JsError::new(&format!("invalid canvas model: {e}")))?;
+    facets_canvas::sl::sync_sl(source, &model).map_err(|e| JsError::new(&e))
+}
+
 /// Validate a proposed connection at the model's current lens. Returns the issues
 /// the candidate edge INTRODUCED (empty = legal). The per-drag "React asks Rust"
 /// call — the canvas rejects an edge iff the kernel says so.

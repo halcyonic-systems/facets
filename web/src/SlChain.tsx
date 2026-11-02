@@ -19,7 +19,7 @@
 // strip can name the target without pulling KaTeX into a 4-line block. If those
 // two ever disagree, FormalPanel is right.
 import { useState } from "react";
-import type { CanvasModel, Lens, LensDescription, ValidationResult } from "./kernel/types";
+import type { SlAgreement, CanvasModel, Lens, LensDescription, ValidationResult } from "./kernel/types";
 import { MODE_BY_LENS } from "./review";
 import { openExternal } from "./desktop";
 import { Button } from "./ui";
@@ -119,28 +119,48 @@ export function SlStatusLine({
   verdict,
   faults,
   edited,
+  agreement = null,
 }: {
   model: CanvasModel | null;
   verdict: ValidationResult | null;
   faults: number;
   edited: boolean;
+  /** The kernel's sl_agreement of this text with the canvas model (2026-11-02
+   *  walk). When present it decides the word: the text either means what the
+   *  canvas shows or it does not, whatever was typed or compiled when. */
+  agreement?: SlAgreement | null;
 }) {
   const errors = verdict?.issues.filter((i) => i.severity === "Error") ?? [];
+  const differs = agreement !== null && agreement.parses && !agreement.agrees;
   const state =
     faults > 0
       ? { text: `${faults} fault${faults === 1 ? "" : "s"}`, color: "var(--verdict-error)" }
-      : edited
-        ? { text: "edited since compile", color: "var(--text-muted)" }
-        : model
-          ? { text: "compiled", color: "var(--verdict-ok)" }
-          : { text: "not compiled yet", color: "var(--text-muted)" };
+      : differs
+        ? { text: "differs from the canvas", color: "var(--verdict-warning)" }
+        : agreement?.agrees && model
+          ? { text: "matches the canvas", color: "var(--verdict-ok)" }
+          : edited
+            ? { text: "edited since compile", color: "var(--text-muted)" }
+            : model
+              ? { text: "compiled", color: "var(--verdict-ok)" }
+              : { text: "not compiled yet", color: "var(--text-muted)" };
+  // What differs, in the language's own lines, for the hover.
+  const diffTitle = differs
+    ? [
+        ...agreement!.only_in_text.map((l) => `text only: ${l.trim()}`),
+        ...agreement!.only_in_model.map((l) => `canvas only: ${l.trim()}`),
+        "Compile to apply the text, or From canvas (under details) to take the canvas.",
+      ].join("\n")
+    : undefined;
   // While faults exist the verdict shown would be the last good compile's,
   // so it is named as that (sl audit #11) instead of reading "clean" beside
   // "3 faults" on one line.
   const faulted = faults > 0;
   return (
     <span className="min-w-0" style={{ color: "var(--text-muted)", fontSize: "var(--t-meta)" }} data-testid="sl-status">
-      <span style={{ color: state.color, fontWeight: 500 }}>{state.text}</span>
+      <span style={{ color: state.color, fontWeight: 500 }} title={diffTitle} data-testid="sl-agreement">
+        {state.text}
+      </span>
       {model && faulted && (
         <>
           {" · last clean compile: "}

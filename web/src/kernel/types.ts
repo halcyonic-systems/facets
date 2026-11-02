@@ -557,6 +557,15 @@ export interface SlError {
   message: string;
 }
 
+/** sl_agreement: whether a text and a model mean the same model (layout and
+ *  lens set aside), and the canonical lines each has that the other lacks. */
+export interface SlAgreement {
+  parses: boolean;
+  agrees: boolean;
+  only_in_text: string[];
+  only_in_model: string[];
+}
+
 /** compile_sl: the compiled canvas model (plus whether the text pinned a lens
  *  via `@lens` — lens is view state, so without a pin the caller keeps the
  *  author's current lens), or every fault found. */

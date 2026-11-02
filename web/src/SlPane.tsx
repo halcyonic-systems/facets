@@ -15,8 +15,8 @@
 // seam; manual authoring (textarea + Compile) is always present underneath and
 // never gated on the drafter.
 
-import { useEffect, useRef, useState } from "react";
-import { compileSl, emitSl, splicePositions } from "./kernel";
+import { useDeferredValue, useEffect, useMemo, useRef, useState } from "react";
+import { compileSl, emitSl, slAgreement, splicePositions } from "./kernel";
 import { Button } from "./ui";
 import { Icon } from "./icons";
 import { SlEditor } from "./sl/SlEditor";
@@ -183,6 +183,18 @@ export function SlPane({
   // arrives (any compile path: button, ⌘⏎, co-author).
   const [editedSinceCompile, setEditedSinceCompile] = useState(false);
   useEffect(() => setEditedSinceCompile(false), [errors]);
+  // Whether this text means what the canvas shows (kernel sl_agreement,
+  // 2026-11-02 walk). Deferred so typing never waits on the comparison; an
+  // unsayable model or a kernel not yet up yields no verdict, not a guess.
+  const deferredText = useDeferredValue(text);
+  const agreement = useMemo(() => {
+    if (!canvasModel || deferredText.trim() === "") return null;
+    try {
+      return slAgreement(deferredText, canvasModel);
+    } catch {
+      return null;
+    }
+  }, [deferredText, canvasModel]);
   // A fault row, pressed, asks the editor for its line through the same
   // focusLine channel the parent's selection uses (SlEditor scrolls and
   // flashes it). The parent's request, when one arrives, takes over again.
@@ -459,6 +471,7 @@ export function SlPane({
               verdict={chain?.verdict ?? null}
               faults={errors.length}
               edited={editedSinceCompile}
+              agreement={agreement}
             />
             <span className="ml-auto flex items-center gap-3">
               <GrammarLink />

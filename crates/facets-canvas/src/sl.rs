@@ -5529,6 +5529,184 @@ fn tokenize_with_comment(line: &str) -> Result<(Vec<Tok>, Option<String>), Strin
     Ok((tokens, None))
 }
 
+// ---- Text and model agreement (2026-11-02 walk) -----------------------------
+//
+// SL text and the canvas model are two views of one model, and the face must
+// never show them disagreeing silently. These two functions are the single
+// definition the face uses: `sl_agreement` says whether a text and a model
+// mean the same thing, and `sync_sl` rewrites a text to mean what a model
+// means while keeping the author's comments. Layout (`@pos`, `@system`) and
+// view state (`@lens`) are not meaning: they are compared by neither, and
+// `sync_sl` keeps positions in step only where the text already pins them.
+
+/// Whether `source` and `model` mean the same model. `only_in_text` and
+/// `only_in_model` are the canonical lines one side has and the other lacks
+/// (a multiset difference of the two `emit_sl` forms, layout and view lines
+/// dropped), so the face can say what differs in the language's own words.
+#[derive(Serialize, Clone, Debug, PartialEq)]
+pub struct SlAgreement {
+    /// The text parsed. A faulted text cannot be compared; `agrees` is false.
+    pub parses: bool,
+    pub agrees: bool,
+    pub only_in_text: Vec<String>,
+    pub only_in_model: Vec<String>,
+}
+
+/// The lines of a model's canonical text that carry meaning: every non-blank
+/// line of `emit_sl` except layout and view annotations.
+fn meaning_lines(model: &CanvasModel) -> Result<Vec<String>, String> {
+    Ok(emit_sl(model)?
+        .lines()
+        .filter(|l| {
+            let t = l.trim_start();
+            !t.is_empty() && !t.starts_with("@pos ") && !t.starts_with("@system ") && !t.starts_with("@lens ")
+        })
+        .map(str::to_string)
+        .collect())
+}
+
+/// Multiset difference `a − b`, in `a`'s order.
+fn lines_minus(a: &[String], b: &[String]) -> Vec<String> {
+    let mut left: HashMap<&str, usize> = HashMap::new();
+    for l in b {
+        *left.entry(l.as_str()).or_default() += 1;
+    }
+    a.iter()
+        .filter(|l| match left.get_mut(l.as_str()) {
+            Some(n) if *n > 0 => {
+                *n -= 1;
+                false
+            }
+            _ => true,
+        })
+        .cloned()
+        .collect()
+}
+
+/// Compare a text with a model on meaning (see the section note). Errs only
+/// when the model itself cannot be written as SL (§7.3).
+pub fn sl_agreement(source: &str, model: &CanvasModel) -> Result<SlAgreement, String> {
+    let theirs = meaning_lines(model)?;
+    let parsed = match parse_sl(source) {
+        Ok(m) => m,
+        Err(_) => {
+            return Ok(SlAgreement { parses: false, agrees: false, only_in_text: vec![], only_in_model: vec![] })
+        }
+    };
+    let ours = meaning_lines(&parsed)?;
+    let only_in_text = lines_minus(&ours, &theirs);
+    let only_in_model = lines_minus(&theirs, &ours);
+    Ok(SlAgreement { parses: true, agrees: only_in_text.is_empty() && only_in_model.is_empty(), only_in_text, only_in_model })
+}
+
+/// A flow's identity across a re-parse: its endpoints' names, its label, and
+/// its ordinal among flows sharing all three (ids are renumbered, names are
+/// the text's identifiers).
+fn relation_keys(model: &CanvasModel) -> Vec<(u64, (String, String, String, usize))> {
+    let name_of = |id: u64| model.things.iter().find(|t| t.id == id).map(|t| t.name.clone()).unwrap_or_default();
+    let mut seen: HashMap<(String, String, String), usize> = HashMap::new();
+    model
+        .relations
+        .iter()
+        .map(|r| {
+            let base = (name_of(r.a), name_of(r.b), r.name.clone());
+            let n = seen.entry(base.clone()).or_default();
+            let key = (base.0, base.1, base.2, *n);
+            *n += 1;
+            (r.id, key)
+        })
+        .collect()
+}
+
+/// Rewrite `source` so it means what `model` means, keeping the author's
+/// comments and blank lines (re-keyed by name, since ids renumber).
+///
+/// - Empty text: the model's canonical text.
+/// - Faulted text: an error, and the caller keeps the text. Text mid-edit is
+///   the author's, and a rewrite must never eat it.
+/// - Already agreeing: the text unchanged, except that a text which pins
+///   positions has them brought in step (`splice_positions`), so a drag is
+///   saved without touching another byte.
+/// - Disagreeing: `emit_sl_with(model, layout)`, the formatter's path, with
+///   the source's trivia carried to the same declarations by name. A text
+///   that pinned any position pins every thing (the canvas holds them all);
+///   one that pinned none stays unpinned. Trivia whose declaration is gone
+///   moves to the end of the file rather than being dropped.
+pub fn sync_sl(source: &str, model: &CanvasModel) -> Result<String, String> {
+    if source.trim().is_empty() {
+        return emit_sl(model);
+    }
+    let parsed = parse_sl_full(source).map_err(|errs| {
+        format!("the text has {} fault{}", errs.len(), if errs.len() == 1 { "" } else { "s" })
+    })?;
+    let pins_positions = !parsed.layout.pinned.is_empty() || parsed.model.system_pos.is_some();
+    if sl_agreement(source, model)?.agrees {
+        if !pins_positions {
+            return Ok(source.to_string());
+        }
+        let pos_of = |m: &CanvasModel| {
+            let mut v: Vec<(String, u32, u32)> =
+                m.things.iter().map(|t| (t.name.clone(), t.x.to_bits(), t.y.to_bits())).collect();
+            v.sort();
+            (v, m.system_pos.map(|[x, y]| (x.to_bits(), y.to_bits())))
+        };
+        return if pos_of(&parsed.model) == pos_of(model) {
+            Ok(source.to_string())
+        } else {
+            splice_positions(source, model)
+        };
+    }
+
+    // Re-key the source's trivia from its own (parse) ids to the model's.
+    let thing_by_name: HashMap<&str, u64> = model.things.iter().map(|t| (t.name.as_str(), t.id)).collect();
+    let parsed_thing_name: HashMap<u64, &str> =
+        parsed.model.things.iter().map(|t| (t.id, t.name.as_str())).collect();
+    let model_rel: HashMap<(String, String, String, usize), u64> =
+        relation_keys(model).into_iter().map(|(id, k)| (k, id)).collect();
+    let parsed_rel: HashMap<u64, (String, String, String, usize)> =
+        relation_keys(&parsed.model).into_iter().collect();
+
+    let mut blocks: HashMap<Anchor, TriviaBlock> = HashMap::new();
+    let mut orphaned: Vec<String> = Vec::new();
+    for (anchor, block) in parsed.layout.blocks {
+        let mapped = match &anchor {
+            Anchor::Thing(pid) => {
+                parsed_thing_name.get(pid).and_then(|n| thing_by_name.get(n)).map(|&id| Anchor::Thing(id))
+            }
+            Anchor::Relation(pid) => {
+                parsed_rel.get(pid).and_then(|k| model_rel.get(k)).map(|&id| Anchor::Relation(id))
+            }
+            Anchor::Milieu(n) => model.milieu.iter().any(|m| &m.name == n).then(|| anchor.clone()),
+            Anchor::Param(n) => model.params.iter().any(|p| &p.name == n).then(|| anchor.clone()),
+            Anchor::Metric(n) => model.metrics.iter().any(|m| &m.name == n).then(|| anchor.clone()),
+            _ => Some(anchor.clone()),
+        };
+        match mapped {
+            Some(a) => {
+                blocks.insert(a, block);
+            }
+            None => {
+                // Words are never dropped: a comment above a declaration that
+                // is gone, and any same-line comment it carried, go to the end.
+                orphaned.extend(block.leading.iter().filter(|l| !l.trim().is_empty()).cloned());
+                orphaned.extend(block.trailing.iter().cloned());
+                orphaned.extend(block.prose_trailing.iter().cloned());
+            }
+        }
+    }
+    if !orphaned.is_empty() {
+        let end = blocks.entry(Anchor::End).or_default();
+        end.leading.extend(orphaned);
+    }
+    let pinned = if pins_positions {
+        model.things.iter().map(|t| t.name.clone()).collect()
+    } else {
+        std::collections::BTreeSet::new()
+    };
+    let layout = SlLayout { blocks, pinned, lens_pinned: parsed.layout.lens_pinned };
+    emit_sl_with(model, Some(&layout))
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;

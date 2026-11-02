@@ -27,6 +27,8 @@ import init, {
   compile_sl as wasmCompileSl,
   emit_sl as wasmEmitSl,
   splice_positions as wasmSplicePositions,
+  sl_agreement as wasmSlAgreement,
+  sync_sl as wasmSyncSl,
   model_identity as wasmModelIdentity,
   mint_model_id as wasmMintModelId,
   check_decompositions as wasmCheckDecompositions,
@@ -44,6 +46,7 @@ import init, {
 import wasmUrl from "facets-kernel/facets_kernel_bg.wasm?url";
 
 import type {
+  SlAgreement,
   ValidationResult,
   OperationalOutcome,
   RunResult,
@@ -372,6 +375,19 @@ export function emitSl(model: CanvasModel): string {
  *  place. Everything else in `source` comes back untouched. */
 export function splicePositions(source: string, model: CanvasModel): string {
   return call("splice_positions", () => wasmSplicePositions(source, JSON.stringify(model)));
+}
+
+/** Whether an SL text and a model mean the same model, layout and lens set
+ *  aside. The kernel's one definition of agreement; the face only shows it. */
+export function slAgreement(source: string, model: CanvasModel): SlAgreement {
+  return call("sl_agreement", () => wasmSlAgreement(source, JSON.stringify(model))) as SlAgreement;
+}
+
+/** Rewrite an SL text to mean what the model means, keeping its comments.
+ *  Returns the text unchanged when it already agrees; throws when the text has
+ *  faults (the caller keeps the author's text). */
+export function syncSl(source: string, model: CanvasModel): string {
+  return call("sync_sl", () => wasmSyncSl(source, JSON.stringify(model)));
 }
 
 // ---- Decomposition: store-layer resolution (#89 step 5a) -----------------------
