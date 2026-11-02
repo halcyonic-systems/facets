@@ -4,8 +4,8 @@
 // primitive's own knob takes the kernel palette's label.
 import { describe, expect, it } from "vitest";
 import { renderToStaticMarkup } from "react-dom/server";
-import { RunInputs, engineRows } from "./RunInputs";
-import type { CanvasModel, Thing } from "./kernel/types";
+import { RunInputs, applyKnob, engineRows } from "./RunInputs";
+import type { CanvasModel, EngineKnob, Thing } from "./kernel/types";
 
 const barrel = {
   id: 2,
@@ -120,5 +120,54 @@ describe("drivers of a drawn model", () => {
   it("lists nothing without the kernel's word, as before, for a neutral thing", () => {
     const html = renderToStaticMarkup(<RunInputs model={drawn} manifest={null} onEdit={() => {}} />);
     expect(html).toBe("");
+  });
+});
+
+// Decision 2 (2026-11-02): every knob shown at the value the run uses; moving
+// it declares, clearing it withdraws the declaration.
+describe("knobs at their defaults", () => {
+  const tank = { id: 2, name: "T1", role: "Component", primitive: "Buffering" } as unknown as Thing;
+
+  it("declares a field on a number and withdraws it on empty", () => {
+    const set = applyKnob(tank, "release_rate", 4)!;
+    expect(set.cognitive_params).toEqual({ release_rate: 4 });
+    expect(applyKnob(set, "release_rate", null)!.cognitive_params).toEqual({});
+  });
+
+  it("refuses what SL refuses: a non-positive release, a negative level", () => {
+    expect(applyKnob(tank, "release_rate", 0)).toBeNull();
+    expect(applyKnob(tank, "initial_storage", -1, "L")).toBeNull();
+  });
+
+  it("writes a starting level only with a unit, and sets the unit with it", () => {
+    expect(applyKnob(tank, "initial_storage", 5)).toBeNull();
+    const filled = applyKnob(tank, "initial_storage", 5, "L")!;
+    expect(filled.stock_unit).toBe("L");
+    expect(filled.initial_state).toEqual({ storage: 5 });
+    // A thing that has a unit keeps it.
+    const litres = { ...tank, stock_unit: "L" } as Thing;
+    expect(applyKnob(litres, "initial_storage", 0)!.initial_state).toEqual({ storage: 0 });
+  });
+
+  it("puts a sensor's gain on its own parameter", () => {
+    const sensor = { ...tank, primitive: "Sensing" } as Thing;
+    expect(applyKnob(sensor, "gain", 2)!.agency_capacity).toBe(2);
+  });
+
+  it("shows an unset knob as an empty field over its default, marked default", () => {
+    const model = { name: "m", lens: "Mobus", things: [tank], relations: [], params: [] } as unknown as CanvasModel;
+    const knobs: EngineKnob[] = [
+      { thing: 2, field: "release_rate", word: "release", value: 1, declared: false },
+      { thing: 2, field: "capacity", word: "capacity", value: null, declared: false },
+      { thing: 2, field: "initial_storage", word: "starting level", value: 0, declared: false, needs_unit: "" },
+    ];
+    const html = renderToStaticMarkup(
+      <RunInputs model={model} manifest={null} onEdit={() => {}} onEditThing={() => {}} knobs={knobs} />,
+    );
+    expect(html).toContain("T1 · engine");
+    expect(html).toContain('placeholder="1 default"');
+    expect(html).toContain('placeholder="none"');
+    expect(html).toContain('placeholder="unit"');
+    expect(html).toContain(">default<");
   });
 });

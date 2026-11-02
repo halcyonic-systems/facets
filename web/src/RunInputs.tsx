@@ -22,7 +22,7 @@
 // changed. The taxonomy groups below remain the floor for every undeclared
 // magnitude, so declaring params is enrichment, never a requirement.
 import { useState } from "react";
-import type { CanvasModel, EngineField, Manifest, ParamDecl, Relation, Thing } from "./kernel/types";
+import type { CanvasModel, EngineField, EngineKnob, Manifest, ParamDecl, Relation, Thing } from "./kernel/types";
 import { declaredRelations, forcedByColumn, resolveParamRows } from "./kernel/params";
 import {
   AmountField,
@@ -302,6 +302,125 @@ function EngineRow({
   );
 }
 
+/** A knob's edit, as the model change it makes (decision 2, 2026-11-02): a
+ *  number declares the field, `null` withdraws the declaration so the field
+ *  runs at its default again. The starting level is written with its stock
+ *  unit (SL welds the two), so `unit` is required when the thing has none.
+ *  Returns null when the edit cannot be made (a starting level with no unit
+ *  anywhere, a non-positive number where SL takes only positive ones). */
+export function applyKnob(thing: Thing, field: EngineKnob["field"], v: number | null, unit?: string): Thing | null {
+  if (v !== null && !Number.isFinite(v)) return null;
+  if (field === "initial_storage") {
+    const { storage: _old, ...restState } = thing.initial_state ?? {};
+    if (v === null) return { ...thing, initial_state: restState };
+    if (v < 0) return null;
+    const stock = thing.stock_unit || (unit ?? "").trim();
+    if (!stock) return null;
+    return { ...thing, stock_unit: stock, initial_state: { ...restState, storage: v } };
+  }
+  if (v !== null && v <= 0) return null;
+  if (field === "gain") return { ...thing, agency_capacity: v ?? undefined };
+  const { [field]: _old, ...rest } = thing.cognitive_params ?? {};
+  return { ...thing, cognitive_params: v === null ? rest : { ...rest, [field]: v } };
+}
+
+function fmtDefault(v: number): string {
+  return Number.isInteger(v) ? String(v) : String(Number(v.toPrecision(4)));
+}
+
+/** One knob row: the declared value, or an empty field whose placeholder is
+ *  the default the run uses. Typing a number declares it; clearing it goes
+ *  back to the default. A starting level with no stock unit asks for one. */
+function KnobRow({ knob, thing, onEdit }: { knob: EngineKnob; thing: Thing; onEdit: (next: Thing) => void }) {
+  const [draft, setDraft] = useState<string | null>(null);
+  const [unitDraft, setUnitDraft] = useState("");
+  const [hint, setHint] = useState<string | null>(null);
+  const needsUnit = knob.needs_unit === "";
+  const shown = knob.declared && knob.value !== null ? String(knob.value) : "";
+  const placeholder = knob.value === null ? "none" : `${fmtDefault(knob.value)} default`;
+  const commit = (raw: string | null, unit: string) => {
+    if (raw === null) return;
+    const t = raw.trim();
+    const v = t === "" ? null : Number(t);
+    if (v === null && !knob.declared) {
+      setDraft(null);
+      return;
+    }
+    if (v !== null && knob.declared && v === knob.value) {
+      setDraft(null);
+      return;
+    }
+    const next = applyKnob(thing, knob.field, v, unit);
+    if (next === null) {
+      setHint(
+        knob.field === "initial_storage" && v !== null && v >= 0
+          ? "name the unit first (litres, people, …)"
+          : knob.field === "initial_storage"
+            ? "a starting level cannot be negative"
+            : "a positive number, or empty for the default",
+      );
+      return;
+    }
+    setHint(null);
+    setDraft(null);
+    onEdit(next);
+  };
+  return (
+    <div className={`${RAIL_ROW} py-0.5`} data-knob={knob.field}>
+      <span
+        className={RAIL_LABEL}
+        style={{ color: "var(--text-primary)" }}
+        title={knob.declared ? "Declared in the model" : "Not set: the run uses the default shown. Type a number to set it."}
+      >
+        {knob.word}
+        {!knob.declared && (
+          <span className="ml-1 text-[11px]" style={{ color: "var(--text-muted)" }}>
+            default
+          </span>
+        )}
+      </span>
+      <span className={RAIL_VALUE}>
+        <Input
+          className="w-24 text-right font-mono tabular"
+          value={draft ?? shown}
+          placeholder={placeholder}
+          onChange={(e) => setDraft(e.target.value)}
+          onBlur={() => commit(draft, unitDraft)}
+          onKeyDown={(e) => {
+            if (e.key === "Enter") (e.target as HTMLInputElement).blur();
+            if (e.key === "Escape") {
+              setDraft(null);
+              setHint(null);
+            }
+          }}
+          aria-label={`${thing.name} ${knob.word}`}
+        />
+        {needsUnit ? (
+          <Input
+            className="w-16"
+            value={unitDraft}
+            placeholder="unit"
+            onChange={(e) => setUnitDraft(e.target.value)}
+            onBlur={() => draft !== null && commit(draft, unitDraft)}
+            aria-label={`${thing.name} stock unit`}
+          />
+        ) : (
+          <span className="w-16 min-w-0 shrink truncate text-[11px]" style={{ color: "var(--text-muted)" }}>
+            {knob.field === "initial_storage" || knob.field === "capacity" || knob.field === "release_rate" || knob.field === "maintenance"
+              ? thing.stock_unit
+              : ""}
+          </span>
+        )}
+      </span>
+      {hint && (
+        <span className="block text-[11px]" style={{ color: "var(--verdict-warning)" }}>
+          {hint}
+        </span>
+      )}
+    </div>
+  );
+}
+
 /** Every engine knob a component declares and no `param` line already
  *  names: the #112 fields in its bag, its primitive's own parameter
  *  (`agency_capacity`, labeled by the kernel's palette when the app passes
@@ -364,6 +483,7 @@ export function RunInputs({
   engineLabels,
   onReset,
   sourceIds,
+  knobs,
 }: {
   model: CanvasModel;
   manifest: Manifest | null;
@@ -379,6 +499,9 @@ export function RunInputs({
    *  authored word, so without this its flows were never listed as drivers.
    *  Absent = fall back to the authored `source`. */
   sourceIds?: number[];
+  /** Kernel `engine_knobs`: every knob each component offers, declared or at
+   *  its default (decision 2). Absent = the declared-only floor below. */
+  knobs?: EngineKnob[];
 }) {
   const thing = (id: number) => model.things.find((t) => t.id === id);
   const declared = declaredRelations(model);
@@ -427,8 +550,18 @@ export function RunInputs({
   const engineGroups = onEditThing
     ? model.things
         .filter((t) => t.role === "Component" && !t.passway)
-        .map((t) => ({ thing: t, rows: engineRows(t, fieldCovered.get(t.id) ?? new Set(), engineLabels) }))
-        .filter((g) => g.rows.length > 0)
+        .map((t) => {
+          const covered = fieldCovered.get(t.id) ?? new Set<string>();
+          const kernelKnobs = (knobs ?? []).filter(
+            (k) => k.thing === t.id && !covered.has(k.field === "gain" ? "param" : k.field),
+          );
+          // The kernel's knobs first; the declared-only floor keeps whatever
+          // they do not cover (a parameter carried from a JSON bag).
+          const offered = new Set<string>(kernelKnobs.map((k) => (k.field === "gain" ? "param" : k.field)));
+          const rows = engineRows(t, covered, engineLabels).filter((r) => !offered.has(r.key));
+          return { thing: t, knobs: kernelKnobs, rows };
+        })
+        .filter((g) => g.rows.length + g.knobs.length > 0)
     : [];
   if (paramRows.length + drivers.length + signals.length + allocations.length + engineGroups.length === 0) return null;
 
@@ -485,9 +618,12 @@ export function RunInputs({
           </div>
         ),
       )}
-      {engineGroups.map(({ thing: t, rows }) => (
+      {engineGroups.map(({ thing: t, rows, knobs: groupKnobs }) => (
         <div key={`engine-${t.id}`} data-testid={`engine-${t.name}`}>
           <GroupHeader>{`${t.name} · engine`}</GroupHeader>
+          {groupKnobs.map((k) => (
+            <KnobRow key={k.field} knob={k} thing={t} onEdit={(next) => onEditThing?.(next)} />
+          ))}
           {rows.map((row) => (
             <EngineRow
               key={row.key}

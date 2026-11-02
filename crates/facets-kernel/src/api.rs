@@ -418,6 +418,17 @@ pub fn splice_positions(source: &str, canvas_json: &str) -> Result<String, JsErr
     facets_canvas::sl::splice_positions(source, &model).map_err(|e| JsError::new(&e))
 }
 
+/// The engine knobs the model's components offer, each at the value the run
+/// will use and marked declared or default (2026-11-02 walk, decision 2). Only
+/// fields SL can write on the component's line; defaults read off the circuit
+/// the run builds. Shape: `EngineKnob[]` in API.md.
+#[wasm_bindgen]
+pub fn engine_knobs(canvas_json: &str) -> Result<JsValue, JsError> {
+    let model: facets_canvas::canvas::CanvasModel = serde_json::from_str(canvas_json)
+        .map_err(|e| JsError::new(&format!("invalid canvas model: {e}")))?;
+    to_js(&crate::knobs::engine_knobs(&model))
+}
+
 /// Whether an SL text and a canvas model mean the same model (layout and lens
 /// set aside), with the canonical lines each has that the other lacks. The one
 /// definition of agreement the face uses (2026-11-02 walk).

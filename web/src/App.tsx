@@ -1,6 +1,6 @@
 import { Suspense, lazy, useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { buildRunRecord, postRunRecord, runRecordFilename, type RunRecord } from "./runRecord";
-import { ready, runMarkov, Bench, parseCsv, openModel, writeArchive, project, analyzeCanvas, checkDecompositionsCanvas, decomposeComponent, compileSl, type ArchiveText, mintModelId, emitSl, sandboxPalette, slAgreement, syncSl } from "./kernel";
+import { ready, runMarkov, Bench, parseCsv, openModel, writeArchive, project, analyzeCanvas, checkDecompositionsCanvas, decomposeComponent, compileSl, type ArchiveText, mintModelId, emitSl, sandboxPalette, slAgreement, syncSl, engineKnobs } from "./kernel";
 import type {
   TickLog,
   CanvasModel,
@@ -2291,6 +2291,18 @@ function Workspace() {
     });
   }
 
+  // Decision 2 (2026-11-02): every knob a component offers, at the value the
+  // run uses. The kernel answers which knobs exist and what an unset one runs
+  // at; a model that builds no circuit offers none.
+  const knobs = useMemo(() => {
+    if (!canvasModel || canvasModel.lens === "Klir") return [];
+    try {
+      return engineKnobs(canvasModel);
+    } catch {
+      return [];
+    }
+  }, [canvasModel]);
+
   // The kernel palette's label for each primitive's own knob ("gain", "sensor
   // gain k", …), read once; the inputs rail's engine floor shows it. Absent
   // before the kernel is up, in which case the row says "parameter".
@@ -4188,6 +4200,7 @@ function Workspace() {
                         engineLabels={engineLabels}
                       onResetInputs={demo?.sl ? resetInputs : undefined}
                       sourceIds={facts?.source_thing_ids}
+                      knobs={knobs}
                       time={{ dt, t, klir: canvasModel.lens === "Klir", onCommit: applyTime }}
                       runKind={LensPalette[canvasModel.lens].run}
                       transport={transportEl}

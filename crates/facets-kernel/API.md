@@ -982,3 +982,17 @@ like a thing's `x`/`y`: `project` ignores it, `to_canvas` reads it back as
 absent, and the archive (`write_archive`/`open_model`) keeps it. Absent, it is
 skipped on write, so every existing model serializes unchanged.
 `splice_positions` writes it with the `@pos` block. No signature changed.
+
+### `engine_knobs(canvas_json: string) → EngineKnob[]`
+Every engine knob the model's components offer, each at the value the run will
+use. Additive (2026-11-02, the new-user walk's decision 2). `EngineKnob` is
+`{ thing, field, word, value, declared, needs_unit? }`: `field` is the session
+key (`initial_storage`, `release_rate`, `time_constant`, `capacity`,
+`maintenance`, `setpoint`, `gain`), `value` is the declared value or, when not
+declared, the default read off the circuit the run builds (`project` then
+`from_world_model`), and `null` where the field is off by default (no capacity
+limit, no upkeep). Only fields SL can write on the component's line are listed:
+Buffering's starting level (with `needs_unit`, the stock unit SL welds to it,
+`""` when there is none), release (or time constant where one is declared, never
+both), capacity and maintenance; Inverting's setpoint; Sensing's gain. A model
+that builds no circuit yields an empty list.

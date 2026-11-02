@@ -6,7 +6,7 @@
 // Every card is the same component the dock hosted, fed the same kernel state
 // from the same App owner — what changed is the container and the height.
 import { useEffect, useState } from "react";
-import type { CanvasModel, Manifest, MarkovRunResult, Relation, RunResultRich, Thing, TickLog } from "./kernel/types";
+import type { EngineKnob, CanvasModel, Manifest, MarkovRunResult, Relation, RunResultRich, Thing, TickLog } from "./kernel/types";
 import type { RunKind } from "./canvas/lenses/registry";
 import { RunInputs } from "./RunInputs";
 import { DtmcPanel, RunFit, RunGlance, RunStory, RunTable, weightProvenance } from "./RunPanel";
@@ -37,6 +37,7 @@ export function Readouts({
   engineLabels,
   onResetInputs,
   sourceIds,
+  knobs,
   time,
   runKind,
   transport,
@@ -76,6 +77,8 @@ export function Readouts({
   onResetInputs?: () => void;
   /** Kernel `source_thing_ids`, so the inputs list a drawn source's flows. */
   sourceIds?: number[];
+  /** Kernel `engine_knobs`, for the inputs' per-component rows. */
+  knobs?: EngineKnob[];
   time?: { dt: number; t: number; klir: boolean; onCommit: (dt: number, t: number) => void };
   /** #282: the lens's declared run semantics — this view renders from it. */
   runKind: RunKind;
@@ -120,6 +123,7 @@ export function Readouts({
         engineLabels={engineLabels}
         onReset={onResetInputs}
         sourceIds={sourceIds}
+        knobs={knobs}
       />
     ) : null;
   const timeRow = time ? <TimeRow time={time} /> : null;

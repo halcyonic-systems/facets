@@ -29,6 +29,7 @@ import init, {
   splice_positions as wasmSplicePositions,
   sl_agreement as wasmSlAgreement,
   sync_sl as wasmSyncSl,
+  engine_knobs as wasmEngineKnobs,
   model_identity as wasmModelIdentity,
   mint_model_id as wasmMintModelId,
   check_decompositions as wasmCheckDecompositions,
@@ -46,6 +47,7 @@ import init, {
 import wasmUrl from "facets-kernel/facets_kernel_bg.wasm?url";
 
 import type {
+  EngineKnob,
   SlAgreement,
   ValidationResult,
   OperationalOutcome,
@@ -375,6 +377,13 @@ export function emitSl(model: CanvasModel): string {
  *  place. Everything else in `source` comes back untouched. */
 export function splicePositions(source: string, model: CanvasModel): string {
   return call("splice_positions", () => wasmSplicePositions(source, JSON.stringify(model)));
+}
+
+/** The engine knobs the model's components offer, at the value the run uses,
+ *  each marked declared or default. Only fields SL can write; the kernel
+ *  decides both which knobs exist and what an unset one runs at. */
+export function engineKnobs(model: CanvasModel): EngineKnob[] {
+  return call("engine_knobs", () => wasmEngineKnobs(JSON.stringify(model))) as EngineKnob[];
 }
 
 /** Whether an SL text and a model mean the same model, layout and lens set

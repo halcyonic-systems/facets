@@ -557,6 +557,19 @@ export interface SlError {
   message: string;
 }
 
+/** engine_knobs: one knob a component offers. `value` is what the run uses
+ *  (declared, or the engine's default when not); null = off by default (no
+ *  capacity limit, no upkeep). `needs_unit` rides the starting level only: SL
+ *  writes it with a stock unit, "" = the component has none yet. */
+export interface EngineKnob {
+  thing: number;
+  field: "initial_storage" | "release_rate" | "capacity" | "time_constant" | "maintenance" | "setpoint" | "gain";
+  word: string;
+  value: number | null;
+  declared: boolean;
+  needs_unit?: string;
+}
+
 /** sl_agreement: whether a text and a model mean the same model (layout and
  *  lens set aside), and the canonical lines each has that the other lacks. */
 export interface SlAgreement {
