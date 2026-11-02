@@ -83,6 +83,17 @@ export function wantsRebaseOut(extentPx: number, minView: number, armed: boolean
   return decide(extentPx <= minView * RB_OUT, extentPx >= minView * RB_OUT * ARM_SLACK, armed);
 }
 
+/** Is the out gesture ARMED the moment a new frame lands? Inside a child yes
+ *  (#416: a fitted child can land between the arm and out lines and could
+ *  then never be left by zooming). At the root no: there the out gesture
+ *  opens the opaque view, and a model swapped in from Write arrives before
+ *  its fit, at a provisional scale far below the line, which an armed bit
+ *  read as a zoom-out (2026-11-02 walk: the interior hid itself on the way
+ *  to Build). The root arms the ordinary way, once read on the near side. */
+export function armsOnArrival(canRebaseOut: boolean, insideChild: boolean): boolean {
+  return canRebaseOut && insideChild;
+}
+
 /** Should the OPAQUE view of the root open its interior again? (#308 part B.)
  *  Opaque is entered by zooming out past the root's out line, where there is
  *  no parent to rebase to; it leaves once the frame has grown back well past

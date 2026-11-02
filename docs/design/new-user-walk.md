@@ -23,6 +23,10 @@ A model drawn on the canvas has no visible place for its numbers. Starting level
 | 9 | The chart has no units, and its legend read "T1 0" | A drawn stock has no unit declared | **Open** |
 | 10 | After a knob edit, the SL pane still showed the old text with no amount | The pane keeps the author's text; its button then offered "Layout only". Not yet checked what the text becomes on its next sync | **Open**: found while checking row 3 |
 | 11 | A knob typed while the run played with run on gave totals that matched neither rate (input object "1.8") | Run on applies a knob from the current tick, so the table's totals mix the two rates, with nothing saying so | **Open**, part of row 7 |
+| 12 | Pasted SL in Write, compiled, went to Build: the components inside the system were missing, every time, until a second compile | The canvas went into the opaque view on arrival. A new model re-armed the "zoom out past the membrane" gesture, and Build's first frame, drawn at a provisional scale (0.25) before the fit, read as that zoom-out. Measured: 102 px extent in a 727 px view | **Fixed**: the gesture arms on arrival only inside a child, where #416 needed it (`armsOnArrival`, `web/src/canvas/frameRebase.ts`). Checked in the browser with the exact SL; zooming out on purpose still goes opaque |
+| 13 | Inputs empty, levels flat at 0, for a model whose input flow is `informational` | A signal carries no quantity, so nothing material enters and the stocks stay empty; a signal with no declared amount is not listed. Right by the rules, but nothing tells the user why the run is empty | **Open.** The run should say plainly that no material enters the system |
+| 14 | Run length read T = 1 in that model's readouts | Not yet traced | **Open** |
+| 15 | A paste into Write does nothing until Compile; leaving for Build shows the previous model | Compile is explicit (button or ⌘⏎) | **Open**: design call, whether Write should compile on its own |
 
 ## How the fixes were checked
 

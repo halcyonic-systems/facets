@@ -45,6 +45,7 @@ import {
   wantsRebaseIn,
   wantsRebaseOut,
   wantsOpaqueExit,
+  armsOnArrival,
   OPAQUE_EXIT,
   type View,
   pastOutLine,
@@ -790,7 +791,9 @@ export default function Canvas({
       // freshly landed frame is far above the out line (RB_OUT of the
       // viewport), so arming it cannot misfire; it only means the first
       // zoom-out past the line leaves, whichever way you came in.
-      outArmRef.current = Boolean(onRebaseOut && register);
+      // Only inside a child: onExitUp is passed below the root alone, and at
+      // the root an armed arrival hid the interior (see armsOnArrival).
+      outArmRef.current = armsOnArrival(Boolean(onRebaseOut && register), Boolean(onExitUp));
       outFellBackRef.current = false;
     }
     // Every door's bit is read each pass, whatever tier it is in — a bit only

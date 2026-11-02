@@ -4,6 +4,7 @@
 // wanders around the line. Pure math and one bit of memory; no kernel needed.
 import { describe, expect, it } from "vitest";
 import {
+  armsOnArrival,
   RB_IN,
   RB_OUT,
   rebaseIn,
@@ -160,5 +161,20 @@ describe("the out line as a gesture", () => {
     expect(pastOutLine(1, 700, 600)).toBe(false);
     expect(pastOutLine(0.3, 700, 600)).toBe(false);
     expect(pastOutLine(0.25, 700, 600)).toBe(true);
+  });
+});
+
+describe("armsOnArrival", () => {
+  it("arms a child frame on arrival, so a fitted child can always be left (#416)", () => {
+    expect(armsOnArrival(true, true)).toBe(true);
+  });
+  it("never arms the root on arrival: its pre-fit frame is not a zoom-out (2026-11-02)", () => {
+    // The walk's numbers: scale 0.25 before the fit put a 6-thing model at
+    // 102 px in a 727 px view, past the out line, and the root went opaque.
+    expect(wantsRebaseOut(102, 727, armsOnArrival(true, false)).fire).toBe(false);
+    expect(wantsRebaseOut(102, 727, armsOnArrival(true, true)).fire).toBe(true);
+  });
+  it("arms nothing where there is no out gesture", () => {
+    expect(armsOnArrival(false, true)).toBe(false);
   });
 });
