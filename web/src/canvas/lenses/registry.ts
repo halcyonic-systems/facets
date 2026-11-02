@@ -29,6 +29,9 @@ export interface LensNodeProps {
   /** Kernel verdict: env thing no bond touches (∈ orphan_env_thing_ids) —
    *  project() drops it, so it is not yet in ℰ. Rendered pending. */
   isOrphan: boolean;
+  /** Kernel verdict: env thing the projection files as a source (∈
+   *  source_thing_ids). It emits and holds nothing, so it never draws a fill. */
+  isSource?: boolean;
   hovered: boolean;
   /** The shell's selected thing (makeover rule 20): drawn as a ring offset
    *  from the body, the same geometry under every lens. */

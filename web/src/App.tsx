@@ -46,7 +46,7 @@ import { PaletteRail } from "./canvas/PaletteRail";
 import type { PaletteTool } from "./canvas/lenses/registry";
 import { LensPalette } from "./canvas/lenses/registry";
 import { MarkovReadout } from "./canvas/MarkovReadout";
-import { type SimFrame } from "./canvas/types";
+import { levelFrac, type SimFrame } from "./canvas/types";
 import type { Pt } from "./canvas/geometry";
 import { InspectorDock } from "./InspectorDock";
 import { StartSurface } from "./StartSurface";
@@ -2147,10 +2147,8 @@ function Workspace() {
     const nodes: SimFrame["nodes"] = {};
     for (const traj of result.trajectories) {
       if (traj.series.length === 0) continue;
-      const min = Math.min(...traj.series);
-      const max = Math.max(...traj.series);
       const value = traj.series[Math.min(tick, traj.series.length - 1)];
-      nodes[traj.name] = { value, unit: traj.unit, frac: max > min ? (value - min) / (max - min) : 0.5 };
+      nodes[traj.name] = { value, unit: traj.unit, frac: levelFrac(traj.series, value) };
     }
     const edges: SimFrame["edges"] = {};
     // EVERY wire's executed per-tick series lights the diagram (the kernel
@@ -4113,6 +4111,7 @@ function Workspace() {
                         onThingEdit={applyThingEdit}
                         engineLabels={engineLabels}
                       onResetInputs={demo?.sl ? resetInputs : undefined}
+                      sourceIds={facts?.source_thing_ids}
                       time={{ dt, t, klir: canvasModel.lens === "Klir", onCommit: applyTime }}
                       runKind={LensPalette[canvasModel.lens].run}
                       transport={transportEl}

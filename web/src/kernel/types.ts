@@ -616,6 +616,11 @@ export interface LensFacts {
   /** Env things no bond touches — project() drops these as orphan terminals;
    *  not yet in ℰ (Bunge Def 1.2 ii). Rendered pending, never re-derived. */
   orphan_env_thing_ids: number[];
+  /** The environment things the projection files as sources: an authored
+   *  `source`, or a neutral environment thing a flow leaves. Kernel verdict;
+   *  a canvas-drawn object carries no authored word, so read this, never
+   *  `env_kind` alone, to know whether a thing emits. */
+  source_thing_ids: number[];
   /** Authored members of I. Effective I = boundary_thing_ids ∪ this set;
    *  authored-flowless members are Mobus-visible and Bunge-blind. */
   authored_interface_thing_ids: number[];

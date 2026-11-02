@@ -23,9 +23,12 @@ export function useCommitOnRelease(active: boolean, commit: () => void) {
 export function AmountField({
   relation,
   onEdit,
+  placeholder,
 }: {
   relation: Relation;
   onEdit: (next: Relation) => void;
+  /** Shown while the flow has no declared amount; typing one declares it. */
+  placeholder?: string;
 }) {
   const [draft, setDraft] = useState<string | null>(null);
   const commit = () => {
@@ -40,13 +43,14 @@ export function AmountField({
     <Input
       className="w-24 text-right font-mono tabular"
       value={draft ?? relation.amount ?? ""}
+      placeholder={placeholder}
       onChange={(e) => setDraft(e.target.value)}
       onBlur={commit}
       onKeyDown={(e) => {
         if (e.key === "Enter") (e.target as HTMLInputElement).blur();
         if (e.key === "Escape") setDraft(null);
       }}
-      aria-label={`amount of ${relation.name}`}
+      aria-label={`amount of ${relation.name || "this flow"}`}
     />
   );
 }

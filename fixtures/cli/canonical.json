@@ -208,6 +208,7 @@
           "environment_thing_ids": [],
           "orphan_env_thing_ids": [],
           "ports": [],
+          "source_thing_ids": [],
           "unresolved_thing_id": null
         },
         "issue_targets": [],
@@ -320,6 +321,7 @@
           "environment_thing_ids": [],
           "orphan_env_thing_ids": [],
           "ports": [],
+          "source_thing_ids": [],
           "unresolved_thing_id": null
         },
         "issue_targets": [],
@@ -423,6 +425,7 @@
           "environment_thing_ids": [],
           "orphan_env_thing_ids": [],
           "ports": [],
+          "source_thing_ids": [],
           "unresolved_thing_id": null
         },
         "issue_targets": [
@@ -795,6 +798,12 @@
               ]
             }
           ],
+          "source_thing_ids": [
+            2,
+            3,
+            4,
+            5
+          ],
           "unresolved_thing_id": null
         },
         "issue_targets": [
@@ -1011,6 +1020,12 @@
               ]
             }
           ],
+          "source_thing_ids": [
+            2,
+            3,
+            4,
+            5
+          ],
           "unresolved_thing_id": null
         },
         "issue_targets": [],
@@ -1208,6 +1223,12 @@
                 13
               ]
             }
+          ],
+          "source_thing_ids": [
+            2,
+            3,
+            4,
+            5
           ],
           "unresolved_thing_id": null
         },
@@ -1610,6 +1631,10 @@
               ]
             }
           ],
+          "source_thing_ids": [
+            4,
+            5
+          ],
           "unresolved_thing_id": null
         },
         "issue_targets": [],
@@ -1772,6 +1797,10 @@
                 12
               ]
             }
+          ],
+          "source_thing_ids": [
+            4,
+            5
           ],
           "unresolved_thing_id": null
         },
@@ -1942,6 +1971,10 @@
                 12
               ]
             }
+          ],
+          "source_thing_ids": [
+            4,
+            5
           ],
           "unresolved_thing_id": null
         },
@@ -2605,6 +2638,13 @@
               ]
             }
           ],
+          "source_thing_ids": [
+            7,
+            8,
+            9,
+            10,
+            11
+          ],
           "unresolved_thing_id": null
         },
         "issue_targets": [],
@@ -3031,6 +3071,13 @@
               ]
             }
           ],
+          "source_thing_ids": [
+            7,
+            8,
+            9,
+            10,
+            11
+          ],
           "unresolved_thing_id": null
         },
         "issue_targets": [],
@@ -3451,6 +3498,13 @@
                 35
               ]
             }
+          ],
+          "source_thing_ids": [
+            7,
+            8,
+            9,
+            10,
+            11
           ],
           "unresolved_thing_id": null
         },
@@ -3988,6 +4042,12 @@
               ]
             }
           ],
+          "source_thing_ids": [
+            1,
+            2,
+            3,
+            4
+          ],
           "unresolved_thing_id": null
         },
         "issue_targets": [],
@@ -4254,6 +4314,12 @@
                 24
               ]
             }
+          ],
+          "source_thing_ids": [
+            1,
+            2,
+            3,
+            4
           ],
           "unresolved_thing_id": null
         },
@@ -4528,6 +4594,12 @@
                 24
               ]
             }
+          ],
+          "source_thing_ids": [
+            1,
+            2,
+            3,
+            4
           ],
           "unresolved_thing_id": null
         },
@@ -4849,6 +4921,10 @@
               ]
             }
           ],
+          "source_thing_ids": [
+            5,
+            6
+          ],
           "unresolved_thing_id": null
         },
         "issue_targets": [],
@@ -5006,6 +5082,10 @@
                 13
               ]
             }
+          ],
+          "source_thing_ids": [
+            5,
+            6
           ],
           "unresolved_thing_id": null
         },
@@ -5171,6 +5251,10 @@
                 13
               ]
             }
+          ],
+          "source_thing_ids": [
+            5,
+            6
           ],
           "unresolved_thing_id": null
         },

@@ -36,6 +36,7 @@ export function Readouts({
   onThingEdit,
   engineLabels,
   onResetInputs,
+  sourceIds,
   time,
   runKind,
   transport,
@@ -73,6 +74,8 @@ export function Readouts({
   /** The kernel palette's label for each primitive's own knob. */
   engineLabels?: Record<string, string>;
   onResetInputs?: () => void;
+  /** Kernel `source_thing_ids`, so the inputs list a drawn source's flows. */
+  sourceIds?: number[];
   time?: { dt: number; t: number; klir: boolean; onCommit: (dt: number, t: number) => void };
   /** #282: the lens's declared run semantics — this view renders from it. */
   runKind: RunKind;
@@ -116,6 +119,7 @@ export function Readouts({
         onEditThing={onThingEdit}
         engineLabels={engineLabels}
         onReset={onResetInputs}
+        sourceIds={sourceIds}
       />
     ) : null;
   const timeRow = time ? <TimeRow time={time} /> : null;
@@ -162,7 +166,7 @@ export function Readouts({
       </div>
       <div className="min-h-0 flex-1 overflow-y-auto p-4">
         {tab === "story" && (
-          <RunStory result={result} lens={lens} tick={tick} model={model} baseline={baseline} />
+          <RunStory result={result} lens={lens} tick={tick} model={model} baseline={baseline} sourceIds={sourceIds} />
         )}
         {tab === "fit" && hasFit && (
           <RunFit result={result} tick={tick} timeUnit={model?.time_unit} model={model} />

@@ -28,6 +28,7 @@ const facts: LensFacts = {
   boundary_thing_ids: [],
   environment_thing_ids: [3],
   orphan_env_thing_ids: [3],
+  source_thing_ids: [],
   authored_interface_thing_ids: [1],
   boundary_props: { porosity: 0, perceptive_fuzziness: 0 },
   aggregate: false,

@@ -202,6 +202,7 @@ export function RunStory({
   tick,
   model,
   baseline = null,
+  sourceIds,
 }: {
   result: RunResultRich;
   lens: CanvasModel["lens"];
@@ -209,6 +210,8 @@ export function RunStory({
   model?: CanvasModel | null;
   /** #463 move 4: the kept baseline, drawn dashed beside every series. */
   baseline?: RunResultRich | null;
+  /** Kernel `source_thing_ids`: lets the no-metrics hint name a drawn sink. */
+  sourceIds?: number[];
 }) {
   const metrics = model ? evaluateMetrics(model, result) : null;
   const baseMetrics = model && baseline ? evaluateMetrics(model, baseline) : null;
@@ -246,14 +249,27 @@ export function RunStory({
       {metrics && metrics.readings.length === 0 && metrics.failures.length === 0 && (
         // The capacity, surfaced (#203): a model with no declared metrics is
         // told — quietly — that it can ask its own questions of a run.
-        <p className="text-[11px]" style={{ color: "var(--text-muted)" }}>
-          No declared metrics — name the readouts you want to watch, in the
-          model&rsquo;s own words:{" "}
-          <code className="font-mono">
-            metric &quot;delivered&quot; : sum into{" "}
-            {model?.things.find((t) => t.role === "Environment" && t.env_kind === "Sink")?.name ??
-              "<a sink>"}
-          </code>
+        // Said in plain words for someone who built by drawing (2026-11-02
+        // walk): what a metric is for, and where to write one. The canvas has
+        // no metric tool yet, so the SL pane is the honest place to point.
+        <p className="text-[11px] leading-snug" style={{ color: "var(--text-muted)" }}>
+          {(() => {
+            const sink =
+              model?.things.find((t) => t.role === "Environment" && t.env_kind === "Sink") ??
+              (sourceIds
+                ? model?.things.find((t) => t.role === "Environment" && !sourceIds.includes(t.id))
+                : undefined);
+            return (
+              <>
+                No headline numbers yet. To track one, such as the total that
+                reached {sink?.name ?? "a sink"}, add a line in the SL pane (the{" "}
+                <code className="font-mono">{"{}"}</code> button on the left):{" "}
+                <code className="font-mono">
+                  metric &quot;delivered&quot; : sum into {sink?.name ?? "<a sink>"}
+                </code>
+              </>
+            );
+          })()}
         </p>
       )}
       {result.trajectories.length > 0 &&

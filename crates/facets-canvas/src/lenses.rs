@@ -108,6 +108,12 @@ pub struct LensFacts {
     /// that act on / are acted on by a component, and mere relations don't act.
     /// The face renders these as pending; it never re-derives the set.
     pub orphan_env_thing_ids: Vec<u64>,
+    /// The environment things the projection files as sources: an authored
+    /// `source`, or a neutral `environment` thing a flow originates from (the
+    /// same `is_source` rule `project()` uses, read off its output, so the
+    /// face never re-derives it). A source emits and holds nothing; the run
+    /// surfaces draw and list it by this set, not by the author's word alone.
+    pub source_thing_ids: Vec<u64>,
     /// Authored members of I (interface-designated components). Effective I =
     /// boundary_thing_ids ∪ this set: the flow-crossing set stays kernel-derived;
     /// authored-flowless members are Mobus-visible and Bunge-blind (no exo
@@ -182,6 +188,14 @@ pub fn lens_facts(model: &CanvasModel) -> LensFacts {
         .iter()
         .copied()
         .filter(|id| !bond_touched.contains(id))
+        .collect();
+
+    let source_thing_ids: Vec<u64> = p
+        .world
+        .environment
+        .sources
+        .iter()
+        .filter_map(|e| canvas_of.get(&e.info.id).copied())
         .collect();
 
     let authored_interface_thing_ids: Vec<u64> = model
@@ -323,6 +337,7 @@ pub fn lens_facts(model: &CanvasModel) -> LensFacts {
         boundary_thing_ids,
         environment_thing_ids,
         orphan_env_thing_ids,
+        source_thing_ids,
         authored_interface_thing_ids,
         boundary_props,
         aggregate,
@@ -1874,6 +1889,27 @@ mod tests {
         let f = lens_facts(&m);
         assert_eq!(f.boundary_thing_ids, vec![1], "A is coupled to E; B is shielded");
         assert_eq!(f.environment_thing_ids, vec![3]);
+    }
+
+    /// Law: a neutral environment thing a flow leaves is reported as a source
+    /// (the projection's own filing), and the one a flow enters is not. A
+    /// canvas-drawn environment object carries no authored word, so the face
+    /// must learn which side it sits on from this set (2026-11-02 walk: a
+    /// drawn source was rendered as a half-full tank).
+    #[test]
+    fn neutral_environment_things_are_filed_by_flow_direction() {
+        // 3(Env) → 1(Comp) → 4(Env), both env things neutral (thing() default).
+        let m = model(
+            vec![
+                thing(1, "P", Role::Component),
+                thing(3, "In", Role::Environment),
+                thing(4, "Out", Role::Environment),
+            ],
+            vec![relation(11, 3, 1, true), relation(12, 1, 4, true)],
+        );
+        assert!(m.things.iter().all(|t| t.env_kind == crate::canvas::EnvKind::Neutral));
+        let f = lens_facts(&m);
+        assert_eq!(f.source_thing_ids, vec![3], "In emits; Out receives");
     }
 
     /// Law: the edge ladder reports every canvas relation — bonds AND mere

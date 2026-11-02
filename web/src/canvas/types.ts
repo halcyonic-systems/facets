@@ -71,3 +71,14 @@ export interface SimFrame {
   nodes: Record<string, { value: number; unit: string; frac: number }>;
   edges: Record<string, { value: number; unit: string }>;
 }
+
+/** How full a node draws at one tick: the value's place between zero and the
+ *  run's extreme, so an empty stock draws empty and the canvas agrees with the
+ *  readouts chart, whose axis starts at zero. It was the series' own min–max,
+ *  which drew a level that never moved as exactly half full whatever it held
+ *  (2026-11-02 walk: stocks sitting at 0 looked half full and "never reset"). */
+export function levelFrac(series: number[], value: number): number {
+  const lo = Math.min(0, ...series);
+  const hi = Math.max(0, ...series);
+  return hi > lo ? (value - lo) / (hi - lo) : 0;
+}

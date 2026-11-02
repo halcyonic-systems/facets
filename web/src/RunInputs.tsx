@@ -74,7 +74,11 @@ function InputRow({
           ample
         </span>
       ) : (
-        <AmountField relation={relation} onEdit={onEdit} />
+        <AmountField
+          relation={relation}
+          onEdit={onEdit}
+          placeholder={relation.amount == null ? "not set" : undefined}
+        />
       )}
       <span className="w-16 min-w-0 shrink truncate text-[11px]" style={{ color: "var(--text-muted)" }}>
         {relation.unit ?? ""}
@@ -359,6 +363,7 @@ export function RunInputs({
   onEditThing,
   engineLabels,
   onReset,
+  sourceIds,
 }: {
   model: CanvasModel;
   manifest: Manifest | null;
@@ -370,6 +375,10 @@ export function RunInputs({
   /** Restore every declared amount to the model's own declaration (derived
    *  from the demo's `.sl`, never stored state). Absent = no reset baseline. */
   onReset?: () => void;
+  /** Kernel `source_thing_ids`. A canvas-drawn environment object has no
+   *  authored word, so without this its flows were never listed as drivers.
+   *  Absent = fall back to the authored `source`. */
+  sourceIds?: number[];
 }) {
   const thing = (id: number) => model.things.find((t) => t.id === id);
   const declared = declaredRelations(model);
@@ -392,11 +401,19 @@ export function RunInputs({
   );
 
   const rest = declared.filter((r) => !covered.has(r.id));
+  const sources = sourceIds ? new Set(sourceIds) : null;
   const fromSource = (r: Relation) => {
     const a = thing(r.a);
-    return a?.role === "Environment" && a.env_kind === "Source";
+    return a?.role === "Environment" && (sources ? sources.has(a.id) : a.env_kind === "Source");
   };
-  const drivers = rest.filter((r) => fromSource(r) && r.kind !== "Informational");
+  // A source's physical flow with no amount yet still runs, at the engine's
+  // default, so it is listed too: an empty field that declares the amount
+  // when a number is typed (2026-11-02 walk: a model drawn on the canvas
+  // showed no way to set its rate). Ample flows have no number to set.
+  const unset = model.relations.filter(
+    (r) => r.is_bond && r.amount == null && !r.ample && !covered.has(r.id) && fromSource(r),
+  );
+  const drivers = [...rest, ...unset].filter((r) => fromSource(r) && r.kind !== "Informational");
   const signals = rest.filter((r) => fromSource(r) && r.kind === "Informational");
   const allocations = rest.filter((r) => thing(r.a)?.role === "Component");
   // The floor for engine knobs: every field a component line declares and
@@ -488,7 +505,7 @@ export function RunInputs({
           {drivers.map((r) => (
             <InputRow
               key={r.id}
-              label={`${thing(r.a)?.name ?? "?"} · ${r.name}`}
+              label={`${thing(r.a)?.name ?? "?"} · ${r.name || `to ${thing(r.b)?.name ?? "?"}`}`}
               relation={r}
               forcedBy={forcedBy(r)}
               onEdit={onEdit}

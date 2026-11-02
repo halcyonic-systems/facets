@@ -24,6 +24,7 @@ function synthetic(components: number, envs: number, flows: number): { model: Ca
       boundary_thing_ids: [...new Set(ports.map((p) => p.component))],
       environment_thing_ids: things.filter((t) => t.role === "Environment").map((t) => t.id),
       orphan_env_thing_ids: [],
+      source_thing_ids: [],
       authored_interface_thing_ids: authored,
       boundary_props: { porosity: 0, perceptive_fuzziness: 0 },
       aggregate: false,

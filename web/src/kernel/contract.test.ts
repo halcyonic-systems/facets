@@ -253,6 +253,7 @@ function parseLensFacts(v: unknown): LensFacts {
     "boundary_thing_ids",
     "environment_thing_ids",
     "orphan_env_thing_ids",
+    "source_thing_ids",
     "authored_interface_thing_ids",
     "boundary_props",
     "aggregate",
@@ -270,6 +271,9 @@ function parseLensFacts(v: unknown): LensFacts {
     ),
     orphan_env_thing_ids: arr(o.orphan_env_thing_ids, "LensFacts.orphan_env_thing_ids").map((x, i) =>
       num(x, `orphan_env_thing_ids[${i}]`),
+    ),
+    source_thing_ids: arr(o.source_thing_ids, "LensFacts.source_thing_ids").map((x, i) =>
+      num(x, `source_thing_ids[${i}]`),
     ),
     authored_interface_thing_ids: arr(o.authored_interface_thing_ids, "LensFacts.authored_interface_thing_ids").map(
       (x, i) => num(x, `authored_interface_thing_ids[${i}]`),

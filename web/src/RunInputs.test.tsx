@@ -86,3 +86,39 @@ describe("engine floor", () => {
     expect(html).not.toContain('aria-label="share of Landing"');
   });
 });
+
+// 2026-11-02 walk: a model drawn on the canvas (environment object → process →
+// environment object, no amounts typed) showed no inputs at all. The drawn
+// objects are neutral, so only the kernel's source set says which one emits.
+describe("drivers of a drawn model", () => {
+  const drawn = {
+    name: "m",
+    lens: "Mobus",
+    things: [
+      { id: 1, name: "E5", role: "Environment", env_kind: "Neutral" },
+      { id: 2, name: "T1", role: "Component", primitive: "Buffering" },
+      { id: 3, name: "E6", role: "Environment", env_kind: "Neutral" },
+    ],
+    relations: [
+      { id: 10, a: 1, b: 2, is_bond: true, kind: "Matter", name: "" },
+      { id: 11, a: 2, b: 3, is_bond: true, kind: "Matter", name: "" },
+    ],
+    params: [],
+  } as unknown as CanvasModel;
+
+  it("lists a source's unset flow as an empty field, named by where it goes", () => {
+    const html = renderToStaticMarkup(
+      <RunInputs model={drawn} manifest={null} onEdit={() => {}} sourceIds={[1]} />,
+    );
+    expect(html).toContain("drivers · absolute rates");
+    expect(html).toContain("E5 · to T1");
+    expect(html).toContain('placeholder="not set"');
+    // The flow into the sink is not a driver.
+    expect(html).not.toContain("E6 ·");
+  });
+
+  it("lists nothing without the kernel's word, as before, for a neutral thing", () => {
+    const html = renderToStaticMarkup(<RunInputs model={drawn} manifest={null} onEdit={() => {}} />);
+    expect(html).toBe("");
+  });
+});

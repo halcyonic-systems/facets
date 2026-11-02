@@ -50,6 +50,7 @@ const facts: LensFacts = {
   boundary_thing_ids: [1],
   environment_thing_ids: [2, 4],
   orphan_env_thing_ids: [],
+  source_thing_ids: [],
   authored_interface_thing_ids: [1],
   boundary_props: { porosity: 0, perceptive_fuzziness: 0 },
   aggregate: false,

@@ -29,6 +29,7 @@ Design positions and research foundations, grouped by status. See [`../README.md
 
 ## RESEARCH (foundations others build on; not themselves decisions)
 
+- [`new-user-walk.md`](new-user-walk.md) — **RESEARCH** — the running log of a first-time walk through building and running a model (from 2026-11-02): what was seen, why, and whether it is fixed. Feeds the run surface redesign.
 - [`epistemic-ordering.md`](epistemic-ordering.md) — the two-axes distinction (proven lens lattice vs Klir's epistemological levels) and the cross-tradition reading that motivates data-first entry ([#309](https://github.com/halcyonic-systems/facets/issues/309)) and Data mode ([#304](https://github.com/halcyonic-systems/facets/issues/304)); primary-source grounding lives in the vault.
 - [`decomposition-foundations.md`](decomposition-foundations.md) — the 8-tuple math under the investigation's Option B ([#89](https://github.com/halcyonic-systems/facets/issues/89)): the Eq. 4.3 substitution slot by slot, the parent↔child boundary-contract bijection, the three Lean statements that must exist first, and the honest dependency order (Lean-first).
 - [`dynamics-research/`](dynamics-research/) — the research trail behind the adopted dynamics position: six primary-source reads, a synthesis, and two adversarial critiques (`critique-novelty.md`, `critique-coverage.md`). Start at its [`README.md`](dynamics-research/README.md) for reading order.

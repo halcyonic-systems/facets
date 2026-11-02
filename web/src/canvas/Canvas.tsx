@@ -661,6 +661,8 @@ export default function Canvas({
   // verdicts; only their pixel placement is computed here.
   const boundarySet = new Set(facts?.boundary_thing_ids ?? []);
   const orphanSet = new Set(facts?.orphan_env_thing_ids ?? []);
+  // Undefined without facts, so NodeBody falls back to the authored word.
+  const sourceSet = facts ? new Set(facts.source_thing_ids) : null;
   const edgeFactById = new Map<number, EdgeFact>((facts?.edges ?? []).map((e) => [e.id, e]));
 
   // The rim doors, asked of the shell once per render. The case is read off the
@@ -1489,6 +1491,7 @@ export default function Canvas({
               thing={t}
               isBoundary={boundarySet.has(t.id)}
               isOrphan={orphanSet.has(t.id)}
+              isSource={sourceSet ? sourceSet.has(t.id) : undefined}
               inert={inert}
               hovered={hoverTarget === t.id || litThingId === t.id}
               selected={selectedThingId === t.id}

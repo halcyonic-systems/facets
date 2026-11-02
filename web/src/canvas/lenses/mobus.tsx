@@ -14,7 +14,7 @@ import { EdgeScaffold, NodeBody, type EdgeStyle } from "./common";
 import type { LensEdgeProps, LensNodeProps } from "./registry";
 import { screenHold, strokeWorld, textWorld, useStageScale } from "../stageScale";
 
-function NodeView({ thing, isOrphan, hovered, selected, dragging, sim, onPointerDown, onHandlePointerDown, scale, inert, notches }: LensNodeProps) {
+function NodeView({ thing, isSource, isOrphan, hovered, selected, dragging, sim, onPointerDown, onHandlePointerDown, scale, inert, notches }: LensNodeProps) {
   const ctxScale = useStageScale();
   const sc = scale ?? ctxScale;
   // The lowest point of any notch on this thing's rim, below its centre: the
@@ -49,6 +49,7 @@ function NodeView({ thing, isOrphan, hovered, selected, dragging, sim, onPointer
   return (
     <NodeBody
       scale={scale}
+      isSource={isSource}
       pending={isOrphan}
       thing={thing}
       hovered={hovered}

@@ -143,6 +143,9 @@ interface NodeBodyProps {
   /** Kernel `orphan_env_thing_ids`: an env thing no bond touches — not yet in ℰ
    *  (Bunge Def 1.2 ii), dropped by project(). Rendered muted, never hidden. */
   pending?: boolean;
+  /** Kernel `source_thing_ids`: this env thing emits. Absent (a surface with
+   *  no facts) falls back to the authored word. */
+  isSource?: boolean;
   /** #180 fix 3 (Option 1): Environment-role things drag freely across the
    *  hull with no effect — the hull is computed from role, not position (see
    *  geometry.ts componentRing / Canvas.tsx C ∩ E = ∅). Purely informational;
@@ -206,6 +209,7 @@ export function NodeBody({
   labelSmall,
   boundaryRim,
   pending = false,
+  isSource,
   simPosition = false,
   envHint = false,
   bodyScale = 1,
@@ -223,7 +227,10 @@ export function NodeBody({
   // half-full box and a forced one as a filling stock — both lies. Sources
   // get an outward pulse instead; sinks and stocks keep the fill, which for
   // them is the truth (accumulation / level).
-  const emitter = thing.role === "Environment" && thing.env_kind === "Source";
+  // The kernel's filing decides (a drawn, unworded object a flow leaves is a
+  // source too, 2026-11-02 walk); the authored word is only the fallback for a
+  // surface that has no facts.
+  const emitter = thing.role === "Environment" && (isSource ?? thing.env_kind === "Source");
   // #411: with the grounding overlay on, the body's stroke says whose word
   // the thing rests on and nothing else — the lens's stroke is set aside for
   // the reading, and comes back untouched when the overlay goes.
