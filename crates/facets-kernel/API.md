@@ -951,3 +951,12 @@ reading, and reports a flow watch beside a stock tap as an Error ("an agent
 reads one thing"). `emit_sl` writes a flow-watching agent after the params that
 do not name it, where the command form already sits, since the flow it names
 is declared after the things.
+
+## `CanvasModel.system_pos` (appended 2026-11-02)
+
+`CanvasModel` gains one optional field, `system_pos?: [number, number]`: where
+the system of interest itself sits on the canvas, SL `@system x y`. View state,
+like a thing's `x`/`y`: `project` ignores it, `to_canvas` reads it back as
+absent, and the archive (`write_archive`/`open_model`) keeps it. Absent, it is
+skipped on write, so every existing model serializes unchanged.
+`splice_positions` writes it with the `@pos` block. No signature changed.

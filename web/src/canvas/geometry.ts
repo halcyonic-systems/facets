@@ -369,12 +369,14 @@ export const MIN_RING_R = NODE_R * 6;
  *  flattened two side-by-side parts into a lozenge, so the system of interest
  *  changed shape as you dragged. `rx === ry`; both fields stay so every
  *  consumer reads it as before. */
-export function componentRing(components: Pt[]): Ring | null {
+export function componentRing(components: Pt[], center?: Pt): Ring | null {
   if (components.length === 0) return null;
   const xs = components.map((p) => p.x);
   const ys = components.map((p) => p.y);
-  const cx = (Math.min(...xs) + Math.max(...xs)) / 2;
-  const cy = (Math.min(...ys) + Math.max(...ys)) / 2;
+  // A pinned system (`system_pos`, SL `@system`) keeps its own centre and
+  // only grows; unpinned, it centres on its components' box as before.
+  const cx = center ? center.x : (Math.min(...xs) + Math.max(...xs)) / 2;
+  const cy = center ? center.y : (Math.min(...ys) + Math.max(...ys)) / 2;
   // The circle through the farthest centre, then RING_PAD (> NODE_R) so the
   // node bodies, not just their centres, sit inside.
   const far = Math.max(...components.map((p) => Math.hypot(p.x - cx, p.y - cy)));
@@ -413,18 +415,42 @@ function interiorCenter(things: Placed[]): Pt {
   };
 }
 
+/** Where the model pins its system of interest (`CanvasModel.system_pos`),
+ *  as a point, or undefined when it is not pinned. */
+export function systemAnchor(model: Pick<CanvasModel, "system_pos">): Pt | undefined {
+  const p = model.system_pos;
+  return p && Number.isFinite(p[0]) && Number.isFinite(p[1]) ? { x: p[0], y: p[1] } : undefined;
+}
+
+/** Pin the system of interest where it is drawn, on the first edit of a model
+ *  that has no pin yet (2026-11-02). The centre written is the ring already on
+ *  screen, so the pin moves nothing; from then on the membrane holds still
+ *  while its parts move, and only grows to hold them. A model that is already
+ *  pinned, or a lens with no membrane (`ring` null), passes through. */
+export function pinSystem(next: CanvasModel, ring: Ring | null): CanvasModel {
+  if (!ring || next.system_pos) return next;
+  return { ...next, system_pos: [ring.cx, ring.cy] };
+}
+
 /** The Mobus membrane for a model's things: the component ring, or — empty
- *  interior — a membrane at the stand-ins' centroid. Never null: under
- *  Mobus the boundary is a reified object, present from birth. */
-export function membraneRing(things: Placed[]): Ring {
-  const ring = componentRing(things.filter((t) => t.role === "Component"));
+ *  interior — a membrane at the stand-ins' centroid. `center`, when the model
+ *  pins its system (2026-11-02), replaces both centres, so moving a lone
+ *  component no longer carries the system with it. Never null: under Mobus
+ *  the boundary is a reified object, present from birth. */
+export function membraneRing(things: Placed[], center?: Pt): Ring {
+  const ring = componentRing(
+    things.filter((t) => t.role === "Component"),
+    center,
+  );
   if (ring) return ring;
-  const c = interiorCenter(things);
+  const c = center ?? interiorCenter(things);
   // A blank system is drawn at the floor, so naming it already shows a place
   // to put parts. A walked-in newborn keeps its stand-ins outside: the
   // membrane stops a body's width short of the nearest one.
   if (things.length === 0) return { cx: c.x, cy: c.y, rx: MIN_RING_R, ry: MIN_RING_R };
   const near = Math.min(...things.map((t) => Math.hypot(t.x - c.x, t.y - c.y)));
+  // (`near` can be under a body's width when a pinned centre sits on a
+  // stand-in; the EMPTY_HALF floor keeps the membrane drawable.)
   const r = Math.max(EMPTY_HALF, Math.min(MIN_RING_R, near - NODE_R * 2));
   return { cx: c.x, cy: c.y, rx: r, ry: r };
 }
@@ -486,7 +512,7 @@ export function contentBounds(model: CanvasModel): Box | null {
     maxY = Math.max(maxY, t.y + NODE_R);
   }
   if (model.lens === "Mobus") {
-    const ring = membraneRing(model.things);
+    const ring = membraneRing(model.things, systemAnchor(model));
     minX = Math.min(minX, ring.cx - ring.rx);
     minY = Math.min(minY, ring.cy - ring.ry);
     maxX = Math.max(maxX, ring.cx + ring.rx);

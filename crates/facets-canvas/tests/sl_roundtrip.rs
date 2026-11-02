@@ -85,6 +85,7 @@ fn canvas_born_model_canonicalizes() {
         agency_capacity: None,
     };
     let m = CanvasModel {
+        system_pos: None,
         crossings: vec![],
         lens: Lens::Klir,
         description: String::new(),

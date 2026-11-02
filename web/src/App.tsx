@@ -29,7 +29,7 @@ const Canvas3D = lazy(() => import("./canvas3d/Canvas3D"));
 import type { Embed } from "./canvas/embed";
 import { rebaseOut, type View } from "./canvas/frameRebase";
 import { frameChain } from "./canvas/frameChain";
-import { edgeGeometry, membraneRing, thingById } from "./canvas/geometry";
+import { edgeGeometry, membraneRing, systemAnchor, thingById } from "./canvas/geometry";
 import { EdgePopover } from "./canvas/EdgePopover";
 import { flowParamFor, forcedByColumn } from "./kernel/params";
 import type { DecomposeAffordance } from "./canvas/NodeEditor";
@@ -246,7 +246,12 @@ boundary porosity 0.7 fuzziness 0.1
 // just breathing room for the edge labels.
 function spaceOut(model: CanvasModel): CanvasModel {
   const SPACING = 1.8;
-  return { ...model, things: model.things.map((t) => ({ ...t, x: t.x * SPACING })) };
+  return {
+    ...model,
+    things: model.things.map((t) => ({ ...t, x: t.x * SPACING })),
+    // A pinned system scales with its parts, or the membrane would sit off them.
+    ...(model.system_pos ? { system_pos: [model.system_pos[0] * SPACING, model.system_pos[1]] as [number, number] } : {}),
+  };
 }
 
 // Offer a JSON string to the browser as a file download — the save/export
@@ -4231,7 +4236,7 @@ function Workspace() {
               onOpenMilieu={
                 canvasModel && !registerActive
                   ? () => {
-                      const ring = membraneRing(canvasModel.things);
+                      const ring = membraneRing(canvasModel.things, systemAnchor(canvasModel));
                       setBoundaryAnchor(null);
                       setInterfaceSel(null);
                       setMilieuAnchor({ x: ring.cx, y: ring.cy + ring.ry + 56 });

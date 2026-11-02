@@ -1,7 +1,7 @@
 // Fit-to-content math (#83): the reusable bbox + viewport-fit helpers. Pure
 // pixel math, so no kernel/wasm needed — just assert framing and clamps.
 import { describe, expect, it } from "vitest";
-import { bungeHull, contentBounds, fitToBox, membraneRing, MIN_RING_R, NODE_R } from "./geometry";
+import { bungeHull, contentBounds, fitToBox, membraneRing, MIN_RING_R, NODE_R, pinSystem, systemAnchor } from "./geometry";
 import type { CanvasModel } from "../kernel/types";
 
 const base: Omit<CanvasModel, "things" | "lens"> = {
@@ -125,6 +125,55 @@ describe("membraneRing", () => {
     ]);
     const compOnly = membraneRing([{ x: 100, y: 100, role: "Component" }]);
     expect(withEnv).toEqual(compOnly);
+  });
+});
+
+// 2026-11-02: a pinned system (`system_pos`, SL `@system`) holds its centre.
+describe("the pinned system of interest", () => {
+  it("stays put when its lone component moves", () => {
+    const at = { x: 0, y: 0 };
+    const before = membraneRing([{ x: 0, y: 0, role: "Component" }], at);
+    const after = membraneRing([{ x: 60, y: -30, role: "Component" }], at);
+    expect({ cx: after.cx, cy: after.cy }).toEqual({ cx: before.cx, cy: before.cy });
+    expect(after.rx).toBe(MIN_RING_R);
+  });
+
+  it("grows, still a circle on its pin, to hold a part dragged far out", () => {
+    const ring = membraneRing([{ x: 500, y: 0, role: "Component" }], { x: 0, y: 0 });
+    expect({ cx: ring.cx, cy: ring.cy }).toEqual({ cx: 0, cy: 0 });
+    expect(ring.rx).toBe(ring.ry);
+    expect(ring.rx).toBeGreaterThan(500 + NODE_R);
+  });
+
+  it("centres an empty system on its pin", () => {
+    expect(membraneRing([], { x: 30, y: 40 })).toEqual({ cx: 30, cy: 40, rx: MIN_RING_R, ry: MIN_RING_R });
+  });
+
+  it("reads the pin off the model, and ignores a missing or broken one", () => {
+    expect(systemAnchor({ system_pos: [3, 4] })).toEqual({ x: 3, y: 4 });
+    expect(systemAnchor({})).toBeUndefined();
+    expect(systemAnchor({ system_pos: [Number.NaN, 4] })).toBeUndefined();
+  });
+
+  it("pins on the first edit at the ring already drawn, and never re-pins", () => {
+    const m: CanvasModel = { ...base, lens: "Mobus", things: [] };
+    const ring = membraneRing([{ x: 10, y: 20, role: "Component" }]);
+    expect(pinSystem(m, ring).system_pos).toEqual([ring.cx, ring.cy]);
+    const pinned = { ...m, system_pos: [1, 2] as [number, number] };
+    expect(pinSystem(pinned, ring)).toBe(pinned);
+    // No membrane (Bunge, Klir): nothing to pin.
+    expect(pinSystem(m, null)).toBe(m);
+  });
+
+  it("frames the pinned membrane, not the unpinned one", () => {
+    const m: CanvasModel = {
+      ...base,
+      lens: "Mobus",
+      things: [{ id: 1, name: "A", x: 0, y: 0, role: "Component" }],
+      system_pos: [400, 0],
+    };
+    const b = contentBounds(m)!;
+    expect(b.maxX).toBeGreaterThanOrEqual(400 + MIN_RING_R);
   });
 });
 

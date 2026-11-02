@@ -12,7 +12,7 @@
 // place where a systems fact is decided.
 import type { CanvasModel } from "../kernel/types";
 import { KIND_COLOR } from "./types";
-import { contentBounds, fitToBox, membraneRing } from "./geometry";
+import { contentBounds, fitToBox, membraneRing, systemAnchor } from "./geometry";
 
 /** Node radius as drawn in the thumbnail, in SCREEN px after the fit. Nodes are
  *  drawn at a fixed size rather than scaled with the model: a 3-node model and a
@@ -35,7 +35,7 @@ export default function Thumbnail({ model, size = 40 }: ThumbnailProps) {
 
   const { pan, scale } = fitToBox(box, size, size, { pad: DOT_R + 2, minScale: 0, maxScale: 8 });
   const to = (p: { x: number; y: number }) => ({ x: p.x * scale + pan.x, y: p.y * scale + pan.y });
-  const ring = model.lens === "Mobus" ? membraneRing(model.things) : null;
+  const ring = model.lens === "Mobus" ? membraneRing(model.things, systemAnchor(model)) : null;
 
   return (
     <svg

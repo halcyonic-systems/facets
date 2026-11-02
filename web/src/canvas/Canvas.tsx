@@ -12,6 +12,8 @@ import {
   bungeHull,
   INTERFACE_SCALE,
   membraneRing,
+  pinSystem,
+  systemAnchor,
   rimPoint,
   ringPoint,
   unprojectWrite,
@@ -375,7 +377,7 @@ export default function Canvas({
   const interiorComponentCount = interiorThings.filter((t) => t.role === "Component").length;
   const ring: Ring | null =
     lens === "Mobus"
-      ? membraneRing(interiorComponentCount >= 2 ? interiorThings : model.things)
+      ? membraneRing(interiorComponentCount >= 2 ? interiorThings : model.things, systemAnchor(model))
       : null;
   // The display model — identical to the authored model except interface
   // components snap to the ring. Every consumer below (gestures, edges, nodes,
@@ -495,8 +497,10 @@ export default function Canvas({
     // #306 write-back guard: gestures see the projected model, but writes must
     // land in AUTHORED coordinates for everything they didn't touch — else the
     // projection persists and the ring inflates every drag frame.
+    // 2026-11-02: the first edit pins the system where it is drawn
+    // (`pinSystem`), so a part moved afterwards no longer carries it along.
     onModelChange: (m) => {
-      if (!inert) onModelChange(unprojectWrite(model, dModel, m));
+      if (!inert) onModelChange(pinSystem(unprojectWrite(model, dModel, m), ring));
     },
     svgRef,
     onReject,

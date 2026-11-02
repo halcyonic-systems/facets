@@ -171,6 +171,8 @@ pub fn parse_sl_full(text: &str) -> Result<SlParse, Vec<SlError>> {
     let mut milieu_vars: Vec<facets_core::MilieuVariable> = Vec::new();
     // explicit positions from the annotation layer, applied after layout.
     let mut positions: HashMap<String, (f32, f32)> = HashMap::new();
+    // `@system x y`: where the system of interest itself sits (view state).
+    let mut system_pos: Option<[f32; 2]> = None;
     // `@directed <n>` marks (1-based flow index, source line) to apply at the end.
     let mut directed_marks: Vec<(usize, usize)> = Vec::new();
     let mut next_id: u64 = 1;
@@ -407,6 +409,16 @@ pub fn parse_sl_full(text: &str) -> Result<SlParse, Vec<SlError>> {
                             }
                         }
                         _ => fail("@pos syntax: `@pos <name> <x> <y>`".into(), &mut errors),
+                    },
+                    "system" => match tokens.as_slice() {
+                        [_, Tok::Word(xs), Tok::Word(ys)] => match (xs.parse::<f32>(), ys.parse::<f32>()) {
+                            (Ok(x), Ok(y)) if x.is_finite() && y.is_finite() => system_pos = Some([x, y]),
+                            _ => fail(
+                                "@system needs numeric x y (e.g. `@system 0 0`)".into(),
+                                &mut errors,
+                            ),
+                        },
+                        _ => fail("@system syntax: `@system <x> <y>`".into(), &mut errors),
                     },
                     "lens" => match tokens.as_slice() {
                         [_, Tok::Word(l)] => match l.to_ascii_lowercase().as_str() {
@@ -3675,6 +3687,7 @@ pub fn parse_sl_full(text: &str) -> Result<SlParse, Vec<SlError>> {
         params,
         metrics,
         klir_level,
+        system_pos,
     };
     auto_layout(&mut model, &positions);
     Ok(SlParse {
@@ -4867,6 +4880,11 @@ pub fn emit_sl_with(model: &CanvasModel, layout: Option<&SlLayout>) -> Result<St
     if layout.map(|l| l.lens_pinned).unwrap_or(true) {
         writeln!(out, "@lens {}", format!("{:?}", model.lens).to_ascii_lowercase()).unwrap();
     }
+    // `@system` whenever the model carries it: it is only ever set by an
+    // authored line or by the canvas pinning the system, never invented here.
+    if let Some([x, y]) = model.system_pos {
+        writeln!(out, "@system {x} {y}").unwrap();
+    }
     // `@pos` only for things the author pinned (`layout: None`: every thing,
     // as before — no invented pins on a formatted file, #302 ruling 5). In
     // declaration order as written above — things, then agents (facets#269) —
@@ -4932,13 +4950,21 @@ pub fn format_sl(text: &str) -> Result<String, Vec<SlError>> {
 /// Line endings normalize to `\n` (SL sources in this repo are LF); a trailing
 /// newline is preserved if the source had one and not invented if it did not.
 pub fn splice_positions(source: &str, model: &CanvasModel) -> Result<String, String> {
-    let mut block = Vec::with_capacity(model.things.len());
+    let mut block = Vec::with_capacity(model.things.len() + 1);
+    // The system's own position (`@system`) is layout too, so it travels with
+    // the `@pos` block: first, and only while the model carries it.
+    if let Some([x, y]) = model.system_pos {
+        block.push(format!("@system {x} {y}"));
+    }
     for t in &model.things {
         block.push(format!("@pos {} {} {}", name_token(&t.name)?, t.x, t.y));
     }
 
     let is_pos_line = |line: &str| match tokenize(line) {
-        Ok(toks) => matches!(toks.first(), Some(Tok::Word(w)) if w.strip_prefix('@') == Some("pos")),
+        Ok(toks) => matches!(
+            toks.first(),
+            Some(Tok::Word(w)) if matches!(w.strip_prefix('@'), Some("pos") | Some("system"))
+        ),
         Err(_) => false,
     };
 
@@ -5892,6 +5918,60 @@ flow S -> A : matter \"in\"
         let back = parse_sl(&splice_positions(src, &m).unwrap()).unwrap();
         assert_eq!((back.things[0].x, back.things[0].y), (900.5, -12.25));
         assert_eq!((back.things[1].x, back.things[1].y), (m.things[1].x, m.things[1].y));
+    }
+
+    /// `@system x y` (2026-11-02): where the system of interest sits. It
+    /// parses, emits, and re-parses to the same point; a model without it
+    /// emits no such line, so every existing source is unchanged.
+    #[test]
+    fn system_position_parses_and_round_trips() {
+        let src = "component A\n@pos A 10 20\n@system -40.5 12\n";
+        let m = parse_sl(src).unwrap();
+        assert_eq!(m.system_pos, Some([-40.5, 12.0]));
+        let out = emit_sl(&m).unwrap();
+        assert!(out.contains("@system -40.5 12\n"), "got:\n{out}");
+        assert_eq!(parse_sl(&out).unwrap().system_pos, m.system_pos);
+        // format_sl is a fixpoint with the line in it.
+        let once = format_sl(src).unwrap();
+        assert_eq!(format_sl(&once).unwrap(), once);
+        assert!(once.contains("@system -40.5 12"));
+
+        let bare = parse_sl("component A\n").unwrap();
+        assert_eq!(bare.system_pos, None);
+        assert!(!emit_sl(&bare).unwrap().contains("@system"));
+    }
+
+    #[test]
+    fn a_malformed_system_position_is_a_fault() {
+        let e = parse_sl("component A\n@system 1\n").unwrap_err();
+        assert!(e.iter().any(|f| f.message.contains("@system syntax")), "{e:?}");
+        let e = parse_sl("component A\n@system one 2\n").unwrap_err();
+        assert!(e.iter().any(|f| f.message.contains("@system needs numeric")), "{e:?}");
+    }
+
+    /// A drag splices `@system` with the `@pos` block: replaced in place when
+    /// the source had it, added when the model gained it, dropped when the
+    /// model lost it; never duplicated.
+    #[test]
+    fn splice_carries_the_system_position() {
+        let src = "component A\n# keep me\n@pos A 1 2\n@system 0 0\n";
+        let mut m = parse_sl(src).unwrap();
+        m.system_pos = Some([5.0, -6.0]);
+        let out = splice_positions(src, &m).unwrap();
+        assert_eq!(out.matches("@system").count(), 1, "got:\n{out}");
+        assert!(out.contains("@system 5 -6"));
+        assert!(out.contains("# keep me"));
+        assert_eq!(parse_sl(&out).unwrap().system_pos, Some([5.0, -6.0]));
+
+        let plain = "component A\n@pos A 1 2\n";
+        let mut gained = parse_sl(plain).unwrap();
+        gained.system_pos = Some([3.0, 4.0]);
+        let out = splice_positions(plain, &gained).unwrap();
+        assert_eq!(parse_sl(&out).unwrap().system_pos, Some([3.0, 4.0]));
+
+        let mut lost = parse_sl(src).unwrap();
+        lost.system_pos = None;
+        assert!(!splice_positions(src, &lost).unwrap().contains("@system"));
     }
 
     /// A source that never pinned a position gains the block rather than

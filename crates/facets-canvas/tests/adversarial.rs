@@ -98,17 +98,18 @@ fn adversarial_models() -> Vec<(&'static str, CanvasModel)> {
         // Empty model — no things, no relations.
         (
             "empty",
-            CanvasModel { crossings: vec![], lens: Lens::Mobus, model_id: None, milieu: vec![], things: vec![], relations: vec![], boundary: Default::default(), system_type: Default::default(), name: None, description: String::new(), time_unit: None, params: vec![], metrics: vec![], klir_level: None },
+            CanvasModel { system_pos: None, crossings: vec![], lens: Lens::Mobus, model_id: None, milieu: vec![], things: vec![], relations: vec![], boundary: Default::default(), system_type: Default::default(), name: None, description: String::new(), time_unit: None, params: vec![], metrics: vec![], klir_level: None },
         ),
         // A relation but NO things — every endpoint dangles.
         (
             "relation-without-things",
-            CanvasModel { crossings: vec![], lens: Lens::Bunge, model_id: None, milieu: vec![], things: vec![], relations: vec![rel(1, 1, 2)], boundary: Default::default(), system_type: Default::default(), name: None, description: String::new(), time_unit: None, params: vec![], metrics: vec![], klir_level: None },
+            CanvasModel { system_pos: None, crossings: vec![], lens: Lens::Bunge, model_id: None, milieu: vec![], things: vec![], relations: vec![rel(1, 1, 2)], boundary: Default::default(), system_type: Default::default(), name: None, description: String::new(), time_unit: None, params: vec![], metrics: vec![], klir_level: None },
         ),
         // Self-loop only.
         (
             "self-loop-only",
             CanvasModel {
+                system_pos: None,
                 crossings: vec![],
                 lens: Lens::Mobus,
                 description: String::new(),
@@ -129,6 +130,7 @@ fn adversarial_models() -> Vec<(&'static str, CanvasModel)> {
         (
             "dangling-endpoints",
             CanvasModel {
+                system_pos: None,
                 crossings: vec![],
                 lens: Lens::Mobus,
                 description: String::new(),
@@ -149,6 +151,7 @@ fn adversarial_models() -> Vec<(&'static str, CanvasModel)> {
         (
             "duplicate-ids",
             CanvasModel {
+                system_pos: None,
                 crossings: vec![],
                 lens: Lens::Bunge,
                 description: String::new(),
@@ -173,6 +176,7 @@ fn adversarial_models() -> Vec<(&'static str, CanvasModel)> {
         (
             "extreme-coordinates",
             CanvasModel {
+                system_pos: None,
                 crossings: vec![],
                 lens: Lens::Klir,
                 description: String::new(),
@@ -197,6 +201,7 @@ fn adversarial_models() -> Vec<(&'static str, CanvasModel)> {
         (
             "empty-strings-and-mere-relations",
             CanvasModel {
+                system_pos: None,
                 crossings: vec![],
                 lens: Lens::Bunge,
                 model_id: None,
@@ -220,6 +225,7 @@ fn adversarial_models() -> Vec<(&'static str, CanvasModel)> {
         (
             "all-environment",
             CanvasModel {
+                system_pos: None,
                 crossings: vec![],
                 lens: Lens::Mobus,
                 model_id: None,
@@ -243,6 +249,7 @@ fn adversarial_models() -> Vec<(&'static str, CanvasModel)> {
         (
             "every-kind-mixed",
             CanvasModel {
+                system_pos: None,
                 crossings: vec![],
                 lens: Lens::Mobus,
                 model_id: None,
