@@ -38,7 +38,7 @@ describe("the transport's run on", () => {
 describe("the strip as the run's one entry", () => {
   it("opens the readouts, and offers the way back once they are open", () => {
     const closed = renderToStaticMarkup(<Transport {...base} readouts={{ open: false, onToggle: noop }} />);
-    expect(closed).toContain("inputs &amp; readouts");
+    expect(closed).toContain(">readouts<");
     const open = renderToStaticMarkup(<Transport {...base} readouts={{ open: true, onToggle: noop }} />);
     expect(open).toMatch(/aria-pressed="true"[^>]*>.*model/s);
   });

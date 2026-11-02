@@ -4,8 +4,8 @@
 // primitive's own knob takes the kernel palette's label.
 import { describe, expect, it } from "vitest";
 import { renderToStaticMarkup } from "react-dom/server";
-import { RunInputs, applyKnob, engineRows } from "./RunInputs";
-import type { CanvasModel, EngineKnob, Thing } from "./kernel/types";
+import { ElementSettings, RunInputs, applyKnob, engineRows } from "./RunInputs";
+import type { CanvasModel, EngineKnob, FlowKnob, Thing } from "./kernel/types";
 
 const barrel = {
   id: 2,
@@ -203,3 +203,62 @@ describe("a signal-only inflow", () => {
     expect(html).not.toContain("Nothing material enters");
   });
 });
+
+/** The 2026-11-02 walk, rows 21, 22 and 24: a thing's settings in the
+ *  inspector, every number from the kernel's knobs. */
+describe("a thing's own settings", () => {
+  const src = { id: 1, name: "E5", role: "Environment" } as unknown as Thing;
+  const split = { id: 2, name: "T2", role: "Component", primitive: "Splitting" } as unknown as Thing;
+  const tank = { id: 3, name: "T1", role: "Component", primitive: "Buffering" } as unknown as Thing;
+  const out = { id: 4, name: "E6", role: "Environment" } as unknown as Thing;
+  const flow = (id: number, a: number, b: number, amount?: string) =>
+    ({ id, a, b, name: "", kind: "Matter", is_bond: true, ample: false, ...(amount ? { amount } : {}) }) as unknown as CanvasModel["relations"][number];
+  const m = (relations: CanvasModel["relations"]) =>
+    ({ name: "m", lens: "Mobus", things: [src, split, tank, out], relations }) as unknown as CanvasModel;
+  const fk = (relation: number, value: number, declared = false): FlowKnob => ({ relation, value, declared });
+  const render = (thing: Thing, model: CanvasModel, flowKnobs: FlowKnob[], knobs: EngineKnob[] = []) =>
+    renderToStaticMarkup(
+      <ElementSettings
+        thing={thing}
+        model={model}
+        manifest={null}
+        knobs={knobs}
+        flowKnobs={flowKnobs}
+        sourceIds={[1]}
+        onEdit={() => {}}
+        onEditThing={() => {}}
+      />,
+    );
+
+  it("shows a source's undeclared rate at what it runs at, not 'not set'", () => {
+    const html = render(src, m([flow(10, 1, 2)]), [fk(10, 1)]);
+    expect(html).toContain("sends, per tick");
+    expect(html).toContain('placeholder="1 default"');
+    expect(html).not.toContain("not set");
+  });
+
+  it("says a splitter with one way out has nothing to split", () => {
+    const html = render(split, m([flow(10, 1, 2), flow(11, 2, 3)]), [fk(10, 1), fk(11, 1)]);
+    expect(html).toContain("nothing-to-split");
+  });
+
+  it("divides a splitter's output by weight, defaults counted at what they run at", () => {
+    const html = render(split, m([flow(11, 2, 3, "3"), flow(12, 2, 4)]), [fk(11, 3, true), fk(12, 1)]);
+    expect(html).toContain("how its output divides");
+    expect(html).toContain("75%");
+    expect(html).toContain("25%");
+    expect(html).not.toContain("nothing-to-split");
+  });
+
+  it("puts a stock's knobs on the stock", () => {
+    const knob: EngineKnob = { thing: 3, field: "release_rate", word: "release", value: 1, declared: false };
+    const html = render(tank, m([]), [], [knob]);
+    expect(html).toContain('data-knob="release_rate"');
+    expect(html).toContain('placeholder="1 default"');
+  });
+
+  it("says nothing for a sink with nothing to set", () => {
+    expect(render(out, m([flow(10, 3, 4)]), [fk(10, 1)])).toBe("");
+  });
+});
+

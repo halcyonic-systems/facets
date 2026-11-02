@@ -95,6 +95,38 @@ pub fn engine_knobs(model: &CanvasModel) -> Vec<EngineKnob> {
     out
 }
 
+/// A flow's amount as the run uses it (walk row 21): a source's rate, or a
+/// process outflow's weight in its split. `value` is read off the projection
+/// the run is built from, so an undeclared flow shows what it runs at (the
+/// default, or the amount a fused crossing leg takes from its interior leg),
+/// never "not set".
+#[derive(Serialize, Clone, Debug, PartialEq)]
+pub struct FlowKnob {
+    pub relation: u64,
+    pub value: f64,
+    pub declared: bool,
+}
+
+/// Every projected, non-ample bond's amount, in `relations` order. Ample flows
+/// have no number (availability never binds), so they are left out.
+pub fn flow_knobs(model: &CanvasModel) -> Vec<FlowKnob> {
+    let p = facets_canvas::canvas::project_with_map(model);
+    model
+        .relations
+        .iter()
+        .filter(|r| r.is_bond && !r.ample)
+        .filter_map(|r| {
+            let id = p.interaction_of.get(&r.id)?;
+            let ix = p.world.interactions.iter().find(|i| &i.info.id == id)?;
+            Some(FlowKnob {
+                relation: r.id,
+                value: ix.amount.to_string().parse().ok()?,
+                declared: r.amount.is_some(),
+            })
+        })
+        .collect()
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
@@ -142,5 +174,30 @@ mod tests {
     fn only_knobs_the_text_can_say_are_offered() {
         let k = knobs("component S primitive Splitting interface\ncomponent A primitive Amplifying\nenvironment In\nenvironment Out\nflow In -> S : matter\nflow S -> A : matter\nflow A -> Out : matter\n");
         assert!(k.is_empty(), "{k:?}");
+    }
+
+    /// Walk row 21: the drawn source's flow had no amount, the inputs said
+    /// "not set", and the run sent 1 per tick. The knob now says what runs.
+    #[test]
+    fn an_undeclared_flow_reports_the_amount_it_runs_at() {
+        let m = parse_sl("component T1 primitive Buffering interface\nenvironment E5\nenvironment E6\nflow E5 -> T1 : matter\nflow T1 -> E6 : matter amount 3\n").unwrap();
+        let k = flow_knobs(&m);
+        let of = |a: &str| {
+            let id = m.things.iter().find(|t| t.name == a).unwrap().id;
+            let r = m.relations.iter().find(|r| r.a == id).unwrap().id;
+            k.iter().find(|x| x.relation == r).cloned().unwrap_or_else(|| panic!("no knob from {a}: {k:?}"))
+        };
+        assert_eq!((of("E5").value, of("E5").declared), (1.0, false));
+        assert_eq!((of("T1").value, of("T1").declared), (3.0, true));
+        let one: f64 = facets_canvas::canvas::DEFAULT_FLOW_AMOUNT.to_string().parse().unwrap();
+        assert_eq!(of("E5").value, one, "the default is the projection's constant");
+    }
+
+    #[test]
+    fn ample_flows_offer_no_amount() {
+        let m = parse_sl("component T1 primitive Buffering interface\nenvironment E5\nenvironment E6\nflow E5 -> T1 : informational ample\nflow T1 -> E6 : matter\n").unwrap();
+        let e5 = m.things.iter().find(|t| t.name == "E5").unwrap().id;
+        let r = m.relations.iter().find(|r| r.a == e5).unwrap().id;
+        assert!(flow_knobs(&m).iter().all(|k| k.relation != r));
     }
 }

@@ -1,6 +1,6 @@
 import { Suspense, lazy, useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { buildRunRecord, postRunRecord, runRecordFilename, type RunRecord } from "./runRecord";
-import { ready, runMarkov, Bench, parseCsv, openModel, writeArchive, project, analyzeCanvas, checkDecompositionsCanvas, decomposeComponent, compileSl, type ArchiveText, mintModelId, emitSl, sandboxPalette, slAgreement, syncSl, engineKnobs } from "./kernel";
+import { ready, runMarkov, Bench, parseCsv, openModel, writeArchive, project, analyzeCanvas, checkDecompositionsCanvas, decomposeComponent, compileSl, type ArchiveText, mintModelId, emitSl, sandboxPalette, slAgreement, syncSl, engineKnobs, flowKnobs } from "./kernel";
 import type {
   TickLog,
   CanvasModel,
@@ -39,6 +39,7 @@ import { BoundaryPopover } from "./canvas/BoundaryPopover";
 import { MilieuPopover } from "./canvas/MilieuPopover";
 import { DataMode } from "./DataMode";
 import { Readouts } from "./Readouts";
+import { ElementSettings, RunInputs } from "./RunInputs";
 import { Transport } from "./Transport";
 import { InterfacePopover } from "./canvas/InterfacePopover";
 import { PaletteRail } from "./canvas/PaletteRail";
@@ -2305,6 +2306,18 @@ function Workspace() {
     }
   }, [canvasModel]);
 
+  // Walk row 21: every flow's amount as the run uses it, so an undeclared
+  // rate reads "1 default" and not "not set". The kernel reads it off the
+  // projection the run is built from.
+  const flows = useMemo(() => {
+    if (!canvasModel || canvasModel.lens === "Klir") return [];
+    try {
+      return flowKnobs(canvasModel);
+    } catch {
+      return [];
+    }
+  }, [canvasModel]);
+
   // The kernel palette's label for each primitive's own knob ("gain", "sensor
   // gain k", …), read once; the inputs rail's engine floor shows it. Absent
   // before the kernel is up, in which case the row says "parameter".
@@ -2657,6 +2670,7 @@ function Workspace() {
       onRunOnTick={runOnTick}
       readouts={workMode === "structure" ? { open: readoutsOpen, onToggle: () => setReadoutsOpen((o) => !o) } : undefined}
       changedAt={knobTicks}
+      time={canvasModel ? { dt, t, klir: canvasModel.lens === "Klir", onCommit: applyTime } : undefined}
     />
   ) : null;
 
@@ -4189,20 +4203,7 @@ function Workspace() {
                       onAcceptUnit={acceptDerivedUnit}
                       tick={tick}
                       model={canvasModel}
-                      // The run's manifest exists in two cases, not one: a demo
-                      // bundle, or an attached CSV with at least one binding
-                      // (#304's run-from-attached — the same pair `runCsv`
-                      // accepts).
-                      manifest={
-                        demo || (attachedCsv && manifest.mapping.length > 0) ? manifest : null
-                      }
-                      onInputEdit={applyInputEdit}
-                        onThingEdit={applyThingEdit}
-                        engineLabels={engineLabels}
-                      onResetInputs={demo?.sl ? resetInputs : undefined}
                       sourceIds={facts?.source_thing_ids}
-                      knobs={knobs}
-                      time={{ dt, t, klir: canvasModel.lens === "Klir", onCommit: applyTime }}
                       runKind={LensPalette[canvasModel.lens].run}
                       onClose={() => setReadoutsOpen(false)}
                     />
@@ -4303,6 +4304,20 @@ function Workspace() {
                       onUpdate: updateThing,
                       onDelete: () => selectedThing && deleteThing(selectedThing.id),
                       onDeselect: () => setSelectedThingId(null),
+                      settings:
+                        selectedThing && LensPalette[canvasModel.lens].run !== "dtmc" ? (
+                          <ElementSettings
+                            thing={selectedThing}
+                            model={canvasModel}
+                            manifest={demo || (attachedCsv && manifest.mapping.length > 0) ? manifest : null}
+                            knobs={knobs}
+                            flowKnobs={flows}
+                            sourceIds={facts?.source_thing_ids}
+                            engineLabels={engineLabels}
+                            onEdit={applyInputEdit}
+                            onEditThing={applyThingEdit}
+                          />
+                        ) : null,
                     }
                   : null
               }
@@ -4317,6 +4332,21 @@ function Workspace() {
                     : interfaceSel
                       ? `port:${interfaceSel.port.component}:${interfaceSel.port.env}`
                       : null
+              }
+              homeInputs={
+                !registerActive && LensPalette[canvasModel.lens].run !== "dtmc" ? (
+                  <RunInputs
+                    model={canvasModel}
+                    manifest={demo || (attachedCsv && manifest.mapping.length > 0) ? manifest : null}
+                    onEdit={applyInputEdit}
+                    onEditThing={applyThingEdit}
+                    engineLabels={engineLabels}
+                    onReset={demo?.sl ? resetInputs : undefined}
+                    sourceIds={facts?.source_thing_ids}
+                    knobs={knobs}
+                    flowKnobs={flows}
+                  />
+                ) : null
               }
               focused={inspectorFocused}
               onToggleFocus={() => setInspectorFocused((f) => !f)}

@@ -996,3 +996,11 @@ Buffering's starting level (with `needs_unit`, the stock unit SL welds to it,
 `""` when there is none), release (or time constant where one is declared, never
 both), capacity and maintenance; Inverting's setpoint; Sensing's gain. A model
 that builds no circuit yields an empty list.
+
+### `flow_knobs(canvas_json: string) → FlowKnob[]`
+Every non-ample bond's amount as the run uses it. Additive (2026-11-02, the
+new-user walk's row 21). `FlowKnob` is `{ relation, value, declared }`: `value`
+is read off the projected interaction, so an undeclared flow reports the amount
+it runs at (`DEFAULT_FLOW_AMOUNT`, 1, or the amount a fused crossing leg takes
+from its interior leg). A relation that does not project, or is ample, is not
+listed.

@@ -570,6 +570,14 @@ export interface EngineKnob {
   needs_unit?: string;
 }
 
+/** flow_knobs: a non-ample flow's amount as the run uses it (walk row 21):
+ *  the declared amount, or what an undeclared flow runs at. */
+export interface FlowKnob {
+  relation: number;
+  value: number;
+  declared: boolean;
+}
+
 /** sl_agreement: whether a text and a model mean the same model (layout and
  *  lens set aside), and the canonical lines each has that the other lacks. */
 export interface SlAgreement {

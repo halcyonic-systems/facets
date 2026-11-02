@@ -60,6 +60,9 @@ export interface ElementSelection {
   onUpdate: (t: Thing) => void;
   onDelete: () => void;
   onDeselect: () => void;
+  /** The thing's own settings, drawn under what it does (2026-11-02 walk:
+   *  click a thing, tune it there). Built by the shell, which owns the run. */
+  settings?: React.ReactNode;
 }
 
 export function InspectorDock({
@@ -88,7 +91,12 @@ export function InspectorDock({
   frame,
   onSoiDescriptionChange,
   onOpenMilieu,
+  homeInputs,
 }: {
+  /** Every input of the model in one card, under the model's own about when
+   *  nothing is selected (2026-11-02 walk, row 26): the overview the readouts
+   *  rail used to hold, now beside the model it sets. */
+  homeInputs?: React.ReactNode;
   /** The system of interest's description, written from its home slot. */
   onSoiDescriptionChange?: (d: string) => void;
   /** Open the milieu popover on the canvas, from the home slot. */
@@ -339,6 +347,7 @@ export function InspectorDock({
                     onUpdateThing={element.onUpdate}
                     onDelete={element.onDelete}
                     onClose={element.onDeselect}
+                    settings={element.settings}
                   />
                   {/* What this node DOES (walkthrough #13) — flows, substance,
                       declared magnitudes, and its recorded trajectory. */}
@@ -350,13 +359,16 @@ export function InspectorDock({
                 /* The home slot (walkthrough #15): with nothing selected, the
                    MODEL is the element — name, kind, domain, blurb,
                    composition, and data provenance, all derived. */
-                <ModelAbout
-                  model={canvasModel}
-                  manifest={runManifest ?? null}
-                  blurb={blurb}
-                  onDescriptionChange={onSoiDescriptionChange}
-                  onOpenMilieu={onOpenMilieu}
-                />
+                <>
+                  <ModelAbout
+                    model={canvasModel}
+                    manifest={runManifest ?? null}
+                    blurb={blurb}
+                    onDescriptionChange={onSoiDescriptionChange}
+                    onOpenMilieu={onOpenMilieu}
+                  />
+                  {homeInputs && <div className="mt-3">{homeInputs}</div>}
+                </>
               ) : (
                 <Placeholder>Click a component or environment thing to edit it here.</Placeholder>
               ))}

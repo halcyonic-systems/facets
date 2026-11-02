@@ -392,6 +392,17 @@ export function DescriptionField({
  *  clause, so an author can withdraw a claim as easily as make one. Shared by
  *  the node editor and both flow editors for the same reason `DescriptionField`
  *  is: one field, one affordance. */
+/** What each grade says, in plain words (spec §4.3, v1.7). Shown under the
+ *  menu so a newcomer can read the choice before making it (walk row 25). */
+export const GRADE_GLOSS: Record<GroundingGrade, string> = {
+  unknown: "a known gap: nothing found says this yet",
+  "third-party": "someone else's account of it",
+  asserted: "the subject's own account of itself",
+  observed: "you measured or saw it, on a date",
+  spec: "a working artifact says so (code, a specification that runs)",
+  chain: "verified at a stated address, or proved formally",
+};
+
 export function GroundingField({
   value,
   onChange,
@@ -419,7 +430,7 @@ export function GroundingField({
         >
           <option value="">unsaid</option>
           {[...GROUNDING_GRADES].reverse().map((g) => (
-            <option key={g} value={g}>
+            <option key={g} value={g} title={GRADE_GLOSS[g]}>
               {g}
             </option>
           ))}
@@ -433,6 +444,11 @@ export function GroundingField({
           aria-label="grounding reference"
         />
       </div>
+      <p className="mt-1 text-[11px] leading-snug" style={{ color: "var(--text-muted)" }} data-testid="grade-gloss">
+        {value
+          ? GRADE_GLOSS[value.grade]
+          : "How sure is this, and on whose word? From weakest: unknown, third-party, asserted, observed, then spec or chain. Nothing reads it but you."}
+      </p>
     </div>
   );
 }

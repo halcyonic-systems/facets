@@ -950,6 +950,11 @@ pub struct Projection {
     pub interaction_of: std::collections::HashMap<u64, Id>,
 }
 
+/// What a flow with no declared amount runs at: `project` writes it, and
+/// `to_canvas` reads it back as undeclared. One constant, so the face's "1
+/// default" and the run cannot drift apart (2026-11-02 walk, row 21).
+pub const DEFAULT_FLOW_AMOUNT: facets_core::rust_decimal::Decimal = facets_core::rust_decimal::Decimal::ONE;
+
 /// Project the canvas model into a facets-core `WorldModel`, mode-stamped by the
 /// lens. Only bonds project to interactions; an environment thing projects only
 /// if a bond touches it (originates one → Source, else Sink). Port of the old
@@ -1421,7 +1426,7 @@ pub fn project_with_map(model: &CanvasModel) -> Projection {
                         .find(|x| x.a == processor && x.b == r.a)
                         .and_then(|x| x.amount)
                 })
-                .unwrap_or(facets_core::rust_decimal::Decimal::ONE),
+                .unwrap_or(DEFAULT_FLOW_AMOUNT),
             unit: r.unit.clone(),
             ample: r.ample,
             parameters: vec![],
@@ -1461,7 +1466,7 @@ pub fn project_with_map(model: &CanvasModel) -> Projection {
             source_interface: None,
             sink,
             sink_interface: None,
-            amount: c.amount.unwrap_or(facets_core::rust_decimal::Decimal::ONE),
+            amount: c.amount.unwrap_or(DEFAULT_FLOW_AMOUNT),
             unit: c.unit.clone(),
             ample: false,
             parameters: vec![],
@@ -1821,7 +1826,7 @@ pub fn to_canvas(model: &WorldModel) -> CanvasModel {
             // typed (#262). A genuinely authored 1 is indistinguishable and
             // also reads back None: the same trade the placeholder root name
             // makes below, and projection resupplies the ONE either way.
-            amount: Some(ix.amount).filter(|a| *a != facets_core::rust_decimal::Decimal::ONE),
+            amount: Some(ix.amount).filter(|a| *a != DEFAULT_FLOW_AMOUNT),
             unit: ix.unit.clone(),
             substance: ix.substance.sub_type.clone(),
             ample: ix.ample,

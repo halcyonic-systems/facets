@@ -6,7 +6,9 @@
 // both. Makeover slice D (rules 3, 9d, 14): Run is the primary Button with
 // the play icon and its word, Step and the rewind are 32px ToolButtons with
 // drawn icons, and the verdict chip carries its mark in the Pill's icon slot.
+import { useState } from "react";
 import { SimScrubber } from "./canvas/SimScrubber";
+import { TimeRow } from "./Readouts";
 import { Button, Pill, ToolButton } from "./ui";
 
 export function Transport({
@@ -26,6 +28,7 @@ export function Transport({
   onRunOnTick,
   readouts,
   changedAt = [],
+  time,
 }: {
   onRun: () => void;
   onStep: () => void;
@@ -57,7 +60,12 @@ export function Transport({
    *  totals then mix two settings; the strip says so instead of leaving the
    *  numbers to look wrong (walk row 11). */
   changedAt?: number[];
+  /** The run's time slice (2026-11-02 walk, row 26): run length and step
+   *  size are settings of the run, so they live on the strip that runs it,
+   *  behind one button that names the current length. Absent = not offered. */
+  time?: { dt: number; t: number; klir: boolean; onCommit: (dt: number, t: number) => void };
 }) {
+  const [timeOpen, setTimeOpen] = useState(false);
   if (!runnable) {
     return (
       <span className="text-xs font-body" style={{ color: "var(--text-muted)" }} title={runTitle}>
@@ -129,6 +137,29 @@ export function Transport({
           {changedAt.length === 1 ? `knob changed at tick ${changedAt[0]}` : `knobs changed at ticks ${changedAt.join(", ")}`}
         </span>
       )}
+      {time && (
+        <span className="relative shrink-0">
+          <ToolButton
+            icon="edit"
+            active={timeOpen}
+            onClick={() => setTimeOpen((o) => !o)}
+            title="Run length and step size"
+            aria-expanded={timeOpen}
+            data-testid="run-time-toggle"
+          >
+            {time.klir ? `${time.t} steps` : `length ${time.t}`}
+          </ToolButton>
+          {timeOpen && (
+            <div
+              className="absolute bottom-full right-0 z-30 mb-2 w-max whitespace-nowrap rounded-lg border p-3"
+              style={{ background: "var(--bg-secondary)", borderColor: "var(--hairline)" }}
+              data-testid="run-time"
+            >
+              <TimeRow time={time} frame={false} />
+            </div>
+          )}
+        </span>
+      )}
       {verdict && (
         <span className="shrink-0" title={`residual ${verdict.residual.toExponential(1)}`}>
           <Pill tone={verdict.conserved ? "ok" : "error"} icon={verdict.conserved ? "ok" : "warning"}>
@@ -142,11 +173,11 @@ export function Transport({
           variant="quiet"
           icon={readouts.open ? "collapse" : "expand"}
           onClick={readouts.onToggle}
-          title={readouts.open ? "Back to the model (Esc)" : "Inputs, time and every readout of the run"}
+          title={readouts.open ? "Back to the model (Esc)" : "Every readout of the run: charts, table, log"}
           aria-pressed={readouts.open}
           data-testid="readouts-toggle"
         >
-          {readouts.open ? "model" : "inputs & readouts"}
+          {readouts.open ? "model" : "readouts"}
         </Button>
       )}
     </div>

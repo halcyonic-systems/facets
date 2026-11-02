@@ -429,6 +429,16 @@ pub fn engine_knobs(canvas_json: &str) -> Result<JsValue, JsError> {
     to_js(&crate::knobs::engine_knobs(&model))
 }
 
+/// Every non-ample flow's amount as the run uses it, marked declared or
+/// default (walk row 21). Read off the projection the run is built from.
+/// Shape: `FlowKnob[]` in API.md.
+#[wasm_bindgen]
+pub fn flow_knobs(canvas_json: &str) -> Result<JsValue, JsError> {
+    let model: facets_canvas::canvas::CanvasModel = serde_json::from_str(canvas_json)
+        .map_err(|e| JsError::new(&format!("invalid canvas model: {e}")))?;
+    to_js(&crate::knobs::flow_knobs(&model))
+}
+
 /// Whether an SL text and a canvas model mean the same model (layout and lens
 /// set aside), with the canonical lines each has that the other lacks. The one
 /// definition of agreement the face uses (2026-11-02 walk).

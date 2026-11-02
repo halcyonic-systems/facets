@@ -97,4 +97,30 @@ describe("the flow watch", () => {
     expect(rows(model.things[2])).toContain("the feedforward form, spec v1.14");
     expect(rows({ ...model.things[2], watches_flow: undefined })).toContain("it watches a Buffering");
   });
+
+  /** Walk row 23: a work process and a decision rule are one choice, so the
+   *  inspector offers them as one menu, grouped, with the current pick set. */
+  it("offers what a component does as one menu, work processes and rules together", () => {
+    const rows = (t: CanvasModel["things"][number]) =>
+      renderToStaticMarkup(<NodeEditorRows thing={t} lens="Mobus" onUpdateThing={() => {}} onDelete={() => {}} onClose={null} />);
+    const agent = rows(model.things[2]);
+    expect(agent.match(/<select/g)?.length).toBe(2); // what it does, and the grounding grade
+    expect(agent).toContain('aria-label="what it does"');
+    expect(agent).not.toContain('aria-label="decision rule"');
+    expect(agent).toContain("work process: changes what flows through");
+    expect(agent).toContain("decision rule: an agent that reads a level and commands");
+    expect(agent).toMatch(/<option value="rule:threshold" selected="">/);
+    const stock = rows({ id: 9, name: "S", role: "Component", primitive: "Buffering" } as CanvasModel["things"][number]);
+    expect(stock).toMatch(/<option value="process:Buffering" selected="">/);
+  });
+
+  it("folds the grounding under a plain question, open once a grade is set", () => {
+    const rows = (t: CanvasModel["things"][number]) =>
+      renderToStaticMarkup(<NodeEditorRows thing={t} lens="Mobus" onUpdateThing={() => {}} onDelete={() => {}} onClose={null} />);
+    const bare = { id: 9, name: "S", role: "Component", primitive: "Buffering" } as CanvasModel["things"][number];
+    expect(rows(bare)).toContain("how do you know this?");
+    expect(rows(bare)).not.toMatch(/<details[^>]*open/);
+    expect(rows({ ...bare, grounding: { grade: "observed" } })).toMatch(/<details[^>]*open/);
+    expect(rows({ ...bare, grounding: { grade: "observed" } })).toContain("you measured or saw it");
+  });
 });

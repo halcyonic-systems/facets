@@ -22,7 +22,7 @@
 // changed. The taxonomy groups below remain the floor for every undeclared
 // magnitude, so declaring params is enrichment, never a requirement.
 import { useState } from "react";
-import type { CanvasModel, EngineField, EngineKnob, Manifest, ParamDecl, Relation, Thing } from "./kernel/types";
+import type { CanvasModel, EngineField, EngineKnob, FlowKnob, Manifest, ParamDecl, Relation, Thing } from "./kernel/types";
 import { declaredRelations, forcedByColumn, resolveParamRows } from "./kernel/params";
 import {
   AmountField,
@@ -45,11 +45,17 @@ function InputRow({
   relation,
   forcedBy,
   onEdit,
+  knob,
+  share,
 }: {
   label: string;
   relation: Relation;
   forcedBy?: string;
   onEdit: (next: Relation) => void;
+  /** Kernel `flow_knobs` row: what the flow runs at when it declares none. */
+  knob?: FlowKnob;
+  /** This flow's share of its split, in percent, shown beside the weight. */
+  share?: number;
 }) {
   return (
     <div className={`${RAIL_ROW} py-0.5`}>
@@ -77,11 +83,12 @@ function InputRow({
         <AmountField
           relation={relation}
           onEdit={onEdit}
-          placeholder={relation.amount == null ? "not set" : undefined}
+          placeholder={relation.amount == null ? (knob ? `${fmtDefault(knob.value)} default` : "not set") : undefined}
+          withdrawable
         />
       )}
       <span className="w-16 min-w-0 shrink truncate text-[11px]" style={{ color: "var(--text-muted)" }}>
-        {relation.unit ?? ""}
+        {share !== undefined ? `${share.toFixed(share >= 10 ? 0 : 1)}%` : (relation.unit ?? "")}
       </span>
       </span>
     </div>
@@ -484,6 +491,7 @@ export function RunInputs({
   onReset,
   sourceIds,
   knobs,
+  flowKnobs,
 }: {
   model: CanvasModel;
   manifest: Manifest | null;
@@ -502,8 +510,11 @@ export function RunInputs({
   /** Kernel `engine_knobs`: every knob each component offers, declared or at
    *  its default (decision 2). Absent = the declared-only floor below. */
   knobs?: EngineKnob[];
+  /** Kernel `flow_knobs`: what each undeclared flow runs at (walk row 21). */
+  flowKnobs?: FlowKnob[];
 }) {
   const thing = (id: number) => model.things.find((t) => t.id === id);
+  const flowKnob = (r: Relation) => flowKnobs?.find((k) => k.relation === r.id);
   const declared = declaredRelations(model);
   const forcedBy = (r: Relation): string | undefined => forcedByColumn(manifest, r);
 
@@ -658,6 +669,7 @@ export function RunInputs({
               relation={r}
               forcedBy={forcedBy(r)}
               onEdit={onEdit}
+              knob={flowKnob(r)}
             />
           ))}
         </>
@@ -692,5 +704,161 @@ export function RunInputs({
         </>
       )}
     </Card>
+  );
+}
+
+/** A thing's own settings, in the inspector beside it (2026-11-02 walk,
+ *  Shingai: click a thing and tune it there). The same rows the inputs card
+ *  draws, picked for this one thing: a component's engine knobs and declared
+ *  field params, how its output divides when it has more than one way out,
+ *  and an environment source's rates. Every number comes from the kernel
+ *  (`engine_knobs`, `flow_knobs`, `source_thing_ids`); the percentages are
+ *  the weights divided by their sum, presentation only. Renders nothing when
+ *  the thing has nothing to set. */
+export function ElementSettings({
+  thing: t,
+  model,
+  manifest,
+  knobs,
+  flowKnobs,
+  sourceIds,
+  engineLabels,
+  onEdit,
+  onEditThing,
+}: {
+  thing: Thing;
+  model: CanvasModel;
+  manifest: Manifest | null;
+  knobs: EngineKnob[];
+  flowKnobs: FlowKnob[];
+  sourceIds?: number[];
+  engineLabels?: Record<string, string>;
+  onEdit: (next: Relation) => void;
+  onEditThing: (next: Thing) => void;
+}) {
+  const nameOf = (id: number) => model.things.find((x) => x.id === id)?.name ?? "?";
+  const flowKnob = (r: Relation) => flowKnobs.find((k) => k.relation === r.id);
+  const paramRows = resolveParamRows(model);
+  const setBy = new Map<string, string>();
+  for (const x of model.things) if (x.rule && x.manages_param) setBy.set(x.manages_param, x.name);
+  const forcedBy = (r: Relation) => forcedByColumn(manifest, r);
+  const outs = model.relations.filter((r) => r.is_bond && r.a === t.id && !r.ample);
+  const outIds = new Set(outs.map((r) => r.id));
+
+  // Declared params that belong to this thing: a field it declares, one of
+  // its outflows, or a share group over its outflows.
+  const mine = paramRows.filter(
+    (row) =>
+      row.thing?.id === t.id ||
+      (row.relation && outIds.has(row.relation.id)) ||
+      (row.group && row.group.every((r) => outIds.has(r.id))),
+  );
+  const coveredRel = new Set(mine.flatMap((row) => (row.relation ? [row.relation.id] : (row.group ?? []).map((r) => r.id))));
+  const coveredField = new Set<string>(mine.flatMap((row) => (row.field ? [row.field] : [])));
+
+  const isComponent = t.role === "Component" && !t.passway;
+  const isSource = t.role === "Environment" && (sourceIds ? sourceIds.includes(t.id) : t.env_kind === "Source");
+  const engineKnobs = isComponent
+    ? knobs.filter((k) => k.thing === t.id && !coveredField.has(k.field === "gain" ? "param" : k.field))
+    : [];
+  const offered = new Set<string>(engineKnobs.map((k) => (k.field === "gain" ? "param" : k.field)));
+  const floor = isComponent ? engineRows(t, new Set([...coveredField, ...offered]), engineLabels) : [];
+
+  // How a component's output divides: each outflow's weight over the sum,
+  // undeclared weights counted at what they run at.
+  const weightOuts = isComponent && !t.rule ? outs.filter((r) => r.kind !== "Informational" && !coveredRel.has(r.id)) : [];
+  const weight = (r: Relation) => flowKnob(r)?.value ?? Number(r.amount ?? 0);
+  const total = weightOuts.reduce((sum, r) => sum + weight(r), 0);
+  const splitter = t.primitive === "Splitting";
+
+  const rates = isSource ? outs.filter((r) => !coveredRel.has(r.id)) : [];
+
+  const nothing =
+    mine.length + engineKnobs.length + floor.length + rates.length === 0 &&
+    weightOuts.length < 2 &&
+    !(splitter && isComponent);
+  if (nothing) return null;
+
+  return (
+    <div className="mb-3 border-t pt-2" style={{ borderColor: "var(--hairline)" }} data-testid="element-settings">
+      <div className="mb-1 text-[11px] font-semibold uppercase" style={{ letterSpacing: "var(--tracking-label)", color: "var(--text-muted)" }}>
+        settings · edits re-run
+      </div>
+      {mine.map(({ param, relation, group, thing: fieldThing, field }) =>
+        relation ? (
+          <ParamControl
+            key={param.name}
+            param={param}
+            relation={relation}
+            forcedBy={forcedBy(relation)}
+            setBy={setBy.get(param.name)}
+            onEdit={onEdit}
+            wrap
+          />
+        ) : fieldThing && field ? (
+          <FieldControl key={param.name} param={param} thing={fieldThing} field={field} onEdit={onEditThing} wrap />
+        ) : (
+          <div key={param.name}>
+            <GroupHeader>{`${param.name} · % of split`}</GroupHeader>
+            {group!.map((r) => (
+              <ShareRow
+                key={r.id}
+                label={nameOf(r.b)}
+                relation={r}
+                rest={group!.filter((o) => o.id !== r.id).reduce((sum, o) => sum + Number(o.amount ?? 0), 0)}
+                forcedBy={forcedBy(r)}
+                setBy={setBy.get(param.name)}
+                onEdit={onEdit}
+              />
+            ))}
+          </div>
+        ),
+      )}
+      {engineKnobs.map((k) => (
+        <KnobRow key={k.field} knob={k} thing={t} onEdit={onEditThing} />
+      ))}
+      {floor.map((row) => (
+        <EngineRow key={row.key} label={row.label} value={row.value} unit={row.unit} onCommit={(v) => onEditThing(row.put(v))} />
+      ))}
+      {rates.length > 0 && (
+        <>
+          <GroupHeader>sends, per tick</GroupHeader>
+          {rates.map((r) => (
+            <InputRow
+              key={r.id}
+              label={`to ${nameOf(r.b)}${r.name ? ` · ${r.name}` : ""}`}
+              relation={r}
+              forcedBy={forcedBy(r)}
+              onEdit={onEdit}
+              knob={flowKnob(r)}
+            />
+          ))}
+        </>
+      )}
+      {weightOuts.length >= 2 && (
+        <>
+          <GroupHeader>how its output divides</GroupHeader>
+          <p className="mb-1 text-[11px] leading-snug" style={{ color: "var(--text-muted)" }}>
+            Each way out takes its weight's share of what leaves.
+          </p>
+          {weightOuts.map((r) => (
+            <InputRow
+              key={r.id}
+              label={`to ${nameOf(r.b)}`}
+              relation={r}
+              forcedBy={forcedBy(r)}
+              onEdit={onEdit}
+              knob={flowKnob(r)}
+              share={total > 0 ? (weight(r) / total) * 100 : 0}
+            />
+          ))}
+        </>
+      )}
+      {splitter && isComponent && weightOuts.length < 2 && mine.every((row) => !row.group) && (
+        <p className="text-[11px] leading-snug" style={{ color: "var(--text-muted)" }} data-testid="nothing-to-split">
+          One way out, so nothing to split yet. Draw a second flow out of {t.name || "it"} and its share shows here.
+        </p>
+      )}
+    </div>
   );
 }

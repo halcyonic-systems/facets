@@ -30,6 +30,7 @@ import init, {
   sl_agreement as wasmSlAgreement,
   sync_sl as wasmSyncSl,
   engine_knobs as wasmEngineKnobs,
+  flow_knobs as wasmFlowKnobs,
   model_identity as wasmModelIdentity,
   mint_model_id as wasmMintModelId,
   check_decompositions as wasmCheckDecompositions,
@@ -48,6 +49,7 @@ import wasmUrl from "facets-kernel/facets_kernel_bg.wasm?url";
 
 import type {
   EngineKnob,
+  FlowKnob,
   SlAgreement,
   ValidationResult,
   OperationalOutcome,
@@ -384,6 +386,12 @@ export function splicePositions(source: string, model: CanvasModel): string {
  *  decides both which knobs exist and what an unset one runs at. */
 export function engineKnobs(model: CanvasModel): EngineKnob[] {
   return call("engine_knobs", () => wasmEngineKnobs(JSON.stringify(model))) as EngineKnob[];
+}
+
+/** Every non-ample flow's amount as the run uses it, declared or default.
+ *  Read off the projection, so "1 default" is what runs (walk row 21). */
+export function flowKnobs(model: CanvasModel): FlowKnob[] {
+  return call("flow_knobs", () => wasmFlowKnobs(JSON.stringify(model))) as FlowKnob[];
 }
 
 /** Whether an SL text and a model mean the same model, layout and lens set
