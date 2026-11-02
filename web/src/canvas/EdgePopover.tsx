@@ -2,16 +2,16 @@
 // each lens offering ITS author's operations and no other's:
 //   Klir:  toggle neutral ⇄ directed (the observer's act), read the signature.
 //   Bunge: set connection-kind, toggle bond ⇄ mere relation, reverse direction.
-//   Mobus: name, endpoints, substance, description — ONE job (#336). Driving
-//          a flow with data is Data/Run-mode business; structure mode shows at
-//          most a one-sentence residue when a binding or declared amount
-//          already exists, and never the form.
+//   Mobus: name, endpoints, amount, substance, description. Driving a flow
+//          with data is Data/Run-mode business (#336); since the 2026-11-02
+//          walk a source's rate or a process outflow's weight is set here,
+//          where the flow is clicked.
 // Every edit flows through onModelChange → App re-runs validate_mode +
 // lens_facts in Rust; the popover itself decides nothing about systemhood.
 import { useEffect, useRef, useState } from "react";
-import type { EdgeFact, Kind, Lens, Manifest, ParamDecl, Relation } from "../kernel/types";
+import type { EdgeFact, FlowKnob, Kind, Lens, Manifest, ParamDecl, Relation } from "../kernel/types";
 import { channelCopy } from "./lenses/bunge";
-import { ParamControl } from "../ParamControl";
+import { AmountField, ParamControl } from "../ParamControl";
 import type { Pt } from "./geometry";
 import { DescriptionField, GroundingField, InspectorRow as Row, InspectorTitle as Title, ToolButton as SmallButton } from "../ui";
 import { PopoverDialog } from "./PopoverDialog";
@@ -24,6 +24,15 @@ import {
   substanceToKind,
   type Substance,
 } from "./lenses/glossary";
+
+/** A flow's amount as the popover edits it: the kernel's `flow_knobs` row
+ *  (what an undeclared flow runs at), whether it is a split weight rather
+ *  than a rate, and the input path that re-runs. */
+export interface FlowAmount {
+  knob?: FlowKnob;
+  weight: boolean;
+  onEdit: (r: Relation) => void;
+}
 
 const KINDS: Kind[] = ["Unspecified", "Energy", "Matter", "Field", "Informational"];
 
@@ -43,7 +52,14 @@ export function EdgePopover({
   onUpdateRelation,
   onDelete,
   onClose,
+  amount,
 }: {
+  /** The flow's own amount, set where the flow was clicked (2026-11-02 walk,
+   *  Shingai: click a thing and tune it there; this supersedes #336's "no
+   *  quantity form in structure mode" for the amount alone). Absent = this
+   *  flow has no amount worth setting here (it leaves an interface or an
+   *  agent, or the model does not run). */
+  amount?: FlowAmount;
   relation: Relation;
   lens: Lens;
   sigIndex: number;
@@ -102,6 +118,7 @@ export function EdgePopover({
           toName={toName}
           onUpdate={onUpdateRelation}
           onClose={onClose}
+          amount={amount}
         />
       )}
       <div className="mt-1 flex justify-start border-t pt-1" style={{ borderColor: "var(--hairline)" }}>
@@ -344,7 +361,9 @@ export function MobusBody({
   toName,
   onUpdate,
   onClose,
+  amount,
 }: {
+  amount?: FlowAmount;
   relation: Relation;
   manifest: Manifest;
   paramName?: string;
@@ -369,11 +388,39 @@ export function MobusBody({
     ? `driven by “${driven.column}” — adjust in Data`
     : relation.ample
       ? "ample — never binding"
-      : relation.amount && !sliderPresent
+      : relation.amount && !sliderPresent && !amount
         ? `amount ${relation.amount}${relation.unit ? ` ${relation.unit}` : ""}${
             paramName ? ` (“${paramName}”)` : ""
-          } — adjust in Run · Inputs`
+          }`
         : null;
+  const amountRow =
+    amount && !driven && !relation.ample && !sliderPresent ? (
+      <div className="mb-2" data-testid="flow-amount">
+        <Row>
+          <span style={{ color: "var(--text-secondary)" }}>{amount.weight ? "weight" : "amount per tick"}</span>
+          <span className="flex items-center gap-1">
+            <AmountField
+              relation={relation}
+              onEdit={amount.onEdit}
+              placeholder={
+                relation.amount == null && amount.knob ? `${Number(amount.knob.value.toPrecision(4))} default` : undefined
+              }
+              withdrawable={!paramName}
+            />
+            {relation.unit && (
+              <span className="text-[11px]" style={{ color: "var(--text-muted)" }}>
+                {relation.unit}
+              </span>
+            )}
+          </span>
+        </Row>
+        <p className="text-[11px] leading-snug" style={{ color: "var(--text-muted)" }}>
+          {amount.weight
+            ? `${fromName ?? "The process"}'s output divides across its ways out by weight. Edits re-run.`
+            : "What this flow brings in each tick. Edits re-run."}
+        </p>
+      </div>
+    ) : null;
 
   return (
     <>
@@ -382,6 +429,7 @@ export function MobusBody({
           from {fromName} → to {toName}
         </p>
       )}
+      {amountRow}
       <FlowDescriptionField relation={relation} onUpdateRelation={onUpdate} />
       <FlowGroundingField relation={relation} onUpdateRelation={onUpdate} />
       <Row>

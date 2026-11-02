@@ -88,7 +88,7 @@ export function Readouts({
   const readout = runError ? (
     <div className="p-4">
       <Card title="Result" source="facets-compose · wasm">
-        <p className="text-sm" style={{ color: "var(--verdict-error)" }}>
+        <p className="whitespace-pre-line text-sm" style={{ color: "var(--verdict-error)" }}>
           {runError}
         </p>
       </Card>

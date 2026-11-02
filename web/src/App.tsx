@@ -2671,6 +2671,7 @@ function Workspace() {
       readouts={workMode === "structure" ? { open: readoutsOpen, onToggle: () => setReadoutsOpen((o) => !o) } : undefined}
       changedAt={knobTicks}
       time={canvasModel ? { dt, t, klir: canvasModel.lens === "Klir", onCommit: applyTime } : undefined}
+      error={runError}
     />
   ) : null;
 
@@ -4025,6 +4026,22 @@ function Workspace() {
                         onUpdateRelation={updateRelation}
                         onDelete={() => deleteRelation(selectedRelation.id)}
                         onClose={() => setSelectedRelationId(null)}
+                        amount={(() => {
+                          // A flow's amount bites where it leaves a source (a
+                          // rate) or a work process (a split weight); out of an
+                          // interface or an agent it is not a knob.
+                          if (!runCtl?.runnable || runCtl.runKind !== "conservation" || !selectedRelation.is_bond) return undefined;
+                          const from = canvasModel.things.find((t) => t.id === selectedRelation.a);
+                          if (!from) return undefined;
+                          const source = from.role === "Environment" && (facts?.source_thing_ids ?? []).includes(from.id);
+                          const process = from.role === "Component" && !from.passway && !from.rule;
+                          if (!source && !process) return undefined;
+                          return {
+                            knob: flows.find((k) => k.relation === selectedRelation.id),
+                            weight: process,
+                            onEdit: applyInputEdit,
+                          };
+                        })()}
                       />
                     )}
                     {/* The Bunge view toggle (#100 phase 2, F1): coupling

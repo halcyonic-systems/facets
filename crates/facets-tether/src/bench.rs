@@ -118,7 +118,7 @@ impl BenchSession {
 
     fn open(model: WorldModel, imported: ImportedData, dt: f64) -> Result<Self, String> {
         let spec = facets_core::operational::validate_operational(&model)
-            .map_err(|errors| format!("model is not executable ({} reason(s))", errors.len()))?;
+            .map_err(|errors| crate::forcing::not_executable(&errors))?;
         let mut circuit = facets_compose::from_spec(&spec);
         if let Some(cycle) = circuit.algebraic_cycle() {
             let names: Vec<&str> = cycle

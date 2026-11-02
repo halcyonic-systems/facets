@@ -239,7 +239,7 @@ pub fn force_and_run(
     let (model, imported) = prepare_forced(model, csv_text, manifest, today)?;
 
     let spec = facets_core::operational::validate_operational(&model)
-        .map_err(|errors| format!("model is not executable ({} reason(s))", errors.len()))?;
+        .map_err(|errors| not_executable(&errors))?;
     let mut circuit = facets_compose::from_spec(&spec);
     let run = facets_compose::RecordedRun::record_over(&mut circuit, &spec, dt, t)?;
     Ok(summarize(&model, &imported, &spec, &circuit, &run, dt))
@@ -289,6 +289,25 @@ pub fn prepare_forced(
     Ok((model, imported))
 }
 
+/// Why a model will not run, in the kernel's own reasons (walk row 27: the
+/// face showed only "not executable (7 reason(s))", so the reasons existed
+/// and nobody could read them). One line per distinct reason, in the order
+/// the check found them; a reason repeated across flows is said once.
+pub fn not_executable(errors: &[facets_core::operational::OperationalError]) -> String {
+    let mut seen: Vec<&str> = Vec::new();
+    for e in errors {
+        if !seen.contains(&e.reason.as_str()) {
+            seen.push(&e.reason);
+        }
+    }
+    let mut out = format!("model is not executable ({} reason(s)):", errors.len());
+    for r in seen {
+        out.push_str("\n· ");
+        out.push_str(r);
+    }
+    out
+}
+
 /// Run the model from its DECLARED amounts alone — no CSV, no forcing — and
 /// read the run back in the same domain terms [`force_and_run`] returns
 /// (levels, trajectories, per-wire flow series, conservation verdict).
@@ -302,7 +321,7 @@ pub fn prepare_forced(
 pub fn run_unforced(model: WorldModel, dt: f64, t: f64) -> Result<RunReadout, String> {
     facets_compose::ticks_over(dt, t)?;
     let spec = facets_core::operational::validate_operational(&model)
-        .map_err(|errors| format!("model is not executable ({} reason(s))", errors.len()))?;
+        .map_err(|errors| not_executable(&errors))?;
     let mut circuit = facets_compose::from_spec(&spec);
     let run = facets_compose::RecordedRun::record_over(&mut circuit, &spec, dt, t)?;
     Ok(summarize(&model, &crate::tether::ImportedData::default(), &spec, &circuit, &run, dt))
@@ -1237,5 +1256,18 @@ mod tests {
         )
         .unwrap();
         (csv, manifest)
+    }
+}
+
+#[cfg(test)]
+mod not_executable_tests {
+    use super::not_executable;
+    use facets_core::operational::OperationalError;
+
+    #[test]
+    fn says_each_distinct_reason_once() {
+        let e = |r: &str| OperationalError { location: "x".into(), reason: r.into(), hint: None };
+        let msg = not_executable(&[e("\"I3\" has no agent model"), e("flow sink does not resolve"), e("flow sink does not resolve")]);
+        assert_eq!(msg, "model is not executable (3 reason(s)):\n· \"I3\" has no agent model\n· flow sink does not resolve");
     }
 }

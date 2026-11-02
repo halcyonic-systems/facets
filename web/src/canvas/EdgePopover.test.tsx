@@ -1,5 +1,5 @@
 // #336: the Mobus flow popover has ONE job — name, endpoints, substance,
-// description. The subtraction is gated so it cannot silently regrow: driving
+// description (and, since the 2026-11-02 walk, the flow's own amount). The subtraction is gated so it cannot silently regrow: driving
 // a flow with data is DataMode's surface (#304 M2, fork 2), and the popover
 // says at most one plain sentence about Run state, only when it is true.
 // MobusBody is rendered directly (the popover shell portals into
@@ -64,10 +64,45 @@ describe("the Mobus flow popover has one job (#336)", () => {
     expect(html).toContain("adjust in Data");
   });
 
-  it("states a declared amount in one sentence, pointing at Run · Inputs", () => {
+  it("states a declared amount in one sentence where the flow has no amount to set", () => {
     const html = render(relation({ amount: "1.5", unit: "units/mo" }));
     expect(html).toContain("amount 1.5 units/mo");
-    expect(html).toContain("Run · Inputs");
+    expect(html).not.toContain("Run · Inputs");
+  });
+});
+
+/** 2026-11-02 walk: click a flow and set its amount there. */
+describe("the flow's amount is set where the flow is clicked", () => {
+  const withAmount = (r: Relation, weight: boolean, value = 1) =>
+    renderToStaticMarkup(
+      <MobusBody
+        relation={r}
+        manifest={emptyManifest}
+        fromName="Vault"
+        toName="Dealers"
+        onUpdate={() => {}}
+        onClose={() => {}}
+        amount={{ knob: { relation: r.id, value, declared: r.amount != null }, weight, onEdit: () => {} }}
+      />,
+    );
+
+  it("shows a source's undeclared rate at what it runs at", () => {
+    const html = withAmount(relation(), false);
+    expect(html).toContain("flow-amount");
+    expect(html).toContain("amount per tick");
+    expect(html).toContain('placeholder="1 default"');
+    expect(html).not.toContain("amount 1"); // no residue sentence beside the field
+  });
+
+  it("calls a process outflow's amount its weight", () => {
+    const html = withAmount(relation({ amount: "3" }), true, 3);
+    expect(html).toContain(">weight<");
+    expect(html).toContain('value="3"');
+    expect(html).toContain("divides across its ways out by weight");
+  });
+
+  it("offers no field on an ample flow", () => {
+    expect(withAmount(relation({ ample: true, kind: "Informational" }), false)).not.toContain("flow-amount");
   });
 });
 

@@ -29,6 +29,7 @@ export function Transport({
   readouts,
   changedAt = [],
   time,
+  error,
 }: {
   onRun: () => void;
   onStep: () => void;
@@ -64,6 +65,9 @@ export function Transport({
    *  size are settings of the run, so they live on the strip that runs it,
    *  behind one button that names the current length. Absent = not offered. */
   time?: { dt: number; t: number; klir: boolean; onCommit: (dt: number, t: number) => void };
+  /** Why the last Run was refused, in the kernel's words. Shown on the strip
+   *  so a refused Run never looks like nothing happened (walk row 27). */
+  error?: string | null;
 }) {
   const [timeOpen, setTimeOpen] = useState(false);
   if (!runnable) {
@@ -126,6 +130,18 @@ export function Transport({
         </div>
       ) : (
         <div className="min-w-0 flex-1" />
+      )}
+      {error && (
+        <button
+          type="button"
+          className="min-w-0 max-w-[40%] shrink truncate text-left text-[11px]"
+          style={{ color: "var(--verdict-error)" }}
+          title={error}
+          onClick={readouts && !readouts.open ? readouts.onToggle : undefined}
+          data-testid="run-refused"
+        >
+          {`Run refused: ${error.split("\n")[1]?.replace(/^· /, "") ?? error}`}
+        </button>
       )}
       {changedAt.length > 0 && (
         <span

@@ -49,3 +49,13 @@ describe("the strip as the run's one entry", () => {
     expect(renderToStaticMarkup(<Transport {...base} changedAt={[4, 7]} />)).toContain("knobs changed at ticks 4, 7");
   });
 });
+
+describe("a refused run", () => {
+  it("says why on the strip, with every reason in the title", () => {
+    const err = "model is not executable (2 reason(s)):\n· \"I3\" has no agent model\n· flow sink does not resolve";
+    const html = renderToStaticMarkup(<Transport {...base} error={err} />);
+    expect(html).toContain("run-refused");
+    expect(html).toContain("Run refused: &quot;I3&quot; has no agent model");
+    expect(html).toContain("flow sink does not resolve");
+  });
+});
