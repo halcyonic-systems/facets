@@ -1,7 +1,7 @@
 // Fit-to-content math (#83): the reusable bbox + viewport-fit helpers. Pure
 // pixel math, so no kernel/wasm needed — just assert framing and clamps.
 import { describe, expect, it } from "vitest";
-import { bungeHull, contentBounds, fitToBox, membraneRing, NODE_R } from "./geometry";
+import { bungeHull, contentBounds, fitToBox, membraneRing, MIN_RING_R, NODE_R, pinSystem, systemAnchor } from "./geometry";
 import type { CanvasModel } from "../kernel/types";
 
 const base: Omit<CanvasModel, "things" | "lens"> = {
@@ -62,21 +62,60 @@ describe("contentBounds", () => {
 // The per-lens container (#100 phase 0): the membrane/hull follow the
 // COMPONENT things and still draw for an empty interior.
 describe("membraneRing", () => {
-  it("falls back to a small ring at the stand-ins' centroid for an empty interior", () => {
+  it("falls back to a ring at the stand-ins' centroid for an empty interior", () => {
     const ring = membraneRing([
       { x: -260, y: 0, role: "Environment" },
       { x: 260, y: 130, role: "Environment" },
     ]);
     expect(ring.cx).toBe(0);
     expect(ring.cy).toBe(65);
-    expect(ring.rx).toBe(NODE_R * 2);
-    // The stand-ins sit OUTSIDE the small membrane.
+    expect(ring.rx).toBe(MIN_RING_R);
+    // The stand-ins sit OUTSIDE the membrane.
     expect(Math.abs(-260 - ring.cx)).toBeGreaterThan(ring.rx + NODE_R);
   });
 
-  it("centers on the origin for a fully blank canvas", () => {
+  it("shrinks an empty membrane to keep close stand-ins outside it", () => {
+    const ring = membraneRing([
+      { x: -100, y: 0, role: "Environment" },
+      { x: 100, y: 0, role: "Environment" },
+    ]);
+    expect(ring.rx).toBeLessThan(MIN_RING_R);
+    expect(100 - ring.rx).toBeGreaterThan(NODE_R);
+  });
+
+  it("centers on the origin for a fully blank canvas, at the floor", () => {
     const ring = membraneRing([]);
-    expect(ring).toEqual({ cx: 0, cy: 0, rx: NODE_R * 2, ry: NODE_R * 2 });
+    expect(ring).toEqual({ cx: 0, cy: 0, rx: MIN_RING_R, ry: MIN_RING_R });
+  });
+
+  // 2026-11-02: the system of interest is always a circle, never smaller than
+  // the floor, and always large enough to hold its parts' bodies.
+  it("is a circle at the floor around one component", () => {
+    const ring = membraneRing([{ x: 40, y: -20, role: "Component" }]);
+    expect(ring).toEqual({ cx: 40, cy: -20, rx: MIN_RING_R, ry: MIN_RING_R });
+    expect(MIN_RING_R / NODE_R).toBeGreaterThanOrEqual(5);
+  });
+
+  it("stays a circle when its components spread along one axis", () => {
+    const ring = membraneRing([
+      { x: -300, y: 0, role: "Component" },
+      { x: 300, y: 0, role: "Component" },
+    ]);
+    expect(ring.rx).toBe(ring.ry);
+    expect(ring.rx).toBeGreaterThan(300 + NODE_R);
+  });
+
+  it("holds every component body inside it", () => {
+    const pts = [
+      { x: 0, y: 0, role: "Component" as const },
+      { x: 400, y: 50, role: "Component" as const },
+      { x: 120, y: 380, role: "Component" as const },
+      { x: 400, y: 380, role: "Component" as const },
+    ];
+    const ring = membraneRing(pts);
+    for (const p of pts) {
+      expect(Math.hypot(p.x - ring.cx, p.y - ring.cy) + NODE_R).toBeLessThan(ring.rx);
+    }
   });
 
   it("ignores environment things when components exist", () => {
@@ -86,6 +125,55 @@ describe("membraneRing", () => {
     ]);
     const compOnly = membraneRing([{ x: 100, y: 100, role: "Component" }]);
     expect(withEnv).toEqual(compOnly);
+  });
+});
+
+// 2026-11-02: a pinned system (`system_pos`, SL `@system`) holds its centre.
+describe("the pinned system of interest", () => {
+  it("stays put when its lone component moves", () => {
+    const at = { x: 0, y: 0 };
+    const before = membraneRing([{ x: 0, y: 0, role: "Component" }], at);
+    const after = membraneRing([{ x: 60, y: -30, role: "Component" }], at);
+    expect({ cx: after.cx, cy: after.cy }).toEqual({ cx: before.cx, cy: before.cy });
+    expect(after.rx).toBe(MIN_RING_R);
+  });
+
+  it("grows, still a circle on its pin, to hold a part dragged far out", () => {
+    const ring = membraneRing([{ x: 500, y: 0, role: "Component" }], { x: 0, y: 0 });
+    expect({ cx: ring.cx, cy: ring.cy }).toEqual({ cx: 0, cy: 0 });
+    expect(ring.rx).toBe(ring.ry);
+    expect(ring.rx).toBeGreaterThan(500 + NODE_R);
+  });
+
+  it("centres an empty system on its pin", () => {
+    expect(membraneRing([], { x: 30, y: 40 })).toEqual({ cx: 30, cy: 40, rx: MIN_RING_R, ry: MIN_RING_R });
+  });
+
+  it("reads the pin off the model, and ignores a missing or broken one", () => {
+    expect(systemAnchor({ system_pos: [3, 4] })).toEqual({ x: 3, y: 4 });
+    expect(systemAnchor({})).toBeUndefined();
+    expect(systemAnchor({ system_pos: [Number.NaN, 4] })).toBeUndefined();
+  });
+
+  it("pins on the first edit at the ring already drawn, and never re-pins", () => {
+    const m: CanvasModel = { ...base, lens: "Mobus", things: [] };
+    const ring = membraneRing([{ x: 10, y: 20, role: "Component" }]);
+    expect(pinSystem(m, ring).system_pos).toEqual([ring.cx, ring.cy]);
+    const pinned = { ...m, system_pos: [1, 2] as [number, number] };
+    expect(pinSystem(pinned, ring)).toBe(pinned);
+    // No membrane (Bunge, Klir): nothing to pin.
+    expect(pinSystem(m, null)).toBe(m);
+  });
+
+  it("frames the pinned membrane, not the unpinned one", () => {
+    const m: CanvasModel = {
+      ...base,
+      lens: "Mobus",
+      things: [{ id: 1, name: "A", x: 0, y: 0, role: "Component" }],
+      system_pos: [400, 0],
+    };
+    const b = contentBounds(m)!;
+    expect(b.maxX).toBeGreaterThanOrEqual(400 + MIN_RING_R);
   });
 });
 

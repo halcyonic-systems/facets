@@ -12,6 +12,8 @@ import {
   bungeHull,
   INTERFACE_SCALE,
   membraneRing,
+  pinSystem,
+  systemAnchor,
   rimPoint,
   ringPoint,
   unprojectWrite,
@@ -375,7 +377,7 @@ export default function Canvas({
   const interiorComponentCount = interiorThings.filter((t) => t.role === "Component").length;
   const ring: Ring | null =
     lens === "Mobus"
-      ? membraneRing(interiorComponentCount >= 2 ? interiorThings : model.things)
+      ? membraneRing(interiorComponentCount >= 2 ? interiorThings : model.things, systemAnchor(model))
       : null;
   // The display model — identical to the authored model except interface
   // components snap to the ring. Every consumer below (gestures, edges, nodes,
@@ -495,8 +497,10 @@ export default function Canvas({
     // #306 write-back guard: gestures see the projected model, but writes must
     // land in AUTHORED coordinates for everything they didn't touch — else the
     // projection persists and the ring inflates every drag frame.
+    // 2026-11-02: the first edit pins the system where it is drawn
+    // (`pinSystem`), so a part moved afterwards no longer carries it along.
     onModelChange: (m) => {
-      if (!inert) onModelChange(unprojectWrite(model, dModel, m));
+      if (!inert) onModelChange(pinSystem(unprojectWrite(model, dModel, m), ring));
     },
     svgRef,
     onReject,
@@ -1317,10 +1321,13 @@ export default function Canvas({
               cy={ring.cy}
               rx={ring.rx}
               ry={ring.ry}
-              // The membrane is ink (rule 9a): no tint inside it, no accent on
-              // it; the one ring reads by weight and dash alone.
-              fill="none"
-              stroke="var(--text-secondary)"
+              // The membrane is ink (rule 9a), no accent on it. Inside it is the
+              // white sheet on the canvas ground (rule 1): the system of
+              // interest is a place, its components sit on it, and the
+              // environment stays on the ground outside (2026-11-02, after
+              // old BERT's filled SOI). A neutral surface step, not a tint.
+              fill="var(--bg-secondary)"
+              stroke="var(--text-primary)"
               strokeWidth={strokeWorld(STYLE.ring.strokeWidth, scale, STROKE_FLOOR_PX)}
               strokeDasharray={
                 facts && facts.boundary_props.porosity > 0
@@ -1345,13 +1352,18 @@ export default function Canvas({
                 y={ring.cy - ring.ry}
                 textAnchor="middle"
                 dominantBaseline="central"
-                fontSize={STYLE.label.size * headHold}
-                fill="var(--text-secondary)"
+                // The system's name is the one display-face name on the stage
+                // (charter rule 5: Cormorant 700 names a model), half again a
+                // component's size, so the SOI never reads as a peer of its parts.
+                fontSize={STYLE.label.size * 1.5 * headHold}
+                fontWeight={700}
+                fill="var(--text-primary)"
                 paintOrder="stroke"
                 stroke="var(--bg-primary)"
-                strokeWidth={4}
+                strokeWidth={5}
                 strokeLinejoin="round"
-                className="font-body cursor-text"
+                className="cursor-text"
+                style={{ fontFamily: "var(--font-display)" }}
                 onPointerDown={(e) => e.stopPropagation()}
                 onClick={beginNameEdit}
               >

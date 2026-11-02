@@ -858,6 +858,14 @@ pub struct CanvasModel {
     /// gates nothing; `skip` so pre-existing models serialize unchanged.
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub klir_level: Option<KlirLevel>,
+    /// Where the system of interest itself sits on the canvas, `[x, y]` (SL
+    /// `@system x y`, 2026-11-02). View state like `@pos`: the face centres
+    /// the membrane here so moving a lone component no longer drags the
+    /// system with it. `project` never reads it, no verdict depends on it.
+    /// `None` = unpinned, the face centres on the components as before;
+    /// `skip` so pre-existing models serialize unchanged.
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub system_pos: Option<[f32; 2]>,
 }
 
 fn info(id: Id, level: i32, name: &str) -> Info {
@@ -1896,6 +1904,8 @@ pub fn to_canvas(model: &WorldModel) -> CanvasModel {
         params,
         metrics: vec![],
         klir_level: None,
+        // View state the WorldModel does not carry; the archive keeps it.
+        system_pos: None,
     }
 }
 
@@ -2089,6 +2099,7 @@ mod tests {
     #[test]
     fn markov_edges_reads_klir_state_machine_with_self_loops() {
         let model = CanvasModel {
+            system_pos: None,
             crossings: vec![],
             lens: Lens::Klir,
             model_id: None,
@@ -2128,7 +2139,7 @@ mod tests {
     #[test]
     fn projects_a_bonded_pair_cleanly_at_every_lens() {
         for lens in [Lens::Klir, Lens::Bunge, Lens::Mobus] {
-            let model = CanvasModel { milieu: vec![],
+            let model = CanvasModel { system_pos: None, milieu: vec![],
                 crossings: vec![],
                 lens,
                 model_id: None,
@@ -2165,6 +2176,7 @@ mod tests {
     #[test]
     fn self_loop_is_rejected_at_mobus_but_not_klir() {
         let model = CanvasModel {
+            system_pos: None,
             crossings: vec![],
             lens: Lens::Mobus,
             model_id: None,
@@ -2197,6 +2209,7 @@ mod tests {
     #[test]
     fn first_edge_carries_no_gesture_time_issue_at_mobus() {
         let model = CanvasModel {
+            system_pos: None,
             crossings: vec![],
             lens: Lens::Mobus,
             model_id: None,
@@ -2221,6 +2234,7 @@ mod tests {
     #[test]
     fn deferred_dead_end_still_reaches_the_audit() {
         let model = CanvasModel {
+            system_pos: None,
             crossings: vec![],
             lens: Lens::Mobus,
             model_id: None,
@@ -2253,6 +2267,7 @@ mod tests {
     #[test]
     fn duplicate_edge_stays_a_gesture_time_warning() {
         let model = CanvasModel {
+            system_pos: None,
             crossings: vec![],
             lens: Lens::Mobus,
             model_id: None,
@@ -2312,6 +2327,7 @@ mod tests {
     #[test]
     fn the_milieu_projects_and_reads_back() {
         let mut model = CanvasModel {
+            system_pos: None,
             crossings: vec![],
             lens: Lens::Mobus,
             model_id: None,
@@ -2354,6 +2370,7 @@ mod tests {
         gate.passway = true;
         gate.protocol = "graded ore only".into();
         let model = CanvasModel {
+            system_pos: None,
             crossings: vec![],
             lens: Lens::Mobus,
             model_id: None,
@@ -2408,6 +2425,7 @@ mod tests {
         gate.interface = true;
         gate.passway = true;
         let model = CanvasModel {
+            system_pos: None,
             crossings: vec![],
             lens: Lens::Mobus,
             model_id: None,
@@ -2443,6 +2461,7 @@ mod tests {
         let mut r = bond(10, 3, 1);
         r.name = "graded ore".into();
         let base = CanvasModel {
+            system_pos: None,
             crossings: vec![],
             lens: Lens::Mobus,
             model_id: None,
@@ -2506,6 +2525,7 @@ mod tests {
         let mut a = thing(1, "Gate", Role::Component);
         a.interface = true;
         let model = CanvasModel {
+            system_pos: None,
             crossings: vec![],
             lens: Lens::Mobus,
             model_id: None,
@@ -2554,6 +2574,7 @@ mod tests {
         let mut a = thing(1, "Gate", Role::Component);
         a.interface = true;
         let model = CanvasModel {
+            system_pos: None,
             crossings: vec![],
             lens: Lens::Mobus,
             model_id: None,
@@ -2598,6 +2619,7 @@ mod tests {
         let mut gate = thing(1, "Gate", Role::Component);
         gate.interface = true;
         let model = CanvasModel {
+            system_pos: None,
             crossings: vec![],
             lens: Lens::Mobus,
             model_id: None,
@@ -2700,6 +2722,7 @@ mod tests {
     fn environment_projects_by_bond_direction() {
         // env originates a bond → Source; env receives → Sink.
         let model = CanvasModel {
+            system_pos: None,
             crossings: vec![],
             lens: Lens::Mobus,
             model_id: None,
@@ -2729,6 +2752,7 @@ mod tests {
     #[test]
     fn model_id_survives_the_canvas_round_trip() {
         let mut world = project(&CanvasModel {
+            system_pos: None,
             crossings: vec![],
             lens: Lens::Mobus,
             model_id: None,
@@ -2759,6 +2783,7 @@ mod tests {
         // Src(env) → A → B → Snk(env): A and B are boundary components (v1
         // refuses), so add interior C between them: A → C → B.
         let model = CanvasModel {
+            system_pos: None,
             crossings: vec![],
             lens: Lens::Mobus,
             model_id: None,

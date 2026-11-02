@@ -8,7 +8,7 @@
 import { describe, expect, it, vi } from "vitest";
 import { renderToStaticMarkup } from "react-dom/server";
 import type { CanvasModel, LensFacts, PortFact } from "../kernel/types";
-import { NODE_R, unprojectWrite } from "./geometry";
+import { MIN_RING_R, NODE_R, unprojectWrite } from "./geometry";
 
 const { captured, nodes } = vi.hoisted(() => ({
   captured: [] as { component: number; env: number; onSelect?: () => void }[],
@@ -97,12 +97,11 @@ describe("flow-carrying interface capsule click (2026-08-09)", () => {
     const bs = nodes.find((n) => n.id === 1)!;
     expect(bs).toBeDefined();
     expect({ x: bs.x, y: bs.y }).not.toEqual({ x: 200, y: 260 });
-    // componentRing over the two components' bbox: center (250, 230),
-    // half-extents (50, 30) · √2 + pad.
-    const pad = NODE_R + 36;
-    const rx = 50 * Math.SQRT2 + pad;
-    const ry = 30 * Math.SQRT2 + pad;
-    const onRing = ((bs.x - 250) / rx) ** 2 + ((bs.y - 230) / ry) ** 2;
+    // componentRing over the two components: a circle centred on their bbox
+    // (250, 230), through the farthest centre plus the pad, floored at
+    // MIN_RING_R (2026-11-02). Here the floor wins.
+    const r = Math.max(MIN_RING_R, Math.hypot(50, 30) + NODE_R + 36);
+    const onRing = Math.hypot(bs.x - 250, bs.y - 230) / r;
     expect(onRing).toBeCloseTo(1, 5);
     // The non-interface component stays where it was authored.
     const core = nodes.find((n) => n.id === 3)!;

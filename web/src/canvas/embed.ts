@@ -9,7 +9,7 @@
 // `fitToBox` does for the viewport, aimed at a node's circle instead: framing a
 // box inside a square window, which is why the round-trip against `fitToBox` is
 // the test that keeps the two honest.
-import { bungeHull, contentBounds, membraneRing, NODE_R, type Box, type Pt } from "./geometry";
+import { bungeHull, contentBounds, membraneRing, NODE_R, systemAnchor, type Box, type Pt } from "./geometry";
 import type { CanvasModel, Lens, Thing } from "../kernel/types";
 
 /** A child frame's placement in its parent's world coordinates:
@@ -98,7 +98,7 @@ function membraneBounds(child: CanvasModel): Box | null {
     maxX = Math.max(maxX, t.x + NODE_R);
     maxY = Math.max(maxY, t.y + NODE_R);
   }
-  const ring = membraneRing(components);
+  const ring = membraneRing(components, systemAnchor(child));
   minX = Math.min(minX, ring.cx - ring.rx);
   minY = Math.min(minY, ring.cy - ring.ry);
   maxX = Math.max(maxX, ring.cx + ring.rx);

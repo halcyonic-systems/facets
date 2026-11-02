@@ -490,6 +490,10 @@ export interface CanvasModel {
    *  in the Klir register only; never projects. serde skip-if-None — absent =
    *  undeclared, which gates nothing. */
   klir_level?: KlirLevel;
+  /** Where the system of interest itself sits, `[x, y]` (SL `@system x y`,
+   *  2026-11-02). View state: the Mobus membrane centres here and grows to
+   *  hold its components. Absent = centred on the components. */
+  system_pos?: [number, number];
 }
 
 /** What a declared parameter anchors: one flow's declared amount, or a

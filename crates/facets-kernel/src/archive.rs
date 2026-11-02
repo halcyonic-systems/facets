@@ -115,6 +115,7 @@ mod tests {
     /// A model wearing every word the old archive destroyed.
     fn lossy_model() -> CanvasModel {
         let mut m = CanvasModel {
+            system_pos: None,
             crossings: vec![],
             lens: Lens::Bunge,
             model_id: None,
@@ -243,6 +244,16 @@ mod tests {
             "Klir's observer declaration"
         );
         assert_eq!(after.lens, before.lens);
+    }
+
+    /// The system's own canvas position (2026-11-02) survives the archive,
+    /// and a model without one writes no field for it.
+    #[test]
+    fn archive_keeps_the_system_position() {
+        let mut m = lossy_model();
+        assert!(!write(&m).unwrap().contains("system_pos"));
+        m.system_pos = Some([120.0, -8.5]);
+        assert_eq!(read(&write(&m).unwrap()).unwrap().system_pos, Some([120.0, -8.5]));
     }
 
     /// Klir's source-system metadata (#154) — the authored scale and state set —
@@ -401,6 +412,7 @@ mod decomposition_seam {
     #[test]
     fn a_derived_child_keeps_the_identity_its_parent_is_stamped_with() {
         let mut m = CanvasModel {
+            system_pos: None,
             crossings: vec![],
             lens: Lens::Mobus,
             model_id: None,

@@ -58,7 +58,9 @@ export const STYLE: StyleSpec = {
   hoverHalo: { pad: 4, width: 1 },
   boundaryRim: { pad: 3, width: 2, opacity: 1 },
   selection: { width: 2.5, opacity: 0.35 },
-  ring: { fillOpacity: 0, strokeWidth: 2 },
+  // The membrane outweighs every component (3 vs 2): the one ring that holds
+  // the rest (2026-11-02).
+  ring: { fillOpacity: 0, strokeWidth: 3 },
   simFillOpacity: 0.2,
   grid: { mode: "dots", gap: 20, ink: "var(--hairline)", wash: false },
   chipRx: 3,

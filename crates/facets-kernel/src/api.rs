@@ -1008,6 +1008,7 @@ mod tests {
             }
         }
         CanvasModel {
+            system_pos: None,
             crossings: vec![],
             lens: Lens::Klir,
             model_id: None,

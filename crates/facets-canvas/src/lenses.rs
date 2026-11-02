@@ -1840,6 +1840,7 @@ mod tests {
     }
     fn model(things: Vec<Thing>, relations: Vec<Relation>) -> CanvasModel {
         CanvasModel {
+            system_pos: None,
             crossings: vec![],
             lens: Lens::Mobus,
             model_id: None,

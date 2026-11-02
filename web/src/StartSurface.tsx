@@ -1,21 +1,23 @@
-// The start surface over a new blank canvas. The shortest route to a working
-// model is to say what the system is, so that is the one thing asked here: the
-// description goes to the SL pane's co-author tab, which drafts it if the
+// The start surface over a new blank canvas: two ways in, nothing else
+// (Shingai, 2026-11-02: "give them 2-3 options max ... with nice clean
+// icons"). Build it lands on the canvas in Build; Describe it opens a field
+// whose words go to the SL pane's co-author tab, which drafts them if the
 // reasoner is on and otherwise shows its gate with the words kept (#199: this
-// surface never turns the reasoner on). It replaced #77's name/type prompt; an
-// SL header carries both of those fields, and the name's type panel edits them
-// afterwards. Zero-gate like the prompt was: Escape, a click outside, or skip
-// all land on the blank canvas.
+// surface never turns the reasoner on). "Wire processes and run" is gone: it
+// opened the same canvas with a notice, so it was Build under another name.
+// Open an example stays as a quiet link, not a third card. Zero-gate: Escape,
+// a click outside, or skip all land on the blank canvas.
 //
-// Makeover slice C (2026-10-26): it is a dialog in name as well as in shape
-// (rule 15): `role="dialog"`, `aria-modal`, labelled by its heading, focus on
-// the textarea when it opens and back on the opener when it closes, Tab held
-// inside. The window is the Panel geometry (8px, a hairline, no shadow; rules
-// 2, 3), the field is the Textarea primitive and the three ways out are
-// Buttons at the 24px floor (rules 10, 11, 14).
+// A dialog in name as well as in shape (charter rule 15): `role="dialog"`,
+// `aria-modal`, labelled by its heading, focus on the first way in when it
+// opens and back on the opener when it closes, Tab held inside. Panel
+// geometry (8px, a hairline, no shadow; rules 2, 3); the two cards are the
+// Home doors' outlined twin with the drawn door icons in a tinted well
+// (rules 9c, 14).
 import { useEffect, useId, useRef, useState, type KeyboardEvent as ReactKeyboardEvent } from "react";
 import { isHosted, reasonerConfig, subscribeReasoner } from "./reasoner";
 import { Button, Textarea } from "./ui";
+import { Icon, type IconName } from "./icons";
 
 const FOCUSABLE = 'button:not([disabled]), textarea, input, select, a[href], [tabindex]:not([tabindex="-1"])';
 
@@ -24,17 +26,20 @@ export function StartSurface({
   onSkip,
   onBuild,
   onOpenLibrary,
+  initialStep = "choose",
 }: {
   /** Open the co-author tab on this description. */
   onDescribe: (description: string) => void;
   /** Leave for the blank canvas. */
   onSkip: () => void;
-  /** Go to the canvas to build by hand (one-surface.md): "draw" for
-   *  components and flows, "wire" for dropping process primitives and
-   *  pressing Run. Absent, "Draw it by hand" falls back to skip. */
-  onBuild?: (how: "draw" | "wire") => void;
+  /** Go to the canvas to build by hand. Absent, Build it falls back to skip. */
+  onBuild?: () => void;
   onOpenLibrary?: () => void;
+  /** Open on the describe field instead of the two cards (tests, and any
+   *  door that has already chosen to describe). */
+  initialStep?: "choose" | "describe";
 }) {
+  const [step, setStep] = useState<"choose" | "describe">(initialStep);
   const [description, setDescription] = useState("");
   const [reasoner, setReasoner] = useState(reasonerConfig);
   useEffect(() => subscribeReasoner(setReasoner), []);
@@ -50,7 +55,7 @@ export function StartSurface({
     return () => window.removeEventListener("keydown", onKey);
   }, [onSkip]);
 
-  // Focus in on open (the textarea carries autoFocus), back to the opener on
+  // Focus in on open (the first card, or the field, carries autoFocus), back to the opener on
   // close, the way ConfirmDialog does it.
   useEffect(() => {
     const opener = document.activeElement as HTMLElement | null;
@@ -109,61 +114,107 @@ export function StartSurface({
             skip
           </Button>
         </div>
-        <p id={descId} className="mb-3 text-sm leading-5" style={{ color: "var(--text-secondary)" }}>
-          Describe it in plain language and get a first draft to check, edit, and accept. Or build it on the canvas.
+        <p id={descId} className="mb-4 text-sm leading-5" style={{ color: "var(--text-secondary)" }}>
+          {step === "choose"
+            ? "Build it on the canvas, or describe it in plain words and get a first draft to check."
+            : "Say what the system is in plain words. You get a first draft to check, edit, and accept."}
         </p>
-        <Textarea
-          value={description}
-          autoFocus
-          onChange={(e) => setDescription(e.target.value)}
-          onKeyDown={(e) => {
-            if ((e.metaKey || e.ctrlKey) && e.key === "Enter") {
-              e.preventDefault();
-              describe();
-            }
-          }}
-          spellCheck
-          rows={4}
-          aria-label="Describe a system"
-          className="w-full resize-none"
-          placeholder="e.g. a home thermostat with a sensor, a controller, and a furnace"
-        />
-        <div className="mt-3 flex flex-wrap items-center gap-3">
-          <Button onClick={describe} disabled={!ready} title="Draft a model from the description (⌘⏎)">
-            Draft
-          </Button>
-          <span className="text-xs" style={{ color: "var(--text-muted)" }}>
-            {reasoner.enabled
-              ? `Drafts with ${isHosted(reasoner.endpoint) ? "the facets reasoner" : "your reasoner"}.`
-              : "The co-author is off. You choose where it runs before anything is sent."}
-          </span>
-        </div>
-
-        <div
-          className="mt-4 flex flex-wrap items-center gap-x-3 gap-y-2 border-t pt-3 text-xs"
-          style={{ borderColor: "var(--hairline)", color: "var(--text-muted)" }}
-        >
-          <span>or</span>
-          <Button size={28} variant="quiet" onClick={() => (onBuild ? onBuild("draw") : onSkip())}>
-            Draw it by hand
-          </Button>
-          {onBuild && (
-            <Button
-              size={28}
-              variant="quiet"
-              onClick={() => onBuild("wire")}
-              title="Drop process primitives from the rail, wire them, press Run"
-            >
-              Wire processes and run
-            </Button>
-          )}
-          {onOpenLibrary && (
+        {step === "choose" ? (
+          <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
+            <WayIn
+              icon="draw"
+              title="Build it"
+              line="Name the system, place its parts, draw the flows."
+              autoFocus
+              onClick={() => (onBuild ? onBuild() : onSkip())}
+            />
+            <WayIn
+              icon="describe"
+              title="Describe it"
+              line="Write what it is; the co-author drafts the model."
+              onClick={() => setStep("describe")}
+            />
+          </div>
+        ) : (
+          <>
+            <Textarea
+              value={description}
+              autoFocus
+              onChange={(e) => setDescription(e.target.value)}
+              onKeyDown={(e) => {
+                if ((e.metaKey || e.ctrlKey) && e.key === "Enter") {
+                  e.preventDefault();
+                  describe();
+                }
+              }}
+              spellCheck
+              rows={4}
+              aria-label="Describe a system"
+              className="w-full resize-none"
+              placeholder="e.g. a home thermostat with a sensor, a controller, and a furnace"
+            />
+            <div className="mt-3 flex flex-wrap items-center gap-3">
+              <Button onClick={describe} disabled={!ready} title="Draft a model from the description (⌘⏎)">
+                Draft
+              </Button>
+              <Button size={28} variant="quiet" onClick={() => setStep("choose")}>
+                back
+              </Button>
+              <span className="text-xs" style={{ color: "var(--text-muted)" }}>
+                {reasoner.enabled
+                  ? `Drafts with ${isHosted(reasoner.endpoint) ? "the facets reasoner" : "your reasoner"}.`
+                  : "The co-author is off. You choose where it runs before anything is sent."}
+              </span>
+            </div>
+          </>
+        )}
+        {onOpenLibrary && step === "choose" && (
+          <div className="mt-4 text-xs" style={{ color: "var(--text-muted)" }}>
             <Button size={28} variant="quiet" onClick={onOpenLibrary}>
-              Open an example
+              or open an example
             </Button>
-          )}
-        </div>
+          </div>
+        )}
       </div>
     </div>
+  );
+}
+
+/** One way in: an outlined card with the drawn door icon in a tinted well,
+ *  a name, and one line on what happens next. */
+function WayIn({
+  icon,
+  title,
+  line,
+  onClick,
+  autoFocus,
+}: {
+  icon: IconName;
+  title: string;
+  line: string;
+  onClick: () => void;
+  autoFocus?: boolean;
+}) {
+  return (
+    <button
+      type="button"
+      autoFocus={autoFocus}
+      onClick={onClick}
+      className="home-door home-door-secondary flex min-h-24 flex-col items-start gap-2 rounded-sm p-4 text-left"
+    >
+      <span
+        className="inline-flex h-10 w-10 items-center justify-center rounded-sm"
+        style={{ background: "var(--accent-soft)", color: "var(--accent)", border: "1px solid var(--accent)" }}
+        aria-hidden="true"
+      >
+        <Icon name={icon} size={24} />
+      </span>
+      <span className="text-base font-semibold" style={{ color: "var(--text-primary)" }}>
+        {title}
+      </span>
+      <span className="text-xs leading-snug" style={{ color: "var(--text-secondary)" }}>
+        {line}
+      </span>
+    </button>
   );
 }

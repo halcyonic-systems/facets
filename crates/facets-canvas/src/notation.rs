@@ -387,7 +387,7 @@ mod tests {
     }
 
     fn model(lens: Lens, things: Vec<Thing>, relations: Vec<Relation>) -> CanvasModel {
-        CanvasModel { milieu: vec![],
+        CanvasModel { system_pos: None, milieu: vec![],
             crossings: vec![],
             lens,
             model_id: None,

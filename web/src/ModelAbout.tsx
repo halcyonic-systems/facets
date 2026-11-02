@@ -6,6 +6,7 @@
 // state, no kernel calls, works for every model including a blank one.
 import type { CanvasModel, Manifest } from "./kernel/types";
 import { pendingCrossingsPhrase } from "./canvas/crossings";
+import { DescriptionField, ToolButton } from "./ui";
 
 function Line({ label, children }: { label: string; children: React.ReactNode }) {
   return (
@@ -24,11 +25,18 @@ export function ModelAbout({
   model,
   manifest,
   blurb,
+  onDescriptionChange,
+  onOpenMilieu,
 }: {
   model: CanvasModel;
   manifest: Manifest | null;
   /** The demo bundle's one-paragraph description, when the model came from one. */
   blurb?: string;
+  /** Write the system's own description here (2026-11-02: the system of
+   *  interest is a system, so it is described like one). Absent, read-only. */
+  onDescriptionChange?: (d: string) => void;
+  /** Open the milieu M on the canvas. Absent, the row only reports. */
+  onOpenMilieu?: () => void;
 }) {
   const components = model.things.filter((t) => t.role === "Component");
   const env = model.things.filter((t) => t.role === "Environment");
@@ -66,6 +74,9 @@ export function ModelAbout({
 
   return (
     <div>
+      <div className="mb-1 text-[11px] font-semibold uppercase" style={{ letterSpacing: "var(--tracking-label)", color: "var(--text-muted)" }}>
+        system of interest
+      </div>
       <h2
         className="mb-2 font-bold leading-tight"
         style={{ color: "var(--text-primary)", fontFamily: "var(--font-display)", fontSize: "var(--t-d3)" }}
@@ -78,12 +89,21 @@ export function ModelAbout({
         </div>
       )}
       {/* The SOI's own prose (#326), above the domain: what this system IS
-          reads before what subject area it belongs to. Read-only here — the
-          home slot reports, and the title-bar panel is where it is written. */}
-      {model.description && (
-        <p className="mb-3 text-xs leading-relaxed" style={{ color: "var(--text-primary)" }}>
-          {model.description}
-        </p>
+          reads before what subject area it belongs to. Written here as well
+          as in the title-bar panel (2026-11-02): this slot is what answers
+          when the author asks about the system. */}
+      {onDescriptionChange ? (
+        <DescriptionField
+          value={model.description ?? ""}
+          onChange={onDescriptionChange}
+          placeholder="what this system is, in your own words"
+        />
+      ) : (
+        model.description && (
+          <p className="mb-3 text-xs leading-relaxed" style={{ color: "var(--text-primary)" }}>
+            {model.description}
+          </p>
+        )
       )}
       {model.system_type?.domain && (
         <p className="mb-3 text-xs leading-relaxed" style={{ color: "var(--text-secondary)" }}>
@@ -96,6 +116,23 @@ export function ModelAbout({
         </p>
       )}
       <Line label="composition">{composition}</Line>
+      {model.lens === "Mobus" && (
+        <div className="mb-1.5 flex items-center gap-2 text-xs">
+          <span className="w-20 shrink-0" style={{ color: "var(--text-muted)" }}>
+            milieu
+          </span>
+          <span className="min-w-0 flex-1" style={{ color: "var(--text-primary)" }}>
+            {(model.milieu?.length ?? 0) === 0
+              ? "none declared"
+              : model.milieu!.map((m) => m.name).join(" · ")}
+          </span>
+          {onOpenMilieu && (
+            <ToolButton onClick={onOpenMilieu} title="Read and edit the ambient conditions around this system">
+              {(model.milieu?.length ?? 0) === 0 ? "add" : "edit"}
+            </ToolButton>
+          )}
+        </div>
+      )}
       {model.time_unit && <Line label="time unit">{model.time_unit}</Line>}
       {manifest && forced.length > 0 && (
         <Line label="data">
@@ -103,7 +140,7 @@ export function ModelAbout({
         </Line>
       )}
       <p className="mt-3 text-[11px] leading-snug" style={{ color: "var(--text-muted)" }}>
-        Click a component, environment thing, or flow to inspect it here.
+        Click a component, environment thing, or flow to inspect it here; click the boundary for porosity, fuzziness and the milieu.
       </p>
     </div>
   );

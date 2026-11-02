@@ -29,7 +29,7 @@ const Canvas3D = lazy(() => import("./canvas3d/Canvas3D"));
 import type { Embed } from "./canvas/embed";
 import { rebaseOut, type View } from "./canvas/frameRebase";
 import { frameChain } from "./canvas/frameChain";
-import { edgeGeometry, thingById } from "./canvas/geometry";
+import { edgeGeometry, membraneRing, systemAnchor, thingById } from "./canvas/geometry";
 import { EdgePopover } from "./canvas/EdgePopover";
 import { flowParamFor, forcedByColumn } from "./kernel/params";
 import type { DecomposeAffordance } from "./canvas/NodeEditor";
@@ -246,7 +246,12 @@ boundary porosity 0.7 fuzziness 0.1
 // just breathing room for the edge labels.
 function spaceOut(model: CanvasModel): CanvasModel {
   const SPACING = 1.8;
-  return { ...model, things: model.things.map((t) => ({ ...t, x: t.x * SPACING })) };
+  return {
+    ...model,
+    things: model.things.map((t) => ({ ...t, x: t.x * SPACING })),
+    // A pinned system scales with its parts, or the membrane would sit off them.
+    ...(model.system_pos ? { system_pos: [model.system_pos[0] * SPACING, model.system_pos[1]] as [number, number] } : {}),
+  };
 }
 
 // Offer a JSON string to the browser as a file download — the save/export
@@ -1475,10 +1480,16 @@ function Workspace() {
     setWalk([]);
     setFitToken((n) => (n ?? 0) + 1); // frame the newborn membrane (#100 phase 0)
     // "Describe it in a few lines" already chose the text pane, so it is not
-    // asked again how it wants to start.
-    setWorkspaceMode("write"); // #409: a new model opens in Write
-    if (opts?.sl) setSlOpen(true);
-    else setStartOpen(true);
+    // asked again how it wants to start. Every other new model opens in Build
+    // (Shingai, 2026-11-02: drop them on Build, not Write), so skipping the
+    // start surface leaves the author on the canvas with the system to name.
+    if (opts?.sl) {
+      setWorkspaceMode("write");
+      setSlOpen(true);
+    } else {
+      setWorkspaceMode("build");
+      setStartOpen(true);
+    }
   }
 
   // #309 M1: open the data-first door. Same discard/walk guards as File → New;
@@ -2605,6 +2616,19 @@ function Workspace() {
 
   function updateBoundary(next: import("./kernel/types").CanvasBoundaryProps) {
     setCanvasModel((m) => (m ? { ...m, boundary: next } : m));
+    setDirty(true);
+  }
+
+  // The milieu M, authored from the canvas (2026-11-02). It crosses the seam
+  // verbatim, so this is the same write the SL `milieu` line makes.
+  function updateMilieu(next: import("./kernel/types").MilieuVar[]) {
+    setCanvasModel((m) => (m ? { ...m, milieu: next.length > 0 ? next : undefined } : m));
+    setDirty(true);
+  }
+
+  // The system of interest's own prose (#326), written from its inspector.
+  function updateSoiDescription(d: string) {
+    setCanvasModel((m) => (m ? { ...m, description: d || undefined } : m));
     setDirty(true);
   }
 
@@ -3818,13 +3842,22 @@ function Workspace() {
                         boundary={canvasModel.boundary}
                         anchor={toScreen(boundaryAnchor)}
                         onUpdateBoundary={updateBoundary}
+                        milieuCount={canvasModel.lens === "Mobus" ? (canvasModel.milieu?.length ?? 0) : undefined}
+                        onOpenMilieu={() => {
+                          setMilieuAnchor(boundaryAnchor);
+                          setBoundaryAnchor(null);
+                        }}
                         onClose={() => setBoundaryAnchor(null)}
                       />
                     )}
-                    {milieuAnchor && (canvasModel.milieu?.length ?? 0) > 0 && (
+                    {/* Open on an empty milieu too (2026-11-02): reached from
+                        the boundary or the system's inspector, it is where the
+                        first variable is added. */}
+                    {milieuAnchor && (
                       <MilieuPopover
-                        milieu={canvasModel.milieu!}
+                        milieu={canvasModel.milieu ?? []}
                         anchor={toScreen(milieuAnchor)}
+                        onUpdateMilieu={updateMilieu}
                         onClose={() => setMilieuAnchor(null)}
                       />
                     )}
@@ -4199,6 +4232,17 @@ function Workspace() {
               }
               focused={inspectorFocused}
               onToggleFocus={() => setInspectorFocused((f) => !f)}
+              onSoiDescriptionChange={canvasModel ? updateSoiDescription : undefined}
+              onOpenMilieu={
+                canvasModel && !registerActive
+                  ? () => {
+                      const ring = membraneRing(canvasModel.things, systemAnchor(canvasModel));
+                      setBoundaryAnchor(null);
+                      setInterfaceSel(null);
+                      setMilieuAnchor({ x: ring.cx, y: ring.cy + ring.ry + 56 });
+                    }
+                  : undefined
+              }
             />
             </div>
           )}
@@ -4237,14 +4281,9 @@ function Workspace() {
             setSlOpen(true);
           }}
           onSkip={() => setStartOpen(false)}
-          onBuild={(how) => {
-            // one-surface.md: both canvas ways in open Build; wiring
-            // processes says where the primitives are and what Run does.
+          onBuild={() => {
             setStartOpen(false);
             setWorkspaceMode("build");
-            if (how === "wire") {
-              setNotice("Pick a process on the rail, click to place it, drag from its handle to wire it, then press Run.");
-            }
           }}
           onOpenLibrary={() => {
             setStartOpen(false);

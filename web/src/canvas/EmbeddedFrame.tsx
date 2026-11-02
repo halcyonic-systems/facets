@@ -25,10 +25,10 @@
 // ids and a `data-node-label` the stage's crowding pass measures, and a child's
 // thing ids collide with the parent's — so an embedded frame draws its own
 // quiet marks instead, and nothing about the parent's rendering shifts.
-import type { Relation, Thing } from "../kernel/types";
+import type { CanvasModel, Relation, Thing } from "../kernel/types";
 import { KIND_COLOR } from "./types";
 import { embedTransformAttr, type ApertureRegister, type FrameNode } from "./embed";
-import { bungeHull, INTERFACE_SCALE, membraneRing, NODE_R, thingById } from "./geometry";
+import { bungeHull, INTERFACE_SCALE, membraneRing, NODE_R, systemAnchor, thingById } from "./geometry";
 import { STYLE, elideEdgeLabel } from "./style";
 
 /** Screen pixels a nested caption holds, whatever the depth scales it to. */
@@ -68,7 +68,7 @@ export function EmbeddedFrame({ node, frameScale, register, caption: captionText
       <circle cx={at.x} cy={at.y} r={NODE_R} fill="var(--bg-primary)" />
       <g clipPath={`url(#${clipId})`}>
         <g transform={embedTransformAttr(embed)}>
-          {register === "Mobus" ? <Membrane components={components} /> : <Hull child={child} />}
+          {register === "Mobus" ? <Membrane components={components} child={child} /> : <Hull child={child} />}
           {flows.map((r) => {
             const a = thingById(child, r.a);
             const b = thingById(child, r.b);
@@ -155,8 +155,8 @@ export function EmbeddedFrame({ node, frameScale, register, caption: captionText
 
 /** Mobus: B = ⟨P, I⟩ reified. The child's membrane IS the aperture's inner
  *  border — the same mark the child draws for itself one level down. */
-function Membrane({ components }: { components: Thing[] }) {
-  const ring = membraneRing(components);
+function Membrane({ components, child }: { components: Thing[]; child: CanvasModel }) {
+  const ring = membraneRing(components, systemAnchor(child));
   return (
     <ellipse
       cx={ring.cx}

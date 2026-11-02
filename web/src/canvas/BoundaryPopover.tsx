@@ -1,4 +1,5 @@
-// The boundary inspector — authoring B's P = ⟨porosity, perceptive fuzziness⟩
+// The boundary inspector — authoring B's P = ⟨porosity, perceptive fuzziness⟩,
+// with a door to the milieu M that bathes it (2026-11-02)
 // (Mobus only; opened by clicking the membrane or a port, which belong to B).
 // An EDIT on an existing element, never a rail verb: the boundary itself stays
 // kernel-computed; only its properties are authored (lens-palettes.md Q4).
@@ -13,11 +14,19 @@ export function BoundaryPopover({
   boundary,
   anchor,
   onUpdateBoundary,
+  milieuCount,
+  onOpenMilieu,
   onClose,
 }: {
   boundary: CanvasBoundaryProps;
   anchor: Pt;
   onUpdateBoundary: (b: CanvasBoundaryProps) => void;
+  /** How many milieu variables the system declares; absent, no milieu row
+   *  (a lens that does not draw M). */
+  milieuCount?: number;
+  /** The door to M from B (2026-11-02): the membrane is where the system
+   *  meets its bath, so the bath is one click from it. */
+  onOpenMilieu?: () => void;
   onClose: () => void;
 }) {
   const range = (
@@ -64,6 +73,19 @@ export function BoundaryPopover({
         boundary.perceptive_fuzziness,
         (v) => onUpdateBoundary({ ...boundary, perceptive_fuzziness: v }),
         "perceptive fuzziness: 0 = crisp → 1 = fuzzy; renders as edge blur",
+      )}
+      {milieuCount !== undefined && onOpenMilieu && (
+        <Row>
+          <span
+            title="Ambient conditions that bathe the system: M in E = ⟨O, M⟩"
+            style={{ color: "var(--text-secondary)" }}
+          >
+            milieu
+          </span>
+          <ToolButton onClick={onOpenMilieu} title="Read and edit the ambient conditions around this system">
+            {milieuCount === 0 ? "add" : `${milieuCount} variable${milieuCount === 1 ? "" : "s"}`}
+          </ToolButton>
+        </Row>
       )}
       <div className="flex justify-end">
         <ToolButton onClick={onClose}>close</ToolButton>
