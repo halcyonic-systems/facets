@@ -96,8 +96,8 @@ describe("workspace presets (#409 M1)", () => {
 describe("the remembered mode", () => {
   beforeEach(resetWorkspaceForTest);
 
-  it("opens on Write when nothing is stored", () => {
-    expect(workspaceMode()).toBe("write");
+  it("opens on Build when nothing is stored (2026-11-02)", () => {
+    expect(workspaceMode()).toBe("build");
   });
 
   it("tells subscribers about a change and holds it", () => {

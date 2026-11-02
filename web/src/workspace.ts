@@ -95,7 +95,9 @@ function isMode(v: unknown): v is WorkspaceMode {
   return v === "write" || v === "build" || v === "read";
 }
 
-let current: WorkspaceMode = "write";
+// First launch lands on the canvas (2026-11-02): Build is where a new author
+// starts; Write stays one tab away and is remembered once chosen.
+let current: WorkspaceMode = "build";
 let loaded = false;
 const listeners = new Set<(mode: WorkspaceMode) => void>();
 
@@ -132,7 +134,7 @@ export function subscribeWorkspaceMode(fn: (mode: WorkspaceMode) => void): () =>
 
 /** Reset the module's cache — tests only. */
 export function resetWorkspaceForTest(): void {
-  current = "write";
+  current = "build";
   loaded = false;
   listeners.clear();
 }

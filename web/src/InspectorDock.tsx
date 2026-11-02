@@ -86,7 +86,13 @@ export function InspectorDock({
   formalRequest,
   preferFolded = false,
   frame,
+  onSoiDescriptionChange,
+  onOpenMilieu,
 }: {
+  /** The system of interest's description, written from its home slot. */
+  onSoiDescriptionChange?: (d: string) => void;
+  /** Open the milieu popover on the canvas, from the home slot. */
+  onOpenMilieu?: () => void;
   /** #409: the mode's preset over this dock. The tabs it offers and whether
    *  it takes the wider reading measure; the collapse rail and the focus
    *  control are not shown, since the mode decides whether the dock is. */
@@ -344,7 +350,13 @@ export function InspectorDock({
                 /* The home slot (walkthrough #15): with nothing selected, the
                    MODEL is the element — name, kind, domain, blurb,
                    composition, and data provenance, all derived. */
-                <ModelAbout model={canvasModel} manifest={runManifest ?? null} blurb={blurb} />
+                <ModelAbout
+                  model={canvasModel}
+                  manifest={runManifest ?? null}
+                  blurb={blurb}
+                  onDescriptionChange={onSoiDescriptionChange}
+                  onOpenMilieu={onOpenMilieu}
+                />
               ) : (
                 <Placeholder>Click a component or environment thing to edit it here.</Placeholder>
               ))}

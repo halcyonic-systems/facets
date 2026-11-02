@@ -64,9 +64,11 @@ sandbox surface exactly as before. Nothing is removed; only its Home door goes.
 
 - Home: one **New model** door (blank canvas) and **Open a model**. The
   Draw/Describe pair and the Sandbox door go.
-- The blank canvas's start dialog names the three ways in: describe it (the
-  co-author), draw it by hand, or wire processes and run. The last two open
-  Build; describing opens Write, as before. Open an example stays.
+- The blank canvas's start dialog names the ways in. Superseded 2026-11-02:
+  two cards, **Build it** (opens Build) and **Describe it** (the co-author,
+  opens Write), with "open an example" as a quiet link. "Wire processes and
+  run" went: it opened the same Build canvas with a notice. A new model, and
+  a first launch, now open in Build rather than Write.
 
 ## Follow-ups, not in this change
 

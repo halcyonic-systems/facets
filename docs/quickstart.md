@@ -9,8 +9,8 @@ defer to never covered it. New terms link
 to the [terminology concordance](language/terminology-concordance.md) on first
 use; the [glossary](glossary.md) is the fast reference.
 
-Prefer to touch before you read? Start a **New model** and choose **Wire
-processes and run**: drop work processes from the Build rail, wire them, press
+Prefer to touch before you read? Start a **New model** and choose **Build
+it**: drop work processes from the Build rail, wire them, press
 Run, and turn a knob while it runs. It keeps running past the run length until
 you pause it. Come back here when you want the judged-model path. The design
 record is [`design/one-surface.md`](design/one-surface.md); the older sandbox
@@ -52,9 +52,9 @@ You land on a **start screen** with two doors: *New model* and *Open a model*.
 
 ## 2. Author a model as text
 
-Click **New model**. A start surface offers three ways in: describe the model in
-plain language (which needs a reasoner), draw it by hand, or wire processes and
-run. Click **skip** for now. (The
+Click **New model**. A start surface offers two ways in: **Build it** on the
+canvas, or **Describe it** in plain language (which needs a reasoner). Click
+**skip** for now. (The
 model's name, Bunge's kingdom and genus, and a subject domain are set from the
 model's name in the top bar, or by the `system` line of the text below.)
 

@@ -344,7 +344,8 @@ export function edgeGeometry(
 // ---- The Mobus membrane (Phase 3) -------------------------------------------
 // Pure pixel math: WHERE the ring is drawn is layout; THAT there is a boundary,
 // which nodes are on it, and where the ports are all come from the kernel's
-// lens_facts. An ellipse (not a convex hull) because it stays sane at 1–2 nodes.
+// lens_facts. A circle (not a convex hull) because it stays sane at 1–2 nodes
+// and keeps one shape however the parts move.
 
 export interface Ring {
   cx: number;
@@ -355,25 +356,30 @@ export interface Ring {
 
 const RING_PAD = NODE_R + 36;
 
-/** Ellipse around the COMPONENT things only — env objects live outside it. */
+/** The smallest the system of interest is ever drawn: six component radii.
+ *  Old BERT drew the SOI as one large circle with its parts small inside it,
+ *  and that ratio is what made "this is the system, those are its parts" read
+ *  at a glance (Shingai, 2026-11-02: with one component, a 2.5x membrane read
+ *  as two peers). The membrane still grows to hold its components; it never
+ *  shrinks below this. */
+export const MIN_RING_R = NODE_R * 6;
+
+/** The membrane around the COMPONENT things only — env objects live outside
+ *  it. Always a circle (2026-11-02): an ellipse fitted to the bounding box
+ *  flattened two side-by-side parts into a lozenge, so the system of interest
+ *  changed shape as you dragged. `rx === ry`; both fields stay so every
+ *  consumer reads it as before. */
 export function componentRing(components: Pt[]): Ring | null {
   if (components.length === 0) return null;
   const xs = components.map((p) => p.x);
   const ys = components.map((p) => p.y);
-  const minX = Math.min(...xs);
-  const maxX = Math.max(...xs);
-  const minY = Math.min(...ys);
-  const maxY = Math.max(...ys);
-  // √2 so the ellipse CIRCUMSCRIBES the node bounding box (passes through its
-  // corners) instead of being inscribed in it — otherwise corner nodes drift
-  // outside the membrane as the layout spreads. RING_PAD (> NODE_R) then keeps
-  // the node bodies, not just their centers, inside.
-  return {
-    cx: (minX + maxX) / 2,
-    cy: (minY + maxY) / 2,
-    rx: ((maxX - minX) / 2) * Math.SQRT2 + RING_PAD,
-    ry: ((maxY - minY) / 2) * Math.SQRT2 + RING_PAD,
-  };
+  const cx = (Math.min(...xs) + Math.max(...xs)) / 2;
+  const cy = (Math.min(...ys) + Math.max(...ys)) / 2;
+  // The circle through the farthest centre, then RING_PAD (> NODE_R) so the
+  // node bodies, not just their centres, sit inside.
+  const far = Math.max(...components.map((p) => Math.hypot(p.x - cx, p.y - cy)));
+  const r = Math.max(MIN_RING_R, far + RING_PAD);
+  return { cx, cy, rx: r, ry: r };
 }
 
 /** The point ON the ring at the parametric angle of `toward` from its center —
@@ -408,13 +414,19 @@ function interiorCenter(things: Placed[]): Pt {
 }
 
 /** The Mobus membrane for a model's things: the component ring, or — empty
- *  interior — a small membrane at the stand-ins' centroid. Never null: under
+ *  interior — a membrane at the stand-ins' centroid. Never null: under
  *  Mobus the boundary is a reified object, present from birth. */
 export function membraneRing(things: Placed[]): Ring {
   const ring = componentRing(things.filter((t) => t.role === "Component"));
   if (ring) return ring;
   const c = interiorCenter(things);
-  return { cx: c.x, cy: c.y, rx: EMPTY_HALF, ry: EMPTY_HALF };
+  // A blank system is drawn at the floor, so naming it already shows a place
+  // to put parts. A walked-in newborn keeps its stand-ins outside: the
+  // membrane stops a body's width short of the nearest one.
+  if (things.length === 0) return { cx: c.x, cy: c.y, rx: MIN_RING_R, ry: MIN_RING_R };
+  const near = Math.min(...things.map((t) => Math.hypot(t.x - c.x, t.y - c.y)));
+  const r = Math.max(EMPTY_HALF, Math.min(MIN_RING_R, near - NODE_R * 2));
+  return { cx: c.x, cy: c.y, rx: r, ry: r };
 }
 
 /** Bunge's hull box — the observer's cut over one flat ontology. Drawn dashed,
