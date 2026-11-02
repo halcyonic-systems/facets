@@ -563,7 +563,13 @@ export function RunInputs({
         })
         .filter((g) => g.rows.length + g.knobs.length > 0)
     : [];
-  if (paramRows.length + drivers.length + signals.length + allocations.length + engineGroups.length === 0) return null;
+  // Walk row 13: when every flow in from outside is a signal, nothing
+  // material enters and every stock stays empty. That is right by the rules
+  // and baffling without a word, so the card says it.
+  const inflows = model.relations.filter((r) => r.is_bond && fromSource(r));
+  const signalOnly = inflows.length > 0 && inflows.every((r) => r.kind === "Informational");
+  if (paramRows.length + drivers.length + signals.length + allocations.length + engineGroups.length === 0 && !signalOnly)
+    return null;
 
   // Allocations group under their allocating process — the split they weight.
   const allocGroups = new Map<string, Relation[]>();
@@ -574,6 +580,13 @@ export function RunInputs({
 
   return (
     <Card title="Inputs" source="declared · edits re-run">
+      {signalOnly && (
+        <p className="mb-2 text-[11px] leading-snug" style={{ color: "var(--verdict-warning)" }} data-testid="signal-only">
+          Nothing material enters the system: every flow in from outside is a signal (informational). A
+          signal informs a process but carries no quantity, so the stocks stay empty. Make one of those flows
+          matter or energy to feed the system.
+        </p>
+      )}
       {onReset && (
         <Button
           size={28}

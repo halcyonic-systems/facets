@@ -171,3 +171,35 @@ describe("knobs at their defaults", () => {
     expect(html).toContain(">default<");
   });
 });
+
+// Walk row 13: a model whose only inflow is a signal runs empty; say why.
+describe("a signal-only inflow", () => {
+  const signal = {
+    name: "m",
+    lens: "Mobus",
+    things: [
+      { id: 1, name: "E5", role: "Environment", env_kind: "Neutral" },
+      { id: 2, name: "T1", role: "Component", primitive: "Buffering" },
+      { id: 3, name: "E6", role: "Environment", env_kind: "Neutral" },
+    ],
+    relations: [
+      { id: 10, a: 1, b: 2, is_bond: true, kind: "Informational", name: "" },
+      { id: 11, a: 2, b: 3, is_bond: true, kind: "Matter", name: "" },
+    ],
+    params: [],
+  } as unknown as CanvasModel;
+
+  it("says nothing material enters", () => {
+    const html = renderToStaticMarkup(<RunInputs model={signal} manifest={null} onEdit={() => {}} sourceIds={[1]} />);
+    expect(html).toContain("Nothing material enters the system");
+  });
+
+  it("stays quiet once a material flow comes in", () => {
+    const fed = {
+      ...signal,
+      relations: [...signal.relations, { id: 12, a: 1, b: 2, is_bond: true, kind: "Matter", name: "feed" }],
+    } as unknown as CanvasModel;
+    const html = renderToStaticMarkup(<RunInputs model={fed} manifest={null} onEdit={() => {}} sourceIds={[1]} />);
+    expect(html).not.toContain("Nothing material enters");
+  });
+});

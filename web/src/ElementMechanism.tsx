@@ -151,12 +151,27 @@ export function ElementMechanism({
         </>
       )}
       {traj && at !== null && (
-        <div className="mt-2 flex items-center gap-3">
-          <Sparkline series={traj.series} tick={tick} slot={slot} />
-          <span className="tabular font-semibold" style={{ fontSize: "var(--t-num)", color: "var(--text-secondary)" }}>
-            {Number.isFinite(at) ? at.toLocaleString(undefined, { maximumFractionDigits: 1 }) : "—"}
-            {traj.unit ? ` ${traj.unit}` : ""} <span style={{ color: "var(--text-muted)" }}>at tick {Math.min(tick, traj.series.length - 1)}</span>
+        // A readout, never a control (walk: a flat series drew as a line with
+        // a dot and read as a slider). Labelled, and a value that never moves
+        // is said in words instead of drawn.
+        <div className="mt-2" data-testid="element-trajectory">
+          <span className="block text-[11px]" style={{ color: "var(--text-muted)" }}>
+            over the run
           </span>
+          <div className="flex items-center gap-3">
+            {Math.min(...traj.series) !== Math.max(...traj.series) && (
+              <Sparkline series={traj.series} tick={tick} slot={slot} />
+            )}
+            <span className="tabular font-semibold" style={{ fontSize: "var(--t-num)", color: "var(--text-secondary)" }}>
+              {Number.isFinite(at) ? at.toLocaleString(undefined, { maximumFractionDigits: 1 }) : "—"}
+              {traj.unit ? ` ${traj.unit}` : ""}{" "}
+              <span style={{ color: "var(--text-muted)" }}>
+                {Math.min(...traj.series) === Math.max(...traj.series)
+                  ? "the same at every tick"
+                  : `at tick ${Math.min(tick, traj.series.length - 1)}`}
+              </span>
+            </span>
+          </div>
         </div>
       )}
     </div>

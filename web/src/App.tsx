@@ -2577,7 +2577,10 @@ function Workspace() {
         if (b && result) {
           b.step(1);
           const r = b.readout();
-          setT(r.ticks * dt);
+          // Stepping past the run length extends it; stepping inside it never
+          // shrinks it (walk row 14: a first Step set T to one tick, so the
+          // next Run ran a single tick).
+          if (r.ticks * dt > t) setT(r.ticks * dt);
           setResult(r);
           recordBench(b, r, "step", runCsv ?? "", manifest, dt, r.ticks * dt);
           setPlaying(false);
@@ -2587,7 +2590,7 @@ function Workspace() {
         const m = modelForRun();
         if (!m) return;
         const nextT = result ? (result.ticks + 1) * dt : dt;
-        setT(nextT);
+        if (nextT > t) setT(nextT);
         runWith(m.json, runCsv ?? "", manifest, dt, nextT, m.edited);
         setTick(result ? result.ticks : 0);
       }
