@@ -40,7 +40,6 @@ export function Readouts({
   knobs,
   time,
   runKind,
-  transport,
   onClose,
 }: {
   result: RunResultRich | null;
@@ -82,9 +81,6 @@ export function Readouts({
   time?: { dt: number; t: number; klir: boolean; onCommit: (dt: number, t: number) => void };
   /** #282: the lens's declared run semantics — this view renders from it. */
   runKind: RunKind;
-  /** The one Transport spine, mounted whole (same instance grammar as the
-   *  bench strip — one place starts a run, one place plays it). */
-  transport?: React.ReactNode;
   /** Return to the Model surface (⤡ / Esc — App owns the binding). */
   onClose: () => void;
 }) {
@@ -200,7 +196,7 @@ export function Readouts({
     </>
   ) : (
     <Placeholder>
-      {"Nothing has run yet. Press Run in the header, or set the run length in the rail first. No data is needed: the declared amounts govern until a column is bound."}
+      {"Nothing has run yet. Press Run in the strip below, or set the run length in the rail first. No data is needed: the declared amounts govern until a column is bound."}
     </Placeholder>
   );
 
@@ -226,7 +222,10 @@ export function Readouts({
             {model.name.trim()}
           </span>
         )}
-        <div className="order-last min-w-0 basis-full xl:order-none xl:basis-auto xl:flex-1">{transport}</div>
+        {/* The run's controls stay in the one strip under the stage
+            (decision 1, 2026-11-02); this header holds only what belongs to
+            the readouts. */}
+        <span className="flex-1" />
         {/* #463 move 4: keep this run as the baseline; every later knob
             then reads against it. One button, two states; dropping it is
             the same button. */}
@@ -243,9 +242,6 @@ export function Readouts({
             {baseline ? "baseline kept · drop" : "keep baseline"}
           </Button>
         )}
-        <Button size={28} variant="quiet" icon="collapse" onClick={onClose} title="Back to the model (Esc)">
-          model
-        </Button>
       </div>
       {/* The rail: 18rem beside the readout from 1024 up; below that it stacks
           on top, capped to 40% of the height, so the readout never leaves the
@@ -281,14 +277,14 @@ function Placeholder({ children }: { children: React.ReactNode }) {
 /** The run's time slice (Δt/T): step size and horizon, docked with the run
  *  they govern. Commit (Enter/blur) re-runs over the new slice — the
  *  inputs-card grammar. Under Klir only the horizon renders (a DTMC advances
- *  in steps; Δt is not a Klir word). Exported for the bench's RunCard. */
+ *  in steps; Δt is not a Klir word). */
 export function TimeRow({
   time,
   frame = true,
 }: {
   time: { dt: number; t: number; klir: boolean; onCommit: (dt: number, t: number) => void };
-  /** false = bare fields for a host that already carries card chrome (the
-   *  bench's RunCard) — no Card-in-card nesting. */
+  /** false = bare fields for a host that already carries card chrome — no
+   *  Card-in-card nesting. */
   frame?: boolean;
 }) {
   // Plain words lead, the formal symbol rides muted beside them (#297 review:

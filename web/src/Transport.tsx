@@ -24,6 +24,8 @@ export function Transport({
   runOn,
   onRunOnChange,
   onRunOnTick,
+  readouts,
+  changedAt = [],
 }: {
   onRun: () => void;
   onStep: () => void;
@@ -48,6 +50,13 @@ export function Transport({
   onRunOnChange?: (on: boolean) => void;
   /** Step the engine one tick; called by the scrubber at the last frame. */
   onRunOnTick?: () => void;
+  /** The one way into the run's readouts (decision 1, 2026-11-02): the strip
+   *  opens them and closes them again. Absent = no readouts to open. */
+  readouts?: { open: boolean; onToggle: () => void };
+  /** Ticks at which a knob was changed while the run kept going. The run's
+   *  totals then mix two settings; the strip says so instead of leaving the
+   *  numbers to look wrong (walk row 11). */
+  changedAt?: number[];
 }) {
   if (!runnable) {
     return (
@@ -77,11 +86,11 @@ export function Transport({
           onClick={() => onRunOnChange(!runOn)}
           title={
             runOn
-              ? "Run on: play keeps stepping the engine past the run length, and a knob turned while it plays takes effect at that tick. Click to stop at the run length."
-              : "Stops at the run length. Click to keep running past it, live."
+              ? "Keep going: play continues past the run length, and a knob you change while it plays takes effect from that tick. Click to stop at the run length."
+              : "Stops at the run length. Click to keep going past it."
           }
         >
-          run on
+          keep going
         </ToolButton>
       )}
       {steps > 0 && (
@@ -110,12 +119,35 @@ export function Transport({
       ) : (
         <div className="min-w-0 flex-1" />
       )}
+      {changedAt.length > 0 && (
+        <span
+          className="shrink-0 text-[11px]"
+          style={{ color: "var(--verdict-warning)" }}
+          title="A knob changed partway through, so this run's totals mix the settings before and after. Run again to start clean."
+          data-testid="changed-at"
+        >
+          {changedAt.length === 1 ? `knob changed at tick ${changedAt[0]}` : `knobs changed at ticks ${changedAt.join(", ")}`}
+        </span>
+      )}
       {verdict && (
         <span className="shrink-0" title={`residual ${verdict.residual.toExponential(1)}`}>
           <Pill tone={verdict.conserved ? "ok" : "error"} icon={verdict.conserved ? "ok" : "warning"}>
             {verdict.conserved ? "conserved" : "leak"}
           </Pill>
         </span>
+      )}
+      {readouts && (
+        <Button
+          size={28}
+          variant="quiet"
+          icon={readouts.open ? "collapse" : "expand"}
+          onClick={readouts.onToggle}
+          title={readouts.open ? "Back to the model (Esc)" : "Inputs, time and every readout of the run"}
+          aria-pressed={readouts.open}
+          data-testid="readouts-toggle"
+        >
+          {readouts.open ? "model" : "inputs & readouts"}
+        </Button>
       )}
     </div>
   );

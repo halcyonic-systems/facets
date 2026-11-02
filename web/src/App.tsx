@@ -39,7 +39,6 @@ import { BoundaryPopover } from "./canvas/BoundaryPopover";
 import { MilieuPopover } from "./canvas/MilieuPopover";
 import { DataMode } from "./DataMode";
 import { Readouts } from "./Readouts";
-import { RunCard } from "./RunCard";
 import { Transport } from "./Transport";
 import { InterfacePopover } from "./canvas/InterfacePopover";
 import { PaletteRail } from "./canvas/PaletteRail";
@@ -388,6 +387,9 @@ function Workspace() {
   // shipped calibration artifact, or the projection of an edited canvas. The
   // kernel already hash-stamps the difference; this is the UI's plain word.
   const [ranEdited, setRanEdited] = useState(false);
+  // Ticks at which a knob landed while the run kept going (walk row 11): the
+  // strip names them, since the totals then mix two settings.
+  const [knobTicks, setKnobTicks] = useState<number[]>([]);
   // #67 J9: a Klir state machine's run is a distribution trajectory, not a
   // conservation ledger — held apart so its result never reaches for a
   // conservation `residual`/`conserved` field (and the conservation pill, driven
@@ -2377,7 +2379,14 @@ function Workspace() {
         }
         const structural =
           nextModel.relations.length !== prev.relations.length || nextModel.things.length !== prev.things.length;
-        if (!structural && changed.length + fieldEdits.length > 0 && runOn && playing && !(runCsv ?? "").trim()) {
+        // Only at the live edge: while play is still inside the recorded run,
+        // the engine sits at the run's end, so a knob "landing now" landed
+        // ticks past what the author was watching and mixed two settings into
+        // totals they had no way to read (walk row 11, measured: scrubber at
+        // tick 3, knob stamped at 12). Inside the record a knob re-runs from
+        // the start, as it does paused.
+        const atLiveEdge = result !== null && tick >= result.ticks - 1;
+        if (!structural && changed.length + fieldEdits.length > 0 && runOn && playing && atLiveEdge && !(runCsv ?? "").trim()) {
           // Running on (one-surface.md): the knob lands at the engine's
           // current tick and the run carries on from there, stocks kept —
           // the sandbox's mid-run tweak. The edit log stamps that tick.
@@ -2390,6 +2399,7 @@ function Workspace() {
           ranOnRef.current = true;
           setRanEdited(true);
           setRunError(null);
+          setKnobTicks(b.edits().filter((e) => e.tick > 0).map((e) => e.tick));
           return;
         }
         if (!structural && changed.length + fieldEdits.length > 0 && b.edits().some((e) => e.tick > 0)) {
@@ -2399,6 +2409,7 @@ function Workspace() {
           // from the document instead, at the length on screen, with a clean
           // log; the scrubber rests at the end as a knob's answer does.
           const len = Math.max(t, result ? result.ticks * dt : 0);
+          setKnobTicks([]);
           runWith(JSON.stringify(project(nextModel)), runCsv ?? "", manifest, dt, len, true);
           setPlaying(false);
           setTick(Math.max(0, (result?.ticks ?? 1) - 1));
@@ -2409,6 +2420,7 @@ function Workspace() {
           // from zero, and an edit stamped with the old run's last tick read
           // as if it had taken effect at the end (feel-test 2026-10-09).
           b.reset();
+          setKnobTicks([]);
           for (const r of changed) {
             b.setFlowAmount(r.name, nameOf(r.a), nameOf(r.b), Number(r.amount ?? 0));
           }
@@ -2539,6 +2551,7 @@ function Workspace() {
               : "Add at least one thing to run."
           : "No mechanism stated (⊘M), so structure alone gives Run nothing to execute.";
     const onRun = () => {
+      setKnobTicks([]);
       // #345: no mode transition — the transport lives on the Model surface,
       // so the run happens where the author already is.
       if (runKind === "dtmc") {
@@ -2639,6 +2652,8 @@ function Workspace() {
       runOn={runOnAvailable ? runOn : undefined}
       onRunOnChange={setRunOn}
       onRunOnTick={runOnTick}
+      readouts={workMode === "structure" ? { open: readoutsOpen, onToggle: () => setReadoutsOpen((o) => !o) } : undefined}
+      changedAt={knobTicks}
     />
   ) : null;
 
@@ -4152,23 +4167,6 @@ function Workspace() {
                       mode. The diagram stays full-size; the run card rides the
                       stage's right edge; the transport rides under the stage;
                       Readouts is the full-page expansion over both. */}
-                  {workMode === "structure" &&
-                    runCtl?.runKind === "conservation" &&
-                    (runCtl.runnable || result !== null) && (
-                      <RunCard
-                        model={canvasModel}
-                        manifest={
-                          demo || (attachedCsv && manifest.mapping.length > 0) ? manifest : null
-                        }
-                        result={result}
-                        tick={tick}
-                        time={{ dt, t, klir: false, onCommit: applyTime }}
-                        onInputEdit={applyInputEdit}
-                        onThingEdit={applyThingEdit}
-                        onResetInputs={demo?.sl ? resetInputs : undefined}
-                        onOpenReadouts={() => setReadoutsOpen(true)}
-                      />
-                    )}
                   {readoutsOpen && workMode === "structure" && (
                     <Readouts
                       result={result}
@@ -4203,7 +4201,6 @@ function Workspace() {
                       knobs={knobs}
                       time={{ dt, t, klir: canvasModel.lens === "Klir", onCommit: applyTime }}
                       runKind={LensPalette[canvasModel.lens].run}
-                      transport={transportEl}
                       onClose={() => setReadoutsOpen(false)}
                     />
                   )}
@@ -4215,7 +4212,7 @@ function Workspace() {
                       the verdict — hidden while Readouts is open so the spine
                       exists exactly once. An unrunnable model states why here
                       (the refusal's home, now that Run is not a mode). */}
-                  {workMode === "structure" && !readoutsOpen && runCtl && (
+                  {workMode === "structure" && runCtl && (
                     <div className="mt-3">{transportEl}</div>
                   )}
 

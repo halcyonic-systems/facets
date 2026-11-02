@@ -85,8 +85,7 @@ export function residualText(residual: number): string {
   return residual === 0 ? "0 (exact)" : residual.toExponential(1);
 }
 
-/** The glance facts (shared by the dock/Readouts glance row and the bench's
- *  RunCard): the headline metric at the cursor, the key responding stock, and
+/** The glance facts (the Readouts glance row): the headline metric at the cursor, the key responding stock, and
  *  the residual. Reads the same kernel outputs as the tabs; computes nothing
  *  the kernel didn't. */
 /** #463 move 4: the kept baseline rides every chart as a dashed twin of each
