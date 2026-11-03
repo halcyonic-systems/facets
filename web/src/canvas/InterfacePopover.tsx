@@ -153,7 +153,7 @@ export function DoorSettings({
   return (
     <div className="mt-2 border-t pt-2" style={{ borderColor: "var(--hairline)" }} data-testid="door-settings">
       <div className="text-[10px] uppercase tracking-wide" style={{ color: "var(--text-muted)" }}>
-        at this door
+        at this interface
       </div>
       {behaviour !== null ? (
         <>
@@ -195,7 +195,7 @@ export function DoorSettings({
         <Input
           className="mt-0.5 w-full text-xs"
           value={draft ?? thing.protocol ?? ""}
-          placeholder="what this door admits, in your words"
+          placeholder="what this interface admits, in your words"
           onChange={(e) => setDraft(e.target.value)}
           onBlur={commit}
           onKeyDown={(e) => {
@@ -207,7 +207,7 @@ export function DoorSettings({
         />
       </label>
       <p className="text-[11px] leading-snug" style={{ color: "var(--text-muted)" }}>
-        Written into the SL as the door's rule. The run does not read these words; what it does, above, is what runs.
+        Written into the SL as the interface's rule. The run does not read these words; what it does, above, is what runs.
       </p>
     </div>
   );
