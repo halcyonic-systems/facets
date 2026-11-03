@@ -1007,13 +1007,17 @@ listed.
 
 ### `flow_kinds(canvas_json: string) → FlowKind[]`
 What every bond carries in the run. Additive (2026-11-02, the walk's row 29).
-`FlowKind` is `{ relation, kind, said, from, mixed, waits_on }`. A written kind is
+`FlowKind` is `{ relation, kind, said, from, mixed, waits_on, gate_passes }`. A written kind is
 `said`. An unwritten one takes the kind that comes into its source when that is
 one kind (signals do not count while anything physical comes in), and `from`
 lists those inflows. When the inflows differ, `kind` is `null` and `mixed`
 lists them; when nothing comes in, `kind` is `null` and `mixed` is empty.
 `waits_on` lists the flows into its source that are not worked out either, when
 those are the only reason; answering them settles this one.
+`gate_passes` (walk row 34) is set on a flow out of a gate (a Modulating
+process), which passes on what comes in unchanged: it lists the physical kinds
+coming into the gate when they are more than one, or when they are not what
+this flow carries. Empty otherwise.
 `project` reads an unwritten kind this way; one that cannot be worked out keeps
 the historical Energy reading there.
 
@@ -1022,4 +1026,6 @@ the historical Energy reading there.
 the flows to answer (not those that only wait on them, which it counts):
 `"N flows do not say what they carry (K more after them follow once they are
 said):"` then one `"\n· A -> B: …"` line per flow, the same shape as the run's
-not-executable message.
+not-executable message. It also throws for a gate clash (`gate_passes`), one
+line per mismatched flow or per gate given two kinds; with no other question
+the head line is `"N gate flows do not match what comes in:"`.

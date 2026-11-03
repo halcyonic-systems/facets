@@ -2752,7 +2752,7 @@ function Workspace() {
       }
       onError={(() => {
         // A refusal over a flow's kind opens that flow, where it is answered.
-        const first = carried.find((k) => k.kind === null && k.waits_on.length === 0) ?? carried.find((k) => k.kind === null);
+        const first = carried.find((k) => k.gate_passes.length > 0) ?? carried.find((k) => k.kind === null && k.waits_on.length === 0) ?? carried.find((k) => k.kind === null);
         return first ? () => setSelectedRelationId(first.relation) : undefined;
       })()}
     />
@@ -4235,7 +4235,7 @@ function Workspace() {
                         residue) — hidden: the model has it, this lens does not
                         ask that question; unanswered: the lens asks, the model
                         has not answered. Pedagogy, not alarm. */}
-                    {residue && (residue.hidden.length > 0 || residue.unspecified.length > 0) && (
+                    {residue && (residue.hidden.length > 0 || residue.unspecified.length > 0 || (residue.carried?.length ?? 0) > 0) && (
                       <div
                         // Under Bunge's graph view the systemhood pill owns the
                         // top row (left-48, top-3); the residue notice drops a
@@ -4252,6 +4252,9 @@ function Workspace() {
                             : null,
                           residue.unspecified.length > 0
                             ? `unanswered: ${residue.unspecified.map(residueLine).join(", ")}`
+                            : null,
+                          residue.carried && residue.carried.length > 0
+                            ? `carried on, not written: ${residue.carried.map(residueLine).join(", ")}`
                             : null,
                         ]
                           .filter(Boolean)

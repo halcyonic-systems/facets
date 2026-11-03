@@ -440,9 +440,17 @@ export function MobusBody({
   // The kernel decides which (`flow_kinds`); this only says it, and when the
   // run waits on it the question moves to the top of the popover.
   const unsaid = relation.kind === "Unspecified" && carried !== undefined && !carried.said;
-  const unworked = unsaid && carried.kind === null;
+  // Walk row 34 (ruling B): a gate passes on what comes in unchanged, so a
+  // flow out of one that says another kind, or a gate given two kinds, is
+  // asked about the same way.
+  const clash = carried !== undefined && carried.gate_passes.length > 0;
+  const unworked = (unsaid && carried.kind === null) || clash;
   const word = (k: Kind) => kindToSubstance(k);
-  const kindHint = !unsaid
+  const kindHint = clash
+    ? carried.gate_passes.length > 1
+      ? `${fromName ?? "This gate"} takes in ${carried.gate_passes.map(word).join(" and ")}, but a gate passes on one kind unchanged. Make what flows into ${fromName ?? "it"} one kind; the run waits on it.`
+      : `${fromName ?? "This gate"} is a gate: it passes on the ${word(carried.gate_passes[0])} it takes in unchanged, so this flow carries ${word(carried.gate_passes[0])}. Pick ${word(carried.gate_passes[0])}, or change what flows into ${fromName ?? "it"}; the run waits on it.`
+    : !unsaid
     ? null
     : carried.kind
       ? `Not written: it carries ${word(carried.kind)}, as ${carried.from.map((id) => carriedFrom?.(id) ?? "").filter(Boolean).join(" and ") || "what comes in"} does. Pick one to write it in the SL.`

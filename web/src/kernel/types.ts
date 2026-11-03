@@ -591,6 +591,10 @@ export interface FlowKind {
   /** Not worked out only because these flows into its source are not
    *  either; answering them settles this one. */
   waits_on: number[];
+  /** The flow leaves a gate, which passes on what comes in unchanged (walk
+   *  row 34): when not empty, the physical kinds coming into the gate, which
+   *  this flow does not carry as written, or which are more than one. */
+  gate_passes: Kind[];
 }
 
 /** sl_agreement: whether a text and a model mean the same model (layout and
@@ -793,6 +797,8 @@ export interface ResidueEntry {
 export interface LensResidue {
   hidden: ResidueEntry[];
   unspecified: ResidueEntry[];
+  /** Answered by the model, not the text (walk row 35); absent when none. */
+  carried?: ResidueEntry[];
 }
 
 export interface CanvasAnalysis {

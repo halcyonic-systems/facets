@@ -140,31 +140,47 @@ describe("a flow with no kind says what it carries, or asks (walk row 29)", () =
     );
 
   it("shows an inherited kind as carried on, and where it comes from", () => {
-    const html = show({ relation: 7, kind: "Matter", said: false, from: [5], mixed: [], waits_on: [] });
+    const html = show({ relation: 7, kind: "Matter", said: false, from: [5], mixed: [], waits_on: [], gate_passes: [] });
     expect(html).toContain("material, carried on");
     expect(html).toContain("Not written: it carries material, as Mint -&gt; Vault does.");
     expect(html).not.toContain("what does it carry?");
   });
 
   it("asks, at the top, when nothing says what the source sends", () => {
-    const html = show({ relation: 7, kind: null, said: false, from: [], mixed: [], waits_on: [] });
+    const html = show({ relation: 7, kind: null, said: false, from: [], mixed: [], waits_on: [], gate_passes: [] });
     expect(html).toContain("what does it carry?");
     expect(html).toContain("Nothing says what Vault sends");
     expect(html.indexOf("what does it carry?")).toBeLessThan(html.indexOf("description"));
   });
 
   it("names the differing kinds when the inflows are mixed", () => {
-    const html = show({ relation: 7, kind: null, said: false, from: [], mixed: ["Matter", "Energy"], waits_on: [] });
+    const html = show({ relation: 7, kind: null, said: false, from: [], mixed: ["Matter", "Energy"], waits_on: [], gate_passes: [] });
     expect(html).toContain("Vault takes in material and energy, so the run cannot tell which this flow carries.");
   });
 
   it("says nothing extra about a written kind", () => {
-    const html = show({ relation: 7, kind: "Matter", said: true, from: [], mixed: [], waits_on: [] });
+    const html = show({ relation: 7, kind: "Matter", said: true, from: [], mixed: [], waits_on: [], gate_passes: [] });
     expect(html).not.toContain("flow-kind-hint");
   });
 
   it("points a flow that only waits at the flow to answer upstream", () => {
-    const html = show({ relation: 7, kind: null, said: false, from: [], mixed: [], waits_on: [5] });
+    const html = show({ relation: 7, kind: null, said: false, from: [], mixed: [], waits_on: [5], gate_passes: [] });
     expect(html).toContain("It waits on what comes into Vault (Mint -&gt; Vault): say what that carries and this one follows");
+  });
+
+  it("asks when a flow out of a gate says a kind the gate is not given (row 34)", () => {
+    const html = renderToStaticMarkup(
+      <MobusBody
+        relation={relation({ kind: "Energy" })}
+        manifest={emptyManifest}
+        fromName="Vault"
+        toName="Dealers"
+        onUpdate={() => {}}
+        onClose={() => {}}
+        carried={{ relation: 7, kind: "Energy", said: true, from: [], mixed: [], waits_on: [], gate_passes: ["Matter"] }}
+      />,
+    );
+    expect(html).toContain("what does it carry?");
+    expect(html).toContain("Vault is a gate: it passes on the material it takes in unchanged, so this flow carries material.");
   });
 });

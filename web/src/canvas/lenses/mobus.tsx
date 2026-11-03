@@ -135,10 +135,13 @@ function EdgeView({ model, relation, fact, ring, selected, driven, sim, crowded,
   // drawn amber and dotted, so the gap is on the canvas and not only in a
   // refused run.
   const unsaid = relation.is_bond && relation.kind === "Unspecified" && carried && !carried.said;
-  const unworked = unsaid && carried.kind === null;
+  const clash = relation.is_bond && (carried?.gate_passes.length ?? 0) > 0;
+  const unworked = (unsaid && carried.kind === null) || clash;
   if (unsaid && carried.kind) style = edgeStyle({ ...relation, kind: carried.kind }, fact);
   if (unworked) style = { ...style, color: "var(--verdict-warning)", dash: "3 3", opacity: 1 };
-  const kindNote = !unsaid
+  const kindNote = clash
+    ? `a gate passes on what comes in unchanged (${carried!.gate_passes.map((k) => (k === "Informational" ? "message" : k.toLowerCase())).join(" and ")}), and this flow does not match it. Click it to settle`
+    : !unsaid
     ? null
     : unworked
       ? "no kind: the run cannot tell what this flow carries. Click it and say matter, energy or message"
