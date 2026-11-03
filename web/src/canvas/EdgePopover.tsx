@@ -13,7 +13,7 @@ import type { EdgeFact, FlowKind, FlowKnob, Kind, Lens, Manifest, ParamDecl, Rel
 import { channelCopy } from "./lenses/bunge";
 import { AmountField, ParamControl } from "../ParamControl";
 import type { Pt } from "./geometry";
-import { DescriptionField, GroundingField, InspectorRow as Row, InspectorTitle as Title, ToolButton as SmallButton } from "../ui";
+import { DescriptionField, GroundingField, InspectorRow as Row, InspectorTitle as Title, Select, ToolButton as SmallButton } from "../ui";
 import { DockOrPopover, useDocked } from "./PopoverDialog";
 import {
   FormalismLine,
@@ -467,40 +467,42 @@ export function MobusBody({
         : carried.waits_on.length > 0
           ? `It waits on what comes into ${fromName ?? "its source"} (${carried.waits_on.map((id) => carriedFrom?.(id) ?? "").filter(Boolean).join(", ")}): say what that carries and this one follows, or say it here.`
           : `Nothing says what ${fromName ?? "its source"} sends, so the run cannot tell what this flow carries. Say it here, and the flows after it carry it on.`;
+  // Walk, 2026-11-03 (Shingai): what a flow carries decides the run, so it
+  // sits first and at full size, above the amount and the notes, and stays
+  // there whether or not the run is waiting on it.
   const substanceRow = (
-    <div className={unworked ? "mb-2" : undefined} data-testid="flow-substance">
-      <Row>
-        {/* Mobus's substances are material · energy · message (concordance row 6);
-            the model stores a Kind, so map both ways via kind_to_substance. An
-            unwritten kind never reads as one: it shows what the run carries,
-            or asks. */}
-        <span style={{ color: unworked ? "var(--verdict-warning)" : "var(--text-secondary)" }}>
-          {unworked ? "what does it carry?" : "substance"}
-        </span>
-        <select
-          value={relation.kind === "Unspecified" ? "" : kindToSubstance(relation.kind)}
-          onChange={(e) => {
-            if (e.target.value) onUpdate({ ...relation, kind: substanceToKind(e.target.value as Substance) });
-          }}
-          className="rounded-md px-1.5 py-0.5 text-xs"
-          style={{
-            border: `1px solid ${unworked ? "var(--verdict-warning)" : "var(--border)"}`,
-            background: "var(--bg-primary)",
-            color: "var(--text-primary)",
-          }}
-        >
-          {relation.kind === "Unspecified" && (
-            <option value="" disabled>
-              {unsaid && carried.kind ? `${word(carried.kind)}, carried on` : unworked ? "choose" : "unspecified"}
-            </option>
-          )}
-          {SUBSTANCES.map((s) => (
-            <option key={s} value={s}>
-              {s}
-            </option>
-          ))}
-        </select>
-      </Row>
+    <div className="mb-2" data-testid="flow-substance">
+      {/* Mobus's substances are material · energy · message (concordance row 6);
+          the model stores a Kind, so map both ways via kind_to_substance. An
+          unwritten kind never reads as one: it shows what the run carries,
+          or asks. */}
+      <label
+        htmlFor={`flow-substance-${relation.id}`}
+        className="mb-1 block text-[11px] font-semibold uppercase whitespace-nowrap"
+        style={{ color: unworked ? "var(--verdict-warning)" : "var(--text-secondary)" }}
+      >
+        {unworked ? "what does it carry?" : "substance"}
+      </label>
+      <Select
+        id={`flow-substance-${relation.id}`}
+        value={relation.kind === "Unspecified" ? "" : kindToSubstance(relation.kind)}
+        onChange={(e) => {
+          if (e.target.value) onUpdate({ ...relation, kind: substanceToKind(e.target.value as Substance) });
+        }}
+        className="w-full text-xs"
+        style={unworked ? { borderColor: "var(--verdict-warning)" } : undefined}
+      >
+        {relation.kind === "Unspecified" && (
+          <option value="" disabled>
+            {unsaid && carried.kind ? `${word(carried.kind)}, carried on` : unworked ? "choose" : "unspecified"}
+          </option>
+        )}
+        {SUBSTANCES.map((s) => (
+          <option key={s} value={s}>
+            {s}
+          </option>
+        ))}
+      </Select>
       {kindHint && (
         <p
           className="text-[11px] leading-snug"
@@ -520,11 +522,10 @@ export function MobusBody({
           from {fromName} → to {toName}
         </p>
       )}
+      {substanceRow}
       {amountRow}
-      {unworked && substanceRow}
       <FlowDescriptionField relation={relation} onUpdateRelation={onUpdate} />
       <FlowGroundingField relation={relation} onUpdateRelation={onUpdate} />
-      {!unworked && substanceRow}
       {residue && (
         <p className="mb-1 text-[11px] leading-snug" style={{ color: "var(--text-muted)" }}>
           {residue}
