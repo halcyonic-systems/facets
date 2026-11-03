@@ -55,7 +55,11 @@ export function EdgePopover({
   amount,
   carried,
   carriedFrom,
+  askKind,
 }: {
+  /** Bumped to put the cursor on the substance picker (the run strip's
+   *  refusal opened this flow to answer it). */
+  askKind?: number;
   /** The kernel's `flow_kinds` row (walk row 29): what an unwritten kind
    *  carries in the run, or that it cannot be worked out. */
   carried?: FlowKind;
@@ -135,6 +139,7 @@ export function EdgePopover({
           amount={amount}
           carried={carried}
           carriedFrom={carriedFrom}
+          askKind={askKind}
         />
       )}
       <div className="mt-1 flex justify-start border-t pt-1" style={{ borderColor: "var(--hairline)" }}>
@@ -381,7 +386,9 @@ export function MobusBody({
   amount,
   carried,
   carriedFrom,
+  askKind,
 }: {
+  askKind?: number;
   amount?: FlowAmount;
   carried?: FlowKind;
   carriedFrom?: (relation: number) => string;
@@ -470,6 +477,10 @@ export function MobusBody({
   // Walk, 2026-11-03 (Shingai): what a flow carries decides the run, so it
   // sits first and at full size, above the amount and the notes, and stays
   // there whether or not the run is waiting on it.
+  const substanceRef = useRef<HTMLSelectElement>(null);
+  useEffect(() => {
+    if (askKind) substanceRef.current?.focus();
+  }, [askKind]);
   const substanceRow = (
     <div className="mb-2" data-testid="flow-substance">
       {/* Mobus's substances are material · energy · message (concordance row 6);
@@ -484,6 +495,7 @@ export function MobusBody({
         {unworked ? "what does it carry?" : "substance"}
       </label>
       <Select
+        ref={substanceRef}
         id={`flow-substance-${relation.id}`}
         value={relation.kind === "Unspecified" ? "" : kindToSubstance(relation.kind)}
         onChange={(e) => {

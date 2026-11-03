@@ -57,6 +57,14 @@ describe("a refused run", () => {
     expect(html).toContain("run-refused");
     expect(html).toContain("Run refused: &quot;I3&quot; has no agent model");
     expect(html).toContain("flow sink does not resolve");
+    expect(html).not.toContain("run-refused-open");
+  });
+
+  it("offers a button to open the flow when the refusal is about one", () => {
+    const err = "1 gate flow does not match what comes in:\n· I3 -> T2: I3 is a gate";
+    const html = renderToStaticMarkup(<Transport {...base} error={err} onError={() => {}} />);
+    expect(html).toContain("run-refused-open");
+    expect(html).toContain("open the flow");
   });
 });
 

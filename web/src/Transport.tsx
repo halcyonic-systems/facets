@@ -145,13 +145,26 @@ export function Transport({
       {error && (
         <button
           type="button"
-          className="min-w-0 max-w-[40%] shrink truncate text-left text-[11px]"
+          className={`min-w-0 max-w-[40%] shrink truncate text-left text-[11px] ${onError ? "cursor-pointer hover:underline" : ""}`}
           style={{ color: "var(--verdict-error)" }}
           title={error}
           onClick={onError ?? (readouts && !readouts.open ? readouts.onToggle : undefined)}
           data-testid="run-refused"
         >
           {`Run refused: ${error.split("\n")[1]?.replace(/^· /, "") ?? error}`}
+        </button>
+      )}
+      {/* Walk, 2026-11-03 (Shingai could not tell the red line was a button):
+          when the refusal is about a flow, say so with a button of its own. */}
+      {error && onError && (
+        <button
+          type="button"
+          onClick={onError}
+          className="shrink-0 rounded-sm border px-1.5 py-0.5 text-[11px]"
+          style={{ borderColor: "var(--verdict-error)", color: "var(--verdict-error)", background: "var(--bg-primary)" }}
+          data-testid="run-refused-open"
+        >
+          open the flow
         </button>
       )}
       {changedAt.length > 0 && (

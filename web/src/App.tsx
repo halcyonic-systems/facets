@@ -467,6 +467,9 @@ function Workspace() {
   // Cleared on any model identity change: the PortFact is a snapshot, and a
   // swap (walk enter/exit, open) or an edit can orphan it.
   const [interfaceSel, setInterfaceSel] = useState<{ port: PortFact; at: Pt } | null>(null);
+  // Bumped when the run strip's refusal opens a flow: the flow editor then
+  // focuses its substance picker (walk, 2026-11-03).
+  const [askKind, setAskKind] = useState(0);
   const [armed, setArmed] = useState<PaletteTool | null>(null);
   const [canvasPan, setCanvasPan] = useState<Pt>({ x: 0, y: 0 });
   const [canvasScale, setCanvasScale] = useState(1);
@@ -2758,7 +2761,17 @@ function Workspace() {
       onError={(() => {
         // A refusal over a flow's kind opens that flow, where it is answered.
         const first = carried.find((k) => k.gate_passes.length > 0) ?? carried.find((k) => k.kind === null && k.waits_on.length === 0) ?? carried.find((k) => k.kind === null);
-        return first ? () => setSelectedRelationId(first.relation) : undefined;
+        // Opening it clears any other selection and puts the cursor on the
+        // substance picker, so the click shows even when the flow was open.
+        return first
+          ? () => {
+              setSelectedThingId(null);
+              setInterfaceSel(null);
+              setBoundaryAnchor(null);
+              setSelectedRelationId(first.relation);
+              setAskKind((n) => n + 1);
+            }
+          : undefined;
       })()}
     />
   ) : null;
@@ -3483,6 +3496,7 @@ function Workspace() {
           }
         }}
         carried={carried.find((k) => k.relation === selectedRelation.id)}
+        askKind={askKind}
         carriedFrom={(id) => {
           const r = canvasModel.relations.find((x) => x.id === id);
           const n = (t: number) => canvasModel.things.find((x) => x.id === t)?.name ?? "";
