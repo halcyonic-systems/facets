@@ -14,7 +14,7 @@ import { channelCopy } from "./lenses/bunge";
 import { AmountField, ParamControl } from "../ParamControl";
 import type { Pt } from "./geometry";
 import { DescriptionField, GroundingField, InspectorRow as Row, InspectorTitle as Title, ToolButton as SmallButton } from "../ui";
-import { PopoverDialog } from "./PopoverDialog";
+import { DockOrPopover, useDocked } from "./PopoverDialog";
 import {
   FormalismLine,
   SUBSTANCES,
@@ -71,7 +71,8 @@ export function EdgePopover({
   lens: Lens;
   sigIndex: number;
   manifest: Manifest;
-  anchor: Pt;
+  /** Where it floats; absent = docked in the inspector. */
+  anchor?: Pt;
   /** The kernel's edge-ladder reading — Bunge shows its coupling channel (F6). */
   fact?: EdgeFact;
   /** The declared parameter naming this flow's amount, when one does (#13) —
@@ -106,7 +107,13 @@ export function EdgePopover({
   // Shared viewport-clamped Popover (walkthrough #16): a mid-canvas wire's
   // editor used to run past the canvas bottom with its fields unreachable.
   return (
-    <PopoverDialog x={anchor.x} y={anchor.y} width={230} label={`Edit flow${relation.name ? ` ${relation.name}` : ""}`} onClose={onClose}>
+    <DockOrPopover
+      at={anchor}
+      width={230}
+      label={`Edit flow${relation.name ? ` ${relation.name}` : ""}`}
+      title={`flow ${fromName ?? "?"} → ${toName ?? "?"}`}
+      onClose={onClose}
+    >
       {/* Flow name — shared across lenses. A flow's name is its identity (and the
           manifest key when tethered); an FSA transition IS a named trigger. */}
       <FlowNameField relation={relation} onUpdateRelation={onUpdateRelation} />
@@ -135,7 +142,7 @@ export function EdgePopover({
           <SmallButton onClick={onDelete}>delete flow</SmallButton>
         </span>
       </div>
-    </PopoverDialog>
+    </DockOrPopover>
   );
 }
 
@@ -240,6 +247,7 @@ export function FlowNameField({
 }
 
 function CloseRow({ onClose }: { onClose: () => void }) {
+  if (useDocked()) return null;
   return (
     <div className="flex justify-end">
       <SmallButton onClick={onClose}>close</SmallButton>

@@ -13,7 +13,7 @@ import type { Pt } from "./geometry";
 import { Input, InspectorRow as Row, InspectorTitle as Title, Select, ToolButton } from "../ui";
 import { thingById } from "./geometry";
 import { Icon } from "../icons";
-import { PopoverDialog } from "./PopoverDialog";
+import { DockOrPopover } from "./PopoverDialog";
 
 export function InterfacePopover({
   port,
@@ -26,7 +26,8 @@ export function InterfacePopover({
 }: {
   port: PortFact;
   model: CanvasModel;
-  anchor: Pt;
+  /** Where it floats; absent = docked in the inspector. */
+  anchor?: Pt;
   onSelectRelation: (id: number) => void;
   onClose: () => void;
   /** Writes the interface's own words (its protocol). Absent = read only. */
@@ -47,8 +48,14 @@ export function InterfacePopover({
         : "receives and exports";
 
   return (
-    <PopoverDialog x={anchor.x} y={anchor.y} width={280} label={`Interface${comp ? ` serving ${comp.name}` : ""}`} onClose={onClose}>
-      <Title>interface{comp ? ` — serves ${comp.name}` : ""}</Title>
+    <DockOrPopover
+      at={anchor}
+      width={280}
+      label={`Interface${comp ? ` serving ${comp.name}` : ""}`}
+      title={`interface serving ${comp?.name ?? "?"}`}
+      onClose={onClose}
+    >
+      {anchor && <Title>interface{comp ? ` — serves ${comp.name}` : ""}</Title>}
       <Row>
         <span style={{ color: "var(--text-secondary)" }}>{directionCopy}</span>
         {env && (
@@ -99,10 +106,12 @@ export function InterfacePopover({
       {comp && comp.interface && onEditThing && (
         <DoorSettings thing={comp} onEditThing={onEditThing} onEditBehaviour={onEditBehaviour ?? onEditThing} />
       )}
-      <div className="flex justify-end">
-        <ToolButton onClick={onClose}>close</ToolButton>
-      </div>
-    </PopoverDialog>
+      {anchor && (
+        <div className="flex justify-end">
+          <ToolButton onClick={onClose}>close</ToolButton>
+        </div>
+      )}
+    </DockOrPopover>
   );
 }
 

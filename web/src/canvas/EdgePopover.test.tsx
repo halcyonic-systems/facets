@@ -6,7 +6,7 @@
 // document.body, which this DOM-free suite cannot host).
 import { describe, expect, it } from "vitest";
 import { renderToStaticMarkup } from "react-dom/server";
-import { MobusBody } from "./EdgePopover";
+import { EdgePopover, MobusBody } from "./EdgePopover";
 import type { Manifest, Relation } from "../kernel/types";
 
 const relation = (over: Partial<Relation> = {}): Relation => ({
@@ -182,5 +182,27 @@ describe("a flow with no kind says what it carries, or asks (walk row 29)", () =
     );
     expect(html).toContain("what does it carry?");
     expect(html).toContain("Vault is a gate: it passes on the material it takes in unchanged, so this flow carries material.");
+  });
+});
+
+describe("the flow editor docks in the inspector (Shingai, 2026-11-02)", () => {
+  it("renders as a panel with one close and a heading naming the flow when given no anchor", () => {
+    const html = renderToStaticMarkup(
+      <EdgePopover
+        relation={relation({ kind: "Matter" })}
+        lens="Mobus"
+        sigIndex={0}
+        manifest={emptyManifest}
+        fromName="Vault"
+        toName="Dealers"
+        onUpdateRelation={() => {}}
+        onDelete={() => {}}
+        onClose={() => {}}
+      />,
+    );
+    expect(html).toContain('data-testid="docked-editor"');
+    expect(html).not.toContain('role="dialog"');
+    expect(html).toContain("flow Vault → Dealers");
+    expect(html.match(/>close</g)?.length).toBe(1);
   });
 });

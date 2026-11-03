@@ -865,9 +865,6 @@ function Workspace() {
     return () => window.removeEventListener("keydown", onKey);
   }, [selectedThingId, selectedRelationId, boundaryAnchor, milieuAnchor, interfaceSel, armed]);
 
-  // A PortFact is a snapshot of the open model — any model identity change
-  // (walk enter/exit, open, edit) may orphan it, so the inspector closes.
-  useEffect(() => setInterfaceSel(null), [canvasModel]);
 
   const runWith = (
     modelJson: string,
@@ -2142,6 +2139,14 @@ function Workspace() {
     [analysis, decomposition],
   );
   const facts = analysis.ok?.facts ?? null;
+  // A PortFact is a snapshot of the open model. The interface editor reads
+  // the live one by (component, env), so an edit (a protocol, what the door
+  // does) keeps it open; it closes only when that interface is gone (a walk
+  // in or out, an open, a deleted flow).
+  useEffect(() => {
+    if (!interfaceSel || !facts) return;
+    if (!facts.ports.some((p) => p.component === interfaceSel.port.component && p.env === interfaceSel.port.env)) setInterfaceSel(null);
+  }, [facts]);
   const desc = analysis.ok?.description ?? null;
 
   // #462 item 1: when the open model lands crossings on `interface
@@ -3392,6 +3397,119 @@ function Workspace() {
     </div>
   ) : undefined;
 
+  // The flow and interface editors (Shingai, 2026-11-02: "let's go
+  // inspector"). Docked in the Element tab beside the run readouts when the
+  // dock is up, so they stay open, have room, and never cover the diagram;
+  // floating at the click only where there is no dock. Called with no anchor
+  // they render as a docked panel.
+  const inspectorDocked = Boolean(canvasModel && !readoutsOpen && mode !== "read" && frame.inspector.length > 0);
+  const livePort = interfaceSel
+    ? (facts?.ports.find((p) => p.component === interfaceSel.port.component && p.env === interfaceSel.port.env) ?? interfaceSel.port)
+    : null;
+  const interfaceEditor = (anchor?: Pt) => {
+    if (!canvasModel || !interfaceSel || !livePort) return null;
+    const port = livePort;
+    return (
+      <InterfacePopover
+        port={port}
+        model={canvasModel}
+        anchor={anchor}
+        onSelectRelation={setSelectedRelationId}
+        onClose={() => setInterfaceSel(null)}
+        onEditThing={updateThing}
+        onEditBehaviour={(next) => {
+          // What the door does decides the run, so with a run
+          // on screen it re-runs, as a knob does.
+          if (result || runError) {
+            commitInputModel({
+              ...canvasModel,
+              things: canvasModel.things.map((x) => (x.id === next.id ? next : x)),
+            });
+          } else {
+            updateThing(next);
+          }
+        }}
+      />
+    );
+  };
+  const edgeEditor = (anchor?: Pt) => {
+    if (!canvasModel || !selectedRelation) return null;
+    return (
+      <EdgePopover
+        relation={selectedRelation}
+        lens={canvasModel.lens}
+        sigIndex={canvasModel.relations.findIndex((r) => r.id === selectedRelation.id)}
+        manifest={manifest}
+        anchor={anchor}
+        fact={facts?.edges.find((e) => e.id === selectedRelation.id)}
+        paramName={(canvasModel.params ?? [])
+          .find((p) => {
+            const a = p.anchor;
+            return (
+              ("Flow" in a && a.Flow.relation === selectedRelation.id) ||
+              ("Shares" in a && a.Shares.thing === selectedRelation.a)
+            );
+          })
+          ?.name}
+        // ws5: in Run mode the popover carries the param's own
+        // slider — same resolution (kernel/params.ts) and same
+        // commit path (applyInputEdit → re-run + auto-play) as
+        // the rail. Structure mode passes neither (#336).
+        param={
+          runCtl?.runKind === "conservation" && runCtl.runnable
+            ? (flowParamFor(canvasModel, selectedRelation.id) ?? undefined)
+            : undefined
+        }
+        paramForcedBy={forcedByColumn(manifest, selectedRelation)}
+        onParamEdit={
+          runCtl?.runKind === "conservation" && runCtl.runnable
+            ? applyInputEdit
+            : undefined
+        }
+        fromName={canvasModel.things.find((t) => t.id === selectedRelation.a)?.name}
+        toName={canvasModel.things.find((t) => t.id === selectedRelation.b)?.name}
+        onUpdateRelation={(next) => {
+          // Walk row 29: a kind decides what the run carries,
+          // so with a run on screen (or a refused one) it
+          // re-runs like an amount does, instead of leaving
+          // the old run showing as if the change did nothing.
+          if (next.kind !== selectedRelation.kind && (result || runError)) {
+            commitInputModel({
+              ...canvasModel,
+              relations: canvasModel.relations.map((r) => (r.id === next.id ? next : r)),
+            });
+          } else {
+            updateRelation(next);
+          }
+        }}
+        carried={carried.find((k) => k.relation === selectedRelation.id)}
+        carriedFrom={(id) => {
+          const r = canvasModel.relations.find((x) => x.id === id);
+          const n = (t: number) => canvasModel.things.find((x) => x.id === t)?.name ?? "";
+          return r ? `${n(r.a)} -> ${n(r.b)}` : "";
+        }}
+        onDelete={() => deleteRelation(selectedRelation.id)}
+        onClose={() => setSelectedRelationId(null)}
+        amount={(() => {
+          // A flow's amount bites where it leaves a source (a
+          // rate) or a work process (a split weight); out of an
+          // interface or an agent it is not a knob.
+          if (!runCtl?.runnable || runCtl.runKind !== "conservation" || !selectedRelation.is_bond) return undefined;
+          const from = canvasModel.things.find((t) => t.id === selectedRelation.a);
+          if (!from) return undefined;
+          const source = from.role === "Environment" && (facts?.source_thing_ids ?? []).includes(from.id);
+          const process = from.role === "Component" && !from.passway && !from.rule;
+          if (!source && !process) return undefined;
+          return {
+            knob: flows.find((k) => k.relation === selectedRelation.id),
+            weight: process,
+            onEdit: applyInputEdit,
+          };
+        })()}
+      />
+    );
+  };
+
   return (
     <>
       {/* In Focus the top bar shrinks to a strip that returns on hover. */}
@@ -4064,102 +4182,8 @@ function Workspace() {
                         onClose={() => setMilieuAnchor(null)}
                       />
                     )}
-                    {interfaceSel && (
-                      <InterfacePopover
-                        port={interfaceSel.port}
-                        model={canvasModel}
-                        anchor={toScreen(interfaceSel.at)}
-                        onSelectRelation={setSelectedRelationId}
-                        onClose={() => setInterfaceSel(null)}
-                        onEditThing={updateThing}
-                        onEditBehaviour={(next) => {
-                          // What the door does decides the run, so with a run
-                          // on screen it re-runs, as a knob does.
-                          if (result || runError) {
-                            commitInputModel({
-                              ...canvasModel,
-                              things: canvasModel.things.map((x) => (x.id === next.id ? next : x)),
-                            });
-                          } else {
-                            updateThing(next);
-                          }
-                        }}
-                      />
-                    )}
-                    {selectedRelation && popoverAnchor && !registerActive && (
-                      <EdgePopover
-                        relation={selectedRelation}
-                        lens={canvasModel.lens}
-                        sigIndex={canvasModel.relations.findIndex((r) => r.id === selectedRelation.id)}
-                        manifest={manifest}
-                        anchor={toScreen(popoverAnchor)}
-                        fact={facts?.edges.find((e) => e.id === selectedRelation.id)}
-                        paramName={(canvasModel.params ?? [])
-                          .find((p) => {
-                            const a = p.anchor;
-                            return (
-                              ("Flow" in a && a.Flow.relation === selectedRelation.id) ||
-                              ("Shares" in a && a.Shares.thing === selectedRelation.a)
-                            );
-                          })
-                          ?.name}
-                        // ws5: in Run mode the popover carries the param's own
-                        // slider — same resolution (kernel/params.ts) and same
-                        // commit path (applyInputEdit → re-run + auto-play) as
-                        // the rail. Structure mode passes neither (#336).
-                        param={
-                          runCtl?.runKind === "conservation" && runCtl.runnable
-                            ? (flowParamFor(canvasModel, selectedRelation.id) ?? undefined)
-                            : undefined
-                        }
-                        paramForcedBy={forcedByColumn(manifest, selectedRelation)}
-                        onParamEdit={
-                          runCtl?.runKind === "conservation" && runCtl.runnable
-                            ? applyInputEdit
-                            : undefined
-                        }
-                        fromName={canvasModel.things.find((t) => t.id === selectedRelation.a)?.name}
-                        toName={canvasModel.things.find((t) => t.id === selectedRelation.b)?.name}
-                        onUpdateRelation={(next) => {
-                          // Walk row 29: a kind decides what the run carries,
-                          // so with a run on screen (or a refused one) it
-                          // re-runs like an amount does, instead of leaving
-                          // the old run showing as if the change did nothing.
-                          if (next.kind !== selectedRelation.kind && (result || runError)) {
-                            commitInputModel({
-                              ...canvasModel,
-                              relations: canvasModel.relations.map((r) => (r.id === next.id ? next : r)),
-                            });
-                          } else {
-                            updateRelation(next);
-                          }
-                        }}
-                        carried={carried.find((k) => k.relation === selectedRelation.id)}
-                        carriedFrom={(id) => {
-                          const r = canvasModel.relations.find((x) => x.id === id);
-                          const n = (t: number) => canvasModel.things.find((x) => x.id === t)?.name ?? "";
-                          return r ? `${n(r.a)} -> ${n(r.b)}` : "";
-                        }}
-                        onDelete={() => deleteRelation(selectedRelation.id)}
-                        onClose={() => setSelectedRelationId(null)}
-                        amount={(() => {
-                          // A flow's amount bites where it leaves a source (a
-                          // rate) or a work process (a split weight); out of an
-                          // interface or an agent it is not a knob.
-                          if (!runCtl?.runnable || runCtl.runKind !== "conservation" || !selectedRelation.is_bond) return undefined;
-                          const from = canvasModel.things.find((t) => t.id === selectedRelation.a);
-                          if (!from) return undefined;
-                          const source = from.role === "Environment" && (facts?.source_thing_ids ?? []).includes(from.id);
-                          const process = from.role === "Component" && !from.passway && !from.rule;
-                          if (!source && !process) return undefined;
-                          return {
-                            knob: flows.find((k) => k.relation === selectedRelation.id),
-                            weight: process,
-                            onEdit: applyInputEdit,
-                          };
-                        })()}
-                      />
-                    )}
+                    {interfaceSel && !inspectorDocked && interfaceEditor(toScreen(interfaceSel.at))}
+                    {selectedRelation && popoverAnchor && !registerActive && !inspectorDocked && edgeEditor(toScreen(popoverAnchor))}
                     {/* The Bunge view toggle (#100 phase 2, F1): coupling
                         graph ⇄ coupling matrix — one structure, two of
                         Bunge's own notations, the Klir register's toggle
@@ -4431,6 +4455,7 @@ function Workspace() {
               // click of a double-click can no longer flash a menu into the
               // gesture that enters a child. A register carries its own inline
               // editor, so it keeps the element face and the dock stands down.
+              editor={(selectedRelation && !registerActive ? edgeEditor() : interfaceSel ? interfaceEditor() : null) ?? undefined}
               element={
                 canvasModel && !registerActive
                   ? {

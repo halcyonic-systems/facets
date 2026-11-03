@@ -78,6 +78,7 @@ export function InspectorDock({
   canvasModel,
   onNavigate,
   element,
+  editor,
   selectionKey,
   resetKeys,
   focused,
@@ -133,6 +134,10 @@ export function InspectorDock({
    *  pointer. Null in a surface that carries its own inline editor (the Klir
    *  and Bunge registers), which then owns the element face itself. */
   element: ElementSelection | null;
+  /** A selected flow's or interface's editor, built by the shell (Shingai,
+   *  2026-11-02: "let's go inspector"). When present it takes the Element tab
+   *  over the thing editor, so every selection is edited in one place. */
+  editor?: React.ReactNode;
   /** An opaque key for "the author has something selected right now" — thing,
    *  relation, or interface capsule — or null for nothing. Ephemeral interaction
    *  state only: the dock reads it to decide whether to stand open, never to
@@ -202,9 +207,12 @@ export function InspectorDock({
   // Any selection at all opens the dock, not just a thing: an edge or an
   // interface capsule is equally something to inspect, and a click that
   // produced no visible response reads as a dead click. Only the element
-  // selection above claims the tab; this one just opens the column.
+  // selection above used to claim the tab; now a flow or an interface is
+  // edited in the Element tab too, so a docked editor claims it as well.
   useEffect(() => {
-    if (selectionKey === null || preferFolded) return;
+    if (selectionKey === null) return;
+    if (editor) setTab("element");
+    if (preferFolded) return;
     setCollapsed(false);
   }, [selectionKey]);
 
@@ -287,7 +295,7 @@ export function InspectorDock({
           a reading of the model or of the selection. Tab widths are bound by
           InspectorDock.test.tsx. */}
       <Tabs
-        tabs={DOCK_TABS.filter(({ id }) => tabsOffered.includes(id) && !(id === "element" && !element)).map(
+        tabs={DOCK_TABS.filter(({ id }) => tabsOffered.includes(id) && !(id === "element" && !element && !editor)).map(
           ({ id, label }) => ({
             key: id,
             label,
@@ -338,7 +346,9 @@ export function InspectorDock({
         <div className={focused ? "mx-auto w-full max-w-4xl" : undefined}>
           <KernelErrorBoundary resetKeys={resetKeys}>
             {tab === "element" &&
-              (element?.thing ? (
+              (editor ? (
+                editor
+              ) : element?.thing ? (
                 <>
                   <NodeEditorRows
                     thing={element.thing}
