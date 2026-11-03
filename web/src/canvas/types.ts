@@ -70,7 +70,7 @@ export const LENS_TO_MODE: Record<Lens, "Core" | "Structural" | "Operational"> =
 export interface SimFrame {
   /** `lost`: most of what entered the run was lost at this thing (walk row
    *  29), so the canvas outlines it. */
-  nodes: Record<string, { value: number; unit: string; frac: number; lost?: boolean }>;
+  nodes: Record<string, { value: number; unit: string; frac: number; lost?: boolean; holds?: boolean }>;
   edges: Record<string, { value: number; unit: string }>;
 }
 

@@ -145,3 +145,29 @@ describe("the inspector dock's tab strip at 24rem (#312)", () => {
     expect(strip(unselected)).toBeGreaterThan(room(288));
   });
 });
+
+// Walk, 2026-11-03: an environment object that both sends and receives says
+// both in the Element tab, and says why it is a black box.
+import { ElementMechanism } from "./ElementMechanism";
+import type { CanvasModel, RunResultRich, Thing } from "./kernel/types";
+describe("a two-sided environment object in the element panel", () => {
+  const market = { id: 2, name: "Market", role: "Environment" } as unknown as Thing;
+  const model = { things: [market], relations: [] } as unknown as CanvasModel;
+  const result = {
+    ticks: 3,
+    levels: [],
+    comparisons: [],
+    trajectories: [{ name: "Market", unit: "", unit_derived: false, holds: true, series: [0, 0, 1, 2] }],
+    flows: [{ name: "sold", from: "Market", to: "Shop", unit: "", series: [4, 4, 4] }],
+  } as unknown as RunResultRich;
+  const show = (tick: number) => renderToStaticMarkup(<ElementMechanism thing={market} model={model} result={result} tick={tick} />);
+  it("reads its level as what it has received, and what it sends in the step", () => {
+    const html = show(3);
+    expect(html).toContain("received so far");
+    expect(html).toContain("sends 4 in the step to this tick.");
+    expect(html).toContain("receiving does not change what it sends");
+  });
+  it("has sent nothing at the start", () => {
+    expect(show(0)).toContain("sends nothing yet at the start.");
+  });
+});

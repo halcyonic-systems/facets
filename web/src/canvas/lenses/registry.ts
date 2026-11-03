@@ -44,7 +44,7 @@ export interface LensNodeProps {
    *  hints ("change it in the node editor") are withheld — they were wrong
    *  there, and a native SVG title over an inert layer could stick. */
   inert?: boolean;
-  sim?: { value: number; unit: string; frac: number; lost?: boolean };
+  sim?: { value: number; unit: string; frac: number; lost?: boolean; holds?: boolean };
   onPointerDown: (e: ReactPointerEvent) => void;
   onHandlePointerDown: (e: ReactPointerEvent) => void;
   /** Stage scale — marks that must stay a hand's size (the connect handle)

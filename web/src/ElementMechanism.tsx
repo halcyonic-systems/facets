@@ -63,6 +63,14 @@ export function ElementMechanism({
   if (!line && !traj) return null;
 
   const at = traj ? atFrame(traj.series, tick, !traj.holds) : null;
+  // A two-sided environment object (walk, 2026-11-03): its level is what it
+  // has received so far, and what it sends is on its outgoing flows, summed
+  // for the step that ended at this tick (none at the start).
+  const twoSided = thing.role === "Environment" && traj?.holds === true;
+  const sends = twoSided
+    ? (result?.flows ?? []).filter((f) => f.from === thing.name).map((f) => atFrame(f.series, tick, true))
+    : [];
+  const sent = sends.length > 0 && sends.some((v) => v !== null) ? sends.reduce<number>((a, v) => a + (v ?? 0), 0) : null;
   const slot = traj ? entitySlots(surfaceEntities(model, result)).get(thing.name) ?? FALLBACK_SLOT : FALLBACK_SLOT;
   return (
     <div className="mt-3 border-t pt-2" style={{ borderColor: "var(--hairline)" }}>
@@ -72,7 +80,7 @@ export function ElementMechanism({
         // is said in words instead of drawn.
         <div className="mb-2" data-testid="element-trajectory">
           <span className="block text-[11px]" style={{ color: "var(--text-muted)" }}>
-            over the run
+            {twoSided ? "received so far" : "over the run"}
           </span>
           <div className="flex items-center gap-3">
             {Math.min(...traj.series) !== Math.max(...traj.series) && (
@@ -88,6 +96,12 @@ export function ElementMechanism({
               </span>
             </span>
           </div>
+          {twoSided && (
+            <p className="mt-1 text-[11px] leading-snug" style={{ color: "var(--text-muted)" }} data-testid="element-two-sided">
+              {sent !== null ? `sends ${sent.toLocaleString(undefined, { maximumFractionDigits: 1 })} in the step to this tick. ` : "sends nothing yet at the start. "}
+              An environment object is a black box: it sends at its own rate and holds what it receives, and receiving does not change what it sends. To model how one shapes the other, bring it inside the boundary as a component.
+            </p>
+          )}
         </div>
       )}
       {line && thing.primitive && (

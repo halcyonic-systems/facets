@@ -464,9 +464,14 @@ pub fn summarize(
 
     // Per-node trajectory: a sink's accumulated total, a buffer's stock, else
     // last-tick activity — the column of the recorded rows that reads as level.
-    let col_of = |kind: &NodeKind| -> usize {
+    // An environment object that receives as well as sends (a two-sided black
+    // box, walk 2026-11-03) holds what it has received, read like a sink's
+    // total; what it sends stays on its outgoing flows' series.
+    let receives = |i: usize| circuit.wires.iter().any(|w| w.to == i);
+    let col_of = |i: usize, kind: &NodeKind| -> usize {
         match kind {
             NodeKind::Sink => 2,
+            NodeKind::Source if receives(i) => 2,
             NodeKind::Process(facets_core::ProcessPrimitive::Buffering) => 1,
             _ => 0,
         }
@@ -476,7 +481,7 @@ pub fn summarize(
         .iter()
         .enumerate()
         .map(|(i, node)| {
-            let col = col_of(&node.kind);
+            let col = col_of(i, &node.kind);
             // A level is a state, true at an instant; a run of N steps has
             // N + 1 of them, and the first is the one before anything moved
             // (the pointed coalgebra's point x0, whose unfolding is
@@ -487,6 +492,7 @@ pub fn summarize(
             // during a step, so it keeps one value per step (walk, 2026-11-03).
             let start = match node.kind {
                 NodeKind::Sink => Some(0.0),
+                NodeKind::Source if col == 2 => Some(0.0),
                 NodeKind::Process(facets_core::ProcessPrimitive::Buffering) => Some(node.initial_storage),
                 _ => None,
             };

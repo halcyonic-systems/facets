@@ -108,7 +108,7 @@ interface NodeBodyProps {
   /** A drag in flight: the body steps to the well surface, the cursor closes
    *  and the connect handle hides. No lift, no shadow. */
   dragging?: boolean;
-  sim?: { value: number; unit: string; frac: number };
+  sim?: { value: number; unit: string; frac: number; holds?: boolean };
   onPointerDown: (e: ReactPointerEvent) => void;
   onHandlePointerDown: (e: ReactPointerEvent) => void;
   /** Env objects render as squares under Mobus only; Klir and Bunge keep every
@@ -231,6 +231,10 @@ export function NodeBody({
   // source too, 2026-11-02 walk); the authored word is only the fallback for a
   // surface that has no facts.
   const emitter = thing.role === "Environment" && (isSource ?? thing.env_kind === "Source");
+  // A two-sided environment object (walk, 2026-11-03): it sends, so it
+  // pulses, and it receives, so it fills with what it has received so far.
+  // The kernel says it holds a level (`holds`); a pure source does not.
+  const fills = !emitter || sim?.holds === true;
   // #411: with the grounding overlay on, the body's stroke says whose word
   // the thing rests on and nothing else — the lens's stroke is set aside for
   // the reading, and comes back untouched when the overlay goes.
@@ -386,8 +390,9 @@ export function NodeBody({
       )}
 
       {/* the sim payoff: a stock's disc fills/drains as the scrubber indexes ticks */}
-      {!simPosition && frac !== null && !emitter && (
+      {!simPosition && frac !== null && fills && (
         <>
+          {emitter && <title>sends at its own rate, and holds what it receives</title>}
           <clipPath id={clipId}>
             <rect x={-TRI_HALF_W} y={shapeBot - shapeH * frac} width={TRI_HALF_W * 2} height={shapeH * frac} />
           </clipPath>
@@ -423,7 +428,7 @@ export function NodeBody({
           strokeWidth={strokeWidth}
           strokeDasharray={strokeDash}
           strokeLinejoin="miter"
-          fillOpacity={frac !== null && !simPosition && !emitter ? 0 : 1}
+          fillOpacity={frac !== null && !simPosition && fills ? 0 : 1}
         >
           <title>decision ⁄ regulator — a modulating work process (Mobus Fig 4.17)</title>
         </path>
@@ -439,7 +444,7 @@ export function NodeBody({
           strokeOpacity={strokeOpacity}
           strokeWidth={strokeWidth}
           strokeDasharray={strokeDash}
-          fillOpacity={frac !== null && !simPosition && !emitter ? 0 : 1}
+          fillOpacity={frac !== null && !simPosition && fills ? 0 : 1}
         />
       ) : (
         <circle
@@ -449,7 +454,7 @@ export function NodeBody({
           strokeOpacity={strokeOpacity}
           strokeWidth={strokeWidth}
           strokeDasharray={strokeDash}
-          fillOpacity={frac !== null && !simPosition && !emitter ? 0 : 1}
+          fillOpacity={frac !== null && !simPosition && fills ? 0 : 1}
         />
       )}
 

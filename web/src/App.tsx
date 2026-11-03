@@ -2284,7 +2284,7 @@ function Workspace() {
       // Only a level fills (walk, 2026-11-03): a process's series is what
       // passes through it each tick, and a splitter passing a steady 10 was
       // drawn full. The kernel says which series are levels (`holds`).
-      nodes[traj.name] = { value, unit: traj.unit, frac: traj.holds ? levelFrac(traj.series, value) : 0 };
+      nodes[traj.name] = { value, unit: traj.unit, frac: traj.holds ? levelFrac(traj.series, value) : 0, holds: traj.holds };
     }
     const edges: SimFrame["edges"] = {};
     // EVERY wire's executed per-tick series lights the diagram (the kernel

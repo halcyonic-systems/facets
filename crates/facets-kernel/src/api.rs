@@ -1035,6 +1035,38 @@ mod tests {
         assert_eq!(cmp.simulated[0], cmp.actual[0], "the first row lines up with the start");
     }
 
+    /// Walk, 2026-11-03: an environment object that both sends and receives
+    /// is a two-sided black box. What it receives is received (counted as
+    /// sunk, held as its level), never destroyed; what it sends is its own
+    /// rate and does not answer to what it received.
+    #[test]
+    fn an_environment_object_both_sends_and_holds_what_it_receives() {
+        let sl = "component Shop primitive Buffering interface\nenvironment Market\nflow Market -> Shop : matter amount 4\nflow Shop -> Market : matter\n";
+        let run = |sl: &str| {
+            let m = facets_canvas::sl::parse_sl(sl).unwrap();
+            facets_tether::forcing::run_unforced(facets_canvas::canvas::run_projection(&m).unwrap(), 1.0, 5.0).unwrap()
+        };
+        let r = run(sl);
+        assert!(r.conserved, "residual {}", r.residual);
+        let market = r.trajectories.iter().find(|t| t.name == "Market").unwrap();
+        assert!(market.holds, "it holds what it received");
+        assert_eq!(market.series, vec![0.0, 0.0, 1.0, 2.0, 3.0, 4.0]);
+        // Sending is its own: the same 4 a tick whether or not anything comes back.
+        let sent = |r: &facets_tether::forcing::RunReadout| r.flows.iter().find(|f| f.from == "Market").unwrap().series.clone();
+        let alone = run("component Shop primitive Buffering interface\nenvironment Market\nenvironment Out\nflow Market -> Shop : matter amount 4\nflow Shop -> Out : matter\n");
+        assert_eq!(sent(&r), sent(&alone));
+        // An object that only sends still reads as an emission, not a level.
+        assert!(!alone.trajectories.iter().find(|t| t.name == "Market").unwrap().holds);
+        // The ledger counts what came back as received by the environment.
+        // It used to be charged as dissipated: destroyed, though conserved.
+        let m = facets_canvas::sl::parse_sl(sl).unwrap();
+        let spec = facets_core::operational::validate_operational(&facets_canvas::canvas::run_projection(&m).unwrap())
+            .unwrap_or_else(|_| panic!("operational"));
+        let mut c = facets_compose::from_spec(&spec);
+        facets_compose::RecordedRun::record(&mut c, &spec, 1.0, 5);
+        assert_eq!((c.emitted, c.sunk, c.dissipated), (20.0, 4.0, 0.0));
+    }
+
     /// Walk, 2026-11-03: a splitter passing 10 a tick was drawn full, because
     /// its series is throughput and the canvas filled every series. Only the
     /// stocks and the sink hold a level.

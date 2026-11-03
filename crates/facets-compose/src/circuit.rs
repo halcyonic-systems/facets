@@ -1637,6 +1637,16 @@ impl Circuit {
                 // simply not produced).
                 // × dt: a Source's param is a RATE per time unit (#258)
                 NodeKind::Source => {
+                    // An environment object is a black box with two sides
+                    // (walk, 2026-11-03; Mobus book-revisions: one object may
+                    // be both source and sink). What it receives it takes in
+                    // and holds, as a sink does; what it sends is its own
+                    // given rate, and receiving never changes it. An object
+                    // whose sending answered to what it received would have an
+                    // organization of its own, and so belong inside a widened
+                    // boundary as a component, not out here. What it receives
+                    // is read after the step (`delivered`, below): a source
+                    // is evaluated first, before its inflows are known.
                     let rate = dt * self.source_emission(i) * bp_factor_of(i, &act);
                     match node.reservoir {
                         // A finite source emits what it has left after this
@@ -1930,11 +1940,14 @@ impl Circuit {
             for i in 0..n {
                 let node = &self.nodes[i];
                 match node.kind {
-                    // Inflow to a source has nowhere to go (the UI refuses these
-                    // wires; ledgered defensively).
+                    // What an environment object receives is received by the
+                    // environment, as at a sink. It was charged as dissipated
+                    // back when the face refused flows into a source; since a
+                    // plain `environment` may both send and receive (#216),
+                    // that charge destroyed what the environment took in.
                     NodeKind::Source => {
-                        node_diss[i] = delivered[i];
-                        dissipated_now += delivered[i];
+                        node_diss[i] = 0.0;
+                        sunk_now += delivered[i];
                     }
                     NodeKind::Sink => {
                         node_diss[i] = 0.0;
@@ -1988,6 +2001,11 @@ impl Circuit {
             node.activity = act[i];
             node.storage = next_storage[i];
             node.total += sink_add[i];
+            // An environment object's received side (see the Source arm):
+            // what arrived this step, the amount the ledger counts as sunk.
+            if matches!(node.kind, NodeKind::Source) {
+                node.total += delivered[i];
+            }
             if node.reservoir.is_some() {
                 node.remaining = (node.remaining - released[i]).max(0.0);
             }
@@ -3557,12 +3575,14 @@ mod tests {
         );
     }
 
-    /// Law: flow illegally wired into a Source is shed to the dissipation
-    /// ledger, never silently destroyed.
-    /// Flow wired into a Source (UI refuses; engine defends): the mass is
-    /// shed to the ledger, not silently destroyed.
+    /// Law: what flows into a Source is received by the environment, as at a
+    /// sink: counted as sunk, held in the node's total, the ledger balanced,
+    /// and the receiving Source's own sending untouched (walk, 2026-11-03).
+    /// It used to be charged as dissipated, which was right while the face
+    /// refused such flows and wrong once a plain `environment` object could
+    /// both send and receive (#216).
     #[test]
-    fn inflow_to_source_is_ledgered() {
+    fn inflow_to_source_is_received() {
         let mut c = Circuit::default();
         c.nodes.push(node(NodeKind::Source));
         c.nodes.push(node(NodeKind::Source));
@@ -3572,7 +3592,8 @@ mod tests {
             c.step();
             assert_balanced(&c, "inflow to source");
         }
-        assert!(c.dissipated > 0.0, "shed inflow must appear in the ledger");
+        assert_eq!(c.dissipated, 0.0, "received, not destroyed");
+        assert!(c.sunk > 0.0 && (c.nodes[1].total - c.sunk).abs() < 1e-4, "held as received");
     }
 
     /// Law: a gradient wire from a node with no potential is inert — it must

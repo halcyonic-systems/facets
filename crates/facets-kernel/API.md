@@ -130,7 +130,9 @@ A run of `ticks` = N steps has N + 1 instants (spec §8.2, "H starts at the
 point"). A trajectory with `holds` is a level: N + 1 values, the first the state
 before the first step (a stock's starting level; zero for a sink). One without
 (a source's emission, a process's throughput) is per step: N values, the i-th the
-step from instant i to i + 1. `flows[].series` is per step too. In
+step from instant i to i + 1. `flows[].series` is per step too. An environment
+object that both sends and receives (spec §5.2) holds a level: what it has
+received so far, from zero; what it sends is on its outgoing `flows`. In
 `comparisons`, a `"stock"` comparison is per instant (its first `actual` is the
 observed start, compared with the starting level) and a `"flow"` one per step.
 Changed 2026-11-03: before, level series began after the first step, so a stock
