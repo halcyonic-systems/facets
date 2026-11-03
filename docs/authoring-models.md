@@ -231,6 +231,20 @@ new verb for the language, not a formula — see ADR 0006 for the growth rule.
    loop named**. Time is honest everywhere else too: rates are per `time unit`,
    and a run's totals don't depend on Δt (`dt_invariance.rs` holds this).
 
+## Reading a run: instants and steps
+
+A run of N steps has N + 1 instants, numbered 0 to N. Tick 0 is the start,
+before anything has moved: every stock at its `initial` (or zero), nothing yet
+received by a sink, and no flow shown on the canvas. A stock is a state, so it
+has a value at every instant. A flow is what moves between two instants, so it
+has one value per step, and the scrubber shows it at the instant its step ended.
+That is why a run of 12 reads "start / 12" at one end and "tick 12 / 12" at the
+other. Data lines up the same way: a stock column's first row is the observed
+start (it also sets the stock's starting level), and a flow column is one row
+per step. The formal reason is the spec's §8.2, "H starts at the point": a run
+is the unfolding x₀, T(x₀), T²(x₀), … of the model's step from its starting
+state.
+
 ## The three pre-SL demos, and why they cannot be ported
 
 `allocation`, `homeostat` and `reservoir` (now in `assets/archive/demos/`,

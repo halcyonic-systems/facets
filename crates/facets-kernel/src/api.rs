@@ -1004,6 +1004,37 @@ mod tests {
         check_fixture("tick_log", &bench.tick_log_since(1));
     }
 
+    /// Walk, 2026-11-03: a level is a state at an instant, so a run of N
+    /// steps has N + 1 levels, the first before anything moves; a flow is what
+    /// moves during a step, so it has N. And a stock column's first row, which
+    /// the tether reads as the starting level, is compared with that start,
+    /// not with the level one step later (which it was before this).
+    #[test]
+    fn levels_start_before_the_first_step_and_line_up_with_data() {
+        use facets_tether::manifest::{ColumnMapping, Role};
+        let json = include_str!("../../../assets/archive/demos/reservoir-model.json");
+        let model: WorldModel = serde_json::from_str(json).expect("reservoir parses");
+        let mut manifest = reservoir_manifest();
+        manifest.mapping.push(ColumnMapping {
+            column: "level".into(),
+            role: Role::Stock,
+            element: Some("Reservoir".into()),
+            unit: Some("ML".into()),
+            force: false,
+            every: None,
+        });
+        let csv = "month,inflow,level\n1,20,40\n2,35,41\n3,60,42\n4,45,43\n5,25,44\n6,15,45\n7,10,46\n8,12,47\n9,22,48\n10,40,49\n11,55,50\n12,30,51\n";
+        let r = facets_tether::forcing::force_and_run(model, csv, &manifest, 1.0, 12.0, "2026-01-01").expect("runs");
+        let stock = r.trajectories.iter().find(|t| t.name == "Reservoir").expect("reservoir");
+        assert!(stock.holds);
+        assert_eq!(stock.series.len(), r.ticks + 1, "N + 1 instants");
+        assert_eq!(stock.series[0], 40.0, "tick 0 is the observed start, before anything moved");
+        let flow = r.flows.first().expect("a flow");
+        assert_eq!(flow.series.len(), r.ticks, "N steps");
+        let cmp = r.comparisons.iter().find(|c| c.kind == "stock").expect("a stock comparison");
+        assert_eq!(cmp.simulated[0], cmp.actual[0], "the first row lines up with the start");
+    }
+
     /// Walk, 2026-11-03: a splitter passing 10 a tick was drawn full, because
     /// its series is throughput and the canvas filled every series. Only the
     /// stocks and the sink hold a level.

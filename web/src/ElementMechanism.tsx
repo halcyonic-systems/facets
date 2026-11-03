@@ -3,6 +3,7 @@
 // in the 2026-11-02 walk (row 22). Read-only; editing stays in
 // NodeEditorRows above. No systems fact is decided here — relations and
 // trajectories arrive resolved from the canvas model and the kernel readout.
+import { atFrame } from "./canvas/types";
 import type { CanvasModel, RunResultRich, Thing } from "./kernel/types";
 import { PRIMITIVES, PRIMITIVE_LAWS } from "./canvas/ProcessReference";
 import { FALLBACK_SLOT, entitySlots, surfaceEntities, type SeriesSlot } from "./RunChart";
@@ -13,7 +14,7 @@ const primitiveLine = (p: Thing["primitive"]) =>
 /** The node's trajectory as a sparkline in its entity's slot (the same stroke
  *  the run surfaces give it): a 2px line, a marker of r 4 with a 2px ring in
  *  the sheet colour so it reads where it sits on the line (dataviz marks). */
-function Sparkline({ series, tick, slot }: { series: number[]; tick: number; slot: SeriesSlot }) {
+function Sparkline({ series, tick, slot, perStep }: { series: number[]; tick: number; slot: SeriesSlot; perStep: boolean }) {
   if (series.length < 2) return null;
   const min = Math.min(...series);
   const max = Math.max(...series);
@@ -22,7 +23,9 @@ function Sparkline({ series, tick, slot }: { series: number[]; tick: number; slo
   const pad = 5;
   const x = (i: number) => pad + (i / (series.length - 1)) * (w - 2 * pad);
   const y = (v: number) => (max > min ? h - pad - ((v - min) / (max - min)) * (h - 2 * pad) : h / 2);
-  const at = Math.min(tick, series.length - 1);
+  // Frame `tick`: a level's index tick, a per-step series' tick - 1 (none at
+  // the start, canvas/types `atFrame`).
+  const at = Math.min(perStep ? tick - 1 : tick, series.length - 1);
   return (
     <svg width={w} height={h} aria-hidden>
       <polyline
@@ -34,7 +37,7 @@ function Sparkline({ series, tick, slot }: { series: number[]; tick: number; slo
         strokeLinejoin="round"
         strokeLinecap="round"
       />
-      <circle cx={x(at)} cy={y(series[at])} r={4} fill={slot.color} stroke="var(--bg-secondary)" strokeWidth={2} />
+      {at >= 0 && <circle cx={x(at)} cy={y(series[at])} r={4} fill={slot.color} stroke="var(--bg-secondary)" strokeWidth={2} />}
     </svg>
   );
 }
@@ -59,7 +62,7 @@ export function ElementMechanism({
   const line = primitiveLine(thing.primitive);
   if (!line && !traj) return null;
 
-  const at = traj ? traj.series[Math.min(tick, traj.series.length - 1)] : null;
+  const at = traj ? atFrame(traj.series, tick, !traj.holds) : null;
   const slot = traj ? entitySlots(surfaceEntities(model, result)).get(thing.name) ?? FALLBACK_SLOT : FALLBACK_SLOT;
   return (
     <div className="mt-3 border-t pt-2" style={{ borderColor: "var(--hairline)" }}>
@@ -73,7 +76,7 @@ export function ElementMechanism({
           </span>
           <div className="flex items-center gap-3">
             {Math.min(...traj.series) !== Math.max(...traj.series) && (
-              <Sparkline series={traj.series} tick={tick} slot={slot} />
+              <Sparkline series={traj.series} tick={tick} slot={slot} perStep={!traj.holds} />
             )}
             <span className="tabular font-semibold" style={{ fontSize: "var(--t-num)", color: "var(--text-secondary)" }}>
               {Number.isFinite(at) ? at.toLocaleString(undefined, { maximumFractionDigits: 1 }) : "—"}
@@ -81,7 +84,7 @@ export function ElementMechanism({
               <span style={{ color: "var(--text-muted)" }}>
                 {Math.min(...traj.series) === Math.max(...traj.series)
                   ? "the same at every tick"
-                  : `at tick ${Math.min(tick, traj.series.length - 1)}`}
+                  : `at tick ${tick}`}
               </span>
             </span>
           </div>

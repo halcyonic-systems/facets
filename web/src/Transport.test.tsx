@@ -82,3 +82,11 @@ describe("a run that lost most of what came in (walk row 29)", () => {
   });
 });
 
+
+describe("the scrubber says what a tick is (walk, 2026-11-03)", () => {
+  it("names the start, and explains ticks on hover", () => {
+    const html = renderToStaticMarkup(<Transport {...base} steps={13} tick={0} />);
+    expect(html).toContain("start / 12");
+    expect(html).toContain("The start, tick 0, is before anything has moved.");
+  });
+});

@@ -103,6 +103,7 @@
       "unit_derived": false,
       "holds": true,
       "series": [
+        0.0,
         1.5,
         3.0,
         4.5,
@@ -123,6 +124,7 @@
       "unit_derived": true,
       "holds": true,
       "series": [
+        100.0,
         118.5,
         152.0,
         210.5,

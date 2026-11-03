@@ -46,7 +46,7 @@ import { PaletteRail } from "./canvas/PaletteRail";
 import type { PaletteTool } from "./canvas/lenses/registry";
 import { LensPalette } from "./canvas/lenses/registry";
 import { MarkovReadout } from "./canvas/MarkovReadout";
-import { levelFrac, type SimFrame } from "./canvas/types";
+import { atFrame, frameCount, levelFrac, type SimFrame } from "./canvas/types";
 import type { Pt } from "./canvas/geometry";
 import { InspectorDock } from "./InspectorDock";
 import { StartSurface } from "./StartSurface";
@@ -2275,9 +2275,12 @@ function Workspace() {
   const simFrame: SimFrame | null = useMemo(() => {
     if (!result) return null;
     const nodes: SimFrame["nodes"] = {};
+    // Frame `tick` is an instant (walk, 2026-11-03): a level reads its value
+    // there, a per-step series the step that ended there, and at frame 0,
+    // before anything moved, a per-step series has nothing to show.
     for (const traj of result.trajectories) {
-      if (traj.series.length === 0) continue;
-      const value = traj.series[Math.min(tick, traj.series.length - 1)];
+      const value = atFrame(traj.series, tick, !traj.holds);
+      if (value === null) continue;
       // Only a level fills (walk, 2026-11-03): a process's series is what
       // passes through it each tick, and a splitter passing a steady 10 was
       // drawn full. The kernel says which series are levels (`holds`).
@@ -2290,13 +2293,15 @@ function Workspace() {
     // READER of the trace, per the accepted trace-separation design.
     for (const f of result.flows) {
       if (!f.name) continue; // an unlabeled wire has no edge key to ride
-      const value = f.series[Math.min(tick, f.series.length - 1)] ?? 0;
+      const value = atFrame(f.series, tick, true);
+      if (value === null) continue;
       edges[f.name] = { value, unit: f.unit };
     }
     // CSV-mapped comparisons keep the last word where both exist — they carry
     // the observed context the bare execution lacks.
     for (const c of result.comparisons) {
-      const value = c.simulated[Math.min(tick, c.simulated.length - 1)] ?? 0;
+      const value = atFrame(c.simulated, tick, c.kind === "flow");
+      if (value === null) continue;
       edges[c.element] = { value, unit: c.unit };
     }
     for (const name of loss?.at ?? []) if (nodes[name]) nodes[name] = { ...nodes[name], lost: true };
@@ -2468,7 +2473,7 @@ function Workspace() {
         // totals they had no way to read (walk row 11, measured: scrubber at
         // tick 3, knob stamped at 12). Inside the record a knob re-runs from
         // the start, as it does paused.
-        const atLiveEdge = result !== null && tick >= result.ticks - 1;
+        const atLiveEdge = result !== null && tick >= result.ticks;
         if (!structural && changed.length + fieldEdits.length > 0 && runOn && playing && atLiveEdge && !(runCsv ?? "").trim()) {
           // Running on (one-surface.md): the knob lands at the engine's
           // current tick and the run carries on from there, stocks kept —
@@ -2502,7 +2507,7 @@ function Workspace() {
           }
           runWith(json, runCsv ?? "", manifest, dt, len, true);
           setPlaying(false);
-          setTick(Math.max(0, (result?.ticks ?? 1) - 1));
+          setTick(result?.ticks ?? 0);
           return;
         }
         if (!structural && changed.length + fieldEdits.length > 0) {
@@ -2529,7 +2534,7 @@ function Workspace() {
           // and nothing starts playing (feel-test 2026-10-09: auto-play after
           // every slider move was the annoyance, not the re-run).
           setPlaying(false);
-          setTick(Math.max(0, r.ticks - 1));
+          setTick(r.ticks);
           return;
         }
       } catch (e) {
@@ -2674,7 +2679,7 @@ function Workspace() {
           setResult(r);
           recordBench(b, r, "step", runCsv ?? "", manifest, dt, r.ticks * dt);
           setPlaying(false);
-          setTick(r.ticks - 1);
+          setTick(r.ticks);
           return;
         }
         const m = modelForRun();
@@ -2682,7 +2687,7 @@ function Workspace() {
         const nextT = result ? (result.ticks + 1) * dt : dt;
         if (nextT > t) setT(nextT);
         runWith(m.json, runCsv ?? "", manifest, dt, nextT, m.edited);
-        setTick(result ? result.ticks : 0);
+        setTick(result ? result.ticks + 1 : 1);
       }
     };
     return { runKind, runnable, title, onRun, onStep };
@@ -2710,7 +2715,7 @@ function Workspace() {
       const r = b.readout();
       ranOnRef.current = true;
       setResult(r);
-      setTick(r.ticks - 1);
+      setTick(r.ticks);
     } catch (e) {
       setPlaying(false);
       setRunError(e instanceof Error ? e.message : String(e));
@@ -2735,7 +2740,7 @@ function Workspace() {
       onStep={runCtl.onStep}
       runnable={runCtl.runnable}
       runTitle={runCtl.title}
-      steps={result ? result.ticks : markovRun ? markovRun.history.length : 0}
+      steps={result ? frameCount(result.ticks) : markovRun ? markovRun.history.length : 0}
       tick={tick}
       onTick={setTick}
       playing={playing}

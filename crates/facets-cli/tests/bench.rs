@@ -6,6 +6,15 @@ mod support;
 
 use support::{code, facets, stderr, stdout_json};
 
+/// A trajectory as one value after each step. A level's series starts with
+/// the state before the first step (N + 1 values, walk 2026-11-03); these
+/// tests read what each step left, so the start is set aside for a level.
+/// An activity already has one value per step.
+fn after_steps(t: &serde_json::Value) -> Vec<f64> {
+    let all: Vec<f64> = t["series"].as_array().unwrap().iter().map(|x| x.as_f64().unwrap()).collect();
+    if t["holds"] == true { all[1..].to_vec() } else { all }
+}
+
 #[test]
 fn a_knob_at_a_tick_turns_the_flow_from_the_next_tick_on() {
     let out = facets(&["bench", "fixtures/sl/bathtub.sl", "--t", "6", "--set", "inflow|Faucet|Tub=4@3"]);
@@ -69,7 +78,8 @@ fn a_knob_names_the_pass_way_the_author_wrote() {
     let rain = v["flows"].as_array().unwrap().iter().find(|f| f["name"] == "rainfall").unwrap();
     assert_eq!(rain["series"], serde_json::json!([15.0, 15.0, 15.0, 15.0, 15.0, 0.0, 0.0, 0.0]));
     let barrel = v["trajectories"].as_array().unwrap().iter().find(|s| s["name"] == "Rain Barrel").unwrap();
-    assert_eq!(barrel["series"][7], 39.0);
+    // Eight steps: the start, then eight levels; the last is index 8.
+    assert_eq!(barrel["series"][8], 39.0);
 }
 
 #[test]
@@ -103,8 +113,8 @@ fn a_pass_way_serving_two_residents_runs_as_an_identity_door() {
     let fill = |n: &str| flows.iter().find(|f| f["name"] == n).unwrap()["series"][0].as_f64().unwrap();
     assert_eq!((fill("fill a"), fill("fill b")), (4.0, 6.0));
     let traj = v["trajectories"].as_array().unwrap();
-    let last = |n: &str| traj.iter().find(|s| s["name"] == n).unwrap()["series"][4].as_f64().unwrap();
-    assert_eq!((last("Tank A"), last("Tank B")), (20.0, 25.0));
+    let last = |n: &str| traj.iter().find(|s| s["name"] == n).unwrap()["series"][5].as_f64().unwrap();
+    assert_eq!((last("Tank A"), last("Tank B")), (20.0, 25.0), "after five steps");
 }
 
 #[test]
@@ -186,8 +196,7 @@ fn the_banded_relay_switches_less_than_the_bare_one_and_less_again_as_the_band_w
         v
     };
     let series = |v: &serde_json::Value, name: &str| -> Vec<f64> {
-        v["trajectories"].as_array().unwrap().iter().find(|t| t["name"] == name).unwrap()["series"]
-            .as_array().unwrap().iter().map(|x| x.as_f64().unwrap()).collect()
+        after_steps(v["trajectories"].as_array().unwrap().iter().find(|t| t["name"] == name).unwrap())
     };
     let flips = |cmd: &[f64]| cmd.windows(2).filter(|w| w[0] != w[1]).count();
     let swing = |room: &[f64]| {
@@ -236,8 +245,7 @@ fn the_trace_and_table_forms_differ_from_their_controls_as_the_readme_says() {
         v
     };
     let series = |v: &serde_json::Value, name: &str| -> Vec<f64> {
-        v["trajectories"].as_array().unwrap().iter().find(|t| t["name"] == name).unwrap()["series"]
-            .as_array().unwrap().iter().map(|x| x.as_f64().unwrap()).collect()
+        after_steps(v["trajectories"].as_array().unwrap().iter().find(|t| t["name"] == name).unwrap())
     };
     let level = |v: &serde_json::Value, name: &str| -> f64 {
         v["levels"].as_array().unwrap().iter().find(|l| l["name"] == name).unwrap()["value"].as_f64().unwrap()
@@ -295,8 +303,7 @@ fn the_agent_forms_differ_from_their_aggregate_controls_as_the_readme_says() {
         v
     };
     let series = |v: &serde_json::Value, name: &str| -> Vec<f64> {
-        v["trajectories"].as_array().unwrap().iter().find(|t| t["name"] == name).unwrap()["series"]
-            .as_array().unwrap().iter().map(|x| x.as_f64().unwrap()).collect()
+        after_steps(v["trajectories"].as_array().unwrap().iter().find(|t| t["name"] == name).unwrap())
     };
     let level = |v: &serde_json::Value, name: &str| -> f64 {
         v["levels"].as_array().unwrap().iter().find(|l| l["name"] == name).unwrap()["value"].as_f64().unwrap()
@@ -354,8 +361,7 @@ fn the_command_form_acts_one_day_after_the_signal_form_and_pins_to_its_controls(
         v
     };
     let series = |v: &serde_json::Value, name: &str| -> Vec<f64> {
-        v["trajectories"].as_array().unwrap().iter().find(|t| t["name"] == name).unwrap()["series"]
-            .as_array().unwrap().iter().map(|x| x.as_f64().unwrap()).collect()
+        after_steps(v["trajectories"].as_array().unwrap().iter().find(|t| t["name"] == name).unwrap())
     };
     let level = |v: &serde_json::Value, name: &str| -> f64 {
         v["levels"].as_array().unwrap().iter().find(|l| l["name"] == name).unwrap()["value"].as_f64().unwrap()
@@ -432,8 +438,7 @@ fn the_feedforward_compensator_reads_the_supply_and_holds_the_room() {
         stdout_json(&out)
     };
     let series = |v: &serde_json::Value, name: &str| -> Vec<f64> {
-        v["trajectories"].as_array().unwrap().iter().find(|t| t["name"] == name).unwrap()["series"]
-            .as_array().unwrap().iter().map(|x| x.as_f64().unwrap()).collect()
+        after_steps(v["trajectories"].as_array().unwrap().iter().find(|t| t["name"] == name).unwrap())
     };
     let near = |a: f64, b: f64| (a - b).abs() < 1e-3;
 

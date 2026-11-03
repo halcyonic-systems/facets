@@ -15,6 +15,10 @@ import { Button } from "../ui";
 
 const TICKS_PER_SEC = 6;
 
+/** What a tick is, said where the author reads it (hover on the tick label). */
+export const TICK_MEANS =
+  "Each tick is an instant. Levels (what a stock holds) are read at it; anything that moves is shown for the step that ended there. The start, tick 0, is before anything has moved.";
+
 /** Play/scrub a run's frames. `steps` is the frame count — valid ticks are
  *  0…steps-1, whatever kind of run produced them (a conservation trajectory or
  *  a Markov distribution). It only indexes; it computes no dynamics.
@@ -88,11 +92,16 @@ export function SimScrubber({
         className="flex-1"
         aria-label="Run position"
       />
+      {/* The one place the tool says what a tick is (walk, 2026-11-03): an
+          instant, levels read at it, movement shown for the step that ended
+          there. Tick 0 says "start", and the canvas shows no flow on it. */}
       <span
         className="shrink-0 whitespace-nowrap text-right text-xs tabular"
         style={{ color: "var(--text-muted)" }}
+        title={TICK_MEANS}
+        data-testid="scrubber-tick"
       >
-        tick {tick} / {Math.max(0, steps - 1)}
+        {tick === 0 ? "start" : `tick ${tick}`} / {Math.max(0, steps - 1)}
       </span>
     </div>
   );

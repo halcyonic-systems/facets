@@ -121,9 +121,20 @@ type RunResultRich = {
     declared: number[]|null,            // the flat declared-mean baseline (flows)
     divergence_pct: number|null,
   }[],
-  trajectories: { name, unit, unit_derived: boolean, series: number[] }[],
+  trajectories: { name, unit, unit_derived: boolean,
+                  holds: boolean,       // a level (stock, sink total) or per-step activity
+                  series: number[] }[],
 }
 ```
+A run of `ticks` = N steps has N + 1 instants (spec §8.2, "H starts at the
+point"). A trajectory with `holds` is a level: N + 1 values, the first the state
+before the first step (a stock's starting level; zero for a sink). One without
+(a source's emission, a process's throughput) is per step: N values, the i-th the
+step from instant i to i + 1. `flows[].series` is per step too. In
+`comparisons`, a `"stock"` comparison is per instant (its first `actual` is the
+observed start, compared with the starting level) and a `"flow"` one per step.
+Changed 2026-11-03: before, level series began after the first step, so a stock
+column's first row was compared one step late.
 Everything is labeled by the model's own names + units — no engine columns leak.
 `unit_derived` is true when an undeclared Buffering stock's `unit` was derived from
 its inflow integrated over Δt (bert-lenses#94: `ML/mo` → `ML`, in the author's own

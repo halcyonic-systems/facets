@@ -46,7 +46,10 @@ function label(name: string, unit: string) {
 /** Bunge's trajectory / state-space view of a run. Renders nothing without a
  *  run trajectory to show. Self-contained: `result` is the only input. */
 export function BungeStateSpace({ result, tick }: { result: RunResultRich; tick?: number }) {
-  const traj = result.trajectories;
+  // A state space is made of states: only the series that hold a level (a
+  // stock, a sink's total), each with one value per instant from the start.
+  // A process's throughput is per step and is not a state (walk, 2026-11-03).
+  const traj = result.trajectories.filter((t) => t.holds);
   if (traj.length === 0) return null;
 
   // Two or more stocks → a phase portrait (the state-space path). One stock →

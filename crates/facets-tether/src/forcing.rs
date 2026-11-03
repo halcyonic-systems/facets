@@ -351,6 +351,11 @@ pub struct Trajectory {
     /// what it does each tick (a source's emission, a process's throughput),
     /// which a reading must not draw as a fill (walk, 2026-11-03: a splitter
     /// passing 10 a tick was drawn full).
+    ///
+    /// The two kinds differ in length too. A level has one value per instant,
+    /// N + 1 over N steps, starting with the state before the first step. An
+    /// activity has one value per step, N, its i-th the step from instant i
+    /// to instant i + 1.
     pub holds: bool,
     pub series: Vec<f32>,
 }
@@ -472,7 +477,23 @@ pub fn summarize(
         .enumerate()
         .map(|(i, node)| {
             let col = col_of(&node.kind);
-            let series = run.history.iter().map(|row| row[1 + i * 3 + col]).collect();
+            // A level is a state, true at an instant; a run of N steps has
+            // N + 1 of them, and the first is the one before anything moved
+            // (the pointed coalgebra's point x0, whose unfolding is
+            // x0, T(x0), T²(x0), …). The recorder's rows are written after each
+            // step, so the start is put in front here: a stock's starting
+            // level, and nothing yet received for a sink. An activity (a
+            // source's emission, a process's throughput) is what happens
+            // during a step, so it keeps one value per step (walk, 2026-11-03).
+            let start = match node.kind {
+                NodeKind::Sink => Some(0.0),
+                NodeKind::Process(facets_core::ProcessPrimitive::Buffering) => Some(node.initial_storage),
+                _ => None,
+            };
+            let series = start
+                .into_iter()
+                .chain(run.history.iter().map(|row| row[1 + i * 3 + col]))
+                .collect();
             let (unit, unit_derived) = unit_of(node);
             Trajectory {
                 name: node.name.clone(),

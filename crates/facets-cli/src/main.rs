@@ -477,6 +477,8 @@ struct BenchLevel {
 struct BenchSeries {
     name: String,
     unit: String,
+    /// A level (N + 1 values from the start) or an activity (one per step).
+    holds: bool,
     series: Vec<f32>,
 }
 
@@ -555,7 +557,7 @@ fn bench_cmd(file: PathBuf, t: f64, dt: f64, sets: Vec<String>, no_log: bool) ->
         residual: r.residual,
         conserved: r.conserved,
         levels: r.levels.iter().map(|l| BenchLevel { name: l.name.clone(), unit: l.unit.clone(), value: l.value }).collect(),
-        trajectories: r.trajectories.iter().map(|s| BenchSeries { name: s.name.clone(), unit: s.unit.clone(), series: s.series.clone() }).collect(),
+        trajectories: r.trajectories.iter().map(|s| BenchSeries { name: s.name.clone(), unit: s.unit.clone(), holds: s.holds, series: s.series.clone() }).collect(),
         flows: r.flows.iter().map(|f| BenchFlow { name: f.name.clone(), from: f.from.clone(), to: f.to.clone(), series: f.series.clone() }).collect(),
         edits: bench.edits(),
         log: (!no_log).then(|| bench.tick_log_since(1)),
