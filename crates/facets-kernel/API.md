@@ -999,16 +999,24 @@ skipped on write, so every existing model serializes unchanged.
 ### `engine_knobs(canvas_json: string) → EngineKnob[]`
 Every engine knob the model's components offer, each at the value the run will
 use. Additive (2026-11-02, the new-user walk's decision 2). `EngineKnob` is
-`{ thing, field, word, value, declared, needs_unit? }`: `field` is the session
+`{ thing, field, word, value, declared, needs_unit?, own? }`: `field` is the session
 key (`initial_storage`, `release_rate`, `time_constant`, `capacity`,
-`maintenance`, `setpoint`, `gain`), `value` is the declared value or, when not
+`maintenance`, `setpoint`), or for a process's own parameter its SL word
+(`gain`, `efficiency`, `impedance`), `value` is the declared value or, when not
 declared, the default read off the circuit the run builds (`project` then
 `from_world_model`), and `null` where the field is off by default (no capacity
 limit, no upkeep). Only fields SL can write on the component's line are listed:
 Buffering's starting level (with `needs_unit`, the stock unit SL welds to it,
 `""` when there is none), release (or time constant where one is declared, never
-both), capacity and maintenance; Inverting's setpoint; Sensing's gain. A model
-that builds no circuit yields an empty list.
+both), capacity and maintenance; Inverting's setpoint; and a process's own
+parameter (walk row 18, SL v1.15): Sensing's and Amplifying's gain, Propelling's
+efficiency, Impeding's impedance. Those four carry `own: { offset, scale,
+max_param, range }`, the map from the SL value `v` to the engine's `param`
+(`Thing.agency_capacity`), `v = offset + scale · p`, accepted when `p > 0` and
+`p ≤ max_param` where it is not `null`; `range` says the same in the word's
+terms. The map is `OWN_PARAMS` in `facets-canvas/src/sl.rs`, so the face writes
+`agency_capacity` without holding it. A model that builds no circuit yields an
+empty list.
 
 ### `flow_knobs(canvas_json: string) → FlowKnob[]`
 Every non-ample bond's amount as the run uses it. Additive (2026-11-02, the

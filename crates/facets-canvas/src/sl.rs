@@ -1043,7 +1043,7 @@ pub fn parse_sl_full(text: &str) -> Result<SlParse, Vec<SlError>> {
                 let mut back_pressure = false;
                 let mut limiting = false;
                 let mut reservoir: Option<f64> = None;
-                let mut gain: Option<f64> = None;
+                let mut own_words: Vec<(String, f64)> = Vec::new();
                 let mut description = String::new();
                 let mut grounding: Option<Grounding> = None;
                 let mut scale: Option<ScaleType> = None;
@@ -1497,35 +1497,55 @@ pub fn parse_sl_full(text: &str) -> Result<SlParse, Vec<SlError>> {
                             limiting = true;
                             i += 1;
                         }
-                        // `gain <n>` — a Sensing process's gain k (#496): the
-                        // multiplier between the level it reads and the signal
-                        // it reports. The engine's `param` on a sensor; default
-                        // 1.0 (a sensor reports what it sees). Sensing-only.
-                        Tok::Word(w) if w.eq_ignore_ascii_case("gain") => {
+                        // A process's own parameter, the engine's `param`
+                        // (`OWN_PARAMS`): `gain <n>` on a Sensing process (#496,
+                        // the multiplier from level to signal, default 1) or an
+                        // Amplifying one (the signal multiplier, walk row 18),
+                        // `efficiency <n>` on Propelling, `impedance <n>` on
+                        // Impeding (row 18). Each is gated to its primitive
+                        // after the line is read; the range is checked there.
+                        Tok::Word(w)
+                            if ["gain", "efficiency", "impedance"]
+                                .iter()
+                                .any(|k| w.eq_ignore_ascii_case(k)) =>
+                        {
+                            let word = w.to_ascii_lowercase();
                             if role == Role::Environment {
                                 fail(
-                                    "`gain` applies to components only (environment \
-                                     internals are opaque)"
-                                        .into(),
+                                    format!(
+                                        "`{word}` applies to components only (environment \
+                                         internals are opaque)"
+                                    ),
                                     &mut errors,
                                 );
                                 ok = false;
                             }
-                            if gain.is_some() {
-                                fail("`gain` already given on this component".into(), &mut errors);
+                            if own_words.iter().any(|(k, _)| *k == word) {
+                                fail(format!("`{word}` already given on this component"), &mut errors);
                                 ok = false;
                             }
-                            match attrs.get(i + 1) {
-                                Some(Tok::Word(n))
-                                    if n.parse::<f64>().is_ok_and(|v| v.is_finite() && v > 0.0) =>
-                                {
-                                    gain = Some(n.parse::<f64>().unwrap());
-                                }
-                                _ => {
+                            // `gain` keeps its #496 syntax rule (positive);
+                            // the other two take any finite number here and
+                            // meet their range at the gate.
+                            let parsed = match attrs.get(i + 1) {
+                                Some(Tok::Word(n)) => n
+                                    .parse::<f64>()
+                                    .ok()
+                                    .filter(|v| v.is_finite() && (word != "gain" || *v > 0.0)),
+                                _ => None,
+                            };
+                            match parsed {
+                                Some(v) => own_words.push((word, v)),
+                                None => {
                                     fail(
-                                        "gain syntax: `gain <positive number>` — the sensor's \
-                                         multiplier from level to signal (e.g. `gain 1`)"
-                                            .into(),
+                                        match word.as_str() {
+                                            "gain" => "gain syntax: `gain <positive number>` — the \
+                                                       sensor's or amplifier's multiplier (e.g. `gain 1`)"
+                                                .to_string(),
+                                            _ => format!(
+                                                "{word} syntax: `{word} <number>` (e.g. `{word} 0.2`)"
+                                            ),
+                                        },
                                         &mut errors,
                                     );
                                     ok = false;
@@ -1739,7 +1759,9 @@ pub fn parse_sl_full(text: &str) -> Result<SlParse, Vec<SlError>> {
                                      `primitive <Name>`, `interface`, `stock \"<unit>\"`, \
                                      `release <n>`, `capacity <n>`, `time constant <n>`, \
                                      `setpoint <n>`, `maintenance <n>`, `backpressure`, `limiting`, \
-                                     `reservoir <n>` (source lines), `gain <n>` (Sensing), \
+                                     `reservoir <n>` (source lines), `gain <n>` (Sensing, \
+                                     Amplifying), `efficiency <n>` (Propelling), \
+                                     `impedance <n>` (Impeding), \
                                      `scale <Scale>`, `states {{…}}`, `kind <Basic|Support>` \
                                      and `decomposes …` may follow",
                                     other.display()
@@ -1803,14 +1825,49 @@ pub fn parse_sl_full(text: &str) -> Result<SlParse, Vec<SlError>> {
                     );
                     ok = false;
                 }
-                if gain.is_some() && primitive != Some(ProcessPrimitive::Sensing) {
-                    fail(
-                        "`gain` applies to a Sensing component only — it is the sensor's \
-                         multiplier from level to signal, and no other primitive reads it"
-                            .into(),
-                        &mut errors,
-                    );
-                    ok = false;
+                // The own-parameter gate (row 18): a word on a primitive that
+                // does not read it is a fault naming the primitives that do,
+                // and the primitive's own word if it has one.
+                let mut own_param_value: Option<f32> = None;
+                for (word, v) in &own_words {
+                    let mine = primitive.and_then(own_param).filter(|o| o.word == *word);
+                    match mine {
+                        Some(op) => {
+                            let p = op.param_of(*v);
+                            if op.admits(p) {
+                                own_param_value = Some(p as f32);
+                            } else {
+                                fail(
+                                    format!(
+                                        "`{word}` on a {:?} component must be {} — it is {}",
+                                        op.primitive, op.range, op.meaning
+                                    ),
+                                    &mut errors,
+                                );
+                                ok = false;
+                            }
+                        }
+                        None => {
+                            let readers: Vec<String> = OWN_PARAMS
+                                .iter()
+                                .filter(|o| o.word == *word)
+                                .map(|o| format!("{:?}", o.primitive))
+                                .collect();
+                            let instead = primitive
+                                .and_then(own_param)
+                                .map(|o| format!("; a {:?} component's own parameter is `{}`", o.primitive, o.word))
+                                .unwrap_or_default();
+                            fail(
+                                format!(
+                                    "`{word}` applies to a {} component only — no other primitive \
+                                     reads it{instead}",
+                                    readers.join(" or ")
+                                ),
+                                &mut errors,
+                            );
+                            ok = false;
+                        }
+                    }
                 }
                 if setpoint.is_some() && primitive != Some(ProcessPrimitive::Inverting) {
                     fail(
@@ -1931,9 +1988,10 @@ pub fn parse_sl_full(text: &str) -> Result<SlParse, Vec<SlError>> {
                     variable_kind,
                     cognitive_params,
                     initial_state,
-                    // `gain <n>` on a Sensing component (#496) is the engine's
-                    // own parameter for a sensor, so it rides agency_capacity.
-                    agency_capacity: gain.map(|g| g as f32),
+                    // A process's own parameter (`gain` #496, `efficiency`
+                    // and `impedance` row 18) is the engine's `param`, so it
+                    // rides agency_capacity, mapped by `OWN_PARAMS`.
+                    agency_capacity: own_param_value,
                 });
                 next_id += 1;
             }
@@ -4183,6 +4241,101 @@ fn tangle(wires: &[(usize, usize)], pts: &[(f32, f32)]) -> i64 {
     total
 }
 
+/// A work process's own parameter, as SL says it (walk row 18).
+///
+/// The engine runs one number per process, `Node.param`, carried on the
+/// canvas as `Thing.agency_capacity`. Four primitives read it
+/// (`facets-compose/src/circuit.rs`, the step), and each says it in its own
+/// word, the one the engine's teaching cards already use
+/// (`facets-compose/src/docs.rs`): a sensor's and an amplifier's `gain`, a
+/// pump's `efficiency`, a resistance's `impedance`. The SL value `v` and the
+/// engine's `p` are related by `v = offset + scale · p`, so an amplifier's
+/// `gain` is the multiplier the step applies (`1 + 9p`) and an impedance is
+/// the share held back (`1 − p`). SL accepts `p > 0`, and `p ≤ max_param`
+/// where there is one; a model carrying anything else refuses to emit.
+#[derive(Clone, Copy, Debug, PartialEq)]
+pub struct OwnParam {
+    pub primitive: ProcessPrimitive,
+    pub word: &'static str,
+    pub offset: f64,
+    pub scale: f64,
+    pub max_param: Option<f64>,
+    /// The accepted range in the word's own terms, for faults and the knob.
+    pub range: &'static str,
+    /// What the number is, in Mobus's terms, for faults.
+    pub meaning: &'static str,
+}
+
+pub const OWN_PARAMS: &[OwnParam] = &[
+    OwnParam {
+        primitive: ProcessPrimitive::Sensing,
+        word: "gain",
+        offset: 0.0,
+        scale: 1.0,
+        max_param: None,
+        range: "greater than 0",
+        meaning: "the sensor's multiplier from level to signal",
+    },
+    OwnParam {
+        primitive: ProcessPrimitive::Amplifying,
+        word: "gain",
+        offset: 1.0,
+        scale: 9.0,
+        max_param: None,
+        range: "greater than 1",
+        meaning: "the amplifier's multiplier from weak signal to strong, capped by the power it is fed",
+    },
+    OwnParam {
+        primitive: ProcessPrimitive::Propelling,
+        word: "efficiency",
+        offset: 0.0,
+        scale: 1.0,
+        max_param: Some(1.0),
+        range: "greater than 0 and at most 1",
+        meaning: "the share of what the pump is handed that it pushes on; the rest is lost to the work",
+    },
+    OwnParam {
+        primitive: ProcessPrimitive::Impeding,
+        word: "impedance",
+        offset: 1.0,
+        scale: -1.0,
+        max_param: Some(1.0),
+        range: "at least 0 and less than 1",
+        meaning: "the share of the flow the resistance holds back",
+    },
+];
+
+/// The own parameter `p` reads, if the engine reads one for it.
+pub fn own_param(p: ProcessPrimitive) -> Option<&'static OwnParam> {
+    OWN_PARAMS.iter().find(|o| o.primitive == p)
+}
+
+impl OwnParam {
+    /// The engine value an SL value means.
+    pub fn param_of(&self, v: f64) -> f64 {
+        (v - self.offset) / self.scale
+    }
+
+    /// Whether SL can say engine value `p`.
+    pub fn admits(&self, p: f64) -> bool {
+        p.is_finite() && p > 0.0 && self.max_param.is_none_or(|m| p <= m)
+    }
+
+    /// The SL value for engine value `p`: the shortest decimal that parses
+    /// back to the same `f32`, so `impedance 0.3` re-emits as `0.3` and not
+    /// as the float error of `1 − 0.7`.
+    pub fn value_of(&self, p: f32) -> f64 {
+        let exact = self.offset + self.scale * p as f64;
+        for digits in 1..=17 {
+            let candidate: f64 = format!("{:.*e}", digits - 1, exact).parse().unwrap_or(exact);
+            if self.param_of(candidate) as f32 == p {
+                return candidate;
+            }
+        }
+        exact
+    }
+}
+
 /// Serialize a [`CanvasModel`] to canonical SL text — the model→text direction.
 ///
 /// Canonical form: things first (declaration order), then flows, then boundary,
@@ -4508,9 +4661,27 @@ pub fn emit_sl_with(model: &CanvasModel, layout: Option<&SlLayout>) -> Result<St
                     "limiting" => t.primitive == Some(ProcessPrimitive::Combining),
                     _ => false,
                 }));
-        // An agency parameter is sayable in SL only as a sensor's `gain`
-        // (#496); on any other primitive it came from a JSON bag or the
-        // sandbox and is carried, not written — as before this word existed.
+        // A process's own parameter (walk row 18): the four primitives the
+        // engine reads it on each have a word (`OWN_PARAMS`), and a value
+        // the word cannot say refuses here rather than being dropped. On a
+        // primitive the engine never reads it on, it changes no run and is
+        // carried, not written, as before.
+        if t.role == Role::Component {
+            if let (Some(op), Some(a)) = (t.primitive.and_then(own_param), t.agency_capacity) {
+                if !op.admits(a as f64) {
+                    return Err(format!(
+                        "`{}` carries a {:?} {} of {} (engine parameter {a}), outside what SL \
+                         can say ({} {}) — export the model as kernel JSON instead of SL",
+                        t.name,
+                        op.primitive,
+                        op.word,
+                        op.value_of(a),
+                        op.word,
+                        op.range
+                    ));
+                }
+            }
+        }
         if !(initial_expressible && cognitive_expressible) {
             return Err(format!(
                 "`{}` carries engine parameters SL cannot express (#112 covers \
@@ -4598,10 +4769,9 @@ pub fn emit_sl_with(model: &CanvasModel, layout: Option<&SlLayout>) -> Result<St
             if let Some(sp) = t.cognitive_params.get("setpoint") {
                 write!(out, " setpoint {sp}").unwrap();
             }
-            if t.primitive == Some(ProcessPrimitive::Sensing) {
-                if let Some(g) = t.agency_capacity {
-                    write!(out, " gain {g}").unwrap();
-                }
+            // The process's own parameter in its word (row 18), gated above.
+            if let (Some(op), Some(a)) = (t.primitive.and_then(own_param), t.agency_capacity) {
+                write!(out, " {} {}", op.word, op.value_of(a)).unwrap();
             }
             if let Some(m) = t.cognitive_params.get("maintenance") {
                 write!(out, " maintenance {m}").unwrap();
@@ -5093,6 +5263,8 @@ pub const RESERVED_WORDS: &[&str] = &[
     "limiting",
     "reservoir",
     "gain",
+    "efficiency",
+    "impedance",
     "agent",
     "watches",
     "rule",

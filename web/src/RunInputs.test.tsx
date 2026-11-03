@@ -154,6 +154,22 @@ describe("knobs at their defaults", () => {
     expect(applyKnob(sensor, "gain", 2)!.agency_capacity).toBe(2);
   });
 
+  // Walk row 18: a process's own parameter is written through the kernel's
+  // map, so the face never holds it, and refused outside the word's range.
+  it("writes an own parameter through the kernel's map and its range", () => {
+    const choke = { ...tank, primitive: "Impeding" } as Thing;
+    const impedance = { offset: 1, scale: -1, max_param: 1, range: "at least 0 and less than 1" };
+    expect(applyKnob(choke, "impedance", 0.25, undefined, impedance)!.agency_capacity).toBe(0.75);
+    expect(applyKnob(choke, "impedance", 0, undefined, impedance)!.agency_capacity).toBe(1);
+    expect(applyKnob(choke, "impedance", 1, undefined, impedance)).toBeNull();
+    expect(applyKnob(choke, "impedance", -0.1, undefined, impedance)).toBeNull();
+    const horn = { ...tank, primitive: "Amplifying", agency_capacity: 0.5 } as Thing;
+    const gain = { offset: 1, scale: 9, max_param: null, range: "greater than 1" };
+    expect(applyKnob(horn, "gain", 10, undefined, gain)!.agency_capacity).toBe(1);
+    expect(applyKnob(horn, "gain", 1, undefined, gain)).toBeNull();
+    expect(applyKnob(horn, "gain", null, undefined, gain)!.agency_capacity).toBeUndefined();
+  });
+
   it("shows an unset knob as an empty field over its default, marked default", () => {
     const model = { name: "m", lens: "Mobus", things: [tank], relations: [], params: [] } as unknown as CanvasModel;
     const knobs: EngineKnob[] = [
