@@ -4039,11 +4039,23 @@ function Workspace() {
                       onReject={setToast}
                       onNotice={setNotice}
                       selectedRelationId={selectedRelationId}
-                      onSelectRelation={setSelectedRelationId}
+                      // One selection at a time (walk, 2026-11-03): the docked
+                      // editor shows a flow over a thing, so a thing clicked
+                      // after a flow stayed hidden behind it. Choosing one
+                      // clears the others.
+                      onSelectRelation={(id) => {
+                        setSelectedRelationId(id);
+                        if (id !== null) {
+                          setSelectedThingId(null);
+                          setInterfaceSel(null);
+                          setBoundaryAnchor(null);
+                        }
+                      }}
                       armed={armed}
                       onSelectThing={(id) => {
                         setSelectedThingId(id);
                         if (id !== null) {
+                          setSelectedRelationId(null);
                           setBoundaryAnchor(null);
                           setInterfaceSel(null);
                         }
