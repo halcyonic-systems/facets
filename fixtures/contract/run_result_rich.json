@@ -81,6 +81,7 @@
       "name": "Watershed",
       "unit": "ML/mo",
       "unit_derived": false,
+      "holds": false,
       "series": [
         20.0,
         35.0,
@@ -100,6 +101,7 @@
       "name": "Release",
       "unit": "",
       "unit_derived": false,
+      "holds": true,
       "series": [
         1.5,
         3.0,
@@ -119,6 +121,7 @@
       "name": "Reservoir",
       "unit": "ML",
       "unit_derived": true,
+      "holds": true,
       "series": [
         118.5,
         152.0,

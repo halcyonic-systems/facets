@@ -17,7 +17,7 @@ const run = (tub: number[]): RunResultRich => ({
     { name: "Tub", unit: "L", unit_derived: false, value: tub[tub.length - 1], category: "internal" },
   ],
   comparisons: [],
-  trajectories: [{ name: "Tub", unit: "L", unit_derived: false, series: tub }],
+  trajectories: [{ name: "Tub", unit: "L", unit_derived: false, holds: true, series: tub }],
   flows: [],
 });
 

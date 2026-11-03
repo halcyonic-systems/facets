@@ -156,6 +156,10 @@ export interface Trajectory {
   unit: string;
   /** See Level.unit_derived. */
   unit_derived: boolean;
+  /** A level the element holds (a stock, or what a sink has received); false
+   *  = what it does each tick (a source's emission, a process's throughput),
+   *  never drawn as a fill. */
+  holds: boolean;
   series: number[];
 }
 /** One flow's executed per-tick delivery (#203) — the circuit's own recording

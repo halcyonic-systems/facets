@@ -2278,7 +2278,10 @@ function Workspace() {
     for (const traj of result.trajectories) {
       if (traj.series.length === 0) continue;
       const value = traj.series[Math.min(tick, traj.series.length - 1)];
-      nodes[traj.name] = { value, unit: traj.unit, frac: levelFrac(traj.series, value) };
+      // Only a level fills (walk, 2026-11-03): a process's series is what
+      // passes through it each tick, and a splitter passing a steady 10 was
+      // drawn full. The kernel says which series are levels (`holds`).
+      nodes[traj.name] = { value, unit: traj.unit, frac: traj.holds ? levelFrac(traj.series, value) : 0 };
     }
     const edges: SimFrame["edges"] = {};
     // EVERY wire's executed per-tick series lights the diagram (the kernel

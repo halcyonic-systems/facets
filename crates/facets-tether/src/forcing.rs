@@ -346,6 +346,12 @@ pub struct Trajectory {
     pub unit: String,
     /// See [`Level::unit_derived`].
     pub unit_derived: bool,
+    /// The series is a level the element holds: a stock's storage, or what a
+    /// sink has received so far. False for everything else, whose series is
+    /// what it does each tick (a source's emission, a process's throughput),
+    /// which a reading must not draw as a fill (walk, 2026-11-03: a splitter
+    /// passing 10 a tick was drawn full).
+    pub holds: bool,
     pub series: Vec<f32>,
 }
 
@@ -472,6 +478,7 @@ pub fn summarize(
                 name: node.name.clone(),
                 unit,
                 unit_derived,
+                holds: col != 0,
                 series,
             }
         })

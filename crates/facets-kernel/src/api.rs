@@ -654,6 +654,9 @@ struct TrajDto {
     unit: String,
     /// See [`LevelDto::unit_derived`].
     unit_derived: bool,
+    /// See `Trajectory::holds`: a level (stock, sink) rather than a per-tick
+    /// activity (source, process).
+    holds: bool,
     series: Vec<f32>,
 }
 
@@ -695,6 +698,7 @@ impl From<facets_tether::forcing::RunReadout> for RunResultRich {
                     name: t.name,
                     unit: t.unit,
                     unit_derived: t.unit_derived,
+                    holds: t.holds,
                     series: t.series,
                 })
                 .collect(),
@@ -998,6 +1002,19 @@ mod tests {
         let mut bench = facets_tether::bench::BenchSession::open_unforced(model, 1.0).expect("opens");
         bench.step(3);
         check_fixture("tick_log", &bench.tick_log_since(1));
+    }
+
+    /// Walk, 2026-11-03: a splitter passing 10 a tick was drawn full, because
+    /// its series is throughput and the canvas filled every series. Only the
+    /// stocks and the sink hold a level.
+    #[test]
+    fn only_stocks_and_sinks_hold_a_level() {
+        let m = facets_canvas::sl::parse_sl("component T1 primitive Buffering\ncomponent T2 primitive Splitting\ninterface I3\ninterface I4\nenvironment E5\nenvironment E6\ncomponent T7 primitive Buffering\nflow E5 -> I3 : matter amount 10\nflow I3 -> T2\nflow T2 -> T1\nflow T1 -> I4\nflow I4 -> E6\nflow T2 -> T7\nflow T7 -> I4\n").unwrap();
+        let world = facets_canvas::canvas::run_projection(&m).expect("runs");
+        let r = facets_tether::forcing::run_unforced(world, 1.0, 5.0).expect("runs");
+        let holds = |n: &str| r.trajectories.iter().find(|t| t.name == n).unwrap_or_else(|| panic!("no {n}")).holds;
+        assert!(holds("T1") && holds("T7") && holds("E6"));
+        assert!(!holds("T2") && !holds("E5"));
     }
 
     #[test]

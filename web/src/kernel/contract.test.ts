@@ -668,11 +668,12 @@ function parseRunResultRich(v: unknown): RunResultRich {
       };
     }),
     trajectories: arr(o.trajectories, "trajectories").map((t, i) => {
-      const tt = shape(t, `trajectories[${i}]`, ["name", "unit", "unit_derived", "series"]);
+      const tt = shape(t, `trajectories[${i}]`, ["name", "unit", "unit_derived", "holds", "series"]);
       return {
         name: str(tt.name, "traj.name"),
         unit: str(tt.unit, "traj.unit"),
         unit_derived: bool(tt.unit_derived, "traj.unit_derived"),
+        holds: bool(tt.holds, "traj.holds"),
         series: nums(tt.series, "traj.series"),
       };
     }),
