@@ -567,11 +567,31 @@ export interface SlError {
  *  writes it with a stock unit, "" = the component has none yet. */
 export interface EngineKnob {
   thing: number;
-  field: "initial_storage" | "release_rate" | "capacity" | "time_constant" | "maintenance" | "setpoint" | "gain";
+  field:
+    | "initial_storage"
+    | "release_rate"
+    | "capacity"
+    | "time_constant"
+    | "maintenance"
+    | "setpoint"
+    | "gain"
+    | "efficiency"
+    | "impedance";
   word: string;
   value: number | null;
   declared: boolean;
   needs_unit?: string;
+  /** A process's own parameter only (walk row 18): the SL value v maps onto
+   *  the engine's param (`agency_capacity`) as v = offset + scale · p, and SL
+   *  takes p > 0 and p ≤ max_param when there is one. */
+  own?: OwnKnob;
+}
+
+export interface OwnKnob {
+  offset: number;
+  scale: number;
+  max_param: number | null;
+  range: string;
 }
 
 /** flow_knobs: a non-ample flow's amount as the run uses it (walk row 21):

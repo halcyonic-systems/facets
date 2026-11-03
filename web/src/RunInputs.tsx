@@ -314,9 +314,23 @@ function EngineRow({
  *  runs at its default again. The starting level is written with its stock
  *  unit (SL welds the two), so `unit` is required when the thing has none.
  *  Returns null when the edit cannot be made (a starting level with no unit
- *  anywhere, a non-positive number where SL takes only positive ones). */
-export function applyKnob(thing: Thing, field: EngineKnob["field"], v: number | null, unit?: string): Thing | null {
+ *  anywhere, a non-positive number where SL takes only positive ones). A
+ *  process's own parameter (`own`, walk row 18) is written on
+ *  `agency_capacity` through the kernel's map, and checked against its range. */
+export function applyKnob(
+  thing: Thing,
+  field: EngineKnob["field"],
+  v: number | null,
+  unit?: string,
+  own?: EngineKnob["own"],
+): Thing | null {
   if (v !== null && !Number.isFinite(v)) return null;
+  if (own) {
+    if (v === null) return { ...thing, agency_capacity: undefined };
+    const p = (v - own.offset) / own.scale;
+    if (!(p > 0) || (own.max_param !== null && p > own.max_param)) return null;
+    return { ...thing, agency_capacity: p };
+  }
   if (field === "initial_storage") {
     const { storage: _old, ...restState } = thing.initial_state ?? {};
     if (v === null) return { ...thing, initial_state: restState };
@@ -363,7 +377,7 @@ function KnobRow({ knob, thing, onEdit }: { knob: EngineKnob; thing: Thing; onEd
       setDraft(null);
       return;
     }
-    const next = applyKnob(thing, knob.field, v, unit);
+    const next = applyKnob(thing, knob.field, v, unit, knob.own);
     if (next === null && knob.field === "initial_storage" && v !== null && v >= 0 && needsUnit && unit.trim() === "") {
       setWaiting(true);
       setHint(`${t} waits for a unit: type it beside it (litres, people, …), then Enter`);
@@ -377,7 +391,9 @@ function KnobRow({ knob, thing, onEdit }: { knob: EngineKnob; thing: Thing; onEd
           ? "name the unit first (litres, people, …)"
           : knob.field === "initial_storage"
             ? "a starting level cannot be negative"
-            : "a positive number, or empty for the default",
+            : knob.own
+              ? `${knob.word} must be ${knob.own.range}, or empty for the default`
+              : "a positive number, or empty for the default",
       );
       return;
     }
@@ -587,11 +603,11 @@ export function RunInputs({
         .map((t) => {
           const covered = fieldCovered.get(t.id) ?? new Set<string>();
           const kernelKnobs = (knobs ?? []).filter(
-            (k) => k.thing === t.id && !covered.has(k.field === "gain" ? "param" : k.field),
+            (k) => k.thing === t.id && !covered.has(k.own ? "param" : k.field),
           );
           // The kernel's knobs first; the declared-only floor keeps whatever
           // they do not cover (a parameter carried from a JSON bag).
-          const offered = new Set<string>(kernelKnobs.map((k) => (k.field === "gain" ? "param" : k.field)));
+          const offered = new Set<string>(kernelKnobs.map((k) => (k.own ? "param" : k.field)));
           const rows = engineRows(t, covered, engineLabels).filter((r) => !offered.has(r.key));
           return { thing: t, knobs: kernelKnobs, rows };
         })
@@ -782,9 +798,9 @@ export function ElementSettings({
   const isComponent = t.role === "Component" && !t.passway;
   const isSource = t.role === "Environment" && (sourceIds ? sourceIds.includes(t.id) : t.env_kind === "Source");
   const engineKnobs = isComponent
-    ? knobs.filter((k) => k.thing === t.id && !coveredField.has(k.field === "gain" ? "param" : k.field))
+    ? knobs.filter((k) => k.thing === t.id && !coveredField.has(k.own ? "param" : k.field))
     : [];
-  const offered = new Set<string>(engineKnobs.map((k) => (k.field === "gain" ? "param" : k.field)));
+  const offered = new Set<string>(engineKnobs.map((k) => (k.own ? "param" : k.field)));
   const floor = isComponent ? engineRows(t, new Set([...coveredField, ...offered]), engineLabels) : [];
 
   // How a component's output divides: each outflow's weight over the sum,

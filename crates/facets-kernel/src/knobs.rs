@@ -23,7 +23,8 @@ use serde::Serialize;
 pub struct EngineKnob {
     pub thing: u64,
     /// The session key (`release_rate`, `capacity`, `time_constant`,
-    /// `maintenance`, `setpoint`, `initial_storage`, `gain`).
+    /// `maintenance`, `setpoint`, `initial_storage`), or for a process's own
+    /// parameter its SL word (`gain`, `efficiency`, `impedance`).
     pub field: String,
     /// The SL word, for the label.
     pub word: String,
@@ -33,6 +34,23 @@ pub struct EngineKnob {
     /// cannot be declared until the component has one (empty = none yet).
     #[serde(skip_serializing_if = "Option::is_none")]
     pub needs_unit: Option<String>,
+    /// A process's own parameter only (walk row 18): how the SL value maps
+    /// onto the engine's `param` (`Thing.agency_capacity`), so the face
+    /// writes the number without holding the map itself.
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub own: Option<OwnKnob>,
+}
+
+/// The map from a knob's SL value `v` to the engine's `p`:
+/// `v = offset + scale · p`, accepted when `p > 0` and `p ≤ max_param`
+/// (when there is one). Read off `OWN_PARAMS` in `facets-canvas/src/sl.rs`.
+#[derive(Serialize, Clone, Debug, PartialEq)]
+pub struct OwnKnob {
+    pub offset: f64,
+    pub scale: f64,
+    pub max_param: Option<f64>,
+    /// The accepted range in the word's own terms, for the face's hint.
+    pub range: String,
 }
 
 fn positive(v: f32) -> Option<f64> {
@@ -61,6 +79,7 @@ pub fn engine_knobs(model: &CanvasModel) -> Vec<EngineKnob> {
             value,
             declared,
             needs_unit: None,
+            own: None,
         };
         match primitive {
             ProcessPrimitive::Buffering => {
@@ -72,6 +91,7 @@ pub fn engine_knobs(model: &CanvasModel) -> Vec<EngineKnob> {
                     value: Some(storage.unwrap_or(node.initial_storage as f64)),
                     declared: storage.is_some(),
                     needs_unit: Some(t.stock_unit.clone()),
+                    own: None,
                 });
                 // A fixed release and a time constant are two drain laws, and
                 // SL refuses both on one line: offer the one in force.
@@ -86,10 +106,21 @@ pub fn engine_knobs(model: &CanvasModel) -> Vec<EngineKnob> {
             ProcessPrimitive::Inverting => {
                 out.push(knob("setpoint", "setpoint", positive(node.setpoint), declared("setpoint")));
             }
-            ProcessPrimitive::Sensing => {
-                out.push(knob("gain", "gain", positive(node.param), t.agency_capacity.is_some()));
-            }
             _ => {}
+        }
+        // A process's own parameter (walk row 18): Sensing's and Amplifying's
+        // `gain`, Propelling's `efficiency`, Impeding's `impedance`, at the
+        // value the circuit runs, in the word's own terms.
+        if let Some(op) = facets_canvas::sl::own_param(primitive) {
+            out.push(EngineKnob {
+                own: Some(OwnKnob {
+                    offset: op.offset,
+                    scale: op.scale,
+                    max_param: op.max_param,
+                    range: op.range.to_string(),
+                }),
+                ..knob(op.word, op.word, node.param.is_finite().then(|| op.value_of(node.param)), t.agency_capacity.is_some())
+            });
         }
     }
     out
@@ -168,12 +199,47 @@ mod tests {
         assert!(k.iter().all(|r| r.field != "release_rate"));
     }
 
-    /// Only what SL can write: a Splitting process has no line-level knob, and
-    /// an Amplifying one's parameter is not sayable (only Sensing's `gain` is).
+    /// Only what SL can write: a Splitting process has no line-level knob.
     #[test]
     fn only_knobs_the_text_can_say_are_offered() {
-        let k = knobs("component S primitive Splitting interface\ncomponent A primitive Amplifying\nenvironment In\nenvironment Out\nflow In -> S : matter\nflow S -> A : matter\nflow A -> Out : matter\n");
+        let k = knobs("component S primitive Splitting interface\ncomponent C primitive Copying interface\nenvironment In\nenvironment Out\nflow In -> S : matter\nflow S -> C : informational\nflow C -> Out : informational\n");
         assert!(k.is_empty(), "{k:?}");
+    }
+
+    /// Walk row 18: a process's own parameter is a knob on the four
+    /// primitives that read it, in its SL word, at what the circuit runs.
+    #[test]
+    fn a_process_offers_its_own_parameter_in_its_word() {
+        // An amplifier needs a signal and power in and a signal out to build.
+        let src = |decl: &str| {
+            if decl.contains("Amplifying") {
+                format!("component P {decl} interface\nenvironment In\nenvironment Grid\nenvironment Out\nflow In -> P : informational\nflow Grid -> P : energy\nflow P -> Out : informational\n")
+            } else {
+                format!("component P {decl} interface\nenvironment In\nenvironment Out\nflow In -> P : matter\nflow P -> Out : matter\n")
+            }
+        };
+        let one = |decl: &str| {
+            let k = knobs(&src(decl));
+            assert_eq!(k.len(), 1, "{decl}: {k:?}");
+            k.into_iter().next().unwrap()
+        };
+        // Undeclared: the projection's 0.5 in each word's terms.
+        let a = one("primitive Amplifying");
+        assert_eq!((a.field.as_str(), a.value, a.declared), ("gain", Some(5.5), false));
+        assert_eq!(a.own.as_ref().map(|o| (o.offset, o.scale)), Some((1.0, 9.0)));
+        let p = one("primitive Propelling");
+        assert_eq!((p.field.as_str(), p.value, p.declared), ("efficiency", Some(0.5), false));
+        let i = one("primitive Impeding");
+        assert_eq!((i.field.as_str(), i.value, i.declared), ("impedance", Some(0.5), false));
+        assert_eq!(i.own.as_ref().and_then(|o| o.max_param), Some(1.0));
+        // A sensor reports what it sees.
+        let s = one("primitive Sensing");
+        assert_eq!((s.field.as_str(), s.value, s.declared), ("gain", Some(1.0), false));
+        // Declared values read back as written.
+        assert_eq!(one("primitive Impeding impedance 0.3").value, Some(0.3));
+        assert!(one("primitive Impeding impedance 0.3").declared);
+        assert_eq!(one("primitive Amplifying gain 4").value, Some(4.0));
+        assert_eq!(one("primitive Propelling efficiency 0.9").value, Some(0.9));
     }
 
     /// Walk row 21: the drawn source's flow had no amount, the inputs said
