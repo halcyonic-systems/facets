@@ -866,6 +866,20 @@ fn path_exists(
     false
 }
 
+/// A flow as a message names it: its label in quotes, or, unlabeled, its
+/// two ends (toy-model walk, 2026-11-03: refusals read "flow ''").
+fn flow_title(model: &WorldModel, ix: &Interaction) -> String {
+    if ix.info.name.is_empty() {
+        format!(
+            "from {} to {}",
+            relatum_name(model, &serialize_id(&ix.source)),
+            relatum_name(model, &serialize_id(&ix.sink))
+        )
+    } else {
+        format!("'{}'", ix.info.name)
+    }
+}
+
 /// Name any relatum — system, external source, or sink — for a message, falling
 /// back to its id when unnamed. Broader than [`system_name`], which sees only systems.
 fn relatum_name(model: &WorldModel, id_str: &str) -> String {
@@ -1246,13 +1260,13 @@ fn check_crossing_flows_route_through_interface(
                 "crossing_flow_without_interface",
                 format!("interactions[{k}].{side}_interface"),
                 format!(
-                    "flow '{}' {} the system but crosses the boundary without an \
+                    "flow {} {} the system but crosses the boundary without an \
                      interface — in Mobus's tuple every external flow passes through \
                      a member of I (SSF `bipartite_implies_boundary_complete`: G is \
                      bipartite between environment objects and interfaces), so a \
                      crossing flow with no interface is a hole in the membrane the \
                      author never declared",
-                    ix.info.name, verb
+                    flow_title(model, ix), verb
                 ),
                 Some(
                     "Declare the pass-way and route the flow through it — the \

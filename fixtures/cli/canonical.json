@@ -46,17 +46,17 @@
           {
             "hint": "Attach an AgentModel carrying a Mobus primitive",
             "location": "systems[1]",
-            "reason": "\"1\" has no agent model — nothing states which work process it is"
+            "reason": "\"1\" has no work process — give it a primitive, or, if it only passes what crosses, write it as a pass-way (`interface 1`)"
           },
           {
             "hint": "Attach an AgentModel carrying a Mobus primitive",
             "location": "systems[2]",
-            "reason": "\"2\" has no agent model — nothing states which work process it is"
+            "reason": "\"2\" has no work process — give it a primitive, or, if it only passes what crosses, write it as a pass-way (`interface 2`)"
           },
           {
             "hint": "Attach an AgentModel carrying a Mobus primitive",
             "location": "systems[3]",
-            "reason": "\"3\" has no agent model — nothing states which work process it is"
+            "reason": "\"3\" has no work process — give it a primitive, or, if it only passes what crosses, write it as a pass-way (`interface 3`)"
           },
           {
             "hint": "Point the flow at a level-1 work process, a Source, or a Sink — or fix the endpoint that failed to project (see the errors above for why it was skipped)",
@@ -567,7 +567,7 @@
           {
             "hint": "Attach an AgentModel carrying a Mobus primitive",
             "location": "systems[1]",
-            "reason": "\"c\" has no agent model — nothing states which work process it is"
+            "reason": "\"c\" has no work process — give it a primitive, or, if it only passes what crosses, write it as a pass-way (`interface c`)"
           },
           {
             "hint": "Point the flow at a level-1 work process, a Source, or a Sink — or fix the endpoint that failed to project (see the errors above for why it was skipped)",
@@ -1416,17 +1416,17 @@
           {
             "hint": "Attach an AgentModel carrying a Mobus primitive",
             "location": "systems[1]",
-            "reason": "\"Synaptic Compartments\" has no agent model — nothing states which work process it is"
+            "reason": "\"Synaptic Compartments\" has no work process — give it a primitive, or, if it only passes what crosses, write it as a pass-way (`interface Synaptic Compartments`)"
           },
           {
             "hint": "Attach an AgentModel carrying a Mobus primitive",
             "location": "systems[2]",
-            "reason": "\"Cell Membrane\" has no agent model — nothing states which work process it is"
+            "reason": "\"Cell Membrane\" has no work process — give it a primitive, or, if it only passes what crosses, write it as a pass-way (`interface Cell Membrane`)"
           },
           {
             "hint": "Attach an AgentModel carrying a Mobus primitive",
             "location": "systems[3]",
-            "reason": "\"Axonal Hillock\" has no agent model — nothing states which work process it is"
+            "reason": "\"Axonal Hillock\" has no work process — give it a primitive, or, if it only passes what crosses, write it as a pass-way (`interface Axonal Hillock`)"
           },
           {
             "hint": "Point the flow at a level-1 work process, a Source, or a Sink — or fix the endpoint that failed to project (see the errors above for why it was skipped)",
