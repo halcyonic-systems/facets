@@ -1113,6 +1113,40 @@ pub fn flow_kinds(model: &CanvasModel) -> Vec<FlowKind> {
         .collect()
 }
 
+/// A thing whose work process changed, with the settings its new process
+/// does not read cleared (walk row 51, Shingai 2026-11-04: clear on the
+/// switch, so the model stays one SL can write). The keys follow SL's own
+/// refusals: `release`, `capacity`, `time constant` and `maintenance` are
+/// Buffering's, `setpoint` Inverting's, `limiting` Combining's and
+/// `backpressure` Modulating's. A process's own parameter
+/// (`agency_capacity`) is kept only when the new process reads the same
+/// word on the same scale, since the stored number means something else
+/// under another process's map. A starting level and stock unit are kept:
+/// SL writes them on any process line. A thing that is not a work process
+/// (an agent's rule) is returned as given.
+pub fn with_primitive(prev: &Thing, mut next: Thing) -> Thing {
+    if next.rule.is_some() || prev.primitive == next.primitive {
+        return next;
+    }
+    let p = next.primitive;
+    next.cognitive_params.retain(|k, _| match k.as_str() {
+        "release_rate" | "capacity" | "time_constant" | "maintenance" => p == Some(ProcessPrimitive::Buffering),
+        "setpoint" => p == Some(ProcessPrimitive::Inverting),
+        "limiting" => p == Some(ProcessPrimitive::Combining),
+        "back_pressure" => p == Some(ProcessPrimitive::Modulating),
+        _ => true,
+    });
+    let own = |q: Option<ProcessPrimitive>| q.and_then(facets_core::own_param::own_param);
+    let same_scale = match (own(prev.primitive), own(p)) {
+        (Some(a), Some(b)) => a.word == b.word && a.offset == b.offset && a.scale == b.scale,
+        _ => false,
+    };
+    if !same_scale {
+        next.agency_capacity = None;
+    }
+    next
+}
+
 /// The interaction a flow runs as, found as the author wrote it: the bond
 /// labelled `label` from the thing named `from` to the thing named `to`,
 /// mapped through the projection's own `interaction_of`. So a flow into a

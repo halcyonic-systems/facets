@@ -1,6 +1,6 @@
 import { Suspense, lazy, useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { buildRunRecord, postRunRecord, runRecordFilename, type RunRecord } from "./runRecord";
-import { ready, runMarkov, Bench, parseCsv, openModel, writeArchive, project, analyzeCanvas, checkDecompositionsCanvas, decomposeComponent, compileSl, type ArchiveText, mintModelId, emitSl, sandboxPalette, slAgreement, syncSl, engineKnobs, flowKnobs, flowKinds, runProjection } from "./kernel";
+import { ready, runMarkov, Bench, parseCsv, openModel, writeArchive, project, analyzeCanvas, checkDecompositionsCanvas, decomposeComponent, compileSl, type ArchiveText, mintModelId, emitSl, sandboxPalette, slAgreement, syncSl, engineKnobs, withPrimitive, flowKnobs, flowKinds, runProjection } from "./kernel";
 import type {
   TickLog,
   CanvasModel,
@@ -393,6 +393,9 @@ function Workspace() {
   // Ticks at which a knob landed while the run kept going (walk row 11): the
   // strip names them, since the totals then mix two settings.
   const [knobTicks, setKnobTicks] = useState<number[]>([]);
+  // The knobs a running-on run took, with their settings, for the chart's
+  // markers (walk row 52).
+  const [knobEdits, setKnobEdits] = useState<import("./kernel/types").KnobEdit[]>([]);
   // #67 J9: a Klir state machine's run is a distribution trajectory, not a
   // conservation ledger — held apart so its result never reaches for a
   // conservation `residual`/`conserved` field (and the conservation pill, driven
@@ -2496,6 +2499,7 @@ function Workspace() {
           setRanEdited(true);
           setRunError(null);
           setKnobTicks(b.edits().filter((e) => e.tick > 0).map((e) => e.tick));
+          setKnobEdits(b.edits().filter((e) => e.tick > 0));
           return;
         }
         if (!structural && changed.length + fieldEdits.length > 0 && b.edits().some((e) => e.tick > 0)) {
@@ -2506,6 +2510,7 @@ function Workspace() {
           // log; the scrubber rests at the end as a knob's answer does.
           const len = Math.max(t, result ? result.ticks * dt : 0);
           setKnobTicks([]);
+      setKnobEdits([]);
           let json: string;
           try {
             json = JSON.stringify(runProjection(nextModel));
@@ -2524,6 +2529,7 @@ function Workspace() {
           // as if it had taken effect at the end (feel-test 2026-10-09).
           b.reset();
           setKnobTicks([]);
+      setKnobEdits([]);
           for (const r of changed) {
             b.setFlowAmountAsWritten(docJson, r.name, nameOf(r.a), nameOf(r.b), Number(r.amount ?? 0));
           }
@@ -2655,6 +2661,7 @@ function Workspace() {
           : "No mechanism stated (⊘M), so structure alone gives Run nothing to execute.";
     const onRun = () => {
       setKnobTicks([]);
+      setKnobEdits([]);
       // #345: no mode transition — the transport lives on the Model surface,
       // so the run happens where the author already is.
       if (runKind === "dtmc") {
@@ -2848,8 +2855,11 @@ function Workspace() {
   // does decides the run, so with a run on screen a change to its work
   // process, rule, role or interface re-runs, as the door's popover does; a
   // rename or a description stays a document edit.
-  function updateThingFromElement(next: import("./kernel/types").Thing) {
-    const prev = canvasModel?.things.find((t) => t.id === next.id);
+  function updateThingFromElement(edited: import("./kernel/types").Thing) {
+    const prev = canvasModel?.things.find((t) => t.id === edited.id);
+    // Walk row 51: a new work process drops the settings it does not read
+    // (the kernel's rule), so the model stays one SL can write.
+    const next = prev && prev.primitive !== edited.primitive ? withPrimitive(prev, edited) : edited;
     const decidesRun =
       prev !== undefined &&
       (prev.primitive !== next.primitive ||
@@ -4428,6 +4438,7 @@ function Workspace() {
                       lens={canvasModel.lens}
                       onAcceptUnit={acceptDerivedUnit}
                       tick={tick}
+                      knobEdits={knobEdits}
                       model={canvasModel}
                       sourceIds={facts?.source_thing_ids}
                       runKind={LensPalette[canvasModel.lens].run}

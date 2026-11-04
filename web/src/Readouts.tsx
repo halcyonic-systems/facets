@@ -8,7 +8,7 @@
 // Every card is the same component the dock hosted, fed the same kernel state
 // from the same App owner — what changed is the container and the height.
 import { useEffect, useState } from "react";
-import type { CanvasModel, MarkovRunResult, RunResultRich, TickLog } from "./kernel/types";
+import type { CanvasModel, MarkovRunResult, RunResultRich, TickLog, KnobEdit } from "./kernel/types";
 import type { RunKind } from "./canvas/lenses/registry";
 import { DtmcPanel, RunFit, RunGlance, RunStory, RunTable, weightProvenance } from "./RunPanel";
 import { Button, Card, Input, Tabs } from "./ui";
@@ -31,6 +31,7 @@ export function Readouts({
   lens,
   onAcceptUnit,
   tick,
+  knobEdits,
   model,
   sourceIds,
   runKind,
@@ -59,6 +60,8 @@ export function Readouts({
   onAcceptUnit?: (name: string, unit: string) => void;
   /** #154 P1: the scrubber's current tick, marking where the system is. */
   tick?: number;
+  /** Knobs a running-on run took, marked on the story's charts (walk row 52). */
+  knobEdits?: KnobEdit[];
   model?: CanvasModel | null;
   /** Kernel `source_thing_ids`, so the story names a drawn sink. */
   sourceIds?: number[];
@@ -127,7 +130,7 @@ export function Readouts({
       </div>
       <div className="min-h-0 flex-1 overflow-y-auto p-4">
         {tab === "story" && (
-          <RunStory result={result} lens={lens} tick={tick} model={model} baseline={baseline} sourceIds={sourceIds} />
+          <RunStory result={result} lens={lens} tick={tick} model={model} baseline={baseline} sourceIds={sourceIds} knobEdits={knobEdits} />
         )}
         {tab === "fit" && hasFit && (
           <RunFit result={result} tick={tick} timeUnit={model?.time_unit} model={model} />

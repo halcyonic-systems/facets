@@ -30,6 +30,7 @@ import init, {
   sl_agreement as wasmSlAgreement,
   sync_sl as wasmSyncSl,
   engine_knobs as wasmEngineKnobs,
+  with_primitive as wasmWithPrimitive,
   flow_knobs as wasmFlowKnobs,
   flow_kinds as wasmFlowKinds,
   run_projection as wasmRunProjection,
@@ -51,6 +52,7 @@ import wasmUrl from "facets-kernel/facets_kernel_bg.wasm?url";
 
 import type {
   EngineKnob,
+  Thing,
   FlowKnob,
   FlowKind,
   SlAgreement,
@@ -387,6 +389,12 @@ export function splicePositions(source: string, model: CanvasModel): string {
 /** The engine knobs the model's components offer, at the value the run uses,
  *  each marked declared or default. Only fields SL can write; the kernel
  *  decides both which knobs exist and what an unset one runs at. */
+/** A thing after its work process changed, with what the new process does
+ *  not read cleared by the kernel (walk row 51). */
+export function withPrimitive(prev: Thing, next: Thing): Thing {
+  return call("with_primitive", () => wasmWithPrimitive(JSON.stringify(prev), JSON.stringify(next))) as Thing;
+}
+
 export function engineKnobs(model: CanvasModel): EngineKnob[] {
   return call("engine_knobs", () => wasmEngineKnobs(JSON.stringify(model))) as EngineKnob[];
 }

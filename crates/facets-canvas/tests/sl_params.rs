@@ -354,3 +354,38 @@ fn a_command_form_agent_refuses_an_own_param() {
     let e = errs(&text);
     assert!(e.contains("names `gain` of `Stage`") && e.contains("coordination"), "{e}");
 }
+
+/// Walk row 51 (Shingai, 2026-11-04): switching a thing's process clears the
+/// settings the new process does not read, so the model stays writable.
+#[test]
+fn a_process_switch_clears_what_the_new_process_does_not_read() {
+    use facets_canvas::canvas::with_primitive;
+    use facets_core::ProcessPrimitive;
+    let text = "system \"P\" : Concrete/Biological\nsource S\nsink D\n\
+        component Pond primitive Buffering stock m3 initial 100 time constant 10 capacity 400 maintenance 2\n\
+        component Stage primitive Amplifying gain 5\n\
+        flow S -> Pond : matter \"in\" substance water amount 30\n\
+        flow Pond -> Stage : matter \"mid\" substance water\n\
+        flow Stage -> D : matter \"out\" substance water\n";
+    let mut m = facets_canvas::sl::parse_sl(text).unwrap();
+    let i = m.things.iter().position(|t| t.name == "Pond").unwrap();
+    let prev = m.things[i].clone();
+    let mut next = prev.clone();
+    next.primitive = Some(ProcessPrimitive::Impeding);
+    let next = with_primitive(&prev, next);
+    for k in ["time_constant", "capacity", "maintenance"] {
+        assert!(!next.cognitive_params.contains_key(k), "{k} kept");
+    }
+    assert_eq!(next.stock_unit, "m3", "a stock unit is writable on any process");
+    m.things[i] = next;
+    // An amplifier's gain is not a sensor's: the stored number is cleared.
+    let j = m.things.iter().position(|t| t.name == "Stage").unwrap();
+    let prev = m.things[j].clone();
+    let mut next = prev.clone();
+    next.primitive = Some(ProcessPrimitive::Sensing);
+    let next = with_primitive(&prev, next);
+    assert_eq!(next.agency_capacity, None);
+    m.things[j] = next;
+    let emitted = facets_canvas::sl::emit_sl(&m).expect("the switched model is writable");
+    facets_canvas::sl::parse_sl(&emitted).unwrap_or_else(|e| panic!("does not parse back: {e:?}\n{emitted}"));
+}

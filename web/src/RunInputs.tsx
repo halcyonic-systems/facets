@@ -605,6 +605,12 @@ function KnobRow({ knob, thing, onEdit }: { knob: EngineKnob; thing: Thing; onEd
         </span>
       )}
     </div>
+      {knob.field === "time_constant" && (
+        // Walk row 50: the time constant moves the level, not what passes on.
+        <span className="block text-[11px]" style={{ color: "var(--text-muted)" }} data-testid="time-constant-note">
+          sets how full it rests and how fast it gets there; at rest it passes on what it receives, unless it is full
+        </span>
+      )}
       {range && (
         <input
           type="range"

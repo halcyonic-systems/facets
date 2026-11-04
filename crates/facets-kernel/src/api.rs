@@ -429,6 +429,18 @@ pub fn engine_knobs(canvas_json: &str) -> Result<JsValue, JsError> {
     to_js(&crate::knobs::engine_knobs(&model))
 }
 
+/// A thing after its work process changed, with the settings the new
+/// process does not read cleared (walk row 51), so the canvas never holds a
+/// model SL cannot write. `prev` is the thing before the edit. Shape: `Thing`.
+#[wasm_bindgen]
+pub fn with_primitive(prev_json: &str, next_json: &str) -> Result<JsValue, JsError> {
+    let prev: facets_canvas::canvas::Thing = serde_json::from_str(prev_json)
+        .map_err(|e| JsError::new(&format!("invalid thing: {e}")))?;
+    let next: facets_canvas::canvas::Thing = serde_json::from_str(next_json)
+        .map_err(|e| JsError::new(&format!("invalid thing: {e}")))?;
+    to_js(&facets_canvas::canvas::with_primitive(&prev, next))
+}
+
 /// Every non-ample flow's amount as the run uses it, marked declared or
 /// default (walk row 21). Read off the projection the run is built from.
 /// Shape: `FlowKnob[]` in API.md.

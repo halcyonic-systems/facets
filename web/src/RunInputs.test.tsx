@@ -351,3 +351,20 @@ describe("knob sliders", () => {
     expect(knobSliderRange({ field: "capacity" }, null)).toBeNull();
   });
 });
+
+describe("knob markers on the story chart (walk row 52)", () => {
+  it("marks the author's turns inside the run, one label per tick, never an agent's", async () => {
+    const { knobMarks } = await import("./RunPanel");
+    const human = { kind: "human" } as const;
+    const marks = knobMarks(
+      [
+        { tick: 76, target: "Pond", field: "impedance", value: 0.9, by: human },
+        { tick: 76, target: "Stream -> Pond : brook", field: "amount", value: 50, by: human },
+        { tick: 5, target: "Valve", field: "param", value: 1, by: { kind: "agent", name: "Manager" } },
+        { tick: 0, target: "Pond", field: "impedance", value: 0.5, by: human },
+      ],
+      192,
+    );
+    expect(marks).toEqual([{ tick: 76, label: "impedance 0.9, brook 50" }]);
+  });
+});
