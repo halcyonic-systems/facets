@@ -330,11 +330,13 @@ function Workspace() {
   useEffect(() => {
     saveCoauthorTurns(coauthorTurns);
   }, [coauthorTurns]);
-  const [manifest, setManifest] = useState<Manifest>({ model: "", data: "", t: 12, mapping: [] });
+  const [manifest, setManifest] = useState<Manifest>({ model: "", data: "", t: 100, mapping: [] });
   const [dt, setDt] = useState(1);
   // The discard-confirm's parked resolver (in-app ConfirmDialog; see guardDiscard).
   const [discardAsk, setDiscardAsk] = useState<{ resolve: (ok: boolean) => void } | null>(null);
-  const [t, setT] = useState(12);
+  // The default run length (2026-11-04 toy walk, Shingai): 100 ticks, long
+  // enough to see a stock settle; 12 ended most runs before anything happened.
+  const [t, setT] = useState(100);
   const [result, setResult] = useState<RunResultRich | null>(null);
   // #463 move 2: the run lives on a held engine session. `result` is its
   // readout; `tickLog` is what every component did each tick, in the model's
@@ -418,7 +420,10 @@ function Workspace() {
   // tick, and a knob turned while it plays lands at that tick. Off = the
   // play-once posture above, exactly. `ranOnRef` marks that the engine was
   // stepped past the recorded run since the last record was written.
-  const [runOn, setRunOn] = useState(true);
+  // Off by default since 2026-11-04 (toy walk, Shingai): a run with a length
+  // that then ticked on forever read as broken. Run plays to the length and
+  // stops; "keep going" turns the live run on.
+  const [runOn, setRunOn] = useState(false);
   const ranOnRef = useRef(false);
   const [selectedRelationId, setSelectedRelationId] = useState<number | null>(null);
   const [selectedThingId, setSelectedThingId] = useState<number | null>(null);
@@ -1165,7 +1170,7 @@ function Workspace() {
       setCanvasModel(cm);
       syncSlPane(null, cm);
       setOpenRef(null);
-      setManifest({ model: "", data: "", t: 12, mapping: [] });
+      setManifest({ model: "", data: "", t: 100, mapping: [] });
       setResult(null);
       setRunError(null);
       setSelectedRelationId(null);
@@ -1212,7 +1217,7 @@ function Workspace() {
     // A pane compile authors a new model with no gallery address; the corpus
     // and example openers restore theirs right after this call returns.
     setOpenRef(null);
-    setManifest({ model: "", data: "", t: 12, mapping: [] });
+    setManifest({ model: "", data: "", t: 100, mapping: [] });
     setResult(null);
     setRunError(null);
     setSelectedRelationId(null);
@@ -1562,7 +1567,7 @@ function Workspace() {
     setSlText(""); // blank canvas, blank page — the seed is for first launch, not File → New
     setSlErrors([]);
     setOpenRef(null);
-    setManifest({ model: "", data: "", t: 12, mapping: [] });
+    setManifest({ model: "", data: "", t: 100, mapping: [] });
     setResult(null);
     setRunError(null);
     setSelectedRelationId(null);
@@ -1965,7 +1970,7 @@ function Workspace() {
       setCanvasModel(cm);
       syncSlPane(null, cm);
       markOpen({ kind: "library", ref: name });
-      setManifest({ model: "", data: "", t: 12, mapping: [] });
+      setManifest({ model: "", data: "", t: 100, mapping: [] });
       setResult(null);
       setRunError(null);
       setSelectedRelationId(null);
@@ -2990,7 +2995,7 @@ function Workspace() {
     if (!(await guardDiscard()) || !(await flushWalk())) return;
     setDemo(null); setAttachedCsv(null);
     setCanvasModel(null);
-    setManifest({ model: "", data: "", t: 12, mapping: [] });
+    setManifest({ model: "", data: "", t: 100, mapping: [] });
     setResult(null);
     setRunError(null);
     setSelectedRelationId(null);
@@ -3154,7 +3159,7 @@ function Workspace() {
       setDemo(null); setAttachedCsv(null);
       setCanvasModel(cm);
       syncSlPane(null, cm);
-      setManifest({ model: "", data: "", t: 12, mapping: [] });
+      setManifest({ model: "", data: "", t: 100, mapping: [] });
       setResult(null);
       setRunError(null);
       setSelectedRelationId(null);

@@ -21,7 +21,7 @@
 // weight (the one you touched); the other rows' %s shift only because Σw
 // changed. The taxonomy groups below remain the floor for every undeclared
 // magnitude, so declaring params is enrichment, never a requirement.
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import type { CanvasModel, EngineField, EngineKnob, FlowKnob, Manifest, ParamDecl, Relation, Thing } from "./kernel/types";
 import { declaredRelations, forcedByColumn, resolveParamRows } from "./kernel/params";
 import {
@@ -443,6 +443,35 @@ export function applyKnob(
   return { ...thing, cognitive_params: v === null ? rest : { ...rest, [field]: v } };
 }
 
+/** A knob row's slider range (2026-11-04 toy walk, Shingai). A word the
+ *  kernel bounds on both sides (efficiency, impedance: `own.max_param`)
+ *  slides over its legal range, ends the kernel excludes held one step in.
+ *  Any other knob slides from its floor to twice the value it rests at
+ *  (`anchor`), so the range re-centres after each release; the number box
+ *  stays for exact entry and for values past the slider's reach. `null`
+ *  when there is no value to slide from (a knob off by default). */
+export function knobSliderRange(
+  knob: Pick<EngineKnob, "field" | "own">,
+  anchor: number | null,
+): { min: number; max: number; step: number } | null {
+  if (anchor === null || !Number.isFinite(anchor)) return null;
+  const own = knob.own;
+  if (own && own.max_param !== null) {
+    const a = own.offset;
+    const b = own.offset + own.scale * own.max_param;
+    const lo = Math.min(a, b);
+    const hi = Math.max(a, b);
+    const step = sliderStep(lo, hi);
+    // p > 0: the end where p = 0 (v = offset) is excluded.
+    return { min: a === lo ? lo + step : lo, max: a === hi ? hi - step : hi, step };
+  }
+  const floor = own ? own.offset : 0;
+  const hi = anchor > floor ? floor + 2 * (anchor - floor) : floor + 1;
+  const step = sliderStep(floor, hi);
+  // Only a starting level may be zero; every other knob is positive.
+  return { min: knob.field === "initial_storage" ? floor : floor + step, max: hi, step };
+}
+
 function fmtDefault(v: number): string {
   return Number.isInteger(v) ? String(v) : String(Number(v.toPrecision(4)));
 }
@@ -463,6 +492,14 @@ function KnobRow({ knob, thing, onEdit }: { knob: EngineKnob; thing: Thing; onEd
   const needsUnit = knob.needs_unit === "";
   const shown = knob.declared && knob.value !== null ? String(knob.value) : "";
   const placeholder = knob.value === null ? "none" : `${fmtDefault(knob.value)} default`;
+  // The slider: its range holds still while dragging and re-centres on the
+  // committed value after release.
+  const [drag, setDrag] = useState<number | null>(null);
+  const [anchor, setAnchor] = useState<number | null>(knob.value);
+  useEffect(() => {
+    if (drag === null) setAnchor(knob.value);
+  }, [knob.value, drag]);
+  const range = needsUnit ? null : knobSliderRange(knob, anchor);
   const commit = (raw: string | null, unit: string) => {
     if (raw === null) return;
     const t = raw.trim();
@@ -500,8 +537,14 @@ function KnobRow({ knob, thing, onEdit }: { knob: EngineKnob; thing: Thing; onEd
     setDraft(null);
     onEdit(next);
   };
+  const commitDrag = () => {
+    if (drag !== null && range) commit(String(snapToStep(drag, range.step)), unitDraft);
+    setDrag(null);
+  };
+  useCommitOnRelease(drag !== null, commitDrag);
   return (
-    <div className={`${RAIL_ROW} py-0.5`} data-knob={knob.field}>
+    <div className="py-0.5">
+    <div className={RAIL_ROW} data-knob={knob.field}>
       <span
         className={RAIL_LABEL}
         style={{ color: "var(--text-primary)" }}
@@ -560,6 +603,24 @@ function KnobRow({ knob, thing, onEdit }: { knob: EngineKnob; thing: Thing; onEd
         <span className="block text-[11px]" style={{ color: "var(--verdict-warning)" }}>
           {hint}
         </span>
+      )}
+    </div>
+      {range && (
+        <input
+          type="range"
+          className="mt-0.5 block w-full"
+          min={range.min}
+          max={range.max}
+          step={range.step}
+          value={Math.min(range.max, Math.max(range.min, drag ?? knob.value ?? range.min))}
+          onChange={(e) => setDrag(Number(e.target.value))}
+          onPointerUp={commitDrag}
+          onLostPointerCapture={commitDrag}
+          onBlur={commitDrag}
+          onKeyUp={commitDrag}
+          aria-label={`${thing.name} ${knob.word} slider`}
+          data-testid={`knob-slider-${knob.field}`}
+        />
       )}
     </div>
   );

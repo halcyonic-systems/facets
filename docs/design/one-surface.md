@@ -52,7 +52,7 @@ sandbox surface exactly as before. Nothing is removed; only its Home door goes.
   edit is applied to the held session at its current tick, and the run
   continues from there; `Bench.edits()` logs it at that tick. With Run on
   unset, the old grammar holds: reset, apply, re-step to T.
-- **The switch.** A toggle on the transport, on by default. Off restores the
+- **The switch.** A toggle on the transport, off by default since 2026-11-04 (toy walk, Shingai: a run with a length that ticked on forever read as broken; it was on by default from 2026-10-27). Off restores the
   play-once posture of the 2026-10-09 feel-test exactly.
 - **Bounds.** Running on stops itself at 5,000 ticks with a notice, so a
   forgotten tab does not grow a trace without limit; the transport pauses

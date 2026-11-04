@@ -4,7 +4,7 @@
 // primitive's own knob takes the kernel palette's label.
 import { describe, expect, it } from "vitest";
 import { renderToStaticMarkup } from "react-dom/server";
-import { ElementSettings, RunInputs, applyKnob, engineRows } from "./RunInputs";
+import { ElementSettings, RunInputs, applyKnob, engineRows, knobSliderRange } from "./RunInputs";
 import type { CanvasModel, EngineKnob, FlowKnob, Thing } from "./kernel/types";
 
 const barrel = {
@@ -329,3 +329,25 @@ describe("an own-parameter param", () => {
   });
 });
 
+
+// 2026-11-04 toy walk: every engine knob with a value gets a slider.
+describe("knob sliders", () => {
+  const imp = { offset: 1, scale: -1, max_param: 1, range: "at least 0 and less than 1" };
+  const eff = { offset: 0, scale: 1, max_param: 1, range: "greater than 0 and at most 1" };
+  const amp = { offset: 1, scale: 9, max_param: null, range: "greater than 1" };
+  it("a word the kernel bounds slides over its legal range, excluded ends held in", () => {
+    expect(knobSliderRange({ field: "impedance", own: imp }, 0.25)).toEqual({ min: 0, max: 0.995, step: 0.005 });
+    expect(knobSliderRange({ field: "efficiency", own: eff }, 0.9)).toEqual({ min: 0.005, max: 1, step: 0.005 });
+  });
+  it("an unbounded knob slides from its floor to twice its value", () => {
+    expect(knobSliderRange({ field: "capacity" }, 400)).toEqual({ min: 1, max: 800, step: 1 });
+    expect(knobSliderRange({ field: "initial_storage" }, 100)).toEqual({ min: 0, max: 200, step: 1 });
+    // An amplifier's gain floor is 1, never reached.
+    const g = knobSliderRange({ field: "gain", own: amp }, 5)!;
+    expect(g.max).toBe(9);
+    expect(g.min).toBeGreaterThan(1);
+  });
+  it("a knob off by default has no slider until it has a value", () => {
+    expect(knobSliderRange({ field: "capacity" }, null)).toBeNull();
+  });
+});
