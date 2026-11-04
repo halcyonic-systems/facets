@@ -66,6 +66,7 @@ A model drawn on the canvas has no visible place for its numbers. Starting level
 | 52 | (Shingai, pond, impedance knob.) The change was hard to see on Downstream's running total; the story chart showed it as bends | The chart does not mark knob ticks, and its "≈12.2/tick" averages three settings into a number matching none | **Fixed**: each metric chart marks the author's knob ticks with what was set (an agent's per-tick writes are not marked), and its rate reads since the last knob instead of across settings |
 | 53 | (Shingai.) Only a declared `param` had a slider; every other number was typed | A slider needs a range, and only the param line supplied one | **Fixed** (Shingai's rule): a word the kernel bounds (efficiency, impedance) slides over its legal range; any other knob with a value slides from its floor to twice its value, re-centred on release; the number box stays. Checked in the browser |
 | 54 | (Shingai.) Length said 12 and the run ticked on forever | By design since 2026-10-27: "keep going" was on by default | **Changed** (Shingai): keep going starts off, Run plays to the length and stops, and the default length is 100. Checked in the browser |
+| 55 | (Found checking row 51.) A pond switched to impeding reads "15 m3" on the canvas and "15 m3 the same at every tick" in the Element tab | The node label shows a process's throughput with the stock unit, as if it were a level held | Open: label a non-stock process's number as a rate ("15 m3/day passed"), or show none |
 
 ## How the fixes were checked
 
