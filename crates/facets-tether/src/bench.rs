@@ -331,6 +331,15 @@ impl BenchSession {
     /// Set a component's engine parameter by name, live: `release_rate`,
     /// `capacity`, `setpoint`, `time_constant`, `maintenance`,
     /// `back_pressure`, `initial_storage`, or the agency scalar `param`.
+    ///
+    /// A process's own parameter may also be turned by its SL word (walk row
+    /// 18): `gain` on Sensing and Amplifying, `efficiency` on Propelling,
+    /// `impedance` on Impeding, at the SL value, converted to `param` through
+    /// `facets_core::own_param` (the map SL parses with). The word is read by
+    /// what the thing is: on an agent `gain` is its rule's, as before; on a
+    /// process a word its primitive does not read is refused naming the
+    /// right one, and a value outside the word's range is refused as SL
+    /// refuses it. The knob log keeps the word and the value as typed.
     pub fn set_component_param(&mut self, thing: &str, field: &str, v: f32) -> Result<(), String> {
         let i = self
             .session
@@ -339,7 +348,15 @@ impl BenchSession {
             .iter()
             .position(|n| n.name == thing && !matches!(n.kind, NodeKind::Sink))
             .ok_or_else(|| format!("no component or source named \"{thing}\""))?;
-        self.session.set_node_param(i, field, v)?;
+        let is_agent = self.session.circuit.nodes[i].kind == NodeKind::Agent;
+        if !is_agent && facets_core::own_param::is_own_word(field) {
+            let primitive = self.spec.processes.iter().find(|p| p.name == thing).map(|p| p.primitive);
+            let p = facets_core::own_param::resolve(primitive, field, v as f64)
+                .map_err(|m| format!("\"{thing}\": {m}"))?;
+            self.session.set_node_param(i, "param", p as f32)?;
+        } else {
+            self.session.set_node_param(i, field, v)?;
+        }
         self.note_edit(KnobEdit {
             tick: self.session.circuit.tick,
             target: thing.to_string(),

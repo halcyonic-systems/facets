@@ -46,6 +46,22 @@ pub fn stderr(out: &Output) -> String {
     String::from_utf8_lossy(&out.stderr).into_owned()
 }
 
+/// Run `facets` with `args`, feeding `input` on stdin (a file argument of `-`).
+pub fn facets_stdin(args: &[&str], input: &str) -> Output {
+    use std::io::Write;
+    use std::process::Stdio;
+    let mut child = Command::new(env!("CARGO_BIN_EXE_facets"))
+        .args(args)
+        .current_dir(repo_root())
+        .stdin(Stdio::piped())
+        .stdout(Stdio::piped())
+        .stderr(Stdio::piped())
+        .spawn()
+        .expect("the facets binary runs");
+    child.stdin.take().unwrap().write_all(input.as_bytes()).expect("stdin takes the model");
+    child.wait_with_output().expect("the facets binary exits")
+}
+
 /// Every bundled `.sl` the CLI is pointed at — `assets/examples` plus the
 /// author corpus — as repo-root-relative slash paths, sorted.
 ///

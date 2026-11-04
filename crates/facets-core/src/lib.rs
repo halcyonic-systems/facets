@@ -17,6 +17,7 @@
 pub mod decomposition;
 pub mod model_id;
 pub mod operational;
+pub mod own_param;
 pub mod transition;
 pub mod units;
 pub mod validate;

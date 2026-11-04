@@ -4,7 +4,31 @@
 //! without a browser in the loop.
 mod support;
 
-use support::{code, facets, stderr, stdout_json};
+use support::{code, facets, facets_stdin, stderr, stdout_json};
+
+/// A one-stage amplifier: a 0.2 signal, a 4-unit rail through a resistance
+/// holding back a quarter, a stage of gain 5 (out = min(0.2 · gain, power)).
+const AMPLIFIER: &str = "\
+source Mic
+source Rail
+sink Speaker
+interface \"In Jack\"
+interface \"Out Jack\"
+component \"Supply Line\" primitive Impeding impedance 0.25 interface
+component Stage primitive Amplifying gain 5
+flow Mic -> \"In Jack\" : informational \"audio in\" amount 0.2
+flow \"In Jack\" -> Stage : informational \"audio in\"
+flow Rail -> \"Supply Line\" : energy \"rail\" substance power amount 4
+flow \"Supply Line\" -> Stage : energy \"power\" substance power
+flow Stage -> \"Out Jack\" : energy \"audio out\" substance power
+flow \"Out Jack\" -> Speaker : energy \"audio out\" substance power
+";
+
+/// The last delivery of the flow labelled `name`.
+fn last_of(v: &serde_json::Value, name: &str) -> f64 {
+    let f = v["flows"].as_array().unwrap().iter().find(|f| f["name"] == name).unwrap();
+    f["series"].as_array().unwrap().last().unwrap().as_f64().unwrap()
+}
 
 /// A trajectory as one value after each step. A level's series starts with
 /// the state before the first step (N + 1 values, walk 2026-11-03); these
@@ -455,4 +479,54 @@ fn the_feedforward_compensator_reads_the_supply_and_holds_the_room() {
     assert!(series(&v, "Compensator").iter().all(|&x| x == 1.0));
     let room = series(&v, "Room");
     assert!(near(room[12], 12.0) && near(room[13], 13.6) && near(room[23], 19.3132), "{room:?}");
+}
+
+/// A process's own parameter is a bench knob by its SL word and value, the
+/// same number the line writes, converted through the one map SL uses. Gain
+/// 20 wants 4 and clips at the 3 the supply line passes; impedance 0.9
+/// passes 0.4; `param` at the engine's own value still lands the same.
+#[test]
+fn a_process_knob_takes_its_sl_word_and_value() {
+    let run = |set: &str| {
+        let out = facets_stdin(&["bench", "-", "--t", "3", "--no-log", "--set", set], AMPLIFIER);
+        assert_eq!(code(&out), 0, "{set}: {}", stderr(&out));
+        stdout_json(&out)
+    };
+    assert_eq!(last_of(&run("Stage.gain=5"), "audio out"), 1.0);
+    let clipped = run("Stage.gain=20");
+    assert_eq!(last_of(&clipped, "audio out"), 3.0);
+    assert_eq!(clipped["edits"][0]["field"], "gain");
+    assert_eq!(clipped["edits"][0]["value"], 20.0);
+    let by_param = run(&format!("Stage.param={}", 19.0f32 / 9.0));
+    assert_eq!(last_of(&by_param, "audio out"), 3.0);
+    let choked = run("\"Supply Line\".impedance=0.9");
+    assert!((last_of(&choked, "power") - 0.4).abs() < 1e-6, "{choked}");
+    assert!((last_of(&choked, "audio out") - 0.4).abs() < 1e-6, "{choked}");
+}
+
+/// The knob refuses what the SL line would refuse, with the line's fault: a
+/// word on a primitive that does not read it names that primitive's own word,
+/// and a value outside the word's range names the range.
+#[test]
+fn a_process_knob_refuses_the_wrong_word_and_an_unsayable_value() {
+    let refused = |set: &str| {
+        let out = facets_stdin(&["bench", "-", "--t", "3", "--no-log", "--set", set], AMPLIFIER);
+        assert_eq!(code(&out), 4, "{set}: {}", stderr(&out));
+        stderr(&out)
+    };
+    let wrong = refused("Stage.impedance=0.5");
+    assert!(wrong.contains("Impeding component only") && wrong.contains("own parameter is `gain`"), "{wrong}");
+    let other = refused("\"Supply Line\".gain=3");
+    assert!(other.contains("own parameter is `impedance`"), "{other}");
+    assert!(refused("Stage.gain=1").contains("greater than 1"));
+    assert!(refused("\"Supply Line\".impedance=1").contains("less than 1"));
+    assert!(refused("Stage.efficiency=0.5").contains("Propelling component only"));
+}
+
+/// On an agent, `gain` is its rule's word, not a process's own parameter.
+#[test]
+fn gain_on_an_agent_stays_the_rules_word() {
+    let out = facets(&["bench", "assets/bench/thermostat-agent.sl", "--t", "3", "--no-log", "--set", "Thermostat.gain=2"]);
+    assert_eq!(code(&out), 0, "{}", stderr(&out));
+    assert_eq!(stdout_json(&out)["edits"][0]["field"], "gain");
 }

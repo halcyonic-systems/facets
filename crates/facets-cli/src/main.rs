@@ -134,9 +134,11 @@ enum Command {
     /// `--set` takes `label|from|to=value[@tick]` for a flow amount or
     /// `thing.field=value[@tick]` for a component's engine parameter
     /// (release_rate, capacity, setpoint, time_constant, maintenance,
-    /// back_pressure, initial_storage, param; on an agent, target and gain);
-    /// a knob with no `@tick` applies before the first step. Knobs apply in
-    /// tick order.
+    /// back_pressure, initial_storage, param; a process's own parameter by
+    /// its SL word and value: gain on Sensing and Amplifying, efficiency on
+    /// Propelling, impedance on Impeding; on an agent, its rule's words such
+    /// as target and gain); a knob with no `@tick` applies before the first
+    /// step. Knobs apply in tick order.
     Bench {
         /// The model file, or `-` for stdin.
         file: PathBuf,
