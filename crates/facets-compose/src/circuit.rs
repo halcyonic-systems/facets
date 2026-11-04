@@ -716,7 +716,8 @@ pub struct NodeFlux {
     pub overflow: f32,
     /// NaN when the model declines the conservation ledger.
     pub dissipated: f32,
-    /// The stock after the tick (Buffering), else the activity.
+    /// What the element holds after the tick: a stock's storage, a sink's
+    /// or receiving environment object's total received; else the activity.
     pub level: f32,
 }
 
@@ -2144,14 +2145,19 @@ impl Circuit {
                 let nodes = (0..n)
                     .map(|i| {
                         let b = 1 + i * FLUX_COLS;
-                        let level = if matches!(
-                            self.nodes[i].kind,
-                            NodeKind::Process(ProcessPrimitive::Buffering)
-                        ) {
-                            h.get(2 + i * 3).copied().unwrap_or(f32::NAN)
-                        } else {
-                            h.get(1 + i * 3).copied().unwrap_or(f32::NAN)
+                        // A level is what the element holds, the same
+                        // column the run's trajectories read (`holds`): a
+                        // stock's storage, a sink's or a receiving
+                        // environment object's total received, else the
+                        // activity (toy-model club, 2026-11-03: Town's level
+                        // read its send rate here and its held total there).
+                        let col = match self.nodes[i].kind {
+                            NodeKind::Process(ProcessPrimitive::Buffering) => 2,
+                            NodeKind::Sink => 3,
+                            NodeKind::Source if self.wires.iter().any(|w| w.to == i) => 3,
+                            _ => 1,
                         };
+                        let level = h.get(col + i * 3).copied().unwrap_or(f32::NAN);
                         NodeFlux {
                             name: self.nodes[i].name.clone(),
                             delivered: f[b],

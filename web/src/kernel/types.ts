@@ -189,7 +189,8 @@ export interface NodeFlux {
   overflow: number;
   /** NaN (serialized null) when the model declines the conservation ledger. */
   dissipated: number | null;
-  /** The stock after the tick (Buffering), else the activity. */
+  /** What the element holds after the tick: a stock's storage, a sink's or
+   *  receiving environment object's total received; else the activity. */
   level: number | null;
 }
 
