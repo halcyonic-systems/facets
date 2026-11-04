@@ -2017,6 +2017,13 @@ pub struct Interaction {
     /// authored before this field byte-identical on disk.
     #[serde(default, skip_serializing_if = "std::ops::Not::not")]
     pub ample: bool,
+    /// `spill` (#578, walk row 48): this flow carries its source stock's
+    /// overflow, whatever the stock cannot hold at its `capacity`, in the
+    /// same tick, and nothing else. Off (the default), overflow dissipates.
+    /// A Buffering's own law: the stock routes it, not a rule. `skip` keeps
+    /// every model authored before this field byte-identical on disk.
+    #[serde(default, skip_serializing_if = "std::ops::Not::not")]
+    pub spill: bool,
     /// List of additional parameters
     pub parameters: Vec<Parameter>,
     #[serde(default, skip_serializing_if = "Vec::is_empty")]

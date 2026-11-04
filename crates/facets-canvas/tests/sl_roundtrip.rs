@@ -112,6 +112,7 @@ fn canvas_born_model_canonicalizes() {
             unit: String::new(),
             substance: String::new(),
             ample: false,
+            spill: false,
         }],
         boundary: CanvasBoundaryProps { porosity: 0.33, perceptive_fuzziness: 0.0 },
         system_type: SystemType::default(),

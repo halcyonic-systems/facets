@@ -406,6 +406,9 @@ export interface Relation {
   /** Availability assertion (#9): the signal is present and never the binding
    *  constraint — no magnitude. serde skip-if-false; absent on old models. */
   ample?: boolean;
+  /** Overflow route (#578): carries its source stock's overflow at capacity.
+   *  serde skip-if-false; absent on old models. */
+  spill?: boolean;
 }
 
 /** Authored B properties for the root membrane — P = ⟨porosity, fuzziness⟩.

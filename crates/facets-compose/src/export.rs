@@ -322,6 +322,7 @@ pub fn to_world_model(circuit: &Circuit, name: &str) -> WorldModel {
             unit: from.out_substance.unit.clone(),
             // Gradient conductance (k) rides as a flow parameter.
             ample: wire.ample,
+            spill: wire.spill,
             parameters: if wire.mode == FlowMode::Gradient {
                 vec![Parameter {
                     name: "conductance".to_string(),
@@ -597,6 +598,7 @@ pub fn from_spec(spec: &facets_core::operational::OperationalSpec) -> Circuit {
         // ample wire to a 0 delivery, so whatever `amount` the lowering
         // defaulted to can never act.
         wire.ample = f.ample;
+        wire.spill = f.spill; // the overflow route, #578
         if substance_named.insert(from) {
             c.nodes[from].out_substance = DeclaredSubstance {
                 name: f.substance_name.clone(),
@@ -749,6 +751,7 @@ mod tests {
             unit: "tok/mo".into(),
             amount,
             ample: false,
+            spill: false,
             conductance: None,
             interface_routing: None,
             rate_series: None,
@@ -843,6 +846,7 @@ mod tests {
                 unit: String::new(),
                 amount,
                 ample,
+                spill: false,
                 conductance: None,
                 interface_routing: None,
                 rate_series: None,
@@ -945,6 +949,7 @@ mod tests {
                 unit: "tok/mo".into(),
                 amount: 999.0, // the mean must NOT govern — the series does
                 ample: false,
+                spill: false,
                 conductance: None,
                 interface_routing: None,
                 rate_series: Some(vec![4.0, 8.0, 0.5]),
@@ -994,6 +999,7 @@ mod tests {
             unit: "tok/mo".into(),
             amount: 4.0,
             ample: false,
+            spill: false,
             conductance: None,
             interface_routing: None,
             rate_series: weight,
@@ -1069,6 +1075,7 @@ mod tests {
                 unit: "tok/yr".into(),
                 amount: 1.0,
                 ample: false,
+                spill: false,
                 conductance: None,
                 interface_routing: None,
                 rate_series: Some(vec![10.0, 20.0]),

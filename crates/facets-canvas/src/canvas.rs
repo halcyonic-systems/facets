@@ -367,6 +367,11 @@ pub struct Relation {
     /// `skip` keeps pre-existing models byte-identical on disk.
     #[serde(default, skip_serializing_if = "std::ops::Not::not")]
     pub ample: bool,
+    /// `spill` (#578) — see [`facets_core::Interaction::spill`]: the flow
+    /// carries its source stock's overflow at capacity. The SL parser
+    /// refuses it off a flow out of a Buffering component with a capacity.
+    #[serde(default, skip_serializing_if = "std::ops::Not::not")]
+    pub spill: bool,
 }
 
 fn default_true() -> bool {
@@ -1765,6 +1770,18 @@ pub fn project_with_map(model: &CanvasModel) -> Projection {
                 .unwrap_or(DEFAULT_FLOW_AMOUNT),
             unit: r.unit.clone(),
             ample: r.ample,
+            // A spill (#578) through a fused pass-way: the interior leg
+            // `Pond -> Outlet "spillway" spill` lowers to nothing, so the
+            // crossing leg of the same label, `Outlet -> Downstream
+            // "spillway"`, which survives as `Pond -> Downstream`, carries
+            // the flag, as it carries the interior leg's amount above.
+            spill: r.spill
+                || fused_to.get(&r.a).is_some_and(|&processor| {
+                    env_things.contains(&r.b)
+                        && bonds
+                            .iter()
+                            .any(|x| x.a == processor && x.b == r.a && x.name == r.name && x.spill)
+                }),
             parameters: vec![],
             smart_parameters: vec![],
             endpoint_offset: None,
@@ -1805,6 +1822,7 @@ pub fn project_with_map(model: &CanvasModel) -> Projection {
             amount: c.amount.unwrap_or(DEFAULT_FLOW_AMOUNT),
             unit: c.unit.clone(),
             ample: false,
+            spill: false,
             parameters: vec![],
             smart_parameters: vec![],
             endpoint_offset: None,
@@ -2166,6 +2184,7 @@ pub fn to_canvas(model: &WorldModel) -> CanvasModel {
             unit: ix.unit.clone(),
             substance: ix.substance.sub_type.clone(),
             ample: ix.ample,
+            spill: ix.spill,
         });
     }
 
@@ -2429,6 +2448,7 @@ mod tests {
             unit: String::new(),
             substance: String::new(),
             ample: false,
+            spill: false,
         }
     }
 

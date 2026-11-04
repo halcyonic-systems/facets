@@ -312,3 +312,63 @@ fn a_law_fed_by_a_non_stock_is_warned() {
     let issues = facets_core::validate::validate_mode(&project(&m), facets_core::Mode::Operational);
     assert!(issues.issues.iter().any(|i| i.code == "law_input_not_a_stock"), "{:?}", issues.issues);
 }
+
+/// #578 (walk row 48): `spill` on a flow out of a bounded stock carries its
+/// overflow on, the same tick. The toy pond at a 20-day outlet time, which
+/// lost what it could not hold.
+const POND_SPILL: &str = "\
+system \"Pond\" : Concrete/Biological
+time unit day
+source Stream
+sink Downstream
+interface Inlet
+component Pond primitive Buffering stock m3 initial 100 time constant 20 capacity 400 maintenance 2
+interface Outlet
+flow Stream -> Inlet : matter \"brook\" substance water amount 30 unit \"m3/day\"
+flow Inlet -> Pond : matter \"inflow\" substance water
+flow Pond -> Outlet : matter \"outflow\" substance water
+flow Pond -> Outlet : matter \"spillway\" substance water spill
+flow Outlet -> Downstream : matter \"outflow\" substance water
+flow Outlet -> Downstream : matter \"spillway\" substance water
+";
+
+#[test]
+fn spill_parses_runs_and_emits_back() {
+    let m = parse_sl(POND_SPILL).unwrap();
+    assert!(m.relations.iter().any(|r| r.name == "spillway" && r.spill));
+    assert!(m.relations.iter().filter(|r| r.spill).count() == 1);
+    let text = emit_sl(&m).unwrap();
+    assert!(text.contains("flow Pond -> Outlet : matter \"spillway\" substance water spill"), "{text}");
+    assert!(parse_sl(&text).unwrap().relations.iter().any(|r| r.name == "spillway" && r.spill));
+
+    let world = project(&m);
+    let issues = facets_core::validate::validate_mode(&world, facets_core::Mode::Operational);
+    let errors: Vec<_> = issues.issues.iter().filter(|i| i.severity == facets_core::validate::Severity::Error).collect();
+    assert!(errors.is_empty(), "{errors:?}");
+
+    let spec = facets_core::operational::validate_operational(&world).unwrap();
+    let mut c = facets_compose::from_spec(&spec);
+    let ix = |n: &str| c.nodes.iter().position(|x| x.name == n).unwrap();
+    let (pond, down) = (ix("Pond"), ix("Downstream"));
+    for _ in 0..200 {
+        c.step();
+    }
+    // At rest the pond is full and everything it cannot hold goes on: the
+    // brook's 30, less the 2 of upkeep, reaches the stream below each day.
+    assert!((c.nodes[pond].storage - 400.0).abs() < 1e-3, "{}", c.nodes[pond].storage);
+    let before = c.nodes[down].total;
+    c.step();
+    assert!((c.nodes[down].total - before - 28.0).abs() < 1e-3, "{}", c.nodes[down].total - before);
+    assert!(c.balance().abs() < 0.05, "balance {}", c.balance());
+}
+
+#[test]
+fn spill_refuses_off_a_bounded_stock() {
+    let head = "system \"S\" : Concrete/Technical\nsource In\nsink Out\n";
+    let tail = "flow In -> T : matter \"in\" amount 1\n";
+    let refuse = |thing: &str, flow: &str| errs(&format!("{head}{thing}\n{tail}{flow}\n"));
+    assert!(refuse("component T primitive Buffering stock kg", "flow T -> Out : matter \"over\" spill").contains("with a `capacity`"));
+    assert!(refuse("component T primitive Combining interface", "flow T -> Out : matter \"over\" spill").contains("with a `capacity`"));
+    assert!(refuse("component T primitive Buffering stock kg capacity 5", "flow T -> Out : matter \"over\" amount 2 spill").contains("no magnitude"));
+    assert!(refuse("component T primitive Buffering stock kg capacity 5", "flow T -> Out : informational \"over\" spill").contains("cannot spill"));
+}

@@ -178,6 +178,9 @@ pub struct OperationalFlow {
     /// quantity through this flow; gate-type receivers treat it as held open.
     #[serde(default, skip_serializing_if = "std::ops::Not::not")]
     pub ample: bool,
+    /// Overflow route (#578) — see `Interaction::spill`.
+    #[serde(default, skip_serializing_if = "std::ops::Not::not")]
+    pub spill: bool,
     pub conductance: Option<f64>,
     /// `Some` iff this flow lowered from boundary-interface routing (bert#108),
     /// naming the work process the interface recapitulates. Unparameterized (the
@@ -544,6 +547,7 @@ pub fn validate_operational(model: &WorldModel) -> Result<OperationalSpec, Vec<O
             unit: ix.unit.clone(),
             amount: ix.amount.to_string().parse::<f64>().unwrap_or(1.0),
             ample: ix.ample,
+            spill: ix.spill,
             conductance,
             interface_routing,
             rate_series,
@@ -790,6 +794,7 @@ mod tests {
             amount: crate::rust_decimal::Decimal::ONE,
             unit: "L".to_string(),
             ample: false,
+            spill: false,
             parameters: vec![],
             smart_parameters: vec![],
             endpoint_offset: None,

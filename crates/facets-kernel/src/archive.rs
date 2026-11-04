@@ -201,6 +201,7 @@ mod tests {
             unit: String::new(),
             substance: String::new(),
             ample: false,
+            spill: false,
         });
         m.relations.push(Relation {
             id: 2,
@@ -218,6 +219,7 @@ mod tests {
             unit: String::new(),
             substance: String::new(),
             ample: false,
+            spill: false,
         });
         m
     }
@@ -428,10 +430,10 @@ mod decomposition_seam {
                 thing(5, "Output", Role::Component),
             ],
             relations: vec![
-                Relation { id: 1, a: 2, b: 4, name: "crude".into(), description: String::new(), grounding: None, usability: None, is_bond: true, kind: Kind::Matter, klir_directed: false, weight: None, amount: None, unit: String::new(), substance: String::new(), ample: false },
-                Relation { id: 2, a: 4, b: 1, name: "feed".into(), description: String::new(), grounding: None, usability: None, is_bond: true, kind: Kind::Matter, klir_directed: false, weight: None, amount: None, unit: String::new(), substance: String::new(), ample: false },
-                Relation { id: 3, a: 1, b: 5, name: "hot".into(), description: String::new(), grounding: None, usability: None, is_bond: true, kind: Kind::Matter, klir_directed: false, weight: None, amount: None, unit: String::new(), substance: String::new(), ample: false },
-                Relation { id: 4, a: 5, b: 3, name: "refined".into(), description: String::new(), grounding: None, usability: None, is_bond: true, kind: Kind::Matter, klir_directed: false, weight: None, amount: None, unit: String::new(), substance: String::new(), ample: false },
+                Relation { id: 1, a: 2, b: 4, name: "crude".into(), description: String::new(), grounding: None, usability: None, is_bond: true, kind: Kind::Matter, klir_directed: false, weight: None, amount: None, unit: String::new(), substance: String::new(), ample: false, spill: false },
+                Relation { id: 2, a: 4, b: 1, name: "feed".into(), description: String::new(), grounding: None, usability: None, is_bond: true, kind: Kind::Matter, klir_directed: false, weight: None, amount: None, unit: String::new(), substance: String::new(), ample: false, spill: false },
+                Relation { id: 3, a: 1, b: 5, name: "hot".into(), description: String::new(), grounding: None, usability: None, is_bond: true, kind: Kind::Matter, klir_directed: false, weight: None, amount: None, unit: String::new(), substance: String::new(), ample: false, spill: false },
+                Relation { id: 4, a: 5, b: 3, name: "refined".into(), description: String::new(), grounding: None, usability: None, is_bond: true, kind: Kind::Matter, klir_directed: false, weight: None, amount: None, unit: String::new(), substance: String::new(), ample: false, spill: false },
             ],
             boundary: Default::default(),
             system_type: Default::default(),

@@ -138,6 +138,7 @@ const LEDGER: &[(&str, &str, Standing, &str)] = &[
     ("Interaction", "amount", Authored, "`amount`; omitted is not 1 in the model"),
     ("Interaction", "unit", Authored, "`unit`"),
     ("Interaction", "ample", Authored, "`ample` (#9)"),
+    ("Interaction", "spill", Authored, "`spill` (#578)"),
     ("Interaction", "parameters", Debt("#330"), "vec![] — #330 closed the old shape; the need stands, to be designed fresh"),
     ("Interaction", "smart_parameters", Excluded("outdated feature, ruled off the list by the author"), ""),
     ("Interaction", "endpoint_offset", Presentation, "None — canvas layout"),

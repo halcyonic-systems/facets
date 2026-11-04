@@ -358,6 +358,10 @@ pub struct Node {
     /// by `step_dt`; `wire_amount` reports a drained wire from it. `0.0`
     /// before the first step and for every other node.
     pub pulled: f32,
+    /// What a stock sent down EACH of its spill flows on the last completed
+    /// step (#578): its overflow at capacity, split evenly when it has
+    /// several. `wire_amount` reports a spill wire from it.
+    pub spilled: f32,
     /// An agent's decision model (facets#269). Only `NodeKind::Agent` reads
     /// it, the way only Inverting reads `setpoint`; its numbers are the
     /// declared policy (the goal) and the kernel's `Policy::decide` is the
@@ -427,6 +431,7 @@ impl Node {
             back_pressure: false, // false = push model sheds; true = backs up
             mass_action: 0.0,     // 0 = no rate law: pushed throughput
             pulled: 0.0,
+            spilled: 0.0,
             policy: facets_core::Policy::default(),
             knob: None,
             watch: None,
@@ -489,6 +494,10 @@ pub struct Wire {
     /// back-pressure demand gate — see the gate held open. Additive message
     /// consumers ignore it (the validator warns; ample there is inert).
     pub ample: bool,
+    /// Overflow route (#578): this wire, out of a Buffering, carries what the
+    /// stock cannot hold at its capacity, the same tick, and nothing else.
+    /// It is no spout for the release and joins no fanout split.
+    pub spill: bool,
     /// Multi-timescale (rung 3): this wire's `rate_series` is sampled once every
     /// `dt_stride` time units and ZERO-ORDER-HELD between — the channel's own
     /// Δt = `dt_stride ×` the model's time unit, Mobus's per-node `Δt_{i,l}` as
@@ -517,6 +526,7 @@ impl Wire {
             dt_stride: None,
             substance_override: None,
             ample: false,
+            spill: false,
         }
     }
     pub fn gradient(from: usize, to: usize, conductance: f32) -> Self {
@@ -531,6 +541,7 @@ impl Wire {
             dt_stride: None,
             substance_override: None,
             ample: false,
+            spill: false,
         }
     }
 }
@@ -750,6 +761,7 @@ impl Circuit {
             n.total = 0.0;
             n.watched = 0.0;
             n.pulled = 0.0;
+            n.spilled = 0.0;
             n.spark.clear();
         }
         self.tick = 0;
@@ -1092,6 +1104,19 @@ impl Circuit {
                 }
             }
         }
+        // A spill (#578) carries the stock's overflow THIS step, which is
+        // settled only once everything flowing into the stock is known: its
+        // receiver depends on the stock and on every sender into it. A spill
+        // that loops back into its own stock's inflow is then an anchorless
+        // loop, and refused like any other.
+        for w in self.wires.iter().filter(|w| self.is_spill(w)) {
+            add(w.from, w.to);
+            for v in &self.wires {
+                if v.to == w.from && v.mode == FlowMode::Pushed && !self.is_observation(v) && v.from != w.from {
+                    add(v.from, w.to);
+                }
+            }
+        }
         let mut order = Vec::with_capacity(n);
         let mut queue: VecDeque<usize> = (0..n).filter(|&i| indegree[i] == 0).collect();
         while let Some(i) = queue.pop_front() {
@@ -1155,6 +1180,18 @@ impl Circuit {
                 self.nodes[w.to].kind,
                 NodeKind::Process(ProcessPrimitive::Sensing) | NodeKind::Agent
             ) || self.has_law(w.to))
+    }
+
+    /// A spill flow (#578): out of a Buffering, carrying its overflow at
+    /// capacity and nothing else.
+    pub fn is_spill(&self, w: &Wire) -> bool {
+        w.spill
+            && w.mode == FlowMode::Pushed
+            && matches!(
+                self.nodes[w.from].kind,
+                NodeKind::Process(ProcessPrimitive::Buffering)
+            )
+            && self.wire_substance(w) != SubstanceType::Message
     }
 
     /// Whether node `i` is a work process with a declared rate law (#573):
@@ -1231,6 +1268,9 @@ impl Circuit {
         if self.is_law_pull(w) {
             return self.nodes[w.to].pulled; // what the law drew (#573)
         }
+        if self.is_spill(w) {
+            return self.nodes[w.from].spilled; // the overflow it carried (#578)
+        }
         self.delivery_share(k, self.nodes[self.wires[k].from].activity)
     }
 
@@ -1291,6 +1331,7 @@ impl Circuit {
                     && x.mode == FlowMode::Pushed
                     && !self.is_observation(x)
                     && !self.is_law_pull(x) // the law sets its own amount (#573)
+                    && !self.is_spill(x) // carries the overflow only (#578)
             })
             .collect();
         let total_weight: f32 = outwires
@@ -1633,8 +1674,15 @@ impl Circuit {
         // activities computed so far: pushed wires use the shared per-wire
         // delivery rule (`delivery_share` — fanout split, observation taps,
         // terminal sinks); gradient wires use this tick's CAPPED rates.
+        // What each spill flow carries this step (#578), set at its
+        // receiver's turn in the activity pass, once the stock's every
+        // inflow is known (`eval_order`'s spill edges guarantee it).
+        let spill_amt: Vec<std::cell::Cell<f32>> = (0..nw).map(|_| std::cell::Cell::new(0.0)).collect();
         let amount_on = |k: usize, act: &[f32]| -> f32 {
             let w = &self.wires[k];
+            if self.is_spill(w) {
+                return spill_amt[k].get(); // the stock's overflow (#578)
+            }
             if w.ample {
                 return 0.0; // ample asserts availability, never quantity (#9)
             }
@@ -1704,7 +1752,59 @@ impl Circuit {
         // column and, in the command form, the knob write after the record.
         let mut decided: Vec<(usize, f32, f32)> = Vec::new();
 
+        // A stock's step, settled: opening stock + inflow − drains − release,
+        // less upkeep, clamped to capacity. Returns (storage, upkeep taken,
+        // overflow). The one rule both the spill (in the pass, #578) and the
+        // stock post-pass below use, so a spill carries exactly what the
+        // clamp removes.
+        let settle = |i: usize, delivered_i: f32, act_i: f32| -> (f32, f32, f32) {
+            let node = &self.nodes[i];
+            let mut storage = node.storage + delivered_i - gradient_out[i] - law_out[i] - act_i;
+            let mut taken = 0.0;
+            // Maintenance respiration: a constant upkeep loss from the stock,
+            // dissipated (never delivered). The ledger charges it
+            // automatically — the stock falls but no outflow carries it.
+            // Odum depreciation / Mobus Fig 3.17. × dt (#258): upkeep is a
+            // RATE per time unit like a release, so a run's totals do not
+            // depend on how finely the time unit is stepped.
+            if node.maintenance > 0.0 {
+                taken = (dt * node.maintenance).min(storage.max(0.0));
+                storage -= taken;
+            }
+            // Capacity: a bounded tank overflows. Clamping the stock makes
+            // the conservation ledger's per-node rule charge the overflow as
+            // dissipated by itself (dissipated = in − out − Δstorage, and
+            // Δstorage is now the clamped change), unless a spill flow
+            // carries it on (#578). 0.0 = unbounded.
+            let mut over = 0.0;
+            if node.capacity > 0.0 && storage > node.capacity {
+                over = storage - node.capacity;
+                storage = node.capacity;
+            }
+            (storage, taken, over)
+        };
+        let delivered_to = |i: usize, act: &[f32]| -> f32 {
+            (0..nw)
+                .filter(|&k| {
+                    let w = &self.wires[k];
+                    w.to == i
+                        && self.wire_substance(w) != SubstanceType::Message
+                        && !self.is_observation(w)
+                })
+                .map(|k| amount_on(k, act))
+                .sum()
+        };
+        let spills_from = |i: usize| (0..nw).filter(|&k| self.wires[k].from == i && self.is_spill(&self.wires[k])).count();
+
         for &i in &order {
+            // Settle each spill into this node first (#578): its stock and
+            // every sender into that stock are already evaluated.
+            for (w, cell) in self.wires.iter().zip(&spill_amt) {
+                if w.to == i && self.is_spill(w) {
+                    let (_, _, over) = settle(w.from, delivered_to(w.from, &act), act[w.from]);
+                    cell.set(over / spills_from(w.from) as f32);
+                }
+            }
             let node = &self.nodes[i];
             let incoming: Vec<(SubstanceType, f32, bool)> = (0..nw)
                 .filter(|&k| self.wires[k].to == i)
@@ -1823,6 +1923,7 @@ impl Circuit {
                                 && self.wires[k].mode == FlowMode::Pushed
                                 && !self.is_observation(&self.wires[k])
                                 && !self.is_law_pull(&self.wires[k])
+                                && !self.is_spill(&self.wires[k]) // overflow only, #578
                         });
                         if has_pushed_outlet {
                             // First-order drain (τ > 0): release ≈ stock/τ, an
@@ -1995,19 +2096,7 @@ impl Circuit {
         // loop's anchor — so all accounting reads the final amounts, never
         // the mid-loop ones. Observation reads excluded: a level read
         // delivers nothing.
-        let delivered: Vec<f32> = (0..n)
-            .map(|i| {
-                (0..nw)
-                    .filter(|&k| {
-                        let w = &self.wires[k];
-                        w.to == i
-                            && self.wire_substance(w) != SubstanceType::Message
-                            && !self.is_observation(w)
-                    })
-                    .map(|k| amount_on(k, &act))
-                    .sum()
-            })
-            .collect();
+        let delivered: Vec<f32> = (0..n).map(|i| delivered_to(i, &act)).collect();
 
         // Stocks integrate: opening stock + this step's inflow − release −
         // gradient drain − maintenance, clamped to capacity. The only place
@@ -2023,27 +2112,9 @@ impl Circuit {
             ) {
                 continue;
             }
-            let mut storage =
-                node.storage + delivered[i] - gradient_out[i] - law_out[i] - act[i];
-            // Maintenance respiration: a constant upkeep loss from the stock,
-            // dissipated (never delivered). The ledger charges it
-            // automatically — the stock falls but no outflow carries it.
-            // Odum depreciation / Mobus Fig 3.17. × dt (#258): upkeep is a
-            // RATE per time unit like a release, so a run's totals do not
-            // depend on how finely the time unit is stepped.
-            if node.maintenance > 0.0 {
-                let taken = (dt * node.maintenance).min(storage.max(0.0));
-                storage -= taken;
-                maint_taken[i] = taken;
-            }
-            // Capacity: a bounded tank overflows. Clamping the stock makes
-            // the conservation ledger's per-node rule charge the overflow as
-            // dissipated by itself (dissipated = in − out − Δstorage, and
-            // Δstorage is now the clamped change). 0.0 = unbounded.
-            if node.capacity > 0.0 && storage > node.capacity {
-                overflow[i] = storage - node.capacity;
-                storage = node.capacity;
-            }
+            let (storage, taken, over) = settle(i, delivered[i], act[i]);
+            maint_taken[i] = taken;
+            overflow[i] = over;
             next_storage[i] = storage;
         }
 
@@ -2155,10 +2226,18 @@ impl Circuit {
             }
         }
 
+        let spilled: Vec<f32> = (0..n)
+            .map(|i| {
+                (0..nw)
+                    .find(|&k| self.wires[k].from == i && self.is_spill(&self.wires[k]))
+                    .map_or(0.0, |k| spill_amt[k].get())
+            })
+            .collect();
         for (i, node) in self.nodes.iter_mut().enumerate() {
             node.activity = act[i];
             node.storage = next_storage[i];
             node.pulled = law_pull[i];
+            node.spilled = spilled[i];
             node.total += sink_add[i];
             // An environment object's received side (see the Source arm):
             // what arrived this step, the amount the ledger counts as sunk.
@@ -5263,5 +5342,97 @@ mod tests {
             assert!((c.nodes[0].storage + c.nodes[1].storage - 1.0).abs() < 1e-5);
         }
         assert!(c.nodes[1].storage > 0.9, "the rumor spreads: {}", c.nodes[1].storage);
+    }
+
+    // ── Overflow routing (#578, walk row 48) ───────────────────────────────
+
+    fn spill_wire(from: usize, to: usize) -> Wire {
+        let mut w = Wire::new(from, to);
+        w.spill = true;
+        w
+    }
+
+    /// A pond fed 5 a tick with a capacity of 10 and no outlet but its
+    /// spill: it fills, then passes on exactly what it cannot hold, the same
+    /// tick, and nothing is lost.
+    #[test]
+    fn a_spill_carries_the_overflow_the_same_tick() {
+        let mut c = Circuit::default();
+        let mut src = node(NodeKind::Source);
+        src.param = 5.0;
+        c.nodes.push(src); // 0
+        let mut pond = stock(0.0);
+        pond.capacity = 10.0;
+        c.nodes.push(pond); // 1
+        c.nodes.push(node(NodeKind::Sink)); // 2
+        c.wires.push(Wire::new(0, 1));
+        c.wires.push(spill_wire(1, 2));
+        for t in 1..=6 {
+            c.step();
+            let expect_total = (5.0 * t as f32 - 10.0).max(0.0);
+            assert!((c.nodes[2].total - expect_total).abs() < 1e-5, "t{t}: {}", c.nodes[2].total);
+            assert!(c.nodes[1].storage <= 10.0);
+        }
+        assert!(c.dissipated.abs() < 1e-5, "routed, not shed: {}", c.dissipated);
+        assert!((c.wire_amount(1) - 5.0).abs() < 1e-5);
+        // Without the spill flag the same overflow dissipates, as before.
+        c.wires[1].spill = false;
+        c.reset();
+        for _ in 0..6 {
+            c.step();
+        }
+        assert!((c.dissipated - 20.0).abs() < 1e-4, "{}", c.dissipated);
+    }
+
+    /// Through a pass-way process (the pond's outlet interface) and on into a
+    /// second bounded stock that spills in turn: each settles in the step.
+    #[test]
+    fn spills_cascade_through_processes_and_stocks() {
+        let mut c = Circuit::default();
+        let mut src = node(NodeKind::Source);
+        src.param = 6.0;
+        c.nodes.push(src); // 0
+        let mut upper = stock(0.0);
+        upper.capacity = 4.0;
+        upper.time_constant = 2.0; // its own outlet too
+        c.nodes.push(upper); // 1
+        let mut gate = node(NodeKind::Process(ProcessPrimitive::Propelling));
+        gate.param = 1.0; // a pass-way: passes all
+        c.nodes.push(gate); // 2
+        let mut lower = stock(0.0);
+        lower.capacity = 3.0;
+        c.nodes.push(lower); // 3
+        c.nodes.push(node(NodeKind::Sink)); // 4
+        c.nodes.push(node(NodeKind::Sink)); // 5
+        c.wires.push(Wire::new(0, 1));
+        c.wires.push(spill_wire(1, 2)); // spill into the outlet process
+        c.wires.push(Wire::new(2, 3));
+        c.wires.push(spill_wire(3, 4)); // which fills a second pond
+        c.wires.push(Wire::new(1, 5)); // the upper pond's own drain
+        for _ in 0..30 {
+            c.step();
+            assert!(c.nodes[1].storage <= 4.0 + 1e-6 && c.nodes[3].storage <= 3.0 + 1e-6);
+        }
+        assert!(c.algebraic_cycle().is_none());
+        assert!(c.dissipated.abs() < 1e-4, "{}", c.dissipated);
+        // At rest: upper holds 4 and drains 2; it spills 4 through the gate
+        // into the full lower pond, which spills all 4 on.
+        assert!((c.nodes[2].activity - 4.0).abs() < 1e-4, "gate {}", c.nodes[2].activity);
+        assert!((c.nodes[3].storage - 3.0).abs() < 1e-5);
+        assert!(c.balance().abs() < 1e-3, "{}", c.balance());
+    }
+
+    /// A spill that comes back into its own stock in the same step is an
+    /// anchorless loop: refused, named, never silently delayed.
+    #[test]
+    fn a_spill_back_into_its_own_stock_is_refused() {
+        let mut c = Circuit::default();
+        let mut pond = stock(5.0);
+        pond.capacity = 4.0;
+        c.nodes.push(pond); // 0
+        c.nodes.push(node(NodeKind::Process(ProcessPrimitive::Propelling))); // 1
+        c.wires.push(spill_wire(0, 1));
+        c.wires.push(Wire::new(1, 0));
+        assert!(c.algebraic_cycle().is_some());
     }
 }

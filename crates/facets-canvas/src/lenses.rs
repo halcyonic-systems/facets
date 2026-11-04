@@ -1868,6 +1868,7 @@ mod tests {
             unit: String::new(),
             substance: String::new(),
             ample: false,
+            spill: false,
         }
     }
     fn model(things: Vec<Thing>, relations: Vec<Relation>) -> CanvasModel {

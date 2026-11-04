@@ -2743,6 +2743,7 @@ pub fn parse_sl_full(text: &str) -> Result<SlParse, Vec<SlError>> {
                         unit: String::new(),
                         substance: String::new(),
                         ample: false,
+                        spill: false,
                     });
                     next_id += 1;
                 }
@@ -2942,6 +2943,35 @@ pub fn parse_sl_full(text: &str) -> Result<SlParse, Vec<SlError>> {
                     );
                     continue;
                 }
+                // `spill` (#578, walk row 48): this flow carries its source
+                // stock's overflow at capacity, and nothing else. A
+                // Buffering's own law, so it has no magnitude to declare;
+                // the source is checked once the endpoints resolve below.
+                let mut spill = false;
+                if let [Tok::Word(w), rest_tail @ ..] = tail {
+                    if w.eq_ignore_ascii_case("spill") {
+                        spill = true;
+                        tail = rest_tail;
+                    }
+                }
+                if spill && (amount.is_some() || ample || !unit.is_empty()) {
+                    fail(
+                        "`spill` with `amount`, `unit` or `ample` — a spill carries whatever \
+                         the stock cannot hold, so it has no magnitude to declare; remove one"
+                            .into(),
+                        &mut errors,
+                    );
+                    continue;
+                }
+                if spill && kind == Kind::Informational {
+                    fail(
+                        "`spill` routes a stock's overflow, which is matter or energy — an \
+                         `: informational` flow cannot spill"
+                            .into(),
+                        &mut errors,
+                    );
+                    continue;
+                }
                 let mut is_bond = true;
                 if let [Tok::Word(w), rest_tail @ ..] = tail {
                     if w.eq_ignore_ascii_case("mere") {
@@ -2952,7 +2982,7 @@ pub fn parse_sl_full(text: &str) -> Result<SlParse, Vec<SlError>> {
                 // A quantity on a `mere` relation is a contradiction, not an
                 // option to drop: a non-bond never projects, so a magnitude on
                 // it could never mean anything. Refuse rather than default.
-                if !is_bond && (amount.is_some() || !unit.is_empty() || !substance.is_empty() || ample) {
+                if !is_bond && (amount.is_some() || !unit.is_empty() || !substance.is_empty() || ample || spill) {
                     fail(
                         "`substance`/`amount`/`unit`/`ample` on a `mere` relation — a \
                          mere relation never projects, so a quantity (or availability) \
@@ -3114,6 +3144,21 @@ pub fn parse_sl_full(text: &str) -> Result<SlParse, Vec<SlError>> {
                     );
                     continue;
                 };
+                if spill
+                    && !(things[ai].role == Role::Component
+                        && things[ai].primitive == Some(ProcessPrimitive::Buffering)
+                        && things[ai].cognitive_params.get("capacity").is_some_and(|c| *c > 0.0))
+                {
+                    fail(
+                        format!(
+                            "`spill` on a flow out of `{a}`, which is not a Buffering component \
+                             with a `capacity` — only a bounded stock overflows; give `{a}` a \
+                             capacity or remove the `spill`"
+                        ),
+                        &mut errors,
+                    );
+                    continue;
+                }
                 if let Some(agent) = [ai, bi].into_iter().find(|&i| things[i].rule.is_some()) {
                     fail(
                         format!(
@@ -3143,6 +3188,7 @@ pub fn parse_sl_full(text: &str) -> Result<SlParse, Vec<SlError>> {
                     unit,
                     substance,
                     ample,
+                    spill,
                 });
                 next_id += 1;
             }
@@ -4966,6 +5012,9 @@ pub fn emit_sl_with(model: &CanvasModel, layout: Option<&SlLayout>) -> Result<St
         if !r.unit.is_empty() {
             write!(out, " unit {}", name_token(&r.unit)?).unwrap();
         }
+        if r.spill {
+            write!(out, " spill").unwrap();
+        }
         if !r.is_bond {
             write!(out, " mere").unwrap();
         }
@@ -5411,6 +5460,8 @@ pub const UNRESOLVED: &str = "unresolved";
 pub const POSITIONAL_KEYWORDS: &[&str] = &[
     "param", "metric", "ample", "range", "shares", "from", "share", "of", "sum", "into", "klir",
     "bunge", "mobus", "constant",
+    // the overflow route (#578): a flow-line word after the quantity clauses
+    "spill",
     // the rate law (#573): `action` only ever follows `mass`
     "action",
     // the agent line (facets#269): `proportional` is the word after `rule`, `target`

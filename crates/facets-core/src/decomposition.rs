@@ -577,6 +577,7 @@ pub fn derive_child(parent: &WorldModel, comp: &Id) -> Result<WorldModel, Vec<Va
         },
         substance: ix.substance.clone(),
         ample: ix.ample,
+        spill: ix.spill,
         ty: ix.ty,
         usability: ix.usability,
         source: from,
