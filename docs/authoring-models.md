@@ -208,10 +208,14 @@ new verb for the language, not a formula — see ADR 0006 for the growth rule.
    step and *ignored* — the model validates, runs, conserves, and regulates
    nothing. `check_flows_are_consumed` (#261) now warns with a fix-shaped hint;
    take the warning seriously, it found a shipped demo's dead control loop.
-2. **A sensor's coupling to a stock is `: matter`.** Sensing is the
-   substance-crossing primitive — a physical quantity in, a signal out. Declare
-   the level-read flow `matter` (it is a non-draining observation tap); the
-   `informational` part is everything *downstream* of the sensor.
+2. **A sensor reads a stock over an `: informational` flow from it.** That
+   flow is the observation tap: each step the sensor reads the stock's level
+   and takes nothing. A `: matter` flow from a stock into a sensor is a real
+   outflow instead. The stock's release splits into it and the sensor
+   dissipates its share, so reading drains what it measures, and
+   `sensor_drains_stock` warns. (This fact said the opposite until the
+   2026-11-03 toy-model walk; the engine changed in 4cb56b1, 2026-08-14, and
+   every shipped sensor model reads informationally.)
 3. **`amount` is an absolute rate only on source-originating flows.** On flows
    out of processes it is a *relative weight* for the fanout split; the actual
    outflow of a stock is its `release`/time-constant behavior. Don't decorate

@@ -102,23 +102,42 @@ fn material_into_copying_warns() {
     assert_eq!(unconsumed_warnings(&m, Mode::Operational).len(), 1);
 }
 
-/// The trap that broke the supply chain's sensor: a level read declared
-/// informational delivers into the sensor's message bucket, which Sensing
-/// ignores. The hint must teach the matter tap.
+/// A level read is informational (toy-model walk, 2026-11-03). Since
+/// 4cb56b1 (2026-08-14) the engine's observation tap is a Message flow from a
+/// stock into a sensor: it reads the level and takes nothing. This test used
+/// to require the opposite hint, `: matter`, written before that fix.
 #[test]
-fn message_into_sensing_warns_with_the_matter_tap_hint() {
+fn an_informational_level_read_into_a_sensor_does_not_warn() {
     let m = model("Buffering", "Sensing", "Message");
+    let r = validate_mode(&m, Mode::Operational);
+    assert!(
+        r.issues.iter().all(|i| i.code != "flow_not_consumed" && i.code != "sensor_drains_stock"),
+        "{:?}",
+        r.issues
+    );
+}
+
+/// The trap the old hint set: a matter flow from a stock into a sensor is a
+/// real outflow, and the sensor dissipates its share, so reading drains.
+#[test]
+fn a_matter_flow_from_a_stock_into_a_sensor_warns_that_it_drains() {
+    let m = model("Buffering", "Sensing", "Material");
     let r = validate_mode(&m, Mode::Operational);
     let issue = r
         .issues
         .iter()
-        .find(|i| i.message.contains("does not consume"))
-        .expect("the inert level read warns");
+        .find(|i| i.code == "sensor_drains_stock")
+        .expect("the draining read warns");
     let hint = issue.suggestion.as_deref().unwrap_or("");
-    assert!(
-        hint.contains("matter"),
-        "the hint teaches the matter tap, got: {hint}"
-    );
+    assert!(hint.contains("informational"), "the hint teaches the level read, got: {hint}");
+}
+
+/// A signal from something other than a stock is not a level read, and a
+/// sensor does not read it.
+#[test]
+fn a_signal_into_a_sensor_from_a_non_stock_still_warns() {
+    let m = model("Inverting", "Sensing", "Message");
+    assert_eq!(unconsumed_warnings(&m, Mode::Operational).len(), 1);
 }
 
 /// A structural view has no run to be inert in — the check is Operational/Full.

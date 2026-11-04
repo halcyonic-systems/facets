@@ -550,14 +550,53 @@ fn check_flows_are_consumed(model: &WorldModel, issues: &mut Vec<ValidationIssue
         let Some(p) = receiver.agent.as_ref().and_then(|a| a.primitive) else {
             continue; // no declared primitive = nothing to contradict
         };
+        let from_stock = model
+            .systems
+            .iter()
+            .find(|s| s.info.id == ia.source)
+            .and_then(|s| s.agent.as_ref())
+            .and_then(|a| a.primitive)
+            == Some(ProcessPrimitive::Buffering);
+        // A level read (toy-model walk, 2026-11-03): an informational flow
+        // from a stock into a sensor is the engine's observation tap
+        // (`Circuit::is_observation`). It reads the level and takes nothing,
+        // so the sensor does consume it. Every shipped sensor model is wired
+        // this way; the old hint said `: matter`, and a matter flow from a
+        // stock is a real outflow that the sensor dissipates.
+        if p == ProcessPrimitive::Sensing && ia.substance.ty == SubstanceType::Message && from_stock {
+            continue;
+        }
+        if p == ProcessPrimitive::Sensing && ia.substance.ty != SubstanceType::Message && from_stock {
+            let stock = model
+                .systems
+                .iter()
+                .find(|s| s.info.id == ia.source)
+                .map(|s| s.info.name.as_str())
+                .unwrap_or("the stock");
+            issues.push(ValidationIssue::warning(
+                "sensor_drains_stock",
+                format!("interactions[{idx}]"),
+                format!(
+                    "'{}' carries {:?} out of the stock '{stock}' into the sensor '{}': the stock \
+                     releases into it and the sensor dissipates what it takes, so reading the \
+                     level drains it",
+                    ia.info.name, ia.substance.ty, receiver.info.name
+                ),
+                Some(
+                    "A level read is informational: declare this flow `: informational`. It then \
+                     reads the stock's level each step and takes nothing from it",
+                ),
+            ));
+            continue;
+        }
         if primitive_consumes(p, ia.substance.ty) {
             continue;
         }
         let suggestion = match (p, ia.substance.ty) {
             (ProcessPrimitive::Sensing, SubstanceType::Message) => {
-                "A sensor's coupling to a stock is matter — Sensing is the crossing \
-                 from physical to signal, and the signal is its OUTPUT. Declare the \
-                 level-read flow `: matter`"
+                "A sensor reads a stock's level over an informational flow from that stock, \
+                 or a physical flow it takes in. A signal from anything else is not read: \
+                 wire the sensor to the stock it measures"
             }
             (_, SubstanceType::Message) => {
                 "Route the signal to something that reads it — a Modulating valve's \
