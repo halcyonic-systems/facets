@@ -99,8 +99,8 @@
     },
     {
       "name": "Release",
-      "unit": "",
-      "unit_derived": false,
+      "unit": "ML",
+      "unit_derived": true,
       "holds": true,
       "series": [
         0.0,

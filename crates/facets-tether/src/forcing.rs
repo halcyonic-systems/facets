@@ -500,7 +500,28 @@ pub fn summarize(
                 .into_iter()
                 .chain(run.history.iter().map(|row| row[1 + i * 3 + col]))
                 .collect();
-            let (unit, unit_derived) = unit_of(node);
+            // What a sink or a two-sided environment object holds is the
+            // integral of what it receives, so its unit is that inflow's unit
+            // x dt, derived the way a stock's is (#94), not the rate it sends
+            // at (toy-model club: Town's leavers read "people/year").
+            let (unit, unit_derived) = match circuit.wires.iter().find(|w| w.to == i) {
+                Some(w) if col == 2 && node.stock_unit.is_empty() => {
+                    // The inflow's own unit; unlabeled, an environment object's
+                    // send unit stands in when it sends the same substance it
+                    // receives (Town sends and takes back people).
+                    let from = &circuit.nodes[w.from].out_substance;
+                    let rate = if from.unit.is_empty() && from.name == node.out_substance.name {
+                        &node.out_substance.unit
+                    } else {
+                        &from.unit
+                    };
+                    match facets_core::units::derived_stock_unit(rate, time_unit) {
+                        Some(d) => (d, true),
+                        None => unit_of(node),
+                    }
+                }
+                _ => unit_of(node),
+            };
             Trajectory {
                 name: node.name.clone(),
                 unit,
