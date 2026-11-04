@@ -2838,6 +2838,30 @@ function Workspace() {
     setDirty(true);
   }
 
+  // The Element tab's node edit (2026-11-04 toy walk: switching the pond to
+  // impeding left the run on screen stepping the old pond). What a thing
+  // does decides the run, so with a run on screen a change to its work
+  // process, rule, role or interface re-runs, as the door's popover does; a
+  // rename or a description stays a document edit.
+  function updateThingFromElement(next: import("./kernel/types").Thing) {
+    const prev = canvasModel?.things.find((t) => t.id === next.id);
+    const decidesRun =
+      prev !== undefined &&
+      (prev.primitive !== next.primitive ||
+        prev.rule !== next.rule ||
+        prev.role !== next.role ||
+        prev.env_kind !== next.env_kind ||
+        prev.interface !== next.interface);
+    if (canvasModel && decidesRun && (result || runError)) {
+      commitInputModel({
+        ...canvasModel,
+        things: canvasModel.things.map((x) => (x.id === next.id ? next : x)),
+      });
+    } else {
+      updateThing(next);
+    }
+  }
+
   const selectedThing =
     canvasModel && selectedThingId !== null ? (thingById(canvasModel, selectedThingId) ?? null) : null;
 
@@ -4499,7 +4523,7 @@ function Workspace() {
                       thing: selectedThing,
                       lens: canvasModel.lens,
                       decompose: selectedThing ? decomposeFor(selectedThing) : null,
-                      onUpdate: updateThing,
+                      onUpdate: updateThingFromElement,
                       onDelete: () => selectedThing && deleteThing(selectedThing.id),
                       onDeselect: () => setSelectedThingId(null),
                       settings:
