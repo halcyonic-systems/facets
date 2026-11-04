@@ -54,4 +54,32 @@ describe("running on", () => {
     plain.free();
     live.free();
   });
+
+  // Toy-model walk, 2026-11-04: a flow into a pass-way the projection fuses
+  // away is a live knob by the names on the page, not a re-run.
+  it("turns a flow into a fused pass-way by the names the author wrote", () => {
+    const POND = [
+      'system "Pond" : Concrete/Biological',
+      "time unit day",
+      "source Stream",
+      "sink Downstream",
+      "interface Inlet",
+      "component Pond primitive Buffering stock m3 initial 100 time constant 10 capacity 400",
+      "interface Outlet",
+      'flow Stream -> Inlet : matter "brook" substance water amount 30',
+      'flow Inlet -> Pond : matter "inflow" substance water',
+      'flow Pond -> Outlet : matter "outflow" substance water',
+      'flow Outlet -> Downstream : matter "outflow" substance water',
+    ].join("\n");
+    const out = compileSl(POND);
+    if ("errors" in out) throw new Error(JSON.stringify(out.errors));
+    const b = Bench.openUnforced(JSON.stringify(project(out.ok)), 1);
+    expect(() => b.setFlowAmount("brook", "Stream", "Inlet", 50)).toThrow();
+    b.setFlowAmountAsWritten(JSON.stringify(out.ok), "brook", "Stream", "Inlet", 50);
+    b.stepOver(5);
+    const brook = b.readout().flows.find((f) => f.name === "brook")!;
+    expect(brook.series[brook.series.length - 1]).toBe(50);
+    expect(b.edits()[0].value).toBe(50);
+    b.free();
+  });
 });

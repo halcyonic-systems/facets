@@ -2435,6 +2435,9 @@ function Workspace() {
     if (b && prev) {
       try {
         const nameOf = (id: number) => thingById(nextModel, id)?.name ?? "";
+        // The document as written, so a flow knob is found by the names on
+        // the page even where the projection fuses a pass-way away.
+        const docJson = JSON.stringify(nextModel);
         const changed = nextModel.relations.filter((r) => {
           const was = prev.relations.find((p) => p.id === r.id);
           return was !== undefined && was.amount !== r.amount;
@@ -2479,7 +2482,7 @@ function Workspace() {
           // current tick and the run carries on from there, stocks kept —
           // the sandbox's mid-run tweak. The edit log stamps that tick.
           for (const r of changed) {
-            b.setFlowAmount(r.name, nameOf(r.a), nameOf(r.b), Number(r.amount ?? 0));
+            b.setFlowAmountAsWritten(docJson, r.name, nameOf(r.a), nameOf(r.b), Number(r.amount ?? 0));
           }
           for (const e of fieldEdits) {
             b.setComponentParam(e.name, e.field, e.v);
@@ -2517,7 +2520,7 @@ function Workspace() {
           b.reset();
           setKnobTicks([]);
           for (const r of changed) {
-            b.setFlowAmount(r.name, nameOf(r.a), nameOf(r.b), Number(r.amount ?? 0));
+            b.setFlowAmountAsWritten(docJson, r.name, nameOf(r.a), nameOf(r.b), Number(r.amount ?? 0));
           }
           for (const e of fieldEdits) {
             b.setComponentParam(e.name, e.field, e.v);

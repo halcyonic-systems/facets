@@ -685,6 +685,14 @@ export class Bench {
     call("bench.set_flow_amount", () => this.inner.set_flow_amount(label, from, to, v));
   }
 
+  /** Set a flow's amount as the document writes it, through the projection's
+   *  own map, so a flow into a fused pass-way is still a live knob. */
+  setFlowAmountAsWritten(canvasJson: string, label: string, from: string, to: string, v: number): void {
+    call("bench.set_flow_amount_as_written", () =>
+      this.inner.set_flow_amount_as_written(canvasJson, label, from, to, v),
+    );
+  }
+
   setComponentParam(thing: string, field: BenchComponentField, v: number): void {
     call("bench.set_component_param", () => this.inner.set_component_param(thing, field, v));
   }

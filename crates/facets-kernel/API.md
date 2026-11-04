@@ -906,7 +906,7 @@ reopens it from the document.
 - `BenchHandle.open_unforced(model_json: string, dt: number) → BenchHandle` — open a model from its declared amounts alone, at tick 0.
 - `BenchHandle.open_forced(model_json: string, csv_text: string, manifest_json: string, dt: number, today: string) → BenchHandle` — open with a CSV bound through its manifest, at tick 0.
 - `step(n: number)` · `step_over(t: number)` (to the horizon `t` by the batch run's own tick count) · `reset()` · `tick() → number`.
-- `set_flow_amount(label: string, from: string, to: string, v: number)` · `set_component_param(thing: string, field: string, v: number)` — the knobs, by the same names the app shows and `facets bench --set` takes.
+- `set_flow_amount(label: string, from: string, to: string, v: number)` · `set_flow_amount_as_written(canvas_json: string, label: string, from: string, to: string, v: number)` · `set_component_param(thing: string, field: string, v: number)` — the knobs, by the same names the app shows and `facets bench --set` takes.
 - `readout() → RunResultRich` — the run as it stands, the same shape the batch run returns.
 - `tick_log_since(from_tick: number) → TickLog[]` — every node's and wire's flux for the ticks at or after `from_tick`, and (since v1.13) the `decisions` an agent took.
 - `edits() → KnobEdit[]` — the knobs turned on this session, with the tick each applied at; since v1.13 a `KnobEdit` carries `by: KnobAuthor` (`{ kind: "human" }` or `{ kind: "agent", name }`).
@@ -1073,7 +1073,12 @@ through `interaction_as_written` (`facets-canvas`, the projection's own
 fused away; and a bare `name=value` turns the declared `param` of that name.
 `BenchHandle.set_flow_amount` is unchanged: it still matches the names after
 fusion, and a pass-way fused into a processor that has a second fused pass-way
-is not found by its own name there (the processor records only one).
+is not found by its own name there (the processor records only one). The face's
+knob uses `BenchHandle.set_flow_amount_as_written(canvas_json, label, from, to,
+v)` instead (added 2026-11-04): the same `interaction_as_written` lookup the
+bench uses, over the canvas document, falling through to the post-fusion names
+when the document names no such flow. So the pond's `brook` into `Inlet` is a
+live knob in the app, not a re-run.
 
 ## `ParamAnchor.Own` (appended 2026-11-04, SL v1.16)
 
