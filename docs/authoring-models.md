@@ -224,6 +224,16 @@ new verb for the language, not a formula — see ADR 0006 for the growth rule.
    Δt 0.5, near 0 at Δt 0.1; toy-model walk, 2026-11-03). It is the explicit
    step, not a parameter: compare drained levels at the same Δt, or refine
    Δt to read the continuous limit.
+   An encounter is a rate law, not a sensor holding a valve open (#573,
+   #577; walk row 48). When a flow depends on two stocks at once (infection
+   on susceptibles and infected, predation on prey and predators), write the
+   work process with `mass action <k>`: `component Infection primitive
+   Combining mass action 0.5`, a `: matter` flow from the stock it uses up
+   and an `: informational` flow from the stock it only reads. It draws
+   `k · S · I` a time unit from the opening levels, and never clips. A
+   sensor opening a valve is still right for real control, a thermostat or
+   a float valve; it is the wrong idiom for an encounter, because the gate
+   clamps at 1. `assets/bench/sir-epidemic.sl` is the worked case.
 3. **`amount` is an absolute rate only on source-originating flows.** On flows
    out of processes it is a *relative weight* for the fanout split; the actual
    outflow of a stock is its `release`/time-constant behavior. Don't decorate
