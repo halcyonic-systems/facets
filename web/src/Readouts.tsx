@@ -1,4 +1,6 @@
 // Readouts — the run's full-page deep-dive EXPANSION (#345, revising #304/#312:
+// since the 2026-11-02 walk it holds results only; inputs live on the things
+// in the inspector and the run's time in the strip.
 // Run left the mode axis). The bench on the Model surface answers "what is the
 // world doing right now"; this surface is where you set the diagram aside and
 // give the parameters and every chart the whole page. An expansion, not a
@@ -6,9 +8,8 @@
 // Every card is the same component the dock hosted, fed the same kernel state
 // from the same App owner — what changed is the container and the height.
 import { useEffect, useState } from "react";
-import type { CanvasModel, Manifest, MarkovRunResult, Relation, RunResultRich, Thing, TickLog } from "./kernel/types";
+import type { CanvasModel, MarkovRunResult, RunResultRich, TickLog } from "./kernel/types";
 import type { RunKind } from "./canvas/lenses/registry";
-import { RunInputs } from "./RunInputs";
 import { DtmcPanel, RunFit, RunGlance, RunStory, RunTable, weightProvenance } from "./RunPanel";
 import { Button, Card, Input, Tabs } from "./ui";
 import { TickLogTable } from "./TickLogTable";
@@ -31,14 +32,8 @@ export function Readouts({
   onAcceptUnit,
   tick,
   model,
-  manifest,
-  onInputEdit,
-  onThingEdit,
-  engineLabels,
-  onResetInputs,
-  time,
+  sourceIds,
   runKind,
-  transport,
   onClose,
 }: {
   result: RunResultRich | null;
@@ -65,20 +60,10 @@ export function Readouts({
   /** #154 P1: the scrubber's current tick, marking where the system is. */
   tick?: number;
   model?: CanvasModel | null;
-  /** The active demo's manifest (null = no runnable bundle). */
-  manifest?: Manifest | null;
-  onInputEdit?: (next: Relation) => void;
-  /** #343: a field-anchored param edits its component's engine parameter. */
-  onThingEdit?: (next: Thing) => void;
-  /** The kernel palette's label for each primitive's own knob. */
-  engineLabels?: Record<string, string>;
-  onResetInputs?: () => void;
-  time?: { dt: number; t: number; klir: boolean; onCommit: (dt: number, t: number) => void };
+  /** Kernel `source_thing_ids`, so the story names a drawn sink. */
+  sourceIds?: number[];
   /** #282: the lens's declared run semantics — this view renders from it. */
   runKind: RunKind;
-  /** The one Transport spine, mounted whole (same instance grammar as the
-   *  bench strip — one place starts a run, one place plays it). */
-  transport?: React.ReactNode;
   /** Return to the Model surface (⤡ / Esc — App owns the binding). */
   onClose: () => void;
 }) {
@@ -100,30 +85,10 @@ export function Readouts({
   const hasFit = !!result && result.comparisons.length > 0;
   const tab: ReadoutTab = tabChoice === "fit" && !hasFit ? "story" : tabChoice;
 
-  // The rail: the run's full input surface — time and every declared
-  // magnitude, with the height the dock never had. Under Klir there are no
-  // forced inputs to edit; the rail carries time alone.
-  const inputs =
-    // #463 move 1 left this gate behind: the rail needed a demo manifest, so
-    // a model opened from the library or the SL pane ran but showed no
-    // knobs (feel-test 2026-10-09). The rail reads the manifest only to
-    // mark column-forced flows; null means none are forced.
-    runKind !== "dtmc" && model && onInputEdit ? (
-      <RunInputs
-        model={model}
-        manifest={manifest ?? null}
-        onEdit={onInputEdit}
-        onEditThing={onThingEdit}
-        engineLabels={engineLabels}
-        onReset={onResetInputs}
-      />
-    ) : null;
-  const timeRow = time ? <TimeRow time={time} /> : null;
-
   const readout = runError ? (
     <div className="p-4">
       <Card title="Result" source="facets-compose · wasm">
-        <p className="text-sm" style={{ color: "var(--verdict-error)" }}>
+        <p className="whitespace-pre-line text-sm" style={{ color: "var(--verdict-error)" }}>
           {runError}
         </p>
       </Card>
@@ -139,8 +104,8 @@ export function Readouts({
       ) : (
         <Placeholder>
           Run evolves this state machine as a Markov chain: steps and state
-          occupancy, not Δt. Set the steps in the rail and press Run, or Step
-          one tick at a time.
+          occupancy, not Δt. Set the steps in the strip below and press Run, or
+          Step one tick at a time.
         </Placeholder>
       )}
     </div>
@@ -162,7 +127,7 @@ export function Readouts({
       </div>
       <div className="min-h-0 flex-1 overflow-y-auto p-4">
         {tab === "story" && (
-          <RunStory result={result} lens={lens} tick={tick} model={model} baseline={baseline} />
+          <RunStory result={result} lens={lens} tick={tick} model={model} baseline={baseline} sourceIds={sourceIds} />
         )}
         {tab === "fit" && hasFit && (
           <RunFit result={result} tick={tick} timeUnit={model?.time_unit} model={model} />
@@ -192,7 +157,7 @@ export function Readouts({
     </>
   ) : (
     <Placeholder>
-      {"Nothing has run yet. Press Run in the header, or set the run length in the rail first. No data is needed: the declared amounts govern until a column is bound."}
+      {"Nothing has run yet. Press Run in the strip below. No data is needed: the declared amounts govern until a column is bound. To change an amount, go back to the model and click the thing it belongs to."}
     </Placeholder>
   );
 
@@ -218,7 +183,10 @@ export function Readouts({
             {model.name.trim()}
           </span>
         )}
-        <div className="order-last min-w-0 basis-full xl:order-none xl:basis-auto xl:flex-1">{transport}</div>
+        {/* The run's controls stay in the one strip under the stage
+            (decision 1, 2026-11-02); this header holds only what belongs to
+            the readouts. */}
+        <span className="flex-1" />
         {/* #463 move 4: keep this run as the baseline; every later knob
             then reads against it. One button, two states; dropping it is
             the same button. */}
@@ -235,27 +203,10 @@ export function Readouts({
             {baseline ? "baseline kept · drop" : "keep baseline"}
           </Button>
         )}
-        <Button size={28} variant="quiet" icon="collapse" onClick={onClose} title="Back to the model (Esc)">
-          model
-        </Button>
       </div>
-      {/* The rail: 18rem beside the readout from 1024 up; below that it stacks
-          on top, capped to 40% of the height, so the readout never leaves the
-          screen (rule 16; audit #5: a fixed 24rem rail was the whole viewport
-          at 390). */}
-      <div className="flex min-h-0 flex-1 flex-col lg:flex-row">
-        <aside
-          className="max-h-[40%] shrink-0 overflow-y-auto border-b p-3 lg:max-h-none lg:w-80 lg:border-b-0 lg:border-r"
-          style={{ borderColor: "var(--hairline)" }}
-          aria-label="Run inputs"
-        >
-          {/* min-w-0 on each card: a grid child's min-width is auto, so a card
-              with a wide row would push past the rail instead of truncating. */}
-          <div className="grid gap-3 [&>*]:min-w-0">
-            {timeRow}
-            {inputs}
-          </div>
-        </aside>
+      {/* Results only (2026-11-02 walk, row 26): the inputs moved onto the
+          things they belong to, and the run's time into the strip. */}
+      <div className="flex min-h-0 flex-1 flex-col">
         <section className="flex min-h-0 min-w-0 flex-1 flex-col">{readout}</section>
       </div>
     </div>
@@ -273,14 +224,14 @@ function Placeholder({ children }: { children: React.ReactNode }) {
 /** The run's time slice (Δt/T): step size and horizon, docked with the run
  *  they govern. Commit (Enter/blur) re-runs over the new slice — the
  *  inputs-card grammar. Under Klir only the horizon renders (a DTMC advances
- *  in steps; Δt is not a Klir word). Exported for the bench's RunCard. */
+ *  in steps; Δt is not a Klir word). */
 export function TimeRow({
   time,
   frame = true,
 }: {
   time: { dt: number; t: number; klir: boolean; onCommit: (dt: number, t: number) => void };
-  /** false = bare fields for a host that already carries card chrome (the
-   *  bench's RunCard) — no Card-in-card nesting. */
+  /** false = bare fields for a host that already carries card chrome — no
+   *  Card-in-card nesting. */
   frame?: boolean;
 }) {
   // Plain words lead, the formal symbol rides muted beside them (#297 review:

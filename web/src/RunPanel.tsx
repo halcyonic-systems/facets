@@ -30,6 +30,7 @@ function Figure({ label, value, color }: { label: string; value: string; color?:
 }
 import { horizonOf, unitLabel } from "./runViz";
 import { BungeStateSpace } from "./canvas/BungeStateSpace";
+import { atFrame, exactAtFrame, frameCount, frameOf } from "./canvas/types";
 import { evaluateMetrics, type MetricReading } from "./metrics";
 import {
   CHART_SERIES,
@@ -85,8 +86,7 @@ export function residualText(residual: number): string {
   return residual === 0 ? "0 (exact)" : residual.toExponential(1);
 }
 
-/** The glance facts (shared by the dock/Readouts glance row and the bench's
- *  RunCard): the headline metric at the cursor, the key responding stock, and
+/** The glance facts (the Readouts glance row): the headline metric at the cursor, the key responding stock, and
  *  the residual. Reads the same kernel outputs as the tabs; computes nothing
  *  the kernel didn't. */
 /** #463 move 4: the kept baseline rides every chart as a dashed twin of each
@@ -95,12 +95,12 @@ export function residualText(residual: number): string {
 export const BASE = (name: string) => `b_${name}`;
 export function withBaselineRows(
   data: Record<string, number | null>[],
-  baseline: { name: string; series: number[] }[] | null | undefined,
+  baseline: { name: string; series: number[]; perStep?: boolean }[] | null | undefined,
 ): Record<string, number | null>[] {
   if (!baseline || baseline.length === 0) return data;
   return data.map((row, t) => {
     const merged = { ...row };
-    for (const b of baseline) merged[BASE(b.name)] = b.series[t] ?? null;
+    for (const b of baseline) merged[BASE(b.name)] = exactAtFrame(b.series, t, b.perStep ?? false);
     return merged;
   });
 }
@@ -115,12 +115,15 @@ export function glanceFacts(
 ) {
   const metrics = model ? evaluateMetrics(model, result) : null;
   const head = metrics?.readings[0] ?? null;
-  const n = head?.series.length ?? result.ticks;
+  // Frames are instants 0..N (canvas/types `atFrame`): a metric is per step,
+  // a stock a level.
+  const n = frameCount(result.ticks);
   const at = tick !== undefined ? Math.max(0, Math.min(n - 1, tick)) : n - 1;
+  const headAt = head ? (atFrame(head.series, at, true) ?? head.endpoint) : null;
   const headValue = head
     ? head.kind === "share"
-      ? `${(((head.series[at] ?? head.endpoint) as number) * 100).toFixed(1)}%`
-      : `${humanize(head.series[at] ?? head.endpoint)}${head.unit ? ` ${head.unit}` : ""}`
+      ? `${((headAt as number) * 100).toFixed(1)}%`
+      : `${humanize(headAt as number)}${head.unit ? ` ${head.unit}` : ""}`
     : null;
   // The key responding stock: the first internal level with a trajectory.
   const internal = result.levels.find((l) => l.category === "internal") ?? null;
@@ -128,7 +131,7 @@ export function glanceFacts(
     ? result.trajectories.find((t) => t.name === internal.name)
     : undefined;
   const stockValue = stockTraj
-    ? (stockTraj.series[Math.min(at, stockTraj.series.length - 1)] ?? internal!.value)
+    ? (atFrame(stockTraj.series, at, !stockTraj.holds) ?? internal!.value)
     : (internal?.value ?? null);
   return { head, headValue, internal, stockValue };
 }
@@ -202,6 +205,7 @@ export function RunStory({
   tick,
   model,
   baseline = null,
+  sourceIds,
 }: {
   result: RunResultRich;
   lens: CanvasModel["lens"];
@@ -209,6 +213,8 @@ export function RunStory({
   model?: CanvasModel | null;
   /** #463 move 4: the kept baseline, drawn dashed beside every series. */
   baseline?: RunResultRich | null;
+  /** Kernel `source_thing_ids`: lets the no-metrics hint name a drawn sink. */
+  sourceIds?: number[];
 }) {
   const metrics = model ? evaluateMetrics(model, result) : null;
   const baseMetrics = model && baseline ? evaluateMetrics(model, baseline) : null;
@@ -246,14 +252,27 @@ export function RunStory({
       {metrics && metrics.readings.length === 0 && metrics.failures.length === 0 && (
         // The capacity, surfaced (#203): a model with no declared metrics is
         // told — quietly — that it can ask its own questions of a run.
-        <p className="text-[11px]" style={{ color: "var(--text-muted)" }}>
-          No declared metrics — name the readouts you want to watch, in the
-          model&rsquo;s own words:{" "}
-          <code className="font-mono">
-            metric &quot;delivered&quot; : sum into{" "}
-            {model?.things.find((t) => t.role === "Environment" && t.env_kind === "Sink")?.name ??
-              "<a sink>"}
-          </code>
+        // Said in plain words for someone who built by drawing (2026-11-02
+        // walk): what a metric is for, and where to write one. The canvas has
+        // no metric tool yet, so the SL pane is the honest place to point.
+        <p className="text-[11px] leading-snug" style={{ color: "var(--text-muted)" }}>
+          {(() => {
+            const sink =
+              model?.things.find((t) => t.role === "Environment" && t.env_kind === "Sink") ??
+              (sourceIds
+                ? model?.things.find((t) => t.role === "Environment" && !sourceIds.includes(t.id))
+                : undefined);
+            return (
+              <>
+                No headline numbers yet. To track one, such as the total that
+                reached {sink?.name ?? "a sink"}, add a line in the SL pane (the{" "}
+                <code className="font-mono">{"{}"}</code> button on the left):{" "}
+                <code className="font-mono">
+                  metric &quot;delivered&quot; : sum into {sink?.name ?? "<a sink>"}
+                </code>
+              </>
+            );
+          })()}
         </p>
       )}
       {result.trajectories.length > 0 &&
@@ -430,7 +449,9 @@ function MetricFamilyChart({ readings, tick, height = 150, timeUnit, baseline = 
   const first = readings[0];
   const byEntity = [...readings].sort((a, b) => a.entity.localeCompare(b.entity));
   const slotOf = (entity: string) => slots.get(entity) ?? FALLBACK_SLOT;
-  const n = Math.max(...readings.map((r) => r.series.length), ...baseline.map((r) => r.series.length));
+  // A metric is per step: its i-th value belongs to frame i + 1, and frame 0
+  // (the start) has none.
+  const n = 1 + Math.max(...readings.map((r) => r.series.length), ...baseline.map((r) => r.series.length));
   const mid = midRun(tick, n);
   // The value at the cursor while scrubbing, the endpoint at rest: the legend
   // line is the chart's readout (dataviz hover layer; the cursor is the hover).
@@ -441,14 +462,14 @@ function MetricFamilyChart({ readings, tick, height = 150, timeUnit, baseline = 
     Array.from({ length: n }, (_, t) => {
       const row: Record<string, number | null> = { t };
       for (const r of readings) {
-        row[r.entity] = r.series[t] ?? null;
-        if (mid) row[PAST(r.entity)] = t <= tick! ? (r.series[t] ?? null) : null;
+        row[r.entity] = exactAtFrame(r.series, t, true);
+        if (mid) row[PAST(r.entity)] = t <= tick! ? exactAtFrame(r.series, t, true) : null;
       }
       return row;
     }),
-    baseline.map((b) => ({ name: b.entity, series: b.series })),
+    baseline.map((b) => ({ name: b.entity, series: b.series, perStep: true })),
   );
-  const readoutOf = (r: MetricReading) => fmt(r, at !== null ? (r.series[Math.min(at, r.series.length - 1)] ?? r.endpoint) : r.endpoint);
+  const readoutOf = (r: MetricReading) => fmt(r, at !== null ? (atFrame(r.series, at, true) ?? r.endpoint) : r.endpoint);
   return (
     <div>
       <div className="mb-1 flex flex-wrap items-baseline justify-between gap-x-3 gap-y-0.5">
@@ -539,15 +560,19 @@ function ComparisonFamilyChart({ comparisons, tick, height = 150, timeUnit, slot
   // The x domain is the observations' (dataviz, readouts audit charts item 7):
   // past the data the run is a forecast with nothing to check against, and
   // the Fit header already says how many ticks run on past it.
-  const n = Math.max(...comparisons.map((c) => c.actual.length));
+  // Each value sits at its frame: a stock's at its instant, a flow's at the
+  // instant its step ended (canvas/types `frameOf`).
+  const n = Math.max(...comparisons.map((c) => frameOf(c.actual.length - 1, c.kind === "flow") + 1));
   const mid = midRun(tick, n);
   const data = Array.from({ length: n }, (_, t) => {
     const row: Record<string, number | null> = { t };
     for (const c of comparisons) {
-      row[`${c.element} · executed`] = c.simulated[t] ?? null;
-      row[`${c.element} · actual`] = c.actual[t] ?? null;
+      const step = c.kind === "flow";
+      const inData = exactAtFrame(c.actual, t, step) !== null;
+      row[`${c.element} · executed`] = inData ? exactAtFrame(c.simulated, t, step) : null;
+      row[`${c.element} · actual`] = exactAtFrame(c.actual, t, step);
       if (mid)
-        row[PAST(`${c.element} · executed`)] = t <= tick! ? (c.simulated[t] ?? null) : null;
+        row[PAST(`${c.element} · executed`)] = inData && t <= tick! ? exactAtFrame(c.simulated, t, step) : null;
     }
     return row;
   });
@@ -628,18 +653,19 @@ function ComparisonFamilyChart({ comparisons, tick, height = 150, timeUnit, slot
  *  number lead; the executed series rides below as a small chart. Same-verb
  *  families arrive pre-sorted by endpoint — the leaderboard reading. */
 export function MetricRow({ r, tick, height = 90, timeUnit, baseline = null, slot = FALLBACK_SLOT }: { r: MetricReading; tick?: number; height?: number; timeUnit?: string | null; baseline?: MetricReading | null; slot?: SeriesSlot }) {
-  const n = Math.max(r.series.length, baseline?.series.length ?? 0);
+  // Per step: frame 0 (the start) has no value, the i-th step sits at i + 1.
+  const n = 1 + Math.max(r.series.length, baseline?.series.length ?? 0);
   const mid = midRun(tick, n);
   const fmt = (v: number) => (r.kind === "share" ? `${(v * 100).toFixed(1)}%` : `${humanize(v)}${r.unit ? ` ${r.unit}` : ""}`);
   // The header value reads at the cursor while scrubbing (the readout the
   // dataviz hover layer asks for; the cursor is the hover here).
-  const at = mid ? Math.min(tick!, r.series.length - 1) : null;
-  const shown = at !== null ? fmt(r.series[at] ?? r.endpoint) : fmt(r.endpoint);
+  const at = mid ? tick! : null;
+  const shown = at !== null ? fmt(atFrame(r.series, at, true) ?? r.endpoint) : fmt(r.endpoint);
   const data = Array.from({ length: n }, (_, t) => ({
     t,
-    v: r.series[t] ?? null,
-    past: mid && t <= tick! ? (r.series[t] ?? null) : null,
-    b: baseline ? (baseline.series[t] ?? null) : null,
+    v: exactAtFrame(r.series, t, true),
+    past: mid && t <= tick! ? exactAtFrame(r.series, t, true) : null,
+    b: baseline ? exactAtFrame(baseline.series, t, true) : null,
   }));
   const baseEndpoint =
     baseline && baseline.endpoint !== r.endpoint
@@ -729,15 +755,17 @@ function ComparisonChart({ c, tick, height = 150, timeUnit, slot }: { c: Compari
   // The x domain is the observations' (dataviz; readouts audit charts item 7):
   // the executed and declared series are clipped to the window the data
   // covers, and the forecast past it is stated in words under the chart.
-  const n = c.actual.length;
+  // A stock's i-th value is instant i; a flow's is the step ending at i + 1.
+  const step = c.kind === "flow";
+  const n = frameOf(c.actual.length - 1, step) + 1;
   const mid = midRun(tick, n);
-  const data = Array.from({ length: n }, (_, i) => ({
-    t: i,
+  const data = Array.from({ length: c.actual.length }, (_, i) => ({
+    t: frameOf(i, step),
     executed: c.simulated[i] ?? null,
     actual: c.actual[i] ?? null,
     declared: c.declared ? (c.declared[i] ?? null) : null,
     // The declared mean stays whole — it is a reference, not a trajectory.
-    pastExecuted: mid && i <= tick! ? (c.simulated[i] ?? null) : null,
+    pastExecuted: mid && frameOf(i, step) <= tick! ? (c.simulated[i] ?? null) : null,
   }));
   // The horizon is where the data ends; past it the executed line is a forecast
   // with nothing to check against. Fit is scored in-sample only.
@@ -1030,7 +1058,10 @@ function LevelsChart({
   // flat — the rates-as-levels confusion all over again (#344 item 2). The
   // curves that carry the run's story are the levels that RESPOND.
   const internal = new Set(levels.filter((l) => l.category === "internal").map((l) => l.name));
-  const shown = trajectories.filter((t) => internal.has(t.name));
+  // And levels only (walk, 2026-11-03): a process's throughput is internal
+  // too, but it is what passes per step, not what is held, and charted here
+  // it read as a stock.
+  const shown = trajectories.filter((t) => internal.has(t.name) && t.holds);
   const groups = new Map<string, typeof trajectories>();
   for (const t of shown) {
     const k = t.unit || "level";
@@ -1042,26 +1073,28 @@ function LevelsChart({
       {[...groups.entries()].map(([unit, fam]) => {
         const byName = [...fam].sort((a, b) => a.name.localeCompare(b.name));
         const famBase = (baseline ?? []).filter((b) => fam.some((t) => t.name === b.name));
-        const n = Math.max(...fam.map((t) => t.series.length), ...famBase.map((b) => b.series.length));
+        // Frames 0..N: a level reads its instant, a process's throughput the
+        // step that ended there (canvas/types `atFrame`).
+        const n = Math.max(...fam.map((t) => frameOf(t.series.length - 1, !t.holds) + 1), ...famBase.map((b) => frameOf(b.series.length - 1, !b.holds) + 1));
         const mid = midRun(tick, n);
         // The legend reads the value at the cursor while scrubbing, the final
         // level at rest. A single stock needs no legend: its name is the title.
         const at = mid ? tick! : null;
         const valueOf = (t: (typeof fam)[number]) => {
-          const i = at !== null ? Math.min(at, t.series.length - 1) : t.series.length - 1;
-          return compactTick(t.series[i] ?? 0);
+          const v = at !== null ? atFrame(t.series, at, !t.holds) : t.series[t.series.length - 1];
+          return compactTick(v ?? 0);
         };
         const single = byName.length === 1;
         const data = withBaselineRows(
           Array.from({ length: n }, (_, i) => {
             const row: Record<string, number | null> = { t: i };
             for (const tr of fam) {
-              row[tr.name] = tr.series[i] ?? null;
-              if (mid) row[PAST(tr.name)] = i <= tick! ? (tr.series[i] ?? null) : null;
+              row[tr.name] = exactAtFrame(tr.series, i, !tr.holds);
+              if (mid) row[PAST(tr.name)] = i <= tick! ? exactAtFrame(tr.series, i, !tr.holds) : null;
             }
             return row;
           }),
-          famBase,
+          famBase.map((b) => ({ name: b.name, series: b.series, perStep: !b.holds })),
         );
         return (
           <div key={unit}>
@@ -1163,11 +1196,12 @@ function Levels({
   // Mid-scrub, each row also shows its value AT the scrubbed tick (walkthrough
   // #10) — the final stays primary, the at-tick value rides along, so the
   // panel moves with playback instead of sitting frozen on run-end numbers.
-  const scrubbed = tick !== undefined && tick > 0 && tick < ticks - 1;
+  // `ticks` steps make frames 0..ticks; frame 0 is the start, the last the end.
+  const scrubbed = tick !== undefined && tick < ticks;
   const atTick = (name: string): number | null => {
     if (!scrubbed || !trajectories) return null;
     const t = trajectories.find((tr) => tr.name === name);
-    return t ? (t.series[Math.min(tick, t.series.length - 1)] ?? null) : null;
+    return t ? atFrame(t.series, tick, !t.holds) : null;
   };
   return (
     <div className="grid gap-4">

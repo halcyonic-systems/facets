@@ -355,6 +355,7 @@ pub fn validate_mode(model: &WorldModel, target: Mode) -> ValidationResult {
             check_declared_direction(model, issues);
             check_self_loops(model, issues);
             check_flows_are_consumed(model, issues);
+            check_gates_have_control(model, issues);
             check_dead_ends(model, issues);
             check_reachability(model, issues);
             check_reachability_requirements(model, issues);
@@ -367,6 +368,7 @@ pub fn validate_mode(model: &WorldModel, target: Mode) -> ValidationResult {
             check_declared_direction(model, issues);
             check_self_loops(model, issues);
             check_flows_are_consumed(model, issues);
+            check_gates_have_control(model, issues);
             check_dead_ends(model, issues);
             check_reachability(model, issues);
             check_reachability_requirements(model, issues);
@@ -534,6 +536,39 @@ pub fn primitive_consumes(p: ProcessPrimitive, s: SubstanceType) -> bool {
     }
 }
 
+/// **Severity: Warning (Operational/Full).** A Modulating gate meters what
+/// passes by a control signal (Mobus Fig 3.18); with no informational inflow
+/// the engine reads it held fully open, so it passes everything and gates
+/// nothing (toy-model walk, 2026-11-03: the default was silent). A warning,
+/// not a refusal: a gate drawn before its control is wired is mid-authoring.
+fn check_gates_have_control(model: &WorldModel, issues: &mut Vec<ValidationIssue>) {
+    for (i, sys) in model.systems.iter().enumerate() {
+        if sys.agent.as_ref().and_then(|a| a.primitive) != Some(ProcessPrimitive::Modulating) {
+            continue;
+        }
+        let controlled = model
+            .interactions
+            .iter()
+            .any(|ia| ia.sink == sys.info.id && ia.substance.ty == SubstanceType::Message);
+        if controlled {
+            continue;
+        }
+        issues.push(ValidationIssue::warning(
+            "gate_without_control",
+            format!("systems[{i}]"),
+            format!(
+                "the gate '{}' has no control signal coming in, so it is held fully open: \
+                 it passes everything it takes in and gates nothing",
+                sys.info.name
+            ),
+            Some(
+                "Wire an informational flow into it (from a sensor, a comparator or an \
+                 agent), or, if nothing should meter it, give it a different process",
+            ),
+        ));
+    }
+}
+
 /// **Severity: Warning (Operational/Full).** A flow must land where its
 /// substance is READ: delivered to a primitive that cannot consume it, the
 /// flow arrives every step and is ignored — Asserted-but-unhonored (#261,
@@ -550,14 +585,53 @@ fn check_flows_are_consumed(model: &WorldModel, issues: &mut Vec<ValidationIssue
         let Some(p) = receiver.agent.as_ref().and_then(|a| a.primitive) else {
             continue; // no declared primitive = nothing to contradict
         };
+        let from_stock = model
+            .systems
+            .iter()
+            .find(|s| s.info.id == ia.source)
+            .and_then(|s| s.agent.as_ref())
+            .and_then(|a| a.primitive)
+            == Some(ProcessPrimitive::Buffering);
+        // A level read (toy-model walk, 2026-11-03): an informational flow
+        // from a stock into a sensor is the engine's observation tap
+        // (`Circuit::is_observation`). It reads the level and takes nothing,
+        // so the sensor does consume it. Every shipped sensor model is wired
+        // this way; the old hint said `: matter`, and a matter flow from a
+        // stock is a real outflow that the sensor dissipates.
+        if p == ProcessPrimitive::Sensing && ia.substance.ty == SubstanceType::Message && from_stock {
+            continue;
+        }
+        if p == ProcessPrimitive::Sensing && ia.substance.ty != SubstanceType::Message && from_stock {
+            let stock = model
+                .systems
+                .iter()
+                .find(|s| s.info.id == ia.source)
+                .map(|s| s.info.name.as_str())
+                .unwrap_or("the stock");
+            issues.push(ValidationIssue::warning(
+                "sensor_drains_stock",
+                format!("interactions[{idx}]"),
+                format!(
+                    "'{}' carries {:?} out of the stock '{stock}' into the sensor '{}': the stock \
+                     releases into it and the sensor dissipates what it takes, so reading the \
+                     level drains it",
+                    ia.info.name, ia.substance.ty, receiver.info.name
+                ),
+                Some(
+                    "A level read is informational: declare this flow `: informational`. It then \
+                     reads the stock's level each step and takes nothing from it",
+                ),
+            ));
+            continue;
+        }
         if primitive_consumes(p, ia.substance.ty) {
             continue;
         }
         let suggestion = match (p, ia.substance.ty) {
             (ProcessPrimitive::Sensing, SubstanceType::Message) => {
-                "A sensor's coupling to a stock is matter — Sensing is the crossing \
-                 from physical to signal, and the signal is its OUTPUT. Declare the \
-                 level-read flow `: matter`"
+                "A sensor reads a stock's level over an informational flow from that stock, \
+                 or a physical flow it takes in. A signal from anything else is not read: \
+                 wire the sensor to the stock it measures"
             }
             (_, SubstanceType::Message) => {
                 "Route the signal to something that reads it — a Modulating valve's \
@@ -825,6 +899,20 @@ fn path_exists(
         }
     }
     false
+}
+
+/// A flow as a message names it: its label in quotes, or, unlabeled, its
+/// two ends (toy-model walk, 2026-11-03: refusals read "flow ''").
+fn flow_title(model: &WorldModel, ix: &Interaction) -> String {
+    if ix.info.name.is_empty() {
+        format!(
+            "from {} to {}",
+            relatum_name(model, &serialize_id(&ix.source)),
+            relatum_name(model, &serialize_id(&ix.sink))
+        )
+    } else {
+        format!("'{}'", ix.info.name)
+    }
 }
 
 /// Name any relatum — system, external source, or sink — for a message, falling
@@ -1207,13 +1295,13 @@ fn check_crossing_flows_route_through_interface(
                 "crossing_flow_without_interface",
                 format!("interactions[{k}].{side}_interface"),
                 format!(
-                    "flow '{}' {} the system but crosses the boundary without an \
+                    "flow {} {} the system but crosses the boundary without an \
                      interface — in Mobus's tuple every external flow passes through \
                      a member of I (SSF `bipartite_implies_boundary_complete`: G is \
                      bipartite between environment objects and interfaces), so a \
                      crossing flow with no interface is a hole in the membrane the \
                      author never declared",
-                    ix.info.name, verb
+                    flow_title(model, ix), verb
                 ),
                 Some(
                     "Declare the pass-way and route the flow through it — the \
@@ -2777,6 +2865,30 @@ mod tests {
         );
     }
 
+    /// Law (toy-model walk, 2026-11-03): a gate with no control signal is
+    /// held fully open, and says so; given one, it does not warn.
+    #[test]
+    fn gate_without_control_warns() {
+        let mut m = two_component_model();
+        m.systems[1].agent = Some(AgentModel {
+            primitive: Some(ProcessPrimitive::Buffering),
+            ..AgentModel::default()
+        });
+        m.systems[2].agent = Some(AgentModel {
+            primitive: Some(ProcessPrimitive::Modulating),
+            ..AgentModel::default()
+        });
+        m.interactions.push(flow(0, "water", sys_id(vec![0, 0]), sys_id(vec![0, 1])));
+        let open = |m: &WorldModel| {
+            validate_mode(m, Mode::Operational).issues.iter().any(|i| i.code == "gate_without_control")
+        };
+        assert!(open(&m), "an uncontrolled gate warns");
+        let mut c = flow(1, "setting", sys_id(vec![0, 0]), sys_id(vec![0, 1]));
+        c.substance.ty = SubstanceType::Message;
+        m.interactions.push(c);
+        assert!(!open(&m), "a controlled gate does not");
+    }
+
     /// Law: Bunge Def 1.1 — an unbonded collection of components is a valid Core model but not a Structural system; entering Structural requires at least one bond.
     #[test]
     fn aggregate_enters_core_but_not_structural() {
@@ -4157,6 +4269,13 @@ mod tests {
                    this (informational order into a Combining factory) and ran \
                    green while regulating nothing — #261; full matrix + hints \
                    in tests/flows_consumed.rs",
+        },
+        CheckAudit {
+            check: "check_gates_have_control",
+            witness: Some("gate_without_control_warns"),
+            canvas: true,
+            note: "toy-model walk 2026-11-03: a Modulating gate with no \
+                   informational inflow ran held open with nothing said",
         },
         CheckAudit {
             check: "check_s0_interface_processors",

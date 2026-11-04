@@ -108,6 +108,12 @@ pub struct LensFacts {
     /// that act on / are acted on by a component, and mere relations don't act.
     /// The face renders these as pending; it never re-derives the set.
     pub orphan_env_thing_ids: Vec<u64>,
+    /// The environment things the projection files as sources: an authored
+    /// `source`, or a neutral `environment` thing a flow originates from (the
+    /// same `is_source` rule `project()` uses, read off its output, so the
+    /// face never re-derives it). A source emits and holds nothing; the run
+    /// surfaces draw and list it by this set, not by the author's word alone.
+    pub source_thing_ids: Vec<u64>,
     /// Authored members of I (interface-designated components). Effective I =
     /// boundary_thing_ids ∪ this set: the flow-crossing set stays kernel-derived;
     /// authored-flowless members are Mobus-visible and Bunge-blind (no exo
@@ -182,6 +188,14 @@ pub fn lens_facts(model: &CanvasModel) -> LensFacts {
         .iter()
         .copied()
         .filter(|id| !bond_touched.contains(id))
+        .collect();
+
+    let source_thing_ids: Vec<u64> = p
+        .world
+        .environment
+        .sources
+        .iter()
+        .filter_map(|e| canvas_of.get(&e.info.id).copied())
         .collect();
 
     let authored_interface_thing_ids: Vec<u64> = model
@@ -323,6 +337,7 @@ pub fn lens_facts(model: &CanvasModel) -> LensFacts {
         boundary_thing_ids,
         environment_thing_ids,
         orphan_env_thing_ids,
+        source_thing_ids,
         authored_interface_thing_ids,
         boundary_props,
         aggregate,
@@ -368,6 +383,11 @@ pub struct ResidueEntry {
 pub struct LensResidue {
     pub hidden: Vec<ResidueEntry>,
     pub unspecified: Vec<ResidueEntry>,
+    /// Answered by the model and not by the text (walk row 35): a flow with
+    /// no written kind that carries on the one kind coming into its source.
+    /// It runs, so it is not unanswered, but the SL does not say it.
+    #[serde(skip_serializing_if = "Vec::is_empty", default)]
+    pub carried: Vec<ResidueEntry>,
 }
 
 /// An uncountable residue line — the question is asked once and unanswered, so
@@ -397,6 +417,13 @@ fn lens_residue(model: &CanvasModel, lens: Lens, facts: &LensFacts) -> LensResid
         .filter(|r| r.kind != Kind::Unspecified)
         .count();
     let untyped = model.relations.len() - typed;
+    // Of those, the flows the run settles by carrying on what comes in
+    // (`flow_kinds`). Mobus asks every flow's substance, and the model has
+    // answered these, so they are not his unanswered question (row 35).
+    let carried_on = crate::canvas::flow_kinds(model)
+        .iter()
+        .filter(|f| !f.said && f.kind.is_some())
+        .count();
     let primitives = model.things.iter().filter(|t| t.primitive.is_some()).count();
     let components = model
         .things
@@ -498,14 +525,19 @@ fn lens_residue(model: &CanvasModel, lens: Lens, facts: &LensFacts) -> LensResid
                 residue_entry(directed, "directed annotation", "directed annotations"),
             ],
             vec![
-                residue_entry(untyped, "substance", "substances"),
+                residue_entry(untyped - carried_on, "substance", "substances"),
                 residue_entry(bare_components, "process primitive", "process primitives"),
             ],
         ),
     };
+    let carried = match lens {
+        Lens::Mobus => residue_entry(carried_on, "substance", "substances").into_iter().collect(),
+        _ => vec![],
+    };
     LensResidue {
         hidden: hidden.into_iter().flatten().collect(),
         unspecified: unspecified.into_iter().flatten().collect(),
+        carried,
     }
 }
 
@@ -1876,6 +1908,27 @@ mod tests {
         assert_eq!(f.environment_thing_ids, vec![3]);
     }
 
+    /// Law: a neutral environment thing a flow leaves is reported as a source
+    /// (the projection's own filing), and the one a flow enters is not. A
+    /// canvas-drawn environment object carries no authored word, so the face
+    /// must learn which side it sits on from this set (2026-11-02 walk: a
+    /// drawn source was rendered as a half-full tank).
+    #[test]
+    fn neutral_environment_things_are_filed_by_flow_direction() {
+        // 3(Env) → 1(Comp) → 4(Env), both env things neutral (thing() default).
+        let m = model(
+            vec![
+                thing(1, "P", Role::Component),
+                thing(3, "In", Role::Environment),
+                thing(4, "Out", Role::Environment),
+            ],
+            vec![relation(11, 3, 1, true), relation(12, 1, 4, true)],
+        );
+        assert!(m.things.iter().all(|t| t.env_kind == crate::canvas::EnvKind::Neutral));
+        let f = lens_facts(&m);
+        assert_eq!(f.source_thing_ids, vec![3], "In emits; Out receives");
+    }
+
     /// Law: the edge ladder reports every canvas relation — bonds AND mere
     /// relations alike — each classified endo/exo by the same C/E role split.
     #[test]
@@ -2174,6 +2227,23 @@ mod tests {
             Some(2),
             "the answers Mobus renders are exactly what Bunge cannot see"
         );
+    }
+
+    /// Walk row 35: matter said once at the source carries on through the
+    /// rest of the walk's model. Those flows are answered by the model, so
+    /// Mobus does not count them unanswered; they are reported as carried on,
+    /// since the text does not say them.
+    #[test]
+    fn carried_on_substances_are_not_unanswered() {
+        let m = crate::sl::parse_sl("component T1 primitive Buffering interface\nenvironment E5\nenvironment E6\nflow E5 -> T1 : matter\nflow T1 -> E6\n").unwrap();
+        let r = analyze(&m, Lens::Mobus).residue;
+        assert!(r.unspecified.iter().all(|e| e.label != "substance" && e.label != "substances"), "{r:?}");
+        assert_eq!(r.carried.iter().map(|e| (e.count, e.label.as_str())).collect::<Vec<_>>(), vec![(1, "substance")]);
+        // With nothing said at the source, nothing carries on: one unanswered.
+        let bare = crate::sl::parse_sl("component T1 primitive Buffering interface\nenvironment E5\nenvironment E6\nflow E5 -> T1\nflow T1 -> E6\n").unwrap();
+        let r = analyze(&bare, Lens::Mobus).residue;
+        assert_eq!(r.unspecified.iter().find(|e| e.label == "substances").map(|e| e.count), Some(2));
+        assert!(r.carried.is_empty());
     }
 
     /// Law: the ladder position is EARNED, rung by rung — nothing distinguished

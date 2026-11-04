@@ -6,7 +6,9 @@
 // both. Makeover slice D (rules 3, 9d, 14): Run is the primary Button with
 // the play icon and its word, Step and the rewind are 32px ToolButtons with
 // drawn icons, and the verdict chip carries its mark in the Pill's icon slot.
+import { useState } from "react";
 import { SimScrubber } from "./canvas/SimScrubber";
+import { TimeRow } from "./Readouts";
 import { Button, Pill, ToolButton } from "./ui";
 
 export function Transport({
@@ -24,6 +26,12 @@ export function Transport({
   runOn,
   onRunOnChange,
   onRunOnTick,
+  readouts,
+  changedAt = [],
+  time,
+  error,
+  onError,
+  loss,
 }: {
   onRun: () => void;
   onStep: () => void;
@@ -48,7 +56,31 @@ export function Transport({
   onRunOnChange?: (on: boolean) => void;
   /** Step the engine one tick; called by the scrubber at the last frame. */
   onRunOnTick?: () => void;
+  /** The one way into the run's readouts (decision 1, 2026-11-02): the strip
+   *  opens them and closes them again. Absent = no readouts to open. */
+  readouts?: { open: boolean; onToggle: () => void };
+  /** Ticks at which a knob was changed while the run kept going. The run's
+   *  totals then mix two settings; the strip says so instead of leaving the
+   *  numbers to look wrong (walk row 11). */
+  changedAt?: number[];
+  /** The run's time slice (2026-11-02 walk, row 26): run length and step
+   *  size are settings of the run, so they live on the strip that runs it,
+   *  behind one button that names the current length. Absent = not offered. */
+  time?: { dt: number; t: number; klir: boolean; onCommit: (dt: number, t: number) => void };
+  /** Why the last Run was refused, in the kernel's words. Shown on the strip
+   *  so a refused Run never looks like nothing happened (walk row 27). */
+  error?: string | null;
+  /** Where clicking the refusal takes the author, when the refusal has one
+   *  place to answer it (walk row 29: the first flow with no kind). Absent =
+   *  the readouts, where every reason is listed. */
+  onError?: () => void;
+  /** Most of what entered the run was lost (walk row 29): the share, and the
+   *  things it was lost at, from the kernel's per-component dissipation. A
+   *  balanced ledger still says "conserved" when everything is shed, so the
+   *  strip says this beside it. Absent = under half was lost. */
+  loss?: { share: number; at: string[]; onShow?: () => void } | null;
 }) {
+  const [timeOpen, setTimeOpen] = useState(false);
   if (!runnable) {
     return (
       <span className="text-xs font-body" style={{ color: "var(--text-muted)" }} title={runTitle}>
@@ -77,11 +109,11 @@ export function Transport({
           onClick={() => onRunOnChange(!runOn)}
           title={
             runOn
-              ? "Run on: play keeps stepping the engine past the run length, and a knob turned while it plays takes effect at that tick. Click to stop at the run length."
-              : "Stops at the run length. Click to keep running past it, live."
+              ? "Keep going: play continues past the run length, and a knob you change while it plays takes effect from that tick. Click to stop at the run length."
+              : "Stops at the run length. Click to keep going past it."
           }
         >
-          run on
+          keep going
         </ToolButton>
       )}
       {steps > 0 && (
@@ -110,12 +142,95 @@ export function Transport({
       ) : (
         <div className="min-w-0 flex-1" />
       )}
+      {error && (
+        <button
+          type="button"
+          className={`min-w-0 max-w-[40%] shrink truncate text-left text-[11px] ${onError ? "cursor-pointer hover:underline" : ""}`}
+          style={{ color: "var(--verdict-error)" }}
+          title={error}
+          onClick={onError ?? (readouts && !readouts.open ? readouts.onToggle : undefined)}
+          data-testid="run-refused"
+        >
+          {`Run refused: ${error.split("\n")[1]?.replace(/^· /, "") ?? error}`}
+        </button>
+      )}
+      {/* Walk, 2026-11-03 (Shingai could not tell the red line was a button):
+          when the refusal is about a flow, say so with a button of its own. */}
+      {error && onError && (
+        <button
+          type="button"
+          onClick={onError}
+          className="shrink-0 rounded-sm border px-1.5 py-0.5 text-[11px]"
+          style={{ borderColor: "var(--verdict-error)", color: "var(--verdict-error)", background: "var(--bg-primary)" }}
+          data-testid="run-refused-open"
+        >
+          open the flow
+        </button>
+      )}
+      {changedAt.length > 0 && (
+        <span
+          className="shrink-0 text-[11px]"
+          style={{ color: "var(--verdict-warning)" }}
+          title="A knob changed partway through, so this run's totals mix the settings before and after. Run again to start clean."
+          data-testid="changed-at"
+        >
+          {changedAt.length === 1 ? `knob changed at tick ${changedAt[0]}` : `knobs changed at ticks ${changedAt.join(", ")}`}
+        </span>
+      )}
+      {time && (
+        <span className="relative shrink-0">
+          <ToolButton
+            icon="edit"
+            active={timeOpen}
+            onClick={() => setTimeOpen((o) => !o)}
+            title="Run length and step size"
+            aria-expanded={timeOpen}
+            data-testid="run-time-toggle"
+          >
+            {time.klir ? `${time.t} steps` : `length ${time.t}`}
+          </ToolButton>
+          {timeOpen && (
+            <div
+              className="absolute bottom-full right-0 z-30 mb-2 w-max whitespace-nowrap rounded-lg border p-3"
+              style={{ background: "var(--bg-secondary)", borderColor: "var(--hairline)" }}
+              data-testid="run-time"
+            >
+              <TimeRow time={time} frame={false} />
+            </div>
+          )}
+        </span>
+      )}
       {verdict && (
         <span className="shrink-0" title={`residual ${verdict.residual.toExponential(1)}`}>
           <Pill tone={verdict.conserved ? "ok" : "error"} icon={verdict.conserved ? "ok" : "warning"}>
             {verdict.conserved ? "conserved" : "leak"}
           </Pill>
         </span>
+      )}
+      {loss && (
+        <button
+          type="button"
+          className="min-w-0 shrink truncate text-left text-[11px]"
+          style={{ color: "var(--verdict-warning)" }}
+          title={`Of everything that came in over the run, ${Math.round(loss.share * 100)}% left as loss: waste heat, overflow, upkeep, or flow a process cannot use. The books still balance, which is why it says conserved. Most was lost at ${loss.at.join(" and ")}${loss.onShow ? "; click to select it" : ""}.`}
+          onClick={loss.onShow}
+          data-testid="run-loss"
+        >
+          {`lost ${Math.round(loss.share * 100)}% of what came in, at ${loss.at.join(", ")}`}
+        </button>
+      )}
+      {readouts && (
+        <Button
+          size={28}
+          variant="quiet"
+          icon={readouts.open ? "collapse" : "expand"}
+          onClick={readouts.onToggle}
+          title={readouts.open ? "Back to the model (Esc)" : "Every readout of the run: charts, table, log"}
+          aria-pressed={readouts.open}
+          data-testid="readouts-toggle"
+        >
+          {readouts.open ? "model" : "readouts"}
+        </Button>
       )}
     </div>
   );

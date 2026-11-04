@@ -1,12 +1,12 @@
 // #336: the Mobus flow popover has ONE job — name, endpoints, substance,
-// description. The subtraction is gated so it cannot silently regrow: driving
+// description (and, since the 2026-11-02 walk, the flow's own amount). The subtraction is gated so it cannot silently regrow: driving
 // a flow with data is DataMode's surface (#304 M2, fork 2), and the popover
 // says at most one plain sentence about Run state, only when it is true.
 // MobusBody is rendered directly (the popover shell portals into
 // document.body, which this DOM-free suite cannot host).
 import { describe, expect, it } from "vitest";
 import { renderToStaticMarkup } from "react-dom/server";
-import { MobusBody } from "./EdgePopover";
+import { EdgePopover, MobusBody } from "./EdgePopover";
 import type { Manifest, Relation } from "../kernel/types";
 
 const relation = (over: Partial<Relation> = {}): Relation => ({
@@ -64,10 +64,45 @@ describe("the Mobus flow popover has one job (#336)", () => {
     expect(html).toContain("adjust in Data");
   });
 
-  it("states a declared amount in one sentence, pointing at Run · Inputs", () => {
+  it("states a declared amount in one sentence where the flow has no amount to set", () => {
     const html = render(relation({ amount: "1.5", unit: "units/mo" }));
     expect(html).toContain("amount 1.5 units/mo");
-    expect(html).toContain("Run · Inputs");
+    expect(html).not.toContain("Run · Inputs");
+  });
+});
+
+/** 2026-11-02 walk: click a flow and set its amount there. */
+describe("the flow's amount is set where the flow is clicked", () => {
+  const withAmount = (r: Relation, weight: boolean, value = 1) =>
+    renderToStaticMarkup(
+      <MobusBody
+        relation={r}
+        manifest={emptyManifest}
+        fromName="Vault"
+        toName="Dealers"
+        onUpdate={() => {}}
+        onClose={() => {}}
+        amount={{ knob: { relation: r.id, value, declared: r.amount != null }, weight, onEdit: () => {} }}
+      />,
+    );
+
+  it("shows a source's undeclared rate at what it runs at", () => {
+    const html = withAmount(relation(), false);
+    expect(html).toContain("flow-amount");
+    expect(html).toContain("amount per tick");
+    expect(html).toContain('placeholder="1 default"');
+    expect(html).not.toContain("amount 1"); // no residue sentence beside the field
+  });
+
+  it("calls a process outflow's amount its weight", () => {
+    const html = withAmount(relation({ amount: "3" }), true, 3);
+    expect(html).toContain(">weight<");
+    expect(html).toContain('value="3"');
+    expect(html).toContain("divides across its ways out by weight");
+  });
+
+  it("offers no field on an ample flow", () => {
+    expect(withAmount(relation({ ample: true, kind: "Informational" }), false)).not.toContain("flow-amount");
   });
 });
 
@@ -85,5 +120,89 @@ describe("the flow's grounding is readable and writable (#411)", () => {
     expect(html).toContain("unsaid");
     const input = html.match(/<input[^>]*aria-label="grounding reference"[^>]*>/)?.[0] ?? "";
     expect(input).toContain("disabled");
+  });
+});
+
+describe("a flow with no kind says what it carries, or asks (walk row 29)", () => {
+  const unsaid = relation({ kind: "Unspecified" });
+  const show = (carried: import("../kernel/types").FlowKind) =>
+    renderToStaticMarkup(
+      <MobusBody
+        relation={unsaid}
+        manifest={emptyManifest}
+        fromName="Vault"
+        toName="Dealers"
+        onUpdate={() => {}}
+        onClose={() => {}}
+        carried={carried}
+        carriedFrom={(id) => (id === 5 ? "Mint -> Vault" : "")}
+      />,
+    );
+
+  it("shows an inherited kind as carried on, and where it comes from", () => {
+    const html = show({ relation: 7, kind: "Matter", said: false, from: [5], mixed: [], waits_on: [], gate_passes: [] });
+    expect(html).toContain("material, carried on");
+    expect(html).toContain("Not written: it carries material, as Mint -&gt; Vault does.");
+    expect(html).not.toContain("what does it carry?");
+  });
+
+  it("asks, at the top, when nothing says what the source sends", () => {
+    const html = show({ relation: 7, kind: null, said: false, from: [], mixed: [], waits_on: [], gate_passes: [] });
+    expect(html).toContain("what does it carry?");
+    expect(html).toContain("Nothing says what Vault sends");
+    expect(html.indexOf("what does it carry?")).toBeLessThan(html.indexOf("description"));
+  });
+
+  it("names the differing kinds when the inflows are mixed", () => {
+    const html = show({ relation: 7, kind: null, said: false, from: [], mixed: ["Matter", "Energy"], waits_on: [], gate_passes: [] });
+    expect(html).toContain("Vault takes in material and energy, so the run cannot tell which this flow carries.");
+  });
+
+  it("says nothing extra about a written kind", () => {
+    const html = show({ relation: 7, kind: "Matter", said: true, from: [], mixed: [], waits_on: [], gate_passes: [] });
+    expect(html).not.toContain("flow-kind-hint");
+  });
+
+  it("points a flow that only waits at the flow to answer upstream", () => {
+    const html = show({ relation: 7, kind: null, said: false, from: [], mixed: [], waits_on: [5], gate_passes: [] });
+    expect(html).toContain("It waits on what comes into Vault (Mint -&gt; Vault): say what that carries and this one follows");
+  });
+
+  it("asks when a flow out of a gate says a kind the gate is not given (row 34)", () => {
+    const html = renderToStaticMarkup(
+      <MobusBody
+        relation={relation({ kind: "Energy" })}
+        manifest={emptyManifest}
+        fromName="Vault"
+        toName="Dealers"
+        onUpdate={() => {}}
+        onClose={() => {}}
+        carried={{ relation: 7, kind: "Energy", said: true, from: [], mixed: [], waits_on: [], gate_passes: ["Matter"] }}
+      />,
+    );
+    expect(html).toContain("what does it carry?");
+    expect(html).toContain("Vault is a gate: it passes on the material it takes in unchanged, so this flow carries material.");
+  });
+});
+
+describe("the flow editor docks in the inspector (Shingai, 2026-11-02)", () => {
+  it("renders as a panel with one close and a heading naming the flow when given no anchor", () => {
+    const html = renderToStaticMarkup(
+      <EdgePopover
+        relation={relation({ kind: "Matter" })}
+        lens="Mobus"
+        sigIndex={0}
+        manifest={emptyManifest}
+        fromName="Vault"
+        toName="Dealers"
+        onUpdateRelation={() => {}}
+        onDelete={() => {}}
+        onClose={() => {}}
+      />,
+    );
+    expect(html).toContain('data-testid="docked-editor"');
+    expect(html).not.toContain('role="dialog"');
+    expect(html).toContain("flow Vault → Dealers");
+    expect(html.match(/>close</g)?.length).toBe(1);
   });
 });

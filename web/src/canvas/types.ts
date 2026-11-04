@@ -68,6 +68,49 @@ export const LENS_TO_MODE: Record<Lens, "Core" | "Structural" | "Operational"> =
 /** The per-tick readout the scrubber indexes out of the kernel's RunResultRich
  *  and hands to the canvas — pure array indexing, no dynamics computed here. */
 export interface SimFrame {
-  nodes: Record<string, { value: number; unit: string; frac: number }>;
+  /** `lost`: most of what entered the run was lost at this thing (walk row
+   *  29), so the canvas outlines it. */
+  nodes: Record<string, { value: number; unit: string; frac: number; lost?: boolean; holds?: boolean }>;
   edges: Record<string, { value: number; unit: string }>;
+}
+
+/** How full a node draws at one tick: the value's place between zero and the
+ *  run's extreme, so an empty stock draws empty and the canvas agrees with the
+ *  readouts chart, whose axis starts at zero. It was the series' own min–max,
+ *  which drew a level that never moved as exactly half full whatever it held
+ *  (2026-11-02 walk: stocks sitting at 0 looked half full and "never reset"). */
+export function levelFrac(series: number[], value: number): number {
+  const lo = Math.min(0, ...series);
+  const hi = Math.max(0, ...series);
+  return hi > lo ? (value - lo) / (hi - lo) : 0;
+}
+
+/** A run's frames and what each series shows at one (walk, 2026-11-03).
+ *
+ *  A run of N steps has N + 1 instants, 0 (before anything moves) to N. A
+ *  level (a stock, what a sink has received: the kernel's `holds`) is a state
+ *  at an instant, so its series has N + 1 values and frame k reads index k.
+ *  Anything per step (a flow, a process's throughput, a source's emission, a
+ *  metric over flows) is what moved between two instants, so its series has N
+ *  values; frame k shows the step that ended at k, index k - 1, and frame 0
+ *  shows none. One rule, read by the canvas, the charts and the readouts, so
+ *  they cannot disagree about which step a number belongs to. */
+export const frameCount = (ticks: number) => ticks + 1;
+
+export function atFrame(series: number[], frame: number, perStep: boolean): number | null {
+  if (series.length === 0) return null;
+  const i = perStep ? frame - 1 : frame;
+  if (i < 0) return null;
+  return series[Math.min(i, series.length - 1)] ?? null;
+}
+
+/** The frame a series' index i belongs to: i for a level, i + 1 for a step
+ *  (the instant it ended at). Charts place each value at its frame. */
+export const frameOf = (i: number, perStep: boolean) => (perStep ? i + 1 : i);
+
+/** `atFrame` without holding the last value past the end: a chart row for a
+ *  frame the series does not reach is empty, not a repeat. */
+export function exactAtFrame(series: number[], frame: number, perStep: boolean): number | null {
+  const i = perStep ? frame - 1 : frame;
+  return i < 0 ? null : (series[i] ?? null);
 }

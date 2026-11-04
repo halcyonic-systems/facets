@@ -22,14 +22,71 @@ const base = {
 
 describe("the transport's run on", () => {
   it("is absent where a run cannot run on (forced by data, or a Markov run)", () => {
-    expect(renderToStaticMarkup(<Transport {...base} />)).not.toContain("run on");
+    expect(renderToStaticMarkup(<Transport {...base} />)).not.toContain("keep going");
   });
 
   it("is a pressed toggle with its word when set, unpressed when not", () => {
     const on = renderToStaticMarkup(<Transport {...base} runOn onRunOnChange={noop} onRunOnTick={noop} />);
-    expect(on).toContain("run on");
-    expect(on).toMatch(/title="Run on:[^"]*"[^>]*aria-pressed="true"/);
+    expect(on).toContain("keep going");
+    expect(on).toMatch(/title="Keep going:[^"]*"[^>]*aria-pressed="true"/);
     const off = renderToStaticMarkup(<Transport {...base} runOn={false} onRunOnChange={noop} onRunOnTick={noop} />);
     expect(off).toMatch(/title="Stops at the run length[^"]*"[^>]*aria-pressed="false"/);
+  });
+});
+
+// Decision 1 (2026-11-02): one strip is the one way into the run.
+describe("the strip as the run's one entry", () => {
+  it("opens the readouts, and offers the way back once they are open", () => {
+    const closed = renderToStaticMarkup(<Transport {...base} readouts={{ open: false, onToggle: noop }} />);
+    expect(closed).toContain(">readouts<");
+    const open = renderToStaticMarkup(<Transport {...base} readouts={{ open: true, onToggle: noop }} />);
+    expect(open).toMatch(/aria-pressed="true"[^>]*>.*model/s);
+  });
+
+  it("says when a knob changed mid-run, so mixed totals do not look wrong", () => {
+    expect(renderToStaticMarkup(<Transport {...base} />)).not.toContain("changed at tick");
+    expect(renderToStaticMarkup(<Transport {...base} changedAt={[4]} />)).toContain("knob changed at tick 4");
+    expect(renderToStaticMarkup(<Transport {...base} changedAt={[4, 7]} />)).toContain("knobs changed at ticks 4, 7");
+  });
+});
+
+describe("a refused run", () => {
+  it("says why on the strip, with every reason in the title", () => {
+    const err = "model is not executable (2 reason(s)):\n· \"I3\" has no agent model\n· flow sink does not resolve";
+    const html = renderToStaticMarkup(<Transport {...base} error={err} />);
+    expect(html).toContain("run-refused");
+    expect(html).toContain("Run refused: &quot;I3&quot; has no agent model");
+    expect(html).toContain("flow sink does not resolve");
+    expect(html).not.toContain("run-refused-open");
+  });
+
+  it("offers a button to open the flow when the refusal is about one", () => {
+    const err = "1 gate flow does not match what comes in:\n· I3 -> T2: I3 is a gate";
+    const html = renderToStaticMarkup(<Transport {...base} error={err} onError={() => {}} />);
+    expect(html).toContain("run-refused-open");
+    expect(html).toContain("open the flow");
+  });
+});
+
+describe("a run that lost most of what came in (walk row 29)", () => {
+  it("says so beside conserved, naming where", () => {
+    const html = renderToStaticMarkup(
+      <Transport {...base} verdict={{ conserved: true, residual: 0 }} loss={{ share: 1, at: ["T2"] }} />,
+    );
+    expect(html).toContain("conserved");
+    expect(html).toContain("lost 100% of what came in, at T2");
+  });
+
+  it("is silent when nothing is said to be lost", () => {
+    expect(renderToStaticMarkup(<Transport {...base} verdict={{ conserved: true, residual: 0 }} />)).not.toContain("run-loss");
+  });
+});
+
+
+describe("the scrubber says what a tick is (walk, 2026-11-03)", () => {
+  it("names the start, and explains ticks on hover", () => {
+    const html = renderToStaticMarkup(<Transport {...base} steps={13} tick={0} />);
+    expect(html).toContain("start / 12");
+    expect(html).toContain("The start, tick 0, is before anything has moved.");
   });
 });

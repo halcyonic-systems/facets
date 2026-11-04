@@ -1,6 +1,6 @@
 import { Suspense, lazy, useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { buildRunRecord, postRunRecord, runRecordFilename, type RunRecord } from "./runRecord";
-import { ready, runMarkov, Bench, parseCsv, openModel, writeArchive, project, analyzeCanvas, checkDecompositionsCanvas, decomposeComponent, compileSl, type ArchiveText, mintModelId, emitSl, sandboxPalette } from "./kernel";
+import { ready, runMarkov, Bench, parseCsv, openModel, writeArchive, project, analyzeCanvas, checkDecompositionsCanvas, decomposeComponent, compileSl, type ArchiveText, mintModelId, emitSl, sandboxPalette, slAgreement, syncSl, engineKnobs, flowKnobs, flowKinds, runProjection } from "./kernel";
 import type {
   TickLog,
   CanvasModel,
@@ -39,14 +39,14 @@ import { BoundaryPopover } from "./canvas/BoundaryPopover";
 import { MilieuPopover } from "./canvas/MilieuPopover";
 import { DataMode } from "./DataMode";
 import { Readouts } from "./Readouts";
-import { RunCard } from "./RunCard";
+import { ElementSettings, RunInputs } from "./RunInputs";
 import { Transport } from "./Transport";
 import { InterfacePopover } from "./canvas/InterfacePopover";
 import { PaletteRail } from "./canvas/PaletteRail";
 import type { PaletteTool } from "./canvas/lenses/registry";
 import { LensPalette } from "./canvas/lenses/registry";
 import { MarkovReadout } from "./canvas/MarkovReadout";
-import { type SimFrame } from "./canvas/types";
+import { atFrame, frameCount, levelFrac, type SimFrame } from "./canvas/types";
 import type { Pt } from "./canvas/geometry";
 import { InspectorDock } from "./InspectorDock";
 import { StartSurface } from "./StartSurface";
@@ -211,6 +211,10 @@ interface WalkSegment {
    *  when the crossing was a REBASE, which is what lets the way back out be the
    *  same picture rather than a fit. Null for a plain document swap. */
   embed: Embed | null;
+  /** The SL pane's text at this level when we descended, restored verbatim on
+   *  the way back out: inside a child the pane shows the child (2026-11-02
+   *  walk: it went on showing the parent's text beside the child's canvas). */
+  slText: string;
 }
 
 // The SL pane's seed text — Mobus's steel plant (Ch.4 §4.3.1) as a system
@@ -384,6 +388,9 @@ function Workspace() {
   // shipped calibration artifact, or the projection of an edited canvas. The
   // kernel already hash-stamps the difference; this is the UI's plain word.
   const [ranEdited, setRanEdited] = useState(false);
+  // Ticks at which a knob landed while the run kept going (walk row 11): the
+  // strip names them, since the totals then mix two settings.
+  const [knobTicks, setKnobTicks] = useState<number[]>([]);
   // #67 J9: a Klir state machine's run is a distribution trajectory, not a
   // conservation ledger — held apart so its result never reaches for a
   // conservation `residual`/`conserved` field (and the conservation pill, driven
@@ -460,6 +467,9 @@ function Workspace() {
   // Cleared on any model identity change: the PortFact is a snapshot, and a
   // swap (walk enter/exit, open) or an edit can orphan it.
   const [interfaceSel, setInterfaceSel] = useState<{ port: PortFact; at: Pt } | null>(null);
+  // Bumped when the run strip's refusal opens a flow: the flow editor then
+  // focuses its substance picker (walk, 2026-11-03).
+  const [askKind, setAskKind] = useState(0);
   const [armed, setArmed] = useState<PaletteTool | null>(null);
   const [canvasPan, setCanvasPan] = useState<Pt>({ x: 0, y: 0 });
   const [canvasScale, setCanvasScale] = useState(1);
@@ -858,9 +868,6 @@ function Workspace() {
     return () => window.removeEventListener("keydown", onKey);
   }, [selectedThingId, selectedRelationId, boundaryAnchor, milieuAnchor, interfaceSel, armed]);
 
-  // A PortFact is a snapshot of the open model — any model identity change
-  // (walk enter/exit, open, edit) may orphan it, so the inspector closes.
-  useEffect(() => setInterfaceSel(null), [canvasModel]);
 
   const runWith = (
     modelJson: string,
@@ -909,14 +916,23 @@ function Workspace() {
    *  keeps the stored artifact, which sl_demos CI proves identical to the
    *  projection for every shipped demo. Null = nothing runnable (projection
    *  refused, or no bundle). */
+  // A run the kernel refuses before it starts (walk row 29: a flow whose kind
+  // it cannot work out) says so on the strip, like a run that cannot execute.
+  const refuseRun = (e: unknown) => {
+    closeBench();
+    setResult(null);
+    setPlaying(false);
+    setRunError(e instanceof Error ? e.message : String(e));
+  };
+
   const modelForRun = (): { json: string; edited: boolean } | null => {
     // No bundle = no stored artifact to prefer, so a clean canvas projects
     // too (#304 run-from-attached) — `edited` still means dirty-since-open.
     if (canvasModel && (dirty || !demo)) {
       try {
-        return { json: JSON.stringify(project(canvasModel)), edited: dirty };
+        return { json: JSON.stringify(runProjection(canvasModel)), edited: dirty };
       } catch (e) {
-        setToast(e instanceof Error ? e.message : String(e));
+        refuseRun(e);
         return null;
       }
     }
@@ -1240,6 +1256,10 @@ function Workspace() {
   // state; nothing the draft touched survives.
   function discardPreview() {
     if (!preview) return;
+    // The text stays as typed: Discard reverts the canvas, not the author's
+    // words. Forgetting the base stops the sync from rewriting the text back
+    // to the stash; the pane then says the two differ, never silently.
+    slBase.current = null;
     setCanvasModel(preview.stash);
     setDirty(preview.priorDirty);
     setResult(null);
@@ -1251,6 +1271,80 @@ function Workspace() {
       setActiveTurnId(null);
     }
   }
+
+  // ---- SL text and the canvas: one model, two views (2026-11-02 walk) ----
+  // The kernel decides agreement (sl_agreement) and does the rewriting
+  // (sync_sl, which keeps the author's comments); this only decides WHEN.
+  // `slBase` is the last model the text is known to mean. A canvas change
+  // (a drag, a knob, a stamp, a delete) reaches the text when the text still
+  // means that base; a text that does not holds the author's own uncompiled
+  // edits, or a discarded draft, and is left alone for the pane to flag.
+  // Settles after a short pause so a drag or a slider rewrites once.
+  const slBase = useRef<CanvasModel | null>(null);
+  const slTextRef = useRef(slText);
+  slTextRef.current = slText;
+  useEffect(() => {
+    if (!canvasModel) return;
+    const timer = setTimeout(() => {
+      const text = slTextRef.current;
+      try {
+        if (slAgreement(text, canvasModel).agrees) {
+          const next = syncSl(text, canvasModel); // only positions can differ here
+          if (next !== text) setSlText(next);
+          slBase.current = canvasModel;
+          return;
+        }
+        const base = slBase.current;
+        if (base && base !== canvasModel && slAgreement(text, base).agrees) {
+          setSlText(syncSl(text, canvasModel));
+          setSlErrors([]);
+          slBase.current = canvasModel;
+        }
+      } catch {
+        // Faulted text or a model SL cannot say (§7.3): the text stays as it
+        // is, and the pane's status names the difference.
+      }
+    }, 250);
+    return () => clearTimeout(timer);
+  }, [canvasModel]);
+
+  // Leaving Write compiles (decision 2026-11-02): Build must not quietly show
+  // a model the text no longer says. Through the same path as the Compile
+  // button (a preview to Accept or Discard); a faulted text stays in the pane
+  // and the notice says the canvas is the last good compile.
+  // An open flow or door popover belongs to the canvas: leaving Build closes
+  // it, or it floats over the SL pane and takes the typing meant for the text
+  // (found in the 2026-11-02 walk, row 29's browser check).
+  useEffect(() => {
+    if (mode === "write") {
+      setSelectedRelationId(null);
+      setInterfaceSel(null);
+    }
+  }, [mode]);
+
+  const prevMode = useRef(mode);
+  useEffect(() => {
+    const was = prevMode.current;
+    prevMode.current = mode;
+    if (was !== "write" || mode === "write") return;
+    const text = slTextRef.current;
+    if (text.trim() === "") return;
+    try {
+      if (canvasModel && syncSl(text, canvasModel) === text) return; // already says the canvas
+    } catch {
+      // faulted: fall through to the compile, which reports the faults
+    }
+    const outcome = compileSl(text);
+    if ("errors" in outcome) {
+      setSlErrors(outcome.errors);
+      const n = outcome.errors.length;
+      setNotice(`The SL has ${n} fault${n === 1 ? "" : "s"}, so the canvas still shows the last model that compiled. Back in Write, the faults are listed under the text.`);
+      return;
+    }
+    setSlErrors([]);
+    void onSlCompiled(outcome.ok, outcome.lens_explicit, true);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [mode]);
 
   // #10 resident co-author, folded into the SL pane as a mode: description ->
   // draft -> compile -> Rung-0 preview, recorded as a turn in the pane's
@@ -2048,6 +2142,14 @@ function Workspace() {
     [analysis, decomposition],
   );
   const facts = analysis.ok?.facts ?? null;
+  // A PortFact is a snapshot of the open model. The interface editor reads
+  // the live one by (component, env), so an edit (a protocol, what the door
+  // does) keeps it open; it closes only when that interface is gone (a walk
+  // in or out, an open, a deleted flow).
+  useEffect(() => {
+    if (!interfaceSel || !facts) return;
+    if (!facts.ports.some((p) => p.component === interfaceSel.port.component && p.env === interfaceSel.port.env)) setInterfaceSel(null);
+  }, [facts]);
   const desc = analysis.ok?.description ?? null;
 
   // #462 item 1: when the open model lands crossings on `interface
@@ -2140,17 +2242,49 @@ function Workspace() {
     [manifest],
   );
 
+  // Walk row 29: a balanced ledger reads "conserved" even when everything that
+  // came in was shed (a process given a substance it cannot pass). The kernel
+  // reports each component's dissipation per tick; this only adds them up and
+  // says so when more than half of what the sources sent was lost.
+  const loss = useMemo(() => {
+    if (!result || !tickLog || !canvasModel) return null;
+    const sourceIds = new Set(facts?.source_thing_ids ?? []);
+    const sources = new Set(canvasModel.things.filter((x) => sourceIds.has(x.id)).map((x) => x.name));
+    let entered = 0;
+    let lost = 0;
+    const at = new Map<string, number>();
+    for (const row of tickLog) {
+      for (const w of row.wires) if (sources.has(w.from)) entered += w.delivered;
+      for (const n of row.nodes) {
+        if (n.dissipated && n.dissipated > 0) {
+          lost += n.dissipated;
+          at.set(n.name, (at.get(n.name) ?? 0) + n.dissipated);
+        }
+      }
+    }
+    if (!(entered > 0) || lost / entered <= 0.5) return null;
+    const where = [...at.entries()]
+      .sort((x, y) => y[1] - x[1])
+      .filter(([, v]) => v >= 0.25 * lost)
+      .map(([name]) => name);
+    return { share: Math.min(1, lost / entered), at: where };
+  }, [result, tickLog, canvasModel, facts]);
+
   // The scrubber's per-tick readout: indexing into the kernel's trajectories /
   // comparisons at `tick`. No dynamics computed here — only array lookups.
   const simFrame: SimFrame | null = useMemo(() => {
     if (!result) return null;
     const nodes: SimFrame["nodes"] = {};
+    // Frame `tick` is an instant (walk, 2026-11-03): a level reads its value
+    // there, a per-step series the step that ended there, and at frame 0,
+    // before anything moved, a per-step series has nothing to show.
     for (const traj of result.trajectories) {
-      if (traj.series.length === 0) continue;
-      const min = Math.min(...traj.series);
-      const max = Math.max(...traj.series);
-      const value = traj.series[Math.min(tick, traj.series.length - 1)];
-      nodes[traj.name] = { value, unit: traj.unit, frac: max > min ? (value - min) / (max - min) : 0.5 };
+      const value = atFrame(traj.series, tick, !traj.holds);
+      if (value === null) continue;
+      // Only a level fills (walk, 2026-11-03): a process's series is what
+      // passes through it each tick, and a splitter passing a steady 10 was
+      // drawn full. The kernel says which series are levels (`holds`).
+      nodes[traj.name] = { value, unit: traj.unit, frac: traj.holds ? levelFrac(traj.series, value) : 0, holds: traj.holds };
     }
     const edges: SimFrame["edges"] = {};
     // EVERY wire's executed per-tick series lights the diagram (the kernel
@@ -2159,17 +2293,20 @@ function Workspace() {
     // READER of the trace, per the accepted trace-separation design.
     for (const f of result.flows) {
       if (!f.name) continue; // an unlabeled wire has no edge key to ride
-      const value = f.series[Math.min(tick, f.series.length - 1)] ?? 0;
+      const value = atFrame(f.series, tick, true);
+      if (value === null) continue;
       edges[f.name] = { value, unit: f.unit };
     }
     // CSV-mapped comparisons keep the last word where both exist — they carry
     // the observed context the bare execution lacks.
     for (const c of result.comparisons) {
-      const value = c.simulated[Math.min(tick, c.simulated.length - 1)] ?? 0;
+      const value = atFrame(c.simulated, tick, c.kind === "flow");
+      if (value === null) continue;
       edges[c.element] = { value, unit: c.unit };
     }
+    for (const name of loss?.at ?? []) if (nodes[name]) nodes[name] = { ...nodes[name], lost: true };
     return { nodes, edges };
-  }, [result, tick]);
+  }, [result, tick, loss]);
 
   // #67 J9: probability mass per state at the scrubbed tick — the row of the
   // distribution trajectory `history[tick]`, keyed by state name so the canvas
@@ -2221,6 +2358,41 @@ function Workspace() {
     });
   }
 
+  // Decision 2 (2026-11-02): every knob a component offers, at the value the
+  // run uses. The kernel answers which knobs exist and what an unset one runs
+  // at; a model that builds no circuit offers none.
+  const knobs = useMemo(() => {
+    if (!canvasModel || canvasModel.lens === "Klir") return [];
+    try {
+      return engineKnobs(canvasModel);
+    } catch {
+      return [];
+    }
+  }, [canvasModel]);
+
+  // Walk row 21: every flow's amount as the run uses it, so an undeclared
+  // rate reads "1 default" and not "not set". The kernel reads it off the
+  // projection the run is built from.
+  // Walk row 29: what each flow carries in the run, written or inherited, or
+  // that the kernel cannot work it out (the run then refuses, naming it).
+  const carried = useMemo(() => {
+    if (!canvasModel || canvasModel.lens === "Klir") return [];
+    try {
+      return flowKinds(canvasModel);
+    } catch {
+      return [];
+    }
+  }, [canvasModel]);
+
+  const flows = useMemo(() => {
+    if (!canvasModel || canvasModel.lens === "Klir") return [];
+    try {
+      return flowKnobs(canvasModel);
+    } catch {
+      return [];
+    }
+  }, [canvasModel]);
+
   // The kernel palette's label for each primitive's own knob ("gain", "sensor
   // gain k", …), read once; the inputs rail's engine floor shows it. Absent
   // before the kernel is up, in which case the row says "parameter".
@@ -2263,6 +2435,9 @@ function Workspace() {
     if (b && prev) {
       try {
         const nameOf = (id: number) => thingById(nextModel, id)?.name ?? "";
+        // The document as written, so a flow knob is found by the names on
+        // the page even where the projection fuses a pass-way away.
+        const docJson = JSON.stringify(nextModel);
         const changed = nextModel.relations.filter((r) => {
           const was = prev.relations.find((p) => p.id === r.id);
           return was !== undefined && was.amount !== r.amount;
@@ -2295,12 +2470,19 @@ function Workspace() {
         }
         const structural =
           nextModel.relations.length !== prev.relations.length || nextModel.things.length !== prev.things.length;
-        if (!structural && changed.length + fieldEdits.length > 0 && runOn && playing && !(runCsv ?? "").trim()) {
+        // Only at the live edge: while play is still inside the recorded run,
+        // the engine sits at the run's end, so a knob "landing now" landed
+        // ticks past what the author was watching and mixed two settings into
+        // totals they had no way to read (walk row 11, measured: scrubber at
+        // tick 3, knob stamped at 12). Inside the record a knob re-runs from
+        // the start, as it does paused.
+        const atLiveEdge = result !== null && tick >= result.ticks;
+        if (!structural && changed.length + fieldEdits.length > 0 && runOn && playing && atLiveEdge && !(runCsv ?? "").trim()) {
           // Running on (one-surface.md): the knob lands at the engine's
           // current tick and the run carries on from there, stocks kept —
           // the sandbox's mid-run tweak. The edit log stamps that tick.
           for (const r of changed) {
-            b.setFlowAmount(r.name, nameOf(r.a), nameOf(r.b), Number(r.amount ?? 0));
+            b.setFlowAmountAsWritten(docJson, r.name, nameOf(r.a), nameOf(r.b), Number(r.amount ?? 0));
           }
           for (const e of fieldEdits) {
             b.setComponentParam(e.name, e.field, e.v);
@@ -2308,6 +2490,7 @@ function Workspace() {
           ranOnRef.current = true;
           setRanEdited(true);
           setRunError(null);
+          setKnobTicks(b.edits().filter((e) => e.tick > 0).map((e) => e.tick));
           return;
         }
         if (!structural && changed.length + fieldEdits.length > 0 && b.edits().some((e) => e.tick > 0)) {
@@ -2317,9 +2500,17 @@ function Workspace() {
           // from the document instead, at the length on screen, with a clean
           // log; the scrubber rests at the end as a knob's answer does.
           const len = Math.max(t, result ? result.ticks * dt : 0);
-          runWith(JSON.stringify(project(nextModel)), runCsv ?? "", manifest, dt, len, true);
+          setKnobTicks([]);
+          let json: string;
+          try {
+            json = JSON.stringify(runProjection(nextModel));
+          } catch (e) {
+            refuseRun(e);
+            return;
+          }
+          runWith(json, runCsv ?? "", manifest, dt, len, true);
           setPlaying(false);
-          setTick(Math.max(0, (result?.ticks ?? 1) - 1));
+          setTick(result?.ticks ?? 0);
           return;
         }
         if (!structural && changed.length + fieldEdits.length > 0) {
@@ -2327,8 +2518,9 @@ function Workspace() {
           // from zero, and an edit stamped with the old run's last tick read
           // as if it had taken effect at the end (feel-test 2026-10-09).
           b.reset();
+          setKnobTicks([]);
           for (const r of changed) {
-            b.setFlowAmount(r.name, nameOf(r.a), nameOf(r.b), Number(r.amount ?? 0));
+            b.setFlowAmountAsWritten(docJson, r.name, nameOf(r.a), nameOf(r.b), Number(r.amount ?? 0));
           }
           for (const e of fieldEdits) {
             b.setComponentParam(e.name, e.field, e.v);
@@ -2345,7 +2537,7 @@ function Workspace() {
           // and nothing starts playing (feel-test 2026-10-09: auto-play after
           // every slider move was the annoyance, not the re-run).
           setPlaying(false);
-          setTick(Math.max(0, r.ticks - 1));
+          setTick(r.ticks);
           return;
         }
       } catch (e) {
@@ -2353,9 +2545,9 @@ function Workspace() {
       }
     }
     try {
-      runWith(JSON.stringify(project(nextModel)), runCsv ?? "", manifest, dt, t, true, true);
+      runWith(JSON.stringify(runProjection(nextModel)), runCsv ?? "", manifest, dt, t, true, true);
     } catch (e) {
-      setToast(e instanceof Error ? e.message : String(e));
+      refuseRun(e);
     }
   }
 
@@ -2457,6 +2649,7 @@ function Workspace() {
               : "Add at least one thing to run."
           : "No mechanism stated (⊘M), so structure alone gives Run nothing to execute.";
     const onRun = () => {
+      setKnobTicks([]);
       // #345: no mode transition — the transport lives on the Model surface,
       // so the run happens where the author already is.
       if (runKind === "dtmc") {
@@ -2482,19 +2675,22 @@ function Workspace() {
         if (b && result) {
           b.step(1);
           const r = b.readout();
-          setT(r.ticks * dt);
+          // Stepping past the run length extends it; stepping inside it never
+          // shrinks it (walk row 14: a first Step set T to one tick, so the
+          // next Run ran a single tick).
+          if (r.ticks * dt > t) setT(r.ticks * dt);
           setResult(r);
           recordBench(b, r, "step", runCsv ?? "", manifest, dt, r.ticks * dt);
           setPlaying(false);
-          setTick(r.ticks - 1);
+          setTick(r.ticks);
           return;
         }
         const m = modelForRun();
         if (!m) return;
         const nextT = result ? (result.ticks + 1) * dt : dt;
-        setT(nextT);
+        if (nextT > t) setT(nextT);
         runWith(m.json, runCsv ?? "", manifest, dt, nextT, m.edited);
-        setTick(result ? result.ticks : 0);
+        setTick(result ? result.ticks + 1 : 1);
       }
     };
     return { runKind, runnable, title, onRun, onStep };
@@ -2522,7 +2718,7 @@ function Workspace() {
       const r = b.readout();
       ranOnRef.current = true;
       setResult(r);
-      setTick(r.ticks - 1);
+      setTick(r.ticks);
     } catch (e) {
       setPlaying(false);
       setRunError(e instanceof Error ? e.message : String(e));
@@ -2547,7 +2743,7 @@ function Workspace() {
       onStep={runCtl.onStep}
       runnable={runCtl.runnable}
       runTitle={runCtl.title}
-      steps={result ? result.ticks : markovRun ? markovRun.history.length : 0}
+      steps={result ? frameCount(result.ticks) : markovRun ? markovRun.history.length : 0}
       tick={tick}
       onTick={setTick}
       playing={playing}
@@ -2557,6 +2753,37 @@ function Workspace() {
       runOn={runOnAvailable ? runOn : undefined}
       onRunOnChange={setRunOn}
       onRunOnTick={runOnTick}
+      readouts={workMode === "structure" ? { open: readoutsOpen, onToggle: () => setReadoutsOpen((o) => !o) } : undefined}
+      changedAt={knobTicks}
+      time={canvasModel ? { dt, t, klir: canvasModel.lens === "Klir", onCommit: applyTime } : undefined}
+      error={runError}
+      loss={
+        loss && {
+          ...loss,
+          onShow: () => {
+            const id = canvasModel?.things.find((x) => x.name === loss.at[0])?.id;
+            if (id !== undefined) {
+              setSelectedRelationId(null);
+              setSelectedThingId(id);
+            }
+          },
+        }
+      }
+      onError={(() => {
+        // A refusal over a flow's kind opens that flow, where it is answered.
+        const first = carried.find((k) => k.gate_passes.length > 0) ?? carried.find((k) => k.kind === null && k.waits_on.length === 0) ?? carried.find((k) => k.kind === null);
+        // Opening it clears any other selection and puts the cursor on the
+        // substance picker, so the click shows even when the flow was open.
+        return first
+          ? () => {
+              setSelectedThingId(null);
+              setInterfaceSel(null);
+              setBoundaryAnchor(null);
+              setSelectedRelationId(first.relation);
+              setAskKind((n) => n + 1);
+            }
+          : undefined;
+      })()}
     />
   ) : null;
 
@@ -2897,10 +3124,12 @@ function Workspace() {
           currentName,
           dirty,
           embed: arrival?.embed ?? null,
+          slText,
         },
       ]);
       setDemo(null); setAttachedCsv(null);
       setCanvasModel(cm);
+      syncSlPane(null, cm);
       setManifest({ model: "", data: "", t: 12, mapping: [] });
       setResult(null);
       setRunError(null);
@@ -2991,6 +3220,8 @@ function Workspace() {
       setWalk(walk.slice(0, index));
       setDemo(target.demo); setAttachedCsv(null);
       setCanvasModel(target.canvas);
+      setSlText(target.slText);
+      setSlErrors([]);
       setManifest(target.manifest);
       setDt(target.dt);
       setT(target.t);
@@ -3189,6 +3420,120 @@ function Workspace() {
     </Menu>
     </div>
   ) : undefined;
+
+  // The flow and interface editors (Shingai, 2026-11-02: "let's go
+  // inspector"). Docked in the Element tab beside the run readouts when the
+  // dock is up, so they stay open, have room, and never cover the diagram;
+  // floating at the click only where there is no dock. Called with no anchor
+  // they render as a docked panel.
+  const inspectorDocked = Boolean(canvasModel && !readoutsOpen && mode !== "read" && frame.inspector.length > 0);
+  const livePort = interfaceSel
+    ? (facts?.ports.find((p) => p.component === interfaceSel.port.component && p.env === interfaceSel.port.env) ?? interfaceSel.port)
+    : null;
+  const interfaceEditor = (anchor?: Pt) => {
+    if (!canvasModel || !interfaceSel || !livePort) return null;
+    const port = livePort;
+    return (
+      <InterfacePopover
+        port={port}
+        model={canvasModel}
+        anchor={anchor}
+        onSelectRelation={setSelectedRelationId}
+        onClose={() => setInterfaceSel(null)}
+        onEditThing={updateThing}
+        onEditBehaviour={(next) => {
+          // What the door does decides the run, so with a run
+          // on screen it re-runs, as a knob does.
+          if (result || runError) {
+            commitInputModel({
+              ...canvasModel,
+              things: canvasModel.things.map((x) => (x.id === next.id ? next : x)),
+            });
+          } else {
+            updateThing(next);
+          }
+        }}
+      />
+    );
+  };
+  const edgeEditor = (anchor?: Pt) => {
+    if (!canvasModel || !selectedRelation) return null;
+    return (
+      <EdgePopover
+        relation={selectedRelation}
+        lens={canvasModel.lens}
+        sigIndex={canvasModel.relations.findIndex((r) => r.id === selectedRelation.id)}
+        manifest={manifest}
+        anchor={anchor}
+        fact={facts?.edges.find((e) => e.id === selectedRelation.id)}
+        paramName={(canvasModel.params ?? [])
+          .find((p) => {
+            const a = p.anchor;
+            return (
+              ("Flow" in a && a.Flow.relation === selectedRelation.id) ||
+              ("Shares" in a && a.Shares.thing === selectedRelation.a)
+            );
+          })
+          ?.name}
+        // ws5: in Run mode the popover carries the param's own
+        // slider — same resolution (kernel/params.ts) and same
+        // commit path (applyInputEdit → re-run + auto-play) as
+        // the rail. Structure mode passes neither (#336).
+        param={
+          runCtl?.runKind === "conservation" && runCtl.runnable
+            ? (flowParamFor(canvasModel, selectedRelation.id) ?? undefined)
+            : undefined
+        }
+        paramForcedBy={forcedByColumn(manifest, selectedRelation)}
+        onParamEdit={
+          runCtl?.runKind === "conservation" && runCtl.runnable
+            ? applyInputEdit
+            : undefined
+        }
+        fromName={canvasModel.things.find((t) => t.id === selectedRelation.a)?.name}
+        toName={canvasModel.things.find((t) => t.id === selectedRelation.b)?.name}
+        onUpdateRelation={(next) => {
+          // Walk row 29: a kind decides what the run carries,
+          // so with a run on screen (or a refused one) it
+          // re-runs like an amount does, instead of leaving
+          // the old run showing as if the change did nothing.
+          if (next.kind !== selectedRelation.kind && (result || runError)) {
+            commitInputModel({
+              ...canvasModel,
+              relations: canvasModel.relations.map((r) => (r.id === next.id ? next : r)),
+            });
+          } else {
+            updateRelation(next);
+          }
+        }}
+        carried={carried.find((k) => k.relation === selectedRelation.id)}
+        askKind={askKind}
+        carriedFrom={(id) => {
+          const r = canvasModel.relations.find((x) => x.id === id);
+          const n = (t: number) => canvasModel.things.find((x) => x.id === t)?.name ?? "";
+          return r ? `${n(r.a)} -> ${n(r.b)}` : "";
+        }}
+        onDelete={() => deleteRelation(selectedRelation.id)}
+        onClose={() => setSelectedRelationId(null)}
+        amount={(() => {
+          // A flow's amount bites where it leaves a source (a
+          // rate) or a work process (a split weight); out of an
+          // interface or an agent it is not a knob.
+          if (!runCtl?.runnable || runCtl.runKind !== "conservation" || !selectedRelation.is_bond) return undefined;
+          const from = canvasModel.things.find((t) => t.id === selectedRelation.a);
+          if (!from) return undefined;
+          const source = from.role === "Environment" && (facts?.source_thing_ids ?? []).includes(from.id);
+          const process = from.role === "Component" && !from.passway && !from.rule;
+          if (!source && !process) return undefined;
+          return {
+            knob: flows.find((k) => k.relation === selectedRelation.id),
+            weight: process,
+            onEdit: applyInputEdit,
+          };
+        })()}
+      />
+    );
+  };
 
   return (
     <>
@@ -3711,6 +4056,7 @@ function Workspace() {
                       model={canvasModel}
                       lens={canvasModel.lens}
                       facts={facts}
+                      flowKinds={carried}
                       onModelChange={(m) => {
                         setCanvasModel(m);
                         setDirty(true);
@@ -3718,11 +4064,23 @@ function Workspace() {
                       onReject={setToast}
                       onNotice={setNotice}
                       selectedRelationId={selectedRelationId}
-                      onSelectRelation={setSelectedRelationId}
+                      // One selection at a time (walk, 2026-11-03): the docked
+                      // editor shows a flow over a thing, so a thing clicked
+                      // after a flow stayed hidden behind it. Choosing one
+                      // clears the others.
+                      onSelectRelation={(id) => {
+                        setSelectedRelationId(id);
+                        if (id !== null) {
+                          setSelectedThingId(null);
+                          setInterfaceSel(null);
+                          setBoundaryAnchor(null);
+                        }
+                      }}
                       armed={armed}
                       onSelectThing={(id) => {
                         setSelectedThingId(id);
                         if (id !== null) {
+                          setSelectedRelationId(null);
                           setBoundaryAnchor(null);
                           setInterfaceSel(null);
                         }
@@ -3861,54 +4219,8 @@ function Workspace() {
                         onClose={() => setMilieuAnchor(null)}
                       />
                     )}
-                    {interfaceSel && (
-                      <InterfacePopover
-                        port={interfaceSel.port}
-                        model={canvasModel}
-                        anchor={toScreen(interfaceSel.at)}
-                        onSelectRelation={setSelectedRelationId}
-                        onClose={() => setInterfaceSel(null)}
-                      />
-                    )}
-                    {selectedRelation && popoverAnchor && !registerActive && (
-                      <EdgePopover
-                        relation={selectedRelation}
-                        lens={canvasModel.lens}
-                        sigIndex={canvasModel.relations.findIndex((r) => r.id === selectedRelation.id)}
-                        manifest={manifest}
-                        anchor={toScreen(popoverAnchor)}
-                        fact={facts?.edges.find((e) => e.id === selectedRelation.id)}
-                        paramName={(canvasModel.params ?? [])
-                          .find((p) => {
-                            const a = p.anchor;
-                            return (
-                              ("Flow" in a && a.Flow.relation === selectedRelation.id) ||
-                              ("Shares" in a && a.Shares.thing === selectedRelation.a)
-                            );
-                          })
-                          ?.name}
-                        // ws5: in Run mode the popover carries the param's own
-                        // slider — same resolution (kernel/params.ts) and same
-                        // commit path (applyInputEdit → re-run + auto-play) as
-                        // the rail. Structure mode passes neither (#336).
-                        param={
-                          runCtl?.runKind === "conservation" && runCtl.runnable
-                            ? (flowParamFor(canvasModel, selectedRelation.id) ?? undefined)
-                            : undefined
-                        }
-                        paramForcedBy={forcedByColumn(manifest, selectedRelation)}
-                        onParamEdit={
-                          runCtl?.runKind === "conservation" && runCtl.runnable
-                            ? applyInputEdit
-                            : undefined
-                        }
-                        fromName={canvasModel.things.find((t) => t.id === selectedRelation.a)?.name}
-                        toName={canvasModel.things.find((t) => t.id === selectedRelation.b)?.name}
-                        onUpdateRelation={updateRelation}
-                        onDelete={() => deleteRelation(selectedRelation.id)}
-                        onClose={() => setSelectedRelationId(null)}
-                      />
-                    )}
+                    {interfaceSel && !inspectorDocked && interfaceEditor(toScreen(interfaceSel.at))}
+                    {selectedRelation && popoverAnchor && !registerActive && !inspectorDocked && edgeEditor(toScreen(popoverAnchor))}
                     {/* The Bunge view toggle (#100 phase 2, F1): coupling
                         graph ⇄ coupling matrix — one structure, two of
                         Bunge's own notations, the Klir register's toggle
@@ -3984,7 +4296,7 @@ function Workspace() {
                         residue) — hidden: the model has it, this lens does not
                         ask that question; unanswered: the lens asks, the model
                         has not answered. Pedagogy, not alarm. */}
-                    {residue && (residue.hidden.length > 0 || residue.unspecified.length > 0) && (
+                    {residue && (residue.hidden.length > 0 || residue.unspecified.length > 0 || (residue.carried?.length ?? 0) > 0) && (
                       <div
                         // Under Bunge's graph view the systemhood pill owns the
                         // top row (left-48, top-3); the residue notice drops a
@@ -4001,6 +4313,9 @@ function Workspace() {
                             : null,
                           residue.unspecified.length > 0
                             ? `unanswered: ${residue.unspecified.map(residueLine).join(", ")}`
+                            : null,
+                          residue.carried && residue.carried.length > 0
+                            ? `carried on, not written: ${residue.carried.map(residueLine).join(", ")}`
                             : null,
                         ]
                           .filter(Boolean)
@@ -4066,23 +4381,6 @@ function Workspace() {
                       mode. The diagram stays full-size; the run card rides the
                       stage's right edge; the transport rides under the stage;
                       Readouts is the full-page expansion over both. */}
-                  {workMode === "structure" &&
-                    runCtl?.runKind === "conservation" &&
-                    (runCtl.runnable || result !== null) && (
-                      <RunCard
-                        model={canvasModel}
-                        manifest={
-                          demo || (attachedCsv && manifest.mapping.length > 0) ? manifest : null
-                        }
-                        result={result}
-                        tick={tick}
-                        time={{ dt, t, klir: false, onCommit: applyTime }}
-                        onInputEdit={applyInputEdit}
-                        onThingEdit={applyThingEdit}
-                        onResetInputs={demo?.sl ? resetInputs : undefined}
-                        onOpenReadouts={() => setReadoutsOpen(true)}
-                      />
-                    )}
                   {readoutsOpen && workMode === "structure" && (
                     <Readouts
                       result={result}
@@ -4102,20 +4400,8 @@ function Workspace() {
                       onAcceptUnit={acceptDerivedUnit}
                       tick={tick}
                       model={canvasModel}
-                      // The run's manifest exists in two cases, not one: a demo
-                      // bundle, or an attached CSV with at least one binding
-                      // (#304's run-from-attached — the same pair `runCsv`
-                      // accepts).
-                      manifest={
-                        demo || (attachedCsv && manifest.mapping.length > 0) ? manifest : null
-                      }
-                      onInputEdit={applyInputEdit}
-                        onThingEdit={applyThingEdit}
-                        engineLabels={engineLabels}
-                      onResetInputs={demo?.sl ? resetInputs : undefined}
-                      time={{ dt, t, klir: canvasModel.lens === "Klir", onCommit: applyTime }}
+                      sourceIds={facts?.source_thing_ids}
                       runKind={LensPalette[canvasModel.lens].run}
-                      transport={transportEl}
                       onClose={() => setReadoutsOpen(false)}
                     />
                   )}
@@ -4127,7 +4413,7 @@ function Workspace() {
                       the verdict — hidden while Readouts is open so the spine
                       exists exactly once. An unrunnable model states why here
                       (the refusal's home, now that Run is not a mode). */}
-                  {workMode === "structure" && !readoutsOpen && runCtl && (
+                  {workMode === "structure" && runCtl && (
                     <div className="mt-3">{transportEl}</div>
                   )}
 
@@ -4206,6 +4492,7 @@ function Workspace() {
               // click of a double-click can no longer flash a menu into the
               // gesture that enters a child. A register carries its own inline
               // editor, so it keeps the element face and the dock stands down.
+              editor={(selectedRelation && !registerActive ? edgeEditor() : interfaceSel ? interfaceEditor() : null) ?? undefined}
               element={
                 canvasModel && !registerActive
                   ? {
@@ -4215,6 +4502,20 @@ function Workspace() {
                       onUpdate: updateThing,
                       onDelete: () => selectedThing && deleteThing(selectedThing.id),
                       onDeselect: () => setSelectedThingId(null),
+                      settings:
+                        selectedThing && LensPalette[canvasModel.lens].run !== "dtmc" ? (
+                          <ElementSettings
+                            thing={selectedThing}
+                            model={canvasModel}
+                            manifest={demo || (attachedCsv && manifest.mapping.length > 0) ? manifest : null}
+                            knobs={knobs}
+                            flowKnobs={flows}
+                            sourceIds={facts?.source_thing_ids}
+                            engineLabels={engineLabels}
+                            onEdit={applyInputEdit}
+                            onEditThing={applyThingEdit}
+                          />
+                        ) : null,
                     }
                   : null
               }
@@ -4229,6 +4530,21 @@ function Workspace() {
                     : interfaceSel
                       ? `port:${interfaceSel.port.component}:${interfaceSel.port.env}`
                       : null
+              }
+              homeInputs={
+                !registerActive && LensPalette[canvasModel.lens].run !== "dtmc" ? (
+                  <RunInputs
+                    model={canvasModel}
+                    manifest={demo || (attachedCsv && manifest.mapping.length > 0) ? manifest : null}
+                    onEdit={applyInputEdit}
+                    onEditThing={applyThingEdit}
+                    engineLabels={engineLabels}
+                    onReset={demo?.sl ? resetInputs : undefined}
+                    sourceIds={facts?.source_thing_ids}
+                    knobs={knobs}
+                    flowKnobs={flows}
+                  />
+                ) : null
               }
               focused={inspectorFocused}
               onToggleFocus={() => setInspectorFocused((f) => !f)}

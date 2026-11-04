@@ -239,7 +239,7 @@ pub fn force_and_run(
     let (model, imported) = prepare_forced(model, csv_text, manifest, today)?;
 
     let spec = facets_core::operational::validate_operational(&model)
-        .map_err(|errors| format!("model is not executable ({} reason(s))", errors.len()))?;
+        .map_err(|errors| not_executable(&errors))?;
     let mut circuit = facets_compose::from_spec(&spec);
     let run = facets_compose::RecordedRun::record_over(&mut circuit, &spec, dt, t)?;
     Ok(summarize(&model, &imported, &spec, &circuit, &run, dt))
@@ -289,6 +289,25 @@ pub fn prepare_forced(
     Ok((model, imported))
 }
 
+/// Why a model will not run, in the kernel's own reasons (walk row 27: the
+/// face showed only "not executable (7 reason(s))", so the reasons existed
+/// and nobody could read them). One line per distinct reason, in the order
+/// the check found them; a reason repeated across flows is said once.
+pub fn not_executable(errors: &[facets_core::operational::OperationalError]) -> String {
+    let mut seen: Vec<&str> = Vec::new();
+    for e in errors {
+        if !seen.contains(&e.reason.as_str()) {
+            seen.push(&e.reason);
+        }
+    }
+    let mut out = format!("model is not executable ({} reason(s)):", errors.len());
+    for r in seen {
+        out.push_str("\n· ");
+        out.push_str(r);
+    }
+    out
+}
+
 /// Run the model from its DECLARED amounts alone — no CSV, no forcing — and
 /// read the run back in the same domain terms [`force_and_run`] returns
 /// (levels, trajectories, per-wire flow series, conservation verdict).
@@ -302,7 +321,7 @@ pub fn prepare_forced(
 pub fn run_unforced(model: WorldModel, dt: f64, t: f64) -> Result<RunReadout, String> {
     facets_compose::ticks_over(dt, t)?;
     let spec = facets_core::operational::validate_operational(&model)
-        .map_err(|errors| format!("model is not executable ({} reason(s))", errors.len()))?;
+        .map_err(|errors| not_executable(&errors))?;
     let mut circuit = facets_compose::from_spec(&spec);
     let run = facets_compose::RecordedRun::record_over(&mut circuit, &spec, dt, t)?;
     Ok(summarize(&model, &crate::tether::ImportedData::default(), &spec, &circuit, &run, dt))
@@ -327,6 +346,17 @@ pub struct Trajectory {
     pub unit: String,
     /// See [`Level::unit_derived`].
     pub unit_derived: bool,
+    /// The series is a level the element holds: a stock's storage, or what a
+    /// sink has received so far. False for everything else, whose series is
+    /// what it does each tick (a source's emission, a process's throughput),
+    /// which a reading must not draw as a fill (walk, 2026-11-03: a splitter
+    /// passing 10 a tick was drawn full).
+    ///
+    /// The two kinds differ in length too. A level has one value per instant,
+    /// N + 1 over N steps, starting with the state before the first step. An
+    /// activity has one value per step, N, its i-th the step from instant i
+    /// to instant i + 1.
+    pub holds: bool,
     pub series: Vec<f32>,
 }
 
@@ -434,9 +464,14 @@ pub fn summarize(
 
     // Per-node trajectory: a sink's accumulated total, a buffer's stock, else
     // last-tick activity — the column of the recorded rows that reads as level.
-    let col_of = |kind: &NodeKind| -> usize {
+    // An environment object that receives as well as sends (a two-sided black
+    // box, walk 2026-11-03) holds what it has received, read like a sink's
+    // total; what it sends stays on its outgoing flows' series.
+    let receives = |i: usize| circuit.wires.iter().any(|w| w.to == i);
+    let col_of = |i: usize, kind: &NodeKind| -> usize {
         match kind {
             NodeKind::Sink => 2,
+            NodeKind::Source if receives(i) => 2,
             NodeKind::Process(facets_core::ProcessPrimitive::Buffering) => 1,
             _ => 0,
         }
@@ -446,13 +481,52 @@ pub fn summarize(
         .iter()
         .enumerate()
         .map(|(i, node)| {
-            let col = col_of(&node.kind);
-            let series = run.history.iter().map(|row| row[1 + i * 3 + col]).collect();
-            let (unit, unit_derived) = unit_of(node);
+            let col = col_of(i, &node.kind);
+            // A level is a state, true at an instant; a run of N steps has
+            // N + 1 of them, and the first is the one before anything moved
+            // (the pointed coalgebra's point x0, whose unfolding is
+            // x0, T(x0), T²(x0), …). The recorder's rows are written after each
+            // step, so the start is put in front here: a stock's starting
+            // level, and nothing yet received for a sink. An activity (a
+            // source's emission, a process's throughput) is what happens
+            // during a step, so it keeps one value per step (walk, 2026-11-03).
+            let start = match node.kind {
+                NodeKind::Sink => Some(0.0),
+                NodeKind::Source if col == 2 => Some(0.0),
+                NodeKind::Process(facets_core::ProcessPrimitive::Buffering) => Some(node.initial_storage),
+                _ => None,
+            };
+            let series = start
+                .into_iter()
+                .chain(run.history.iter().map(|row| row[1 + i * 3 + col]))
+                .collect();
+            // What a sink or a two-sided environment object holds is the
+            // integral of what it receives, so its unit is that inflow's unit
+            // x dt, derived the way a stock's is (#94), not the rate it sends
+            // at (toy-model club: Town's leavers read "people/year").
+            let (unit, unit_derived) = match circuit.wires.iter().find(|w| w.to == i) {
+                Some(w) if col == 2 && node.stock_unit.is_empty() => {
+                    // The inflow's own unit; unlabeled, an environment object's
+                    // send unit stands in when it sends the same substance it
+                    // receives (Town sends and takes back people).
+                    let from = &circuit.nodes[w.from].out_substance;
+                    let rate = if from.unit.is_empty() && from.name == node.out_substance.name {
+                        &node.out_substance.unit
+                    } else {
+                        &from.unit
+                    };
+                    match facets_core::units::derived_stock_unit(rate, time_unit) {
+                        Some(d) => (d, true),
+                        None => unit_of(node),
+                    }
+                }
+                _ => unit_of(node),
+            };
             Trajectory {
                 name: node.name.clone(),
                 unit,
                 unit_derived,
+                holds: col != 0,
                 series,
             }
         })
@@ -1237,5 +1311,18 @@ mod tests {
         )
         .unwrap();
         (csv, manifest)
+    }
+}
+
+#[cfg(test)]
+mod not_executable_tests {
+    use super::not_executable;
+    use facets_core::operational::OperationalError;
+
+    #[test]
+    fn says_each_distinct_reason_once() {
+        let e = |r: &str| OperationalError { location: "x".into(), reason: r.into(), hint: None };
+        let msg = not_executable(&[e("\"I3\" has no agent model"), e("flow sink does not resolve"), e("flow sink does not resolve")]);
+        assert_eq!(msg, "model is not executable (3 reason(s)):\n· \"I3\" has no agent model\n· flow sink does not resolve");
     }
 }

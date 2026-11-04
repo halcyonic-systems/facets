@@ -6,7 +6,7 @@
 // in the `LensRegistry` (stateless views, one set per lens). This file is the
 // stage: backdrops, the render loop, and the node-name draft input.
 import { useEffect, useLayoutEffect, useRef, useState } from "react";
-import type { CanvasModel, EdgeFact, Lens, LensFacts, PortFact, Thing } from "../kernel/types";
+import type { CanvasModel, EdgeFact, FlowKind, Lens, LensFacts, PortFact, Thing } from "../kernel/types";
 import { KIND_COLOR, type SimFrame } from "./types";
 import {
   bungeHull,
@@ -45,6 +45,7 @@ import {
   wantsRebaseIn,
   wantsRebaseOut,
   wantsOpaqueExit,
+  armsOnArrival,
   OPAQUE_EXIT,
   type View,
   pastOutLine,
@@ -155,6 +156,9 @@ interface Props {
    *  aggregate verdict). Every ontology-bearing visual below READS these —
    *  the canvas derives no systems fact itself. */
   facts?: LensFacts | null;
+  /** The kernel's `flow_kinds` (walk row 29): what each flow carries in the
+   *  run, so an unwritten kind is drawn as what runs, or flagged. */
+  flowKinds?: FlowKind[];
   onModelChange: (m: CanvasModel) => void;
   onReject: (message: string) => void;
   /** The soft channel for a Warning that rides along with a legal edge. */
@@ -277,6 +281,7 @@ export default function Canvas({
   model,
   lens,
   facts = null,
+  flowKinds,
   onModelChange,
   onReject,
   onNotice,
@@ -661,6 +666,8 @@ export default function Canvas({
   // verdicts; only their pixel placement is computed here.
   const boundarySet = new Set(facts?.boundary_thing_ids ?? []);
   const orphanSet = new Set(facts?.orphan_env_thing_ids ?? []);
+  // Undefined without facts, so NodeBody falls back to the authored word.
+  const sourceSet = facts ? new Set(facts.source_thing_ids) : null;
   const edgeFactById = new Map<number, EdgeFact>((facts?.edges ?? []).map((e) => [e.id, e]));
 
   // The rim doors, asked of the shell once per render. The case is read off the
@@ -788,7 +795,9 @@ export default function Canvas({
       // freshly landed frame is far above the out line (RB_OUT of the
       // viewport), so arming it cannot misfire; it only means the first
       // zoom-out past the line leaves, whichever way you came in.
-      outArmRef.current = Boolean(onRebaseOut && register);
+      // Only inside a child: onExitUp is passed below the root alone, and at
+      // the root an armed arrival hid the interior (see armsOnArrival).
+      outArmRef.current = armsOnArrival(Boolean(onRebaseOut && register), Boolean(onExitUp));
       outFellBackRef.current = false;
     }
     // Every door's bit is read each pass, whatever tier it is in — a bit only
@@ -1383,6 +1392,7 @@ export default function Canvas({
             relation={r}
             fact={edgeFactById.get(r.id)}
             hideInterior={opaque}
+            carried={flowKinds?.find((k) => k.relation === r.id)}
             ring={ring}
             sigIndex={dModel.relations.indexOf(r)}
             selected={selectedRelationId === r.id || litRelationId === r.id}
@@ -1489,6 +1499,7 @@ export default function Canvas({
               thing={t}
               isBoundary={boundarySet.has(t.id)}
               isOrphan={orphanSet.has(t.id)}
+              isSource={sourceSet ? sourceSet.has(t.id) : undefined}
               inert={inert}
               hovered={hoverTarget === t.id || litThingId === t.id}
               selected={selectedThingId === t.id}

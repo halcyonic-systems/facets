@@ -9,7 +9,7 @@
         "gradient_out": 0.0,
         "maintenance": 0.0,
         "overflow": 0.0,
-        "dissipated": -0.0,
+        "dissipated": 0.0,
         "level": 2.0
       },
       {
@@ -59,7 +59,7 @@
         "gradient_out": 0.0,
         "maintenance": 0.0,
         "overflow": 0.0,
-        "dissipated": -0.0,
+        "dissipated": 0.0,
         "level": 2.0
       },
       {
@@ -70,7 +70,7 @@
         "maintenance": 0.0,
         "overflow": 0.0,
         "dissipated": 0.0,
-        "level": 1.5
+        "level": 3.0
       },
       {
         "name": "Reservoir",
@@ -109,7 +109,7 @@
         "gradient_out": 0.0,
         "maintenance": 0.0,
         "overflow": 0.0,
-        "dissipated": -0.0,
+        "dissipated": 0.0,
         "level": 2.0
       },
       {
@@ -120,7 +120,7 @@
         "maintenance": 0.0,
         "overflow": 0.0,
         "dissipated": 0.0,
-        "level": 1.5
+        "level": 4.5
       },
       {
         "name": "Reservoir",

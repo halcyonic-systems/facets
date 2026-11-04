@@ -33,6 +33,12 @@ fn check_fixture<T: serde::Serialize>(name: &str, value: &T) {
     );
 }
 
+fn spec_version() -> String {
+    let spec = std::fs::read_to_string(concat!(env!("CARGO_MANIFEST_DIR"), "/../../docs/language/spec.md")).unwrap();
+    let title = spec.lines().next().unwrap();
+    title.rsplit_once(", v").map(|(_, v)| v.trim().to_string()).unwrap_or_else(|| panic!("no version in the spec title: {title}"))
+}
+
 #[test]
 fn sl_keywords_fixture() {
     let value = serde_json::json!({
@@ -45,6 +51,9 @@ fn sl_keywords_fixture() {
             "kind": KIND_WORDS,
         },
         "annotations": ["@lens", "@pos", "@directed"],
+        // The language's version, read off the spec's own title line so the
+        // face never types it (toy-model walk: the footer said v1.7 at v1.15).
+        "version": spec_version(),
     });
     check_fixture("sl_keywords", &value);
 }

@@ -108,7 +108,7 @@ interface NodeBodyProps {
   /** A drag in flight: the body steps to the well surface, the cursor closes
    *  and the connect handle hides. No lift, no shadow. */
   dragging?: boolean;
-  sim?: { value: number; unit: string; frac: number };
+  sim?: { value: number; unit: string; frac: number; holds?: boolean };
   onPointerDown: (e: ReactPointerEvent) => void;
   onHandlePointerDown: (e: ReactPointerEvent) => void;
   /** Env objects render as squares under Mobus only; Klir and Bunge keep every
@@ -143,6 +143,9 @@ interface NodeBodyProps {
   /** Kernel `orphan_env_thing_ids`: an env thing no bond touches — not yet in ℰ
    *  (Bunge Def 1.2 ii), dropped by project(). Rendered muted, never hidden. */
   pending?: boolean;
+  /** Kernel `source_thing_ids`: this env thing emits. Absent (a surface with
+   *  no facts) falls back to the authored word. */
+  isSource?: boolean;
   /** #180 fix 3 (Option 1): Environment-role things drag freely across the
    *  hull with no effect — the hull is computed from role, not position (see
    *  geometry.ts componentRing / Canvas.tsx C ∩ E = ∅). Purely informational;
@@ -206,6 +209,7 @@ export function NodeBody({
   labelSmall,
   boundaryRim,
   pending = false,
+  isSource,
   simPosition = false,
   envHint = false,
   bodyScale = 1,
@@ -223,7 +227,14 @@ export function NodeBody({
   // half-full box and a forced one as a filling stock — both lies. Sources
   // get an outward pulse instead; sinks and stocks keep the fill, which for
   // them is the truth (accumulation / level).
-  const emitter = thing.role === "Environment" && thing.env_kind === "Source";
+  // The kernel's filing decides (a drawn, unworded object a flow leaves is a
+  // source too, 2026-11-02 walk); the authored word is only the fallback for a
+  // surface that has no facts.
+  const emitter = thing.role === "Environment" && (isSource ?? thing.env_kind === "Source");
+  // A two-sided environment object (walk, 2026-11-03): it sends, so it
+  // pulses, and it receives, so it fills with what it has received so far.
+  // The kernel says it holds a level (`holds`); a pure source does not.
+  const fills = !emitter || sim?.holds === true;
   // #411: with the grounding overlay on, the body's stroke says whose word
   // the thing rests on and nothing else — the lens's stroke is set aside for
   // the reading, and comes back untouched when the overlay goes.
@@ -379,8 +390,9 @@ export function NodeBody({
       )}
 
       {/* the sim payoff: a stock's disc fills/drains as the scrubber indexes ticks */}
-      {!simPosition && frac !== null && !emitter && (
+      {!simPosition && frac !== null && fills && (
         <>
+          {emitter && <title>sends at its own rate, and holds what it receives</title>}
           <clipPath id={clipId}>
             <rect x={-TRI_HALF_W} y={shapeBot - shapeH * frac} width={TRI_HALF_W * 2} height={shapeH * frac} />
           </clipPath>
@@ -416,7 +428,7 @@ export function NodeBody({
           strokeWidth={strokeWidth}
           strokeDasharray={strokeDash}
           strokeLinejoin="miter"
-          fillOpacity={frac !== null && !simPosition && !emitter ? 0 : 1}
+          fillOpacity={frac !== null && !simPosition && fills ? 0 : 1}
         >
           <title>decision ⁄ regulator — a modulating work process (Mobus Fig 4.17)</title>
         </path>
@@ -432,7 +444,7 @@ export function NodeBody({
           strokeOpacity={strokeOpacity}
           strokeWidth={strokeWidth}
           strokeDasharray={strokeDash}
-          fillOpacity={frac !== null && !simPosition && !emitter ? 0 : 1}
+          fillOpacity={frac !== null && !simPosition && fills ? 0 : 1}
         />
       ) : (
         <circle
@@ -442,7 +454,7 @@ export function NodeBody({
           strokeOpacity={strokeOpacity}
           strokeWidth={strokeWidth}
           strokeDasharray={strokeDash}
-          fillOpacity={frac !== null && !simPosition && !emitter ? 0 : 1}
+          fillOpacity={frac !== null && !simPosition && fills ? 0 : 1}
         />
       )}
 

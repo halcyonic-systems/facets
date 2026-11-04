@@ -23,13 +23,28 @@ export function useCommitOnRelease(active: boolean, commit: () => void) {
 export function AmountField({
   relation,
   onEdit,
+  placeholder,
+  withdrawable = false,
 }: {
   relation: Relation;
   onEdit: (next: Relation) => void;
+  /** Shown while the flow has no declared amount (the kernel's "1 default",
+   *  walk row 21); typing a number declares it. */
+  placeholder?: string;
+  /** Clearing the field withdraws a declared amount, so the flow runs at its
+   *  default again (decision 2). Off where a `param` line names the flow,
+   *  since a param needs its flow's amount declared. */
+  withdrawable?: boolean;
 }) {
   const [draft, setDraft] = useState<string | null>(null);
   const commit = () => {
     if (draft === null) return;
+    if (withdrawable && draft.trim() === "" && relation.amount != null) {
+      const { amount: _old, ...rest } = relation;
+      onEdit(rest as Relation);
+      setDraft(null);
+      return;
+    }
     const v = Number(draft);
     if (Number.isFinite(v) && v >= 0 && draft.trim() !== "" && String(v) !== relation.amount) {
       onEdit({ ...relation, amount: String(v) });
@@ -40,13 +55,14 @@ export function AmountField({
     <Input
       className="w-24 text-right font-mono tabular"
       value={draft ?? relation.amount ?? ""}
+      placeholder={placeholder}
       onChange={(e) => setDraft(e.target.value)}
       onBlur={commit}
       onKeyDown={(e) => {
         if (e.key === "Enter") (e.target as HTMLInputElement).blur();
         if (e.key === "Escape") setDraft(null);
       }}
-      aria-label={`amount of ${relation.name}`}
+      aria-label={`amount of ${relation.name || "this flow"}`}
     />
   );
 }

@@ -9,6 +9,7 @@ import type {
   CanvasModel,
   CanvasRole,
   EdgeFact,
+  FlowKind,
   Lens,
   PortFact,
   ProcessPrimitive,
@@ -29,6 +30,9 @@ export interface LensNodeProps {
   /** Kernel verdict: env thing no bond touches (∈ orphan_env_thing_ids) —
    *  project() drops it, so it is not yet in ℰ. Rendered pending. */
   isOrphan: boolean;
+  /** Kernel verdict: env thing the projection files as a source (∈
+   *  source_thing_ids). It emits and holds nothing, so it never draws a fill. */
+  isSource?: boolean;
   hovered: boolean;
   /** The shell's selected thing (makeover rule 20): drawn as a ring offset
    *  from the body, the same geometry under every lens. */
@@ -40,7 +44,7 @@ export interface LensNodeProps {
    *  hints ("change it in the node editor") are withheld — they were wrong
    *  there, and a native SVG title over an inert layer could stick. */
   inert?: boolean;
-  sim?: { value: number; unit: string; frac: number };
+  sim?: { value: number; unit: string; frac: number; lost?: boolean; holds?: boolean };
   onPointerDown: (e: ReactPointerEvent) => void;
   onHandlePointerDown: (e: ReactPointerEvent) => void;
   /** Stage scale — marks that must stay a hand's size (the connect handle)
@@ -69,6 +73,9 @@ export interface LensEdgeProps {
   /** #308 part B: the opaque view draws a crossing up to the membrane and no
    *  further — the dashed interior segment to a hidden resident is omitted. */
   hideInterior?: boolean;
+  /** The kernel's `flow_kinds` row for this flow (walk row 29): what an
+   *  unwritten kind carries in the run, or that it cannot be worked out. */
+  carried?: FlowKind;
   onSelect?: (id: number) => void;
 }
 

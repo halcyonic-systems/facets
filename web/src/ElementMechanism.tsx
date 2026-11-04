@@ -1,9 +1,9 @@
-// The selected element's MECHANISM readout (walkthrough #13): what this node
-// does, said with what the model already knows — its primitive's one-liner,
-// every flow touching it (direction, substance, declared magnitude), and its
-// run trajectory at the scrubbed tick. Read-only; editing stays in
+// The selected element's run readout (walkthrough #13): its trajectory at the
+// scrubbed tick, and its primitive's rule folded beneath. The flow lists left
+// in the 2026-11-02 walk (row 22). Read-only; editing stays in
 // NodeEditorRows above. No systems fact is decided here — relations and
 // trajectories arrive resolved from the canvas model and the kernel readout.
+import { atFrame } from "./canvas/types";
 import type { CanvasModel, RunResultRich, Thing } from "./kernel/types";
 import { PRIMITIVES, PRIMITIVE_LAWS } from "./canvas/ProcessReference";
 import { FALLBACK_SLOT, entitySlots, surfaceEntities, type SeriesSlot } from "./RunChart";
@@ -14,7 +14,7 @@ const primitiveLine = (p: Thing["primitive"]) =>
 /** The node's trajectory as a sparkline in its entity's slot (the same stroke
  *  the run surfaces give it): a 2px line, a marker of r 4 with a 2px ring in
  *  the sheet colour so it reads where it sits on the line (dataviz marks). */
-function Sparkline({ series, tick, slot }: { series: number[]; tick: number; slot: SeriesSlot }) {
+function Sparkline({ series, tick, slot, perStep }: { series: number[]; tick: number; slot: SeriesSlot; perStep: boolean }) {
   if (series.length < 2) return null;
   const min = Math.min(...series);
   const max = Math.max(...series);
@@ -23,7 +23,9 @@ function Sparkline({ series, tick, slot }: { series: number[]; tick: number; slo
   const pad = 5;
   const x = (i: number) => pad + (i / (series.length - 1)) * (w - 2 * pad);
   const y = (v: number) => (max > min ? h - pad - ((v - min) / (max - min)) * (h - 2 * pad) : h / 2);
-  const at = Math.min(tick, series.length - 1);
+  // Frame `tick`: a level's index tick, a per-step series' tick - 1 (none at
+  // the start, canvas/types `atFrame`).
+  const at = Math.min(perStep ? tick - 1 : tick, series.length - 1);
   return (
     <svg width={w} height={h} aria-hidden>
       <polyline
@@ -35,54 +37,16 @@ function Sparkline({ series, tick, slot }: { series: number[]; tick: number; slo
         strokeLinejoin="round"
         strokeLinecap="round"
       />
-      <circle cx={x(at)} cy={y(series[at])} r={4} fill={slot.color} stroke="var(--bg-secondary)" strokeWidth={2} />
+      {at >= 0 && <circle cx={x(at)} cy={y(series[at])} r={4} fill={slot.color} stroke="var(--bg-secondary)" strokeWidth={2} />}
     </svg>
   );
 }
 
-function FlowRow({
-  flowName,
-  otherEnd,
-  substance,
-  amount,
-  unit,
-}: {
-  flowName: string;
-  otherEnd: string;
-  substance?: string;
-  amount?: string;
-  unit?: string;
-}) {
-  // Legibility (#13 refinement): the counterparty and the number are the
-  // content — text-primary; the flow's label and substance are context —
-  // muted. Direction lives in the group header, not a per-row glyph.
-  return (
-    <div className="flex items-baseline gap-2 py-0.5 text-xs">
-      <span className="min-w-0 flex-1 truncate" title={flowName}>
-        <span style={{ color: "var(--text-primary)" }}>{otherEnd}</span>
-        {flowName && <span style={{ color: "var(--text-muted)" }}> · {flowName}</span>}
-      </span>
-      <span className="shrink-0 font-mono text-[11px]">
-        {substance && <span style={{ color: "var(--text-muted)" }}>{substance} · </span>}
-        <span style={{ color: amount ? "var(--text-primary)" : "var(--text-muted)" }}>
-          {amount ? `${amount}${unit ? ` ${unit}` : ""}` : "—"}
-        </span>
-      </span>
-    </div>
-  );
-}
-
-function FlowGroupHeader({ children }: { children: string }) {
-  return (
-    <div className="mb-0.5 mt-2 text-[11px] font-semibold uppercase" style={{ letterSpacing: "var(--tracking-label)", color: "var(--text-muted)" }}>
-      {children}
-    </div>
-  );
-}
-
-/** Read-only mechanism card under the element editor: flows in/out and the
- *  node's recorded trajectory. Renders nothing when there is nothing to say
- *  (an unconnected node with no run). */
+/** Read-only card under the element editor: what this node did over the run,
+ *  and, folded, how the engine computes it. The flows in and out are not
+ *  listed (2026-11-02 walk, row 22): the canvas draws them, and the amounts
+ *  a thing sends are its settings, above. Renders nothing when there is
+ *  nothing to say. */
 export function ElementMechanism({
   thing,
   model,
@@ -94,70 +58,68 @@ export function ElementMechanism({
   result: RunResultRich | null;
   tick: number;
 }) {
-  const nameOf = (id: number) => model.things.find((t) => t.id === id)?.name ?? "?";
-  const bonds = model.relations.filter((r) => r.is_bond && (r.a === thing.id || r.b === thing.id));
-  const inflows = bonds.filter((r) => r.b === thing.id);
-  const outflows = bonds.filter((r) => r.a === thing.id);
   const traj = result?.trajectories.find((t) => t.name === thing.name) ?? null;
   const line = primitiveLine(thing.primitive);
-  if (!line && bonds.length === 0 && !traj) return null;
+  if (!line && !traj) return null;
 
-  const at = traj ? traj.series[Math.min(tick, traj.series.length - 1)] : null;
+  const at = traj ? atFrame(traj.series, tick, !traj.holds) : null;
+  // A two-sided environment object (walk, 2026-11-03): its level is what it
+  // has received so far, and what it sends is on its outgoing flows, summed
+  // for the step that ended at this tick (none at the start).
+  const twoSided = thing.role === "Environment" && traj?.holds === true;
+  const sends = twoSided
+    ? (result?.flows ?? []).filter((f) => f.from === thing.name).map((f) => atFrame(f.series, tick, true))
+    : [];
+  const sent = sends.length > 0 && sends.some((v) => v !== null) ? sends.reduce<number>((a, v) => a + (v ?? 0), 0) : null;
   const slot = traj ? entitySlots(surfaceEntities(model, result)).get(thing.name) ?? FALLBACK_SLOT : FALLBACK_SLOT;
   return (
-    <div className="mt-4 border-t pt-3" style={{ borderColor: "var(--hairline)" }}>
-      <div className="mb-1 text-[11px] font-semibold uppercase" style={{ letterSpacing: "var(--tracking-label)", color: "var(--text-muted)" }}>
-        mechanism
-      </div>
-      {line && thing.primitive && (
-        <div className="mb-2 text-xs" style={{ color: "var(--text-secondary)" }}>
-          {thing.primitive}: {line}
-          {/* The primitive's actual per-tick rule, as the engine computes it
-              (PRIMITIVE_LAWS, transcribed from circuit.rs) — the honest answer
-              to "what happens to the flow inside this box?" */}
-          <div className="mt-1 font-mono text-[11px]" style={{ color: "var(--text-muted)" }}>
-            {PRIMITIVE_LAWS[thing.primitive]}
-          </div>
-        </div>
-      )}
-      {inflows.length > 0 && (
-        <>
-          <FlowGroupHeader>flows in — from</FlowGroupHeader>
-          {inflows.map((r) => (
-            <FlowRow
-              key={r.id}
-              flowName={r.name}
-              otherEnd={nameOf(r.a)}
-              substance={r.substance}
-              amount={r.amount}
-              unit={r.unit}
-            />
-          ))}
-        </>
-      )}
-      {outflows.length > 0 && (
-        <>
-          <FlowGroupHeader>flows out — to</FlowGroupHeader>
-          {outflows.map((r) => (
-            <FlowRow
-              key={r.id}
-              flowName={r.name}
-              otherEnd={nameOf(r.b)}
-              substance={r.substance}
-              amount={r.amount}
-              unit={r.unit}
-            />
-          ))}
-        </>
-      )}
+    <div className="mt-3 border-t pt-2" style={{ borderColor: "var(--hairline)" }}>
       {traj && at !== null && (
-        <div className="mt-2 flex items-center gap-3">
-          <Sparkline series={traj.series} tick={tick} slot={slot} />
-          <span className="tabular font-semibold" style={{ fontSize: "var(--t-num)", color: "var(--text-secondary)" }}>
-            {Number.isFinite(at) ? at.toLocaleString(undefined, { maximumFractionDigits: 1 }) : "—"}
-            {traj.unit ? ` ${traj.unit}` : ""} <span style={{ color: "var(--text-muted)" }}>at tick {Math.min(tick, traj.series.length - 1)}</span>
+        // A readout, never a control (walk: a flat series drew as a line with
+        // a dot and read as a slider). Labelled, and a value that never moves
+        // is said in words instead of drawn.
+        <div className="mb-2" data-testid="element-trajectory">
+          <span className="block text-[11px]" style={{ color: "var(--text-muted)" }}>
+            {twoSided ? "received so far" : "over the run"}
           </span>
+          <div className="flex items-center gap-3">
+            {Math.min(...traj.series) !== Math.max(...traj.series) && (
+              <Sparkline series={traj.series} tick={tick} slot={slot} perStep={!traj.holds} />
+            )}
+            <span className="tabular font-semibold" style={{ fontSize: "var(--t-num)", color: "var(--text-secondary)" }}>
+              {Number.isFinite(at) ? at.toLocaleString(undefined, { maximumFractionDigits: 1 }) : "—"}
+              {traj.unit ? ` ${traj.unit}` : ""}{" "}
+              <span style={{ color: "var(--text-muted)" }}>
+                {Math.min(...traj.series) === Math.max(...traj.series)
+                  ? "the same at every tick"
+                  : `at tick ${tick}`}
+              </span>
+            </span>
+          </div>
+          {twoSided && (
+            <p className="mt-1 text-[11px] leading-snug" style={{ color: "var(--text-muted)" }} data-testid="element-two-sided">
+              {sent !== null ? `sends ${sent.toLocaleString(undefined, { maximumFractionDigits: 1 })} in the step to this tick. ` : "sends nothing yet at the start. "}
+              An environment object is a black box: it sends at its own rate and holds what it receives, and receiving does not change what it sends. To model how one shapes the other, bring it inside the boundary as a component.
+            </p>
+          )}
         </div>
+      )}
+      {line && thing.primitive && (
+        /* The primitive's per-tick rule as the engine computes it
+           (PRIMITIVE_LAWS, transcribed from circuit.rs), folded (walk row
+           22): the honest answer to "what happens inside this box?", for
+           whoever asks it. */
+        <details data-testid="how-it-computes">
+          <summary className="cursor-pointer text-xs" style={{ color: "var(--text-secondary)" }}>
+            how it computes
+          </summary>
+          <div className="mt-1 text-xs" style={{ color: "var(--text-secondary)" }}>
+            {thing.primitive}: {line}
+            <div className="mt-1 font-mono text-[11px]" style={{ color: "var(--text-muted)" }}>
+              {PRIMITIVE_LAWS[thing.primitive]}
+            </div>
+          </div>
+        </details>
       )}
     </div>
   );

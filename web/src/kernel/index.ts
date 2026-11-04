@@ -27,6 +27,12 @@ import init, {
   compile_sl as wasmCompileSl,
   emit_sl as wasmEmitSl,
   splice_positions as wasmSplicePositions,
+  sl_agreement as wasmSlAgreement,
+  sync_sl as wasmSyncSl,
+  engine_knobs as wasmEngineKnobs,
+  flow_knobs as wasmFlowKnobs,
+  flow_kinds as wasmFlowKinds,
+  run_projection as wasmRunProjection,
   model_identity as wasmModelIdentity,
   mint_model_id as wasmMintModelId,
   check_decompositions as wasmCheckDecompositions,
@@ -44,6 +50,10 @@ import init, {
 import wasmUrl from "facets-kernel/facets_kernel_bg.wasm?url";
 
 import type {
+  EngineKnob,
+  FlowKnob,
+  FlowKind,
+  SlAgreement,
   ValidationResult,
   OperationalOutcome,
   RunResult,
@@ -374,6 +384,44 @@ export function splicePositions(source: string, model: CanvasModel): string {
   return call("splice_positions", () => wasmSplicePositions(source, JSON.stringify(model)));
 }
 
+/** The engine knobs the model's components offer, at the value the run uses,
+ *  each marked declared or default. Only fields SL can write; the kernel
+ *  decides both which knobs exist and what an unset one runs at. */
+export function engineKnobs(model: CanvasModel): EngineKnob[] {
+  return call("engine_knobs", () => wasmEngineKnobs(JSON.stringify(model))) as EngineKnob[];
+}
+
+/** Every non-ample flow's amount as the run uses it, declared or default.
+ *  Read off the projection, so "1 default" is what runs (walk row 21). */
+export function flowKnobs(model: CanvasModel): FlowKnob[] {
+  return call("flow_knobs", () => wasmFlowKnobs(JSON.stringify(model))) as FlowKnob[];
+}
+
+/** What each flow carries in the run: written, inherited, or not worked out
+ *  (walk row 29). The kernel decides; the face only shows it. */
+export function flowKinds(model: CanvasModel): FlowKind[] {
+  return call("flow_kinds", () => wasmFlowKinds(JSON.stringify(model))) as FlowKind[];
+}
+
+/** `project` for a run: throws a KernelError naming each flow whose kind the
+ *  kernel cannot work out, in the not-executable message shape. */
+export function runProjection(model: CanvasModel): unknown {
+  return call("run_projection", () => wasmRunProjection(JSON.stringify(model)));
+}
+
+/** Whether an SL text and a model mean the same model, layout and lens set
+ *  aside. The kernel's one definition of agreement; the face only shows it. */
+export function slAgreement(source: string, model: CanvasModel): SlAgreement {
+  return call("sl_agreement", () => wasmSlAgreement(source, JSON.stringify(model))) as SlAgreement;
+}
+
+/** Rewrite an SL text to mean what the model means, keeping its comments.
+ *  Returns the text unchanged when it already agrees; throws when the text has
+ *  faults (the caller keeps the author's text). */
+export function syncSl(source: string, model: CanvasModel): string {
+  return call("sync_sl", () => wasmSyncSl(source, JSON.stringify(model)));
+}
+
 // ---- Decomposition: store-layer resolution (#89 step 5a) -----------------------
 
 /** A model's stable self-identity (canonical base58) read off its JSON — null
@@ -586,7 +634,10 @@ export class Sandbox {
 // ---- The bench seam (facets#463): the Model bench on a held engine ----------
 
 /** Component engine fields a bench knob may set (`session.rs::set_node_param`). */
-export type BenchComponentField = SandboxNodeField;
+// The bench also takes a process's own parameter by its SL word and value
+// (`gain` on Sensing/Amplifying, `efficiency`, `impedance`); the kernel
+// converts it through OWN_PARAMS and refuses what SL would refuse.
+export type BenchComponentField = SandboxNodeField | "efficiency" | "impedance";
 
 /**
  * The Model bench's handle on a held engine session — the face's typed wrapper
@@ -632,6 +683,14 @@ export class Bench {
   /** Set a flow's amount by label and endpoints; a column-bound flow refuses. */
   setFlowAmount(label: string, from: string, to: string, v: number): void {
     call("bench.set_flow_amount", () => this.inner.set_flow_amount(label, from, to, v));
+  }
+
+  /** Set a flow's amount as the document writes it, through the projection's
+   *  own map, so a flow into a fused pass-way is still a live knob. */
+  setFlowAmountAsWritten(canvasJson: string, label: string, from: string, to: string, v: number): void {
+    call("bench.set_flow_amount_as_written", () =>
+      this.inner.set_flow_amount_as_written(canvasJson, label, from, to, v),
+    );
   }
 
   setComponentParam(thing: string, field: BenchComponentField, v: number): void {

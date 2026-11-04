@@ -72,6 +72,8 @@
     "limiting",
     "reservoir",
     "gain",
+    "efficiency",
+    "impedance",
     "agent",
     "watches",
     "rule",
@@ -115,5 +117,6 @@
       "Interval",
       "Ratio"
     ]
-  }
+  },
+  "version": "1.16"
 }

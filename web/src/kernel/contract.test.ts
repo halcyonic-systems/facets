@@ -253,6 +253,7 @@ function parseLensFacts(v: unknown): LensFacts {
     "boundary_thing_ids",
     "environment_thing_ids",
     "orphan_env_thing_ids",
+    "source_thing_ids",
     "authored_interface_thing_ids",
     "boundary_props",
     "aggregate",
@@ -270,6 +271,9 @@ function parseLensFacts(v: unknown): LensFacts {
     ),
     orphan_env_thing_ids: arr(o.orphan_env_thing_ids, "LensFacts.orphan_env_thing_ids").map((x, i) =>
       num(x, `orphan_env_thing_ids[${i}]`),
+    ),
+    source_thing_ids: arr(o.source_thing_ids, "LensFacts.source_thing_ids").map((x, i) =>
+      num(x, `source_thing_ids[${i}]`),
     ),
     authored_interface_thing_ids: arr(o.authored_interface_thing_ids, "LensFacts.authored_interface_thing_ids").map(
       (x, i) => num(x, `authored_interface_thing_ids[${i}]`),
@@ -572,9 +576,11 @@ function parseMappingStatus(v: unknown): MappingStatus {
 }
 
 function parseRunResult(v: unknown): RunResult {
-  const o = shape(v, "RunResult", ["dt", "history", "ledger_history", "final_balance"]);
+  const o = shape(v, "RunResult", ["dt", "columns", "start", "history", "ledger_history", "final_balance"]);
   return {
     dt: num(o.dt, "RunResult.dt"),
+    columns: arr(o.columns, "columns").map((c, i) => str(c, `columns[${i}]`)),
+    start: arr(o.start, "start").map((x, i) => num(x, `start[${i}]`)),
     history: arr(o.history, "history").map((row, i) => arr(row, `history[${i}]`).map((x, j) => num(x, `history[${i}][${j}]`))),
     ledger_history: arr(o.ledger_history, "ledger_history").map((row, i) => {
       const cells = arr(row, `ledger_history[${i}]`).map((x, j) => num(x, `ledger_history[${i}][${j}]`));
@@ -664,11 +670,12 @@ function parseRunResultRich(v: unknown): RunResultRich {
       };
     }),
     trajectories: arr(o.trajectories, "trajectories").map((t, i) => {
-      const tt = shape(t, `trajectories[${i}]`, ["name", "unit", "unit_derived", "series"]);
+      const tt = shape(t, `trajectories[${i}]`, ["name", "unit", "unit_derived", "holds", "series"]);
       return {
         name: str(tt.name, "traj.name"),
         unit: str(tt.unit, "traj.unit"),
         unit_derived: bool(tt.unit_derived, "traj.unit_derived"),
+        holds: bool(tt.holds, "traj.holds"),
         series: nums(tt.series, "traj.series"),
       };
     }),

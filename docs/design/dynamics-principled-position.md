@@ -358,7 +358,11 @@ spot-confirmed by the adversarial critique):
   h(x) = {⟨t, 𝔽(t)⟩} (1979:673–676), `circuit.rs`'s `history: Vec<Vec<f32>>` (line 424).
   Under Klir, a completed H is a *data system* — evidence dynamics occurred, never the
   generator. Rule: **H is a record, never an input** (§4). For `Dist(X)` kinds, H is
-  *a sampled path*, and the UI must say so.
+  *a sampled path*, and the UI must say so. H begins at the point: the record of a
+  pointed coalgebra (X, x₀, T) over N steps is x₀ … x_N, N + 1 states, while each
+  step's output (a flow) is one of N. The conservation recorder wrote states only
+  after each step and so dropped x₀; since 2026-11-03 the readout puts it first
+  (`spec.md` §8.2, "H starts at the point"). The Markov history already did.
 - **Δt (δ):** reinterpret as **support** (linearly ordered, per MT Def 2.1; need not be
   time, per Klir 4030–4042). Mobus half-anticipates this ("an unsettled area requiring
   more research," 4-a-model:436–444). Rename the concept; leave the field.

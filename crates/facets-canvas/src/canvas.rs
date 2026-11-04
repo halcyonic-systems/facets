@@ -578,6 +578,12 @@ pub enum ParamAnchor {
     /// thing's `cognitive_params` under the field's key, exactly as the
     /// component line put it there; the param names it and bounds it.
     Field { thing: u64, field: EngineField },
+    /// A work process's own parameter (SL v1.16): Sensing's and Amplifying's
+    /// `gain`, Propelling's `efficiency`, Impeding's `impedance`, the word
+    /// read off the thing's primitive through `OWN_PARAMS`. The value lives
+    /// on `Thing.agency_capacity` in the engine's terms; the param's range is
+    /// in the word's terms, as the line writes the value.
+    Own { thing: u64 },
 }
 
 /// The engine parameters a `param … of <component>` line may name — the #112
@@ -950,6 +956,300 @@ pub struct Projection {
     pub interaction_of: std::collections::HashMap<u64, Id>,
 }
 
+/// What a flow with no declared amount runs at: `project` writes it, and
+/// `to_canvas` reads it back as undeclared. One constant, so the face's "1
+/// default" and the run cannot drift apart (2026-11-02 walk, row 21).
+pub const DEFAULT_FLOW_AMOUNT: facets_core::rust_decimal::Decimal = facets_core::rust_decimal::Decimal::ONE;
+
+/// What a flow carries in the run (2026-11-02 walk, row 29). A flow whose
+/// kind the author wrote carries that. One with no kind carries what comes
+/// into the thing it leaves, when that is one kind: matter declared at the
+/// source runs on through the splitter and the stocks without being said
+/// again (the rule `Circuit::propagate_substances` states, now applied where
+/// the run is built). Signals into the thing do not count while anything
+/// physical comes in: a valve's control line is not what it passes.
+///
+/// When the inflows disagree (matter and energy into a Combining process) or
+/// nothing comes in at all (a source's own flow), there is nothing to inherit
+/// and `kind` is `None`: the run refuses and names the flow
+/// ([`run_projection`]) rather than guessing.
+#[derive(Serialize, Clone, Debug, PartialEq)]
+pub struct FlowKind {
+    pub relation: u64,
+    /// What the run carries on it; `None` = not worked out, the run refuses.
+    pub kind: Option<Kind>,
+    /// The author wrote the kind on the flow.
+    pub said: bool,
+    /// Unsaid but worked out: the flows into its source it takes the kind from.
+    pub from: Vec<u64>,
+    /// Not worked out because the inflows differ: the kinds that come in.
+    pub mixed: Vec<Kind>,
+    /// Not worked out only because flows into its source are not either: those
+    /// flows. Answering them settles this one, so a refusal names them instead.
+    pub waits_on: Vec<u64>,
+    /// The flow leaves a gate (a Modulating process), and a gate passes on
+    /// what comes in unchanged (walk row 34, Shingai's ruling B): when this is
+    /// not empty, the physical kinds that come into the gate, which this flow
+    /// does not carry as written, or which are more than one. The run refuses.
+    pub gate_passes: Vec<Kind>,
+}
+
+/// [`FlowKind`] for every bond in `model`, in `relations` order.
+pub fn flow_kinds(model: &CanvasModel) -> Vec<FlowKind> {
+    use std::collections::HashMap;
+    let bonds: Vec<&Relation> = model.relations.iter().filter(|r| r.is_bond).collect();
+    let said: HashMap<u64, Kind> = bonds
+        .iter()
+        .filter(|r| r.kind != Kind::Unspecified)
+        .map(|r| (r.id, r.kind))
+        .collect();
+    // The kinds coming into `r`'s source that it could take, under `known`.
+    let candidates = |r: &Relation, known: &HashMap<u64, Kind>| -> Vec<(u64, Kind)> {
+        let inn: Vec<(u64, Kind)> = bonds
+            .iter()
+            .filter(|x| x.b == r.a && x.id != r.id)
+            .filter_map(|x| known.get(&x.id).map(|k| (x.id, *k)))
+            .collect();
+        let physical: Vec<(u64, Kind)> =
+            inn.iter().copied().filter(|(_, k)| *k != Kind::Informational).collect();
+        if physical.is_empty() { inn } else { physical }
+    };
+    let distinct = |c: &[(u64, Kind)]| -> Vec<Kind> {
+        let mut out: Vec<Kind> = Vec::new();
+        for (_, k) in c {
+            if !out.iter().any(|o| kind_to_substance(*o) == kind_to_substance(*k)) {
+                out.push(*k);
+            }
+        }
+        out
+    };
+    // A gate passes on what comes in unchanged, so a flow out of one carries
+    // the one physical kind that comes in. Its control line (a message) is
+    // not what it passes. A clash: what comes in is more than one kind, or is
+    // not what the flow says it carries.
+    let gate_clash = |r: &Relation, carries: Option<Kind>, known: &HashMap<u64, Kind>| -> Vec<Kind> {
+        let gate = model.things.iter().any(|t| {
+            t.id == r.a && t.role == Role::Component && !t.passway && t.primitive == Some(ProcessPrimitive::Modulating)
+        });
+        if !gate {
+            return vec![];
+        }
+        let physical: Vec<(u64, Kind)> = bonds
+            .iter()
+            .filter(|x| x.b == r.a && x.id != r.id)
+            .filter_map(|x| known.get(&x.id).map(|k| (x.id, *k)))
+            .filter(|(_, k)| *k != Kind::Informational)
+            .collect();
+        let p = distinct(&physical);
+        let clash = p.len() > 1
+            || (p.len() == 1 && carries.is_some_and(|k| kind_to_substance(k) != kind_to_substance(p[0])));
+        if clash { p } else { vec![] }
+    };
+    // Settle by rounds: assign what one kind reaches, then withdraw any whose
+    // inflows turn out mixed once everything is known, until nothing moves.
+    let mut known = said.clone();
+    for _ in 0..=bonds.len() {
+        let mut changed = false;
+        for r in bonds.iter().filter(|r| !said.contains_key(&r.id)) {
+            let d = distinct(&candidates(r, &known));
+            let next = (d.len() == 1).then(|| d[0]);
+            if known.get(&r.id).copied() != next {
+                match next {
+                    Some(k) => known.insert(r.id, k),
+                    None => known.remove(&r.id),
+                };
+                changed = true;
+            }
+        }
+        if !changed {
+            break;
+        }
+    }
+    bonds
+        .iter()
+        .map(|r| {
+            if let Some(k) = said.get(&r.id) {
+                return FlowKind {
+                    relation: r.id,
+                    kind: Some(*k),
+                    said: true,
+                    from: vec![],
+                    mixed: vec![],
+                    waits_on: vec![],
+                    gate_passes: gate_clash(r, Some(*k), &known),
+                };
+            }
+            let c = candidates(r, &known);
+            let d = distinct(&c);
+            match known.get(&r.id) {
+                Some(k) => FlowKind {
+                    relation: r.id,
+                    kind: Some(*k),
+                    said: false,
+                    from: c.iter().map(|(id, _)| *id).collect(),
+                    mixed: vec![],
+                    waits_on: vec![],
+                    gate_passes: gate_clash(r, Some(*k), &known),
+                },
+                None => FlowKind {
+                    relation: r.id,
+                    kind: None,
+                    said: false,
+                    from: vec![],
+                    waits_on: if d.len() > 1 {
+                        vec![]
+                    } else {
+                        bonds
+                            .iter()
+                            .filter(|x| x.b == r.a && x.id != r.id && !known.contains_key(&x.id))
+                            .map(|x| x.id)
+                            .collect()
+                    },
+                    gate_passes: gate_clash(r, None, &known),
+                    mixed: if d.len() > 1 { d } else { vec![] },
+                },
+            }
+        })
+        .collect()
+}
+
+/// The interaction a flow runs as, found as the author wrote it: the bond
+/// labelled `label` from the thing named `from` to the thing named `to`,
+/// mapped through the projection's own `interaction_of`. So a flow into a
+/// pass-way the projection fuses away (`flow Stream -> Inlet`, where `Inlet`
+/// becomes the pond's boundary interface) is found by the names on the page.
+/// `Ok(None)` when no such bond is written, so a caller can try the
+/// post-fusion names; an error when the bond is written but does not run on
+/// its own (a pass-way's interior leg lowers to nothing, its crossing leg
+/// carries the flow) or when the names fit several bonds.
+pub fn interaction_as_written(model: &CanvasModel, label: &str, from: &str, to: &str) -> Result<Option<Id>, String> {
+    let name = |id: u64| model.things.iter().find(|t| t.id == id).map(|t| t.name.as_str()).unwrap_or("");
+    let hits: Vec<&Relation> = model
+        .relations
+        .iter()
+        .filter(|r| r.is_bond && r.name == label && name(r.a) == from && name(r.b) == to)
+        .collect();
+    let r = match hits.as_slice() {
+        [] => return Ok(None),
+        [r] => *r,
+        _ => {
+            return Err(format!(
+                "several flows \"{label}\" from \"{from}\" to \"{to}\"; the edit is ambiguous"
+            ))
+        }
+    };
+    let map = project_with_map(model).interaction_of;
+    if let Some(id) = map.get(&r.id) {
+        return Ok(Some(id.clone()));
+    }
+    let crossing: Vec<String> = model
+        .relations
+        .iter()
+        .filter(|x| x.is_bond && x.id != r.id && (x.b == r.a || x.a == r.b) && map.contains_key(&x.id))
+        .map(|x| format!("\"{}|{}|{}\"", x.name, name(x.a), name(x.b)))
+        .collect();
+    Err(format!(
+        "flow \"{label}\" from \"{from}\" to \"{to}\" does not run on its own: the projection \
+         fuses it into the flow that crosses the pass-way{}",
+        if crossing.is_empty() { String::new() } else { format!("; turn {}", crossing.join(" or ")) }
+    ))
+}
+
+/// [`project`] for a run: refuses, naming each flow, when a flow's kind cannot
+/// be worked out ([`flow_kinds`]), since the run would otherwise have to guess
+/// what it carries. Only a model the run's gate would otherwise accept is
+/// refused here; one it refuses keeps those reasons, which come first. The message is the not-executable form (a count line, then
+/// one `· ` line per flow), so the face shows it like any other refusal.
+pub fn run_projection(model: &CanvasModel) -> Result<WorldModel, String> {
+    let world = project(model);
+    let kinds = flow_kinds(model);
+    // A flow out of a gate that clashes is asked about as a gate (below), not
+    // as an unworked flow, so it is named once.
+    let all: Vec<FlowKind> = kinds.iter().filter(|f| f.kind.is_none() && f.gate_passes.is_empty()).cloned().collect();
+    let clashes: Vec<&FlowKind> = kinds.iter().filter(|f| !f.gate_passes.is_empty()).collect();
+    // A model that cannot run for other reasons says those first: the run's
+    // own gate refuses it with every reason, and a question about one flow's
+    // kind would hide them.
+    if (all.is_empty() && clashes.is_empty()) || facets_core::operational::validate_operational(&world).is_err() {
+        return Ok(world);
+    }
+    let name = |id: u64| model.things.iter().find(|t| t.id == id).map(|t| t.name.clone()).unwrap_or_default();
+    let word = |k: &Kind| match k {
+        Kind::Matter => "matter",
+        Kind::Energy => "energy",
+        Kind::Field => "field",
+        Kind::Informational => "message",
+        Kind::Unspecified => "nothing",
+    };
+    // Gates first: one line per gate whose inflows are more than one kind,
+    // one per flow that says a kind the gate is not given.
+    let mut gate_lines: Vec<String> = Vec::new();
+    let mut mixed_gates: Vec<u64> = Vec::new();
+    for f in &clashes {
+        let Some(r) = model.relations.iter().find(|r| r.id == f.relation) else { continue };
+        let (a, b) = (name(r.a), name(r.b));
+        let ks: Vec<&str> = f.gate_passes.iter().map(word).collect();
+        if f.gate_passes.len() > 1 {
+            if !mixed_gates.contains(&r.a) {
+                mixed_gates.push(r.a);
+                gate_lines.push(format!(
+                    "{a} takes in {}, but a gate passes on one kind unchanged: make what flows into {a} one kind",
+                    ks.join(" and ")
+                ));
+            }
+        } else {
+            let says = f.kind.as_ref().map(word).unwrap_or("nothing");
+            gate_lines.push(format!(
+                "{a} -> {b}: {a} is a gate, so it passes on the {} it takes in unchanged. This flow says {says}: make it {}, or change what flows into {a}",
+                ks[0], ks[0]
+            ));
+        }
+    }
+    // Name the flows to answer: those not merely waiting on another. A loop
+    // of flows that all wait on each other has no such flow; name them all.
+    let roots: Vec<FlowKind> = all.iter().filter(|f| f.waits_on.is_empty()).cloned().collect();
+    let following = if roots.is_empty() { 0 } else { all.len() - roots.len() };
+    let open = if roots.is_empty() { all } else { roots };
+    let lines: Vec<String> = open
+        .iter()
+        .filter_map(|f| {
+            let r = model.relations.iter().find(|r| r.id == f.relation)?;
+            let (a, b) = (name(r.a), name(r.b));
+            Some(if f.mixed.is_empty() {
+                format!("{a} -> {b}: nothing says what {a} sends. Say matter, energy or message on this flow")
+            } else {
+                let ks: Vec<&str> = f.mixed.iter().map(word).collect();
+                format!("{a} -> {b}: {a} takes in {}, so say which this flow carries", ks.join(" and "))
+            })
+        })
+        .collect();
+    let bullets = |ls: &[String]| ls.iter().map(|l| format!("\n· {l}")).collect::<String>();
+    if lines.is_empty() {
+        let n = gate_lines.len();
+        return Err(format!(
+            "{n} gate flow{} {} not match what comes in:{}",
+            if n == 1 { "" } else { "s" },
+            if n == 1 { "does" } else { "do" },
+            bullets(&gate_lines)
+        ));
+    }
+    let n = lines.len();
+    let after = match following {
+        0 => String::new(),
+        1 => " (1 more after it follows once it is said)".to_string(),
+        k => format!(" ({k} more after {} follow once {} said)", if n == 1 { "it" } else { "them" }, if n == 1 { "it is" } else { "they are" }),
+    };
+    Err(format!(
+        "{n} flow{} {} not say what {} carr{}{after}:{}{}",
+        if n == 1 { "" } else { "s" },
+        if n == 1 { "does" } else { "do" },
+        if n == 1 { "it" } else { "they" },
+        if n == 1 { "ies" } else { "y" },
+        bullets(&lines),
+        bullets(&gate_lines)
+    ))
+}
+
 /// Project the canvas model into a facets-core `WorldModel`, mode-stamped by the
 /// lens. Only bonds project to interactions; an environment thing projects only
 /// if a bond touches it (originates one → Source, else Sink). Port of the old
@@ -972,6 +1272,11 @@ pub fn project_with_map(model: &CanvasModel) -> Projection {
     };
 
     let bonds: Vec<&Relation> = model.relations.iter().filter(|r| r.is_bond).collect();
+    // A flow with no kind runs as what it inherits (walk row 29); one with
+    // nothing to inherit keeps the historical Energy reading here, and a run
+    // refuses it first (`run_projection`).
+    let carried: HashMap<u64, Kind> =
+        flow_kinds(model).into_iter().filter_map(|f| Some((f.relation, f.kind?))).collect();
     let originates: HashSet<u64> = bonds.iter().map(|r| r.a).collect();
     // An environment thing a pending crossing still lands on is not an orphan
     // (facets#384): the crossing is the bond, and it is written back below.
@@ -1384,7 +1689,7 @@ pub fn project_with_map(model: &CanvasModel) -> Projection {
             info: described(flow_id, 0, &r.name, &r.description),
             substance: Substance {
                 sub_type: r.substance.clone(),
-                ty: kind_to_substance(r.kind),
+                ty: kind_to_substance(carried.get(&r.id).copied().unwrap_or(r.kind)),
             },
             ty: InteractionType::Flow,
             // Authored wins; undeclared keeps the historical default. The
@@ -1421,7 +1726,7 @@ pub fn project_with_map(model: &CanvasModel) -> Projection {
                         .find(|x| x.a == processor && x.b == r.a)
                         .and_then(|x| x.amount)
                 })
-                .unwrap_or(facets_core::rust_decimal::Decimal::ONE),
+                .unwrap_or(DEFAULT_FLOW_AMOUNT),
             unit: r.unit.clone(),
             ample: r.ample,
             parameters: vec![],
@@ -1461,7 +1766,7 @@ pub fn project_with_map(model: &CanvasModel) -> Projection {
             source_interface: None,
             sink,
             sink_interface: None,
-            amount: c.amount.unwrap_or(facets_core::rust_decimal::Decimal::ONE),
+            amount: c.amount.unwrap_or(DEFAULT_FLOW_AMOUNT),
             unit: c.unit.clone(),
             ample: false,
             parameters: vec![],
@@ -1512,7 +1817,7 @@ pub fn project_with_map(model: &CanvasModel) -> Projection {
                     _ => None,
                 }
             }
-            ParamAnchor::Field { .. } => None,
+            ParamAnchor::Field { .. } | ParamAnchor::Own { .. } => None,
         };
         if let Some(command) = command {
             if let Some(agent) = systems[sys_idx].agent.as_mut() {
@@ -1821,7 +2126,7 @@ pub fn to_canvas(model: &WorldModel) -> CanvasModel {
             // typed (#262). A genuinely authored 1 is indistinguishable and
             // also reads back None: the same trade the placeholder root name
             // makes below, and projection resupplies the ONE either way.
-            amount: Some(ix.amount).filter(|a| *a != facets_core::rust_decimal::Decimal::ONE),
+            amount: Some(ix.amount).filter(|a| *a != DEFAULT_FLOW_AMOUNT),
             unit: ix.unit.clone(),
             substance: ix.substance.sub_type.clone(),
             ample: ix.ample,
@@ -2821,4 +3126,104 @@ mod tests {
         let missing = decompose_thing(&model, 99).err().expect("unknown id refuses");
         assert!(missing[0].message.contains("nothing to decompose"), "{missing:?}");
     }
+
+    // ---- What a flow carries (2026-11-02 walk, row 29) ----
+
+    const WALK29: &str = "component T1 primitive Buffering\ncomponent T2 primitive Splitting\ninterface I3\ninterface I4\nenvironment E5\nenvironment E6\ncomponent T7 primitive Buffering\nflow E5 -> I3 : matter amount 10\nflow I3 -> T2\nflow T2 -> T1\nflow T1 -> I4\nflow I4 -> E6\nflow T2 -> T7\nflow T7 -> I4\n";
+
+    fn kinds_by_name(m: &CanvasModel) -> Vec<(String, Option<Kind>, bool)> {
+        let name = |id: u64| m.things.iter().find(|t| t.id == id).unwrap().name.clone();
+        flow_kinds(m)
+            .into_iter()
+            .map(|f| {
+                let r = m.relations.iter().find(|r| r.id == f.relation).unwrap();
+                (format!("{}->{}", name(r.a), name(r.b)), f.kind, f.said)
+            })
+            .collect()
+    }
+
+    /// Shingai's model: matter said once at the source runs on through the
+    /// splitter, both stocks and the door, to E6.
+    #[test]
+    fn matter_said_at_the_source_runs_on_downstream() {
+        let m = crate::sl::parse_sl(WALK29).unwrap();
+        let k = kinds_by_name(&m);
+        assert!(k.iter().all(|(_, kind, _)| *kind == Some(Kind::Matter)), "{k:?}");
+        assert_eq!(k.iter().filter(|(_, _, said)| *said).count(), 1);
+        assert!(run_projection(&m).is_ok());
+        let w = project(&m);
+        assert!(
+            w.interactions.iter().all(|i| i.substance.ty == SubstanceType::Material),
+            "every projected flow carries matter"
+        );
+    }
+
+    #[test]
+    fn a_source_flow_with_no_kind_is_refused_by_name() {
+        let m = crate::sl::parse_sl("component T1 primitive Buffering interface\nenvironment E5\nenvironment E6\nflow E5 -> T1\nflow T1 -> E6\n").unwrap();
+        let err = run_projection(&m).err().expect("refused");
+        assert!(err.starts_with("1 flow does not say what it carries (1 more after it follows once it is said):"), "{err}");
+        assert!(!err.contains("T1 -> E6"), "a flow that only waits is not named: {err}");
+        assert!(err.contains("\n· E5 -> T1: nothing says what E5 sends"), "{err}");
+        // Say the source's kind once and the rest follows.
+        let m = crate::sl::parse_sl("component T1 primitive Buffering interface\nenvironment E5\nenvironment E6\nflow E5 -> T1 : energy\nflow T1 -> E6\n").unwrap();
+        assert!(run_projection(&m).is_ok());
+        assert!(flow_kinds(&m).iter().all(|f| f.kind == Some(Kind::Energy)));
+    }
+
+    /// Two kinds in, one unsaid out: no guess. The refusal says what comes in.
+    #[test]
+    fn mixed_inflows_leave_the_outflow_to_the_author() {
+        let m = crate::sl::parse_sl("component C primitive Combining interface\nenvironment Ore\nenvironment Power\nenvironment Out\nflow Ore -> C : matter\nflow Power -> C : energy\nflow C -> Out\n").unwrap();
+        let f = flow_kinds(&m).into_iter().find(|f| !f.said).unwrap();
+        assert_eq!(f.kind, None);
+        assert_eq!(f.mixed, vec![Kind::Matter, Kind::Energy]);
+        let err = run_projection(&m).err().expect("refused");
+        assert!(err.contains("C -> Out: C takes in matter and energy, so say which this flow carries"), "{err}");
+    }
+
+    /// A control signal into a valve is not what the valve passes.
+    #[test]
+    fn signals_do_not_count_against_the_physical_stream() {
+        let m = crate::sl::parse_sl("component V primitive Modulating\nenvironment In\nenvironment Ctl\nenvironment Out\nflow In -> V : matter\nflow Ctl -> V : informational\nflow V -> Out\n").unwrap();
+        let f = flow_kinds(&m).into_iter().find(|f| !f.said).unwrap();
+        assert_eq!(f.kind, Some(Kind::Matter), "{f:?}");
+    }
+
+    /// Walk row 34, ruling B: the door gated, matter in and energy written on
+    /// the way out. The run used to pass the matter on as energy and lose
+    /// nothing; now it asks, naming the gate.
+    #[test]
+    fn a_gate_is_refused_a_kind_it_is_not_given() {
+        let sl = WALK29
+            .replace("interface I3\n", "component I3 primitive Modulating interface\n")
+            .replace("flow I3 -> T2\n", "flow I3 -> T2 : energy\n");
+        let m = crate::sl::parse_sl(&sl).unwrap();
+        let msg = run_projection(&m).err().expect("refused");
+        assert!(msg.starts_with("1 gate flow does not match what comes in:"), "{msg}");
+        assert!(msg.contains("I3 -> T2: I3 is a gate, so it passes on the matter it takes in unchanged. This flow says energy"), "{msg}");
+        // Written as what comes in, or left to carry on, it runs.
+        let said = crate::sl::parse_sl(&sl.replace("flow I3 -> T2 : energy", "flow I3 -> T2 : matter")).unwrap();
+        assert!(run_projection(&said).is_ok());
+        let carried = crate::sl::parse_sl(&sl.replace("flow I3 -> T2 : energy", "flow I3 -> T2")).unwrap();
+        assert!(run_projection(&carried).is_ok());
+    }
+
+    #[test]
+    fn a_gate_given_two_kinds_is_named_once() {
+        let m = crate::sl::parse_sl("component V primitive Modulating interface\nenvironment A\nenvironment B\nenvironment X\nenvironment Y\nflow A -> V : matter\nflow B -> V : energy\nflow V -> X : matter\nflow V -> Y\n").unwrap();
+        let msg = run_projection(&m).err().expect("refused");
+        assert_eq!(msg.matches("V takes in matter and energy, but a gate passes on one kind").count(), 1, "{msg}");
+        assert!(!msg.contains("V -> Y"), "the gate line covers its flows: {msg}");
+    }
+
+    /// Only a gate is held to this: a Combining process makes one kind out of
+    /// several (#340), so its written outflow is not a clash.
+    #[test]
+    fn other_processes_may_change_what_they_pass() {
+        let m = crate::sl::parse_sl("component C primitive Combining interface\nenvironment A\nenvironment B\nenvironment Out\nflow A -> C : matter\nflow B -> C : energy\nflow C -> Out : matter\n").unwrap();
+        assert!(flow_kinds(&m).iter().all(|f| f.gate_passes.is_empty()));
+        assert!(run_projection(&m).is_ok());
+    }
 }
+

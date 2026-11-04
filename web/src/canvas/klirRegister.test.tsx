@@ -90,8 +90,8 @@ const run = (series0: number[], series1: number[]): RunResultRich => ({
   levels: [],
   comparisons: [],
   trajectories: [
-    { name: "Tank", unit: "L", unit_derived: false, series: series0 },
-    { name: "Sink", unit: "L", unit_derived: false, series: series1 },
+    { name: "Tank", unit: "L", unit_derived: false, holds: true, series: series0 },
+    { name: "Sink", unit: "L", unit_derived: false, holds: true, series: series1 },
   ],
 });
 

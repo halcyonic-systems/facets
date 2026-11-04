@@ -640,6 +640,13 @@ pub struct Circuit {
     /// advances. The recorder-side source for declared metrics — cleared with
     /// `history` on reset; decoded per epoch after a topology change.
     pub wire_history: Vec<Vec<f32>>,
+    /// Each node's storage at the START of the last completed step: the
+    /// level an observation tap read on it (toy-model walk, 2026-11-03).
+    /// `wire_amount` reports a tap from here, so the recorded reading is the
+    /// one the sensor or agent acted on, not the level the step then left.
+    /// Empty before the first step and after `reset`, when a tap reports the
+    /// current storage (nothing has been read yet).
+    pub read_levels: Vec<f32>,
     /// Per-tick, per-node flux record (facets#463, the tick log): row `t` is
     /// `[tick, n0.delivered, n0.released, n0.gradient_out, n0.maintenance,
     /// n0.overflow, n0.dissipated, n1…]` — what each node was handed, what it
@@ -709,7 +716,8 @@ pub struct NodeFlux {
     pub overflow: f32,
     /// NaN when the model declines the conservation ledger.
     pub dissipated: f32,
-    /// The stock after the tick (Buffering), else the activity.
+    /// What the element holds after the tick: a stock's storage, a sink's
+    /// or receiving environment object's total received; else the activity.
     pub level: f32,
 }
 
@@ -731,6 +739,7 @@ impl Circuit {
         self.history.clear();
         self.ledger_history.clear();
         self.wire_history.clear();
+        self.read_levels.clear();
         self.node_flux_history.clear();
         self.agent_readings.clear();
         self.decision_history.clear();
@@ -850,6 +859,9 @@ impl Circuit {
             name: self.nodes[i].name.clone(),
         };
         self.nodes.remove(i);
+        if i < self.read_levels.len() {
+            self.read_levels.remove(i);
+        }
         if i < self.agent_readings.len() {
             self.agent_readings.remove(i);
         }
@@ -1168,7 +1180,8 @@ impl Circuit {
             };
         }
         if self.is_observation(w) {
-            return self.nodes[w.from].storage; // non-draining level read
+            // non-draining level read: the level the last step read
+            return self.read_levels.get(w.from).copied().unwrap_or(self.nodes[w.from].storage);
         }
         self.delivery_share(k, self.nodes[self.wires[k].from].activity)
     }
@@ -1438,6 +1451,7 @@ impl Circuit {
         };
         let n = self.nodes.len();
         let nw = self.wires.len();
+        self.read_levels = self.nodes.iter().map(|n| n.storage).collect();
 
         // Axis D: run the mass ledger only when the model declares conservation
         // (the default). A declined invariant steps the identical transition
@@ -1637,6 +1651,16 @@ impl Circuit {
                 // simply not produced).
                 // × dt: a Source's param is a RATE per time unit (#258)
                 NodeKind::Source => {
+                    // An environment object is a black box with two sides
+                    // (walk, 2026-11-03; Mobus book-revisions: one object may
+                    // be both source and sink). What it receives it takes in
+                    // and holds, as a sink does; what it sends is its own
+                    // given rate, and receiving never changes it. An object
+                    // whose sending answered to what it received would have an
+                    // organization of its own, and so belong inside a widened
+                    // boundary as a component, not out here. What it receives
+                    // is read after the step (`delivered`, below): a source
+                    // is evaluated first, before its inflows are known.
                     let rate = dt * self.source_emission(i) * bp_factor_of(i, &act);
                     match node.reservoir {
                         // A finite source emits what it has left after this
@@ -1862,9 +1886,11 @@ impl Circuit {
             // Maintenance respiration: a constant upkeep loss from the stock,
             // dissipated (never delivered). The ledger charges it
             // automatically — the stock falls but no outflow carries it.
-            // Odum depreciation / Mobus Fig 3.17.
+            // Odum depreciation / Mobus Fig 3.17. × dt (#258): upkeep is a
+            // RATE per time unit like a release, so a run's totals do not
+            // depend on how finely the time unit is stepped.
             if node.maintenance > 0.0 {
-                let taken = node.maintenance.min(storage.max(0.0));
+                let taken = (dt * node.maintenance).min(storage.max(0.0));
                 storage -= taken;
                 maint_taken[i] = taken;
             }
@@ -1930,11 +1956,14 @@ impl Circuit {
             for i in 0..n {
                 let node = &self.nodes[i];
                 match node.kind {
-                    // Inflow to a source has nowhere to go (the UI refuses these
-                    // wires; ledgered defensively).
+                    // What an environment object receives is received by the
+                    // environment, as at a sink. It was charged as dissipated
+                    // back when the face refused flows into a source; since a
+                    // plain `environment` may both send and receive (#216),
+                    // that charge destroyed what the environment took in.
                     NodeKind::Source => {
-                        node_diss[i] = delivered[i];
-                        dissipated_now += delivered[i];
+                        node_diss[i] = 0.0;
+                        sunk_now += delivered[i];
                     }
                     NodeKind::Sink => {
                         node_diss[i] = 0.0;
@@ -1988,6 +2017,11 @@ impl Circuit {
             node.activity = act[i];
             node.storage = next_storage[i];
             node.total += sink_add[i];
+            // An environment object's received side (see the Source arm):
+            // what arrived this step, the amount the ledger counts as sunk.
+            if matches!(node.kind, NodeKind::Source) {
+                node.total += delivered[i];
+            }
             if node.reservoir.is_some() {
                 node.remaining = (node.remaining - released[i]).max(0.0);
             }
@@ -2111,14 +2145,19 @@ impl Circuit {
                 let nodes = (0..n)
                     .map(|i| {
                         let b = 1 + i * FLUX_COLS;
-                        let level = if matches!(
-                            self.nodes[i].kind,
-                            NodeKind::Process(ProcessPrimitive::Buffering)
-                        ) {
-                            h.get(2 + i * 3).copied().unwrap_or(f32::NAN)
-                        } else {
-                            h.get(1 + i * 3).copied().unwrap_or(f32::NAN)
+                        // A level is what the element holds, the same
+                        // column the run's trajectories read (`holds`): a
+                        // stock's storage, a sink's or a receiving
+                        // environment object's total received, else the
+                        // activity (toy-model club, 2026-11-03: Town's level
+                        // read its send rate here and its held total there).
+                        let col = match self.nodes[i].kind {
+                            NodeKind::Process(ProcessPrimitive::Buffering) => 2,
+                            NodeKind::Sink => 3,
+                            NodeKind::Source if self.wires.iter().any(|w| w.to == i) => 3,
+                            _ => 1,
                         };
+                        let level = h.get(col + i * 3).copied().unwrap_or(f32::NAN);
                         NodeFlux {
                             name: self.nodes[i].name.clone(),
                             delivered: f[b],
@@ -2664,6 +2703,55 @@ mod tests {
             );
         }
         assert!(c.balance().abs() < 1e-3, "conserved: {}", c.balance());
+    }
+
+    /// Law: maintenance is upkeep per TIME UNIT, like a release (toy-model
+    /// pond, 2026-11-03): ten whole steps and a hundred tenth-steps take the
+    /// same 20 from a stock of 100 at maintenance 2. It was charged once per
+    /// step, so the finer run lost ten times as much.
+    #[test]
+    fn maintenance_is_a_rate_per_time_unit() {
+        let level_after = |dt: f32, steps: usize| {
+            let mut c = Circuit::default();
+            let mut n = node(NodeKind::Process(ProcessPrimitive::Buffering));
+            n.storage = 100.0;
+            n.maintenance = 2.0;
+            c.nodes.push(n);
+            for _ in 0..steps {
+                c.step_dt(dt);
+            }
+            c.nodes[0].storage
+        };
+        let whole = level_after(1.0, 10);
+        let tenth = level_after(0.1, 100);
+        assert!((whole - 80.0).abs() < 1e-3, "dt 1: {whole}");
+        assert!((tenth - 80.0).abs() < 1e-2, "dt 0.1: {tenth}");
+    }
+
+    /// Law: an observation tap records the level it READ, the start-of-step
+    /// storage the sensor transduced, not the level the step then left
+    /// (toy-model water tower, 2026-11-03: the tap showed 10 while the
+    /// sensor had read 0). The sensor's own activity is gain x that reading.
+    #[test]
+    fn a_tap_records_the_level_it_read() {
+        let mut c = Circuit::default();
+        c.nodes.push(node(NodeKind::Source)); // 0
+        c.nodes.push(node(NodeKind::Process(ProcessPrimitive::Buffering))); // 1
+        c.nodes.push(node(NodeKind::Process(ProcessPrimitive::Sensing))); // 2
+        c.nodes[0].param = 10.0;
+        c.wires.push(Wire::new(0, 1));
+        let mut tap = Wire::new(1, 2);
+        tap.substance_override = Some(SubstanceType::Message);
+        c.wires.push(tap);
+        assert!(c.is_observation(&c.wires[1]));
+        for _ in 0..3 {
+            let before = c.nodes[1].storage;
+            c.step();
+            let read = *c.wire_history.last().unwrap().get(1).unwrap();
+            assert_eq!(read, before, "the tap records the opening level");
+            assert_eq!(c.wire_amount(1), before);
+            assert!(c.nodes[1].storage > before, "the stock filled after the read");
+        }
     }
 
     /// Law: an unset (or 1) dt_stride is the single-clock case — the series
@@ -3557,12 +3645,14 @@ mod tests {
         );
     }
 
-    /// Law: flow illegally wired into a Source is shed to the dissipation
-    /// ledger, never silently destroyed.
-    /// Flow wired into a Source (UI refuses; engine defends): the mass is
-    /// shed to the ledger, not silently destroyed.
+    /// Law: what flows into a Source is received by the environment, as at a
+    /// sink: counted as sunk, held in the node's total, the ledger balanced,
+    /// and the receiving Source's own sending untouched (walk, 2026-11-03).
+    /// It used to be charged as dissipated, which was right while the face
+    /// refused such flows and wrong once a plain `environment` object could
+    /// both send and receive (#216).
     #[test]
-    fn inflow_to_source_is_ledgered() {
+    fn inflow_to_source_is_received() {
         let mut c = Circuit::default();
         c.nodes.push(node(NodeKind::Source));
         c.nodes.push(node(NodeKind::Source));
@@ -3572,7 +3662,8 @@ mod tests {
             c.step();
             assert_balanced(&c, "inflow to source");
         }
-        assert!(c.dissipated > 0.0, "shed inflow must appear in the ledger");
+        assert_eq!(c.dissipated, 0.0, "received, not destroyed");
+        assert!(c.sunk > 0.0 && (c.nodes[1].total - c.sunk).abs() < 1e-4, "held as received");
     }
 
     /// Law: a gradient wire from a node with no potential is inert — it must

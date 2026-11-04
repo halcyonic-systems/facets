@@ -208,10 +208,22 @@ new verb for the language, not a formula — see ADR 0006 for the growth rule.
    step and *ignored* — the model validates, runs, conserves, and regulates
    nothing. `check_flows_are_consumed` (#261) now warns with a fix-shaped hint;
    take the warning seriously, it found a shipped demo's dead control loop.
-2. **A sensor's coupling to a stock is `: matter`.** Sensing is the
-   substance-crossing primitive — a physical quantity in, a signal out. Declare
-   the level-read flow `matter` (it is a non-draining observation tap); the
-   `informational` part is everything *downstream* of the sensor.
+2. **A sensor reads a stock over an `: informational` flow from it.** That
+   flow is the observation tap: each step the sensor reads the stock's level
+   and takes nothing. A `: matter` flow from a stock into a sensor is a real
+   outflow instead. The stock's release splits into it and the sensor
+   dissipates its share, so reading drains what it measures, and
+   `sensor_drains_stock` warns. (This fact said the opposite until the
+   2026-11-03 toy-model walk; the engine changed in 4cb56b1, 2026-08-14, and
+   every shipped sensor model reads informationally.)
+   A stock and the step: a stock releases only what it held at
+   the start of a step, so what arrives during a step waits one step. A
+   stock drained harder than it is filled therefore rests at about one
+   step's inflow, not at zero, and that resting level shrinks with Δt (a
+   treasury paid 9 a step and drawn 25 a step rests at 9 at Δt 1, 4 at
+   Δt 0.5, near 0 at Δt 0.1; toy-model walk, 2026-11-03). It is the explicit
+   step, not a parameter: compare drained levels at the same Δt, or refine
+   Δt to read the continuous limit.
 3. **`amount` is an absolute rate only on source-originating flows.** On flows
    out of processes it is a *relative weight* for the fanout split; the actual
    outflow of a stock is its `release`/time-constant behavior. Don't decorate
@@ -230,6 +242,20 @@ new verb for the language, not a formula — see ADR 0006 for the growth rule.
    loop of pure relays has no deterministic step and the run **refuses with the
    loop named**. Time is honest everywhere else too: rates are per `time unit`,
    and a run's totals don't depend on Δt (`dt_invariance.rs` holds this).
+
+## Reading a run: instants and steps
+
+A run of N steps has N + 1 instants, numbered 0 to N. Tick 0 is the start,
+before anything has moved: every stock at its `initial` (or zero), nothing yet
+received by a sink, and no flow shown on the canvas. A stock is a state, so it
+has a value at every instant. A flow is what moves between two instants, so it
+has one value per step, and the scrubber shows it at the instant its step ended.
+That is why a run of 12 reads "start / 12" at one end and "tick 12 / 12" at the
+other. Data lines up the same way: a stock column's first row is the observed
+start (it also sets the stock's starting level), and a flow column is one row
+per step. The formal reason is the spec's §8.2, "H starts at the point": a run
+is the unfolding x₀, T(x₀), T²(x₀), … of the model's step from its starting
+state.
 
 ## The three pre-SL demos, and why they cannot be ported
 

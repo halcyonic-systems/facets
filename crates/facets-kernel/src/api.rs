@@ -418,6 +418,67 @@ pub fn splice_positions(source: &str, canvas_json: &str) -> Result<String, JsErr
     facets_canvas::sl::splice_positions(source, &model).map_err(|e| JsError::new(&e))
 }
 
+/// The engine knobs the model's components offer, each at the value the run
+/// will use and marked declared or default (2026-11-02 walk, decision 2). Only
+/// fields SL can write on the component's line; defaults read off the circuit
+/// the run builds. Shape: `EngineKnob[]` in API.md.
+#[wasm_bindgen]
+pub fn engine_knobs(canvas_json: &str) -> Result<JsValue, JsError> {
+    let model: facets_canvas::canvas::CanvasModel = serde_json::from_str(canvas_json)
+        .map_err(|e| JsError::new(&format!("invalid canvas model: {e}")))?;
+    to_js(&crate::knobs::engine_knobs(&model))
+}
+
+/// Every non-ample flow's amount as the run uses it, marked declared or
+/// default (walk row 21). Read off the projection the run is built from.
+/// Shape: `FlowKnob[]` in API.md.
+#[wasm_bindgen]
+pub fn flow_knobs(canvas_json: &str) -> Result<JsValue, JsError> {
+    let model: facets_canvas::canvas::CanvasModel = serde_json::from_str(canvas_json)
+        .map_err(|e| JsError::new(&format!("invalid canvas model: {e}")))?;
+    to_js(&crate::knobs::flow_knobs(&model))
+}
+
+/// What every flow carries in the run: the written kind, or the one it
+/// inherits from what comes into its source, or none when that cannot be
+/// worked out (walk row 29). Shape: `FlowKind[]` in API.md.
+#[wasm_bindgen]
+pub fn flow_kinds(canvas_json: &str) -> Result<JsValue, JsError> {
+    let model: facets_canvas::canvas::CanvasModel = serde_json::from_str(canvas_json)
+        .map_err(|e| JsError::new(&format!("invalid canvas model: {e}")))?;
+    to_js(&facets_canvas::canvas::flow_kinds(&model))
+}
+
+/// `project` for a run: refuses, naming each flow, when a flow's kind cannot
+/// be worked out, so the run never guesses what a flow carries (walk row 29).
+#[wasm_bindgen]
+pub fn run_projection(canvas_json: &str) -> Result<JsValue, JsError> {
+    let model: facets_canvas::canvas::CanvasModel = serde_json::from_str(canvas_json)
+        .map_err(|e| JsError::new(&format!("invalid canvas model: {e}")))?;
+    let world = facets_canvas::canvas::run_projection(&model).map_err(|e| JsError::new(&e))?;
+    to_js(&world)
+}
+
+/// Whether an SL text and a canvas model mean the same model (layout and lens
+/// set aside), with the canonical lines each has that the other lacks. The one
+/// definition of agreement the face uses (2026-11-02 walk).
+#[wasm_bindgen]
+pub fn sl_agreement(source: &str, canvas_json: &str) -> Result<JsValue, JsError> {
+    let model: facets_canvas::canvas::CanvasModel = serde_json::from_str(canvas_json)
+        .map_err(|e| JsError::new(&format!("invalid canvas model: {e}")))?;
+    to_js(&facets_canvas::sl::sl_agreement(source, &model).map_err(|e| JsError::new(&e))?)
+}
+
+/// Rewrite an SL text to mean what the canvas model means, keeping the
+/// author's comments; unchanged when it already agrees; refused (an error)
+/// when the text has faults, so text mid-edit is never eaten.
+#[wasm_bindgen]
+pub fn sync_sl(source: &str, canvas_json: &str) -> Result<String, JsError> {
+    let model: facets_canvas::canvas::CanvasModel = serde_json::from_str(canvas_json)
+        .map_err(|e| JsError::new(&format!("invalid canvas model: {e}")))?;
+    facets_canvas::sl::sync_sl(source, &model).map_err(|e| JsError::new(&e))
+}
+
 /// Validate a proposed connection at the model's current lens. Returns the issues
 /// the candidate edge INTRODUCED (empty = legal). The per-drag "React asks Rust"
 /// call — the canvas rejects an edge iff the kernel says so.
@@ -593,6 +654,9 @@ struct TrajDto {
     unit: String,
     /// See [`LevelDto::unit_derived`].
     unit_derived: bool,
+    /// See `Trajectory::holds`: a level (stock, sink) rather than a per-tick
+    /// activity (source, process).
+    holds: bool,
     series: Vec<f32>,
 }
 
@@ -634,6 +698,7 @@ impl From<facets_tether::forcing::RunReadout> for RunResultRich {
                     name: t.name,
                     unit: t.unit,
                     unit_derived: t.unit_derived,
+                    holds: t.holds,
                     series: t.series,
                 })
                 .collect(),
@@ -937,6 +1002,82 @@ mod tests {
         let mut bench = facets_tether::bench::BenchSession::open_unforced(model, 1.0).expect("opens");
         bench.step(3);
         check_fixture("tick_log", &bench.tick_log_since(1));
+    }
+
+    /// Walk, 2026-11-03: a level is a state at an instant, so a run of N
+    /// steps has N + 1 levels, the first before anything moves; a flow is what
+    /// moves during a step, so it has N. And a stock column's first row, which
+    /// the tether reads as the starting level, is compared with that start,
+    /// not with the level one step later (which it was before this).
+    #[test]
+    fn levels_start_before_the_first_step_and_line_up_with_data() {
+        use facets_tether::manifest::{ColumnMapping, Role};
+        let json = include_str!("../../../assets/archive/demos/reservoir-model.json");
+        let model: WorldModel = serde_json::from_str(json).expect("reservoir parses");
+        let mut manifest = reservoir_manifest();
+        manifest.mapping.push(ColumnMapping {
+            column: "level".into(),
+            role: Role::Stock,
+            element: Some("Reservoir".into()),
+            unit: Some("ML".into()),
+            force: false,
+            every: None,
+        });
+        let csv = "month,inflow,level\n1,20,40\n2,35,41\n3,60,42\n4,45,43\n5,25,44\n6,15,45\n7,10,46\n8,12,47\n9,22,48\n10,40,49\n11,55,50\n12,30,51\n";
+        let r = facets_tether::forcing::force_and_run(model, csv, &manifest, 1.0, 12.0, "2026-01-01").expect("runs");
+        let stock = r.trajectories.iter().find(|t| t.name == "Reservoir").expect("reservoir");
+        assert!(stock.holds);
+        assert_eq!(stock.series.len(), r.ticks + 1, "N + 1 instants");
+        assert_eq!(stock.series[0], 40.0, "tick 0 is the observed start, before anything moved");
+        let flow = r.flows.first().expect("a flow");
+        assert_eq!(flow.series.len(), r.ticks, "N steps");
+        let cmp = r.comparisons.iter().find(|c| c.kind == "stock").expect("a stock comparison");
+        assert_eq!(cmp.simulated[0], cmp.actual[0], "the first row lines up with the start");
+    }
+
+    /// Walk, 2026-11-03: an environment object that both sends and receives
+    /// is a two-sided black box. What it receives is received (counted as
+    /// sunk, held as its level), never destroyed; what it sends is its own
+    /// rate and does not answer to what it received.
+    #[test]
+    fn an_environment_object_both_sends_and_holds_what_it_receives() {
+        let sl = "component Shop primitive Buffering interface\nenvironment Market\nflow Market -> Shop : matter amount 4\nflow Shop -> Market : matter\n";
+        let run = |sl: &str| {
+            let m = facets_canvas::sl::parse_sl(sl).unwrap();
+            facets_tether::forcing::run_unforced(facets_canvas::canvas::run_projection(&m).unwrap(), 1.0, 5.0).unwrap()
+        };
+        let r = run(sl);
+        assert!(r.conserved, "residual {}", r.residual);
+        let market = r.trajectories.iter().find(|t| t.name == "Market").unwrap();
+        assert!(market.holds, "it holds what it received");
+        assert_eq!(market.series, vec![0.0, 0.0, 1.0, 2.0, 3.0, 4.0]);
+        // Sending is its own: the same 4 a tick whether or not anything comes back.
+        let sent = |r: &facets_tether::forcing::RunReadout| r.flows.iter().find(|f| f.from == "Market").unwrap().series.clone();
+        let alone = run("component Shop primitive Buffering interface\nenvironment Market\nenvironment Out\nflow Market -> Shop : matter amount 4\nflow Shop -> Out : matter\n");
+        assert_eq!(sent(&r), sent(&alone));
+        // An object that only sends still reads as an emission, not a level.
+        assert!(!alone.trajectories.iter().find(|t| t.name == "Market").unwrap().holds);
+        // The ledger counts what came back as received by the environment.
+        // It used to be charged as dissipated: destroyed, though conserved.
+        let m = facets_canvas::sl::parse_sl(sl).unwrap();
+        let spec = facets_core::operational::validate_operational(&facets_canvas::canvas::run_projection(&m).unwrap())
+            .unwrap_or_else(|_| panic!("operational"));
+        let mut c = facets_compose::from_spec(&spec);
+        facets_compose::RecordedRun::record(&mut c, &spec, 1.0, 5);
+        assert_eq!((c.emitted, c.sunk, c.dissipated), (20.0, 4.0, 0.0));
+    }
+
+    /// Walk, 2026-11-03: a splitter passing 10 a tick was drawn full, because
+    /// its series is throughput and the canvas filled every series. Only the
+    /// stocks and the sink hold a level.
+    #[test]
+    fn only_stocks_and_sinks_hold_a_level() {
+        let m = facets_canvas::sl::parse_sl("component T1 primitive Buffering\ncomponent T2 primitive Splitting\ninterface I3\ninterface I4\nenvironment E5\nenvironment E6\ncomponent T7 primitive Buffering\nflow E5 -> I3 : matter amount 10\nflow I3 -> T2\nflow T2 -> T1\nflow T1 -> I4\nflow I4 -> E6\nflow T2 -> T7\nflow T7 -> I4\n").unwrap();
+        let world = facets_canvas::canvas::run_projection(&m).expect("runs");
+        let r = facets_tether::forcing::run_unforced(world, 1.0, 5.0).expect("runs");
+        let holds = |n: &str| r.trajectories.iter().find(|t| t.name == n).unwrap_or_else(|| panic!("no {n}")).holds;
+        assert!(holds("T1") && holds("T7") && holds("E6"));
+        assert!(!holds("T2") && !holds("E5"));
     }
 
     #[test]

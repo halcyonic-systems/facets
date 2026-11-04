@@ -108,6 +108,117 @@ fn gain_rides_a_sensor_and_refuses_elsewhere() {
     let w = project(&bare);
     assert_eq!(w.systems.iter().find(|s| s.info.name == "Eye").unwrap().agent.as_ref().unwrap().agency_capacity, 1.0);
 
-    assert!(errs("system \"S\" : Concrete/Technical\ncomponent X primitive Buffering gain 2 interface\nsource In\nflow In -> X : matter \"a\"\n").contains("Sensing component only"));
+    assert!(errs("system \"S\" : Concrete/Technical\ncomponent X primitive Buffering gain 2 interface\nsource In\nflow In -> X : matter \"a\"\n").contains("Sensing or Amplifying component only"));
     assert!(errs("system \"S\" : Concrete/Technical\ncomponent X primitive Sensing gain -1 interface\nsource In\nflow In -> X : matter \"a\"\n").contains("gain syntax"));
+}
+
+/// Walk row 18: a process's own parameter on Amplifying, Propelling and
+/// Impeding ran in the engine and was dropped by `emit_sl`. Each now has its
+/// word, lands on the engine's `param` through `OWN_PARAMS`, re-emits as
+/// written, and refuses off its reader.
+const OWN: &str = "\
+system \"Line\" : Concrete/Technical
+interface In
+interface Out
+component Horn primitive Amplifying gain 4
+component Pump primitive Propelling efficiency 0.9
+component Choke primitive Impeding impedance 0.3
+source Grid
+source Mic
+sink Ear
+flow Grid -> In : energy \"power\" substance power amount 50
+flow In -> Horn : energy \"power\" substance power
+flow Mic -> In : informational \"voice\" substance voice amount 2
+flow In -> Horn : informational \"voice\" substance voice
+flow Horn -> Pump : informational \"loud\" substance voice
+flow Pump -> Choke : informational \"loud\" substance voice
+flow Choke -> Out : informational \"loud\" substance voice
+flow Out -> Ear : informational \"loud\" substance voice
+";
+
+#[test]
+fn own_parameters_reach_the_engine_and_emit_back() {
+    let m = parse_sl(OWN).unwrap();
+    let ac = |n: &str| m.things.iter().find(|t| t.name == n).unwrap().agency_capacity;
+    assert_eq!(ac("Horn"), Some(((4.0f64 - 1.0) / 9.0) as f32), "gain 4 is 1 + 9p");
+    assert_eq!(ac("Pump"), Some(0.9));
+    assert_eq!(ac("Choke"), Some(0.7), "impedance 0.3 passes 0.7");
+    let circuit = facets_compose::export::from_world_model(&project(&m)).unwrap();
+    let param = |n: &str| circuit.nodes.iter().find(|x| x.name == n).unwrap().param;
+    assert_eq!(param("Pump"), 0.9);
+    assert_eq!(param("Choke"), 0.7);
+    assert!((1.0 + 9.0 * param("Horn") - 4.0).abs() < 1e-6, "the step's gain is the written one");
+    let text = emit_sl(&m).unwrap();
+    for line in [
+        "component Horn primitive Amplifying gain 4",
+        "component Pump primitive Propelling efficiency 0.9",
+        "component Choke primitive Impeding impedance 0.3",
+    ] {
+        assert!(text.contains(line), "{line} missing from:\n{text}");
+    }
+    let again = parse_sl(&text).unwrap();
+    assert_eq!(emit_sl(&again).unwrap(), text, "text fixpoint");
+    for t in &m.things {
+        let back = again.things.iter().find(|a| a.name == t.name).unwrap();
+        assert_eq!(back.agency_capacity, t.agency_capacity, "{}", t.name);
+    }
+}
+
+/// Values that round badly through `f32` still re-emit as written.
+#[test]
+fn own_parameters_reemit_their_shortest_decimal() {
+    for (prim, word, v) in [
+        ("Impeding", "impedance", "0.1"),
+        ("Impeding", "impedance", "0.95"),
+        ("Impeding", "impedance", "0"),
+        ("Amplifying", "gain", "1.3"),
+        ("Amplifying", "gain", "10"),
+        ("Amplifying", "gain", "250"),
+        ("Propelling", "efficiency", "0.333"),
+        ("Propelling", "efficiency", "1"),
+    ] {
+        let line = format!("component X primitive {prim} {word} {v}");
+        let text = format!("system \"S\" : Concrete/Technical\n{line}\nsource In\nflow In -> X : matter \"a\"\n");
+        let out = emit_sl(&parse_sl(&text).unwrap()).unwrap();
+        assert!(out.contains(&line), "{line} re-emitted as:\n{out}");
+    }
+}
+
+#[test]
+fn own_parameters_refuse_off_their_reader_and_out_of_range() {
+    let f = |line: &str| errs(&format!("system \"S\" : Concrete/Technical\n{line}\nsource In\nflow In -> X : matter \"a\"\n"));
+    // the wrong primitive names the right one
+    let e = f("component X primitive Propelling impedance 0.2");
+    assert!(e.contains("Impeding component only") && e.contains("own parameter is `efficiency`"), "{e}");
+    let e = f("component X primitive Impeding gain 2");
+    assert!(e.contains("Sensing or Amplifying component only") && e.contains("`impedance`"), "{e}");
+    assert!(f("component X primitive Buffering efficiency 0.5").contains("Propelling component only"));
+    assert!(f("component X efficiency 0.5").contains("Propelling component only"), "no primitive");
+    assert!(errs("system \"S\" : Concrete/Technical\nsource X efficiency 0.5\n").contains("components only"));
+    assert!(f("component X primitive Propelling efficiency 0.5 efficiency 0.6").contains("already given"));
+    // the ranges
+    assert!(f("component X primitive Propelling efficiency 1.2").contains("at most 1"));
+    assert!(f("component X primitive Propelling efficiency 0").contains("greater than 0"));
+    assert!(f("component X primitive Impeding impedance 1").contains("less than 1"));
+    assert!(f("component X primitive Impeding impedance -0.1").contains("at least 0"));
+    assert!(f("component X primitive Amplifying gain 1").contains("greater than 1"));
+    assert!(f("component X primitive Impeding impedance high").contains("impedance syntax"));
+}
+
+/// A model loaded from JSON can carry a value no word can say: emit refuses
+/// and names the JSON export, never drops it.
+#[test]
+fn an_unsayable_own_parameter_refuses_to_emit() {
+    for (prim, a) in [("Propelling", 1.5f32), ("Impeding", 0.0), ("Amplifying", -0.2), ("Sensing", 0.0)] {
+        let text = format!("system \"S\" : Concrete/Technical\ncomponent X primitive {prim}\nsource In\nflow In -> X : matter \"a\"\n");
+        let mut m = parse_sl(&text).unwrap();
+        m.things.iter_mut().find(|t| t.name == "X").unwrap().agency_capacity = Some(a);
+        let err = emit_sl(&m).expect_err(prim);
+        assert!(err.contains("kernel JSON"), "{prim}: {err}");
+    }
+    // On a primitive the engine never reads it on, it changes no run and is
+    // carried, not written.
+    let mut m = parse_sl("system \"S\" : Concrete/Technical\ncomponent X primitive Splitting\nsource In\nflow In -> X : matter \"a\"\n").unwrap();
+    m.things[0].agency_capacity = Some(0.5);
+    assert!(!emit_sl(&m).unwrap().contains("0.5"));
 }

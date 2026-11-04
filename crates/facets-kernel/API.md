@@ -61,7 +61,9 @@ sizes agree to within O(Δt) drift (`dt_invariance.rs`). Runs the model
 ```ts
 type RunResult = {
   dt: number,
-  history: number[][],        // per-tick [tick, n0.activity, n0.storage, n0.total, n1...]
+  columns: string[],          // names of history's columns: "t", "<node>.activity|storage|total"
+  start: number[],            // x0 in those columns: t 0, stocks at their initial level, the rest 0
+  history: number[][],        // per-tick [tick, n0.activity, n0.storage, n0.total, n1...], T(x0) onward
   ledger_history: [number, number, number, number][], // [emitted, sunk, stored, dissipated]
   final_balance: number,      // conservation residual (≈0 = mass conserved)
 }
@@ -121,9 +123,22 @@ type RunResultRich = {
     declared: number[]|null,            // the flat declared-mean baseline (flows)
     divergence_pct: number|null,
   }[],
-  trajectories: { name, unit, unit_derived: boolean, series: number[] }[],
+  trajectories: { name, unit, unit_derived: boolean,
+                  holds: boolean,       // a level (stock, sink total) or per-step activity
+                  series: number[] }[],
 }
 ```
+A run of `ticks` = N steps has N + 1 instants (spec §8.2, "H starts at the
+point"). A trajectory with `holds` is a level: N + 1 values, the first the state
+before the first step (a stock's starting level; zero for a sink). One without
+(a source's emission, a process's throughput) is per step: N values, the i-th the
+step from instant i to i + 1. `flows[].series` is per step too. An environment
+object that both sends and receives (spec §5.2) holds a level: what it has
+received so far, from zero; what it sends is on its outgoing `flows`. In
+`comparisons`, a `"stock"` comparison is per instant (its first `actual` is the
+observed start, compared with the starting level) and a `"flow"` one per step.
+Changed 2026-11-03: before, level series began after the first step, so a stock
+column's first row was compared one step late.
 Everything is labeled by the model's own names + units — no engine columns leak.
 `unit_derived` is true when an undeclared Buffering stock's `unit` was derived from
 its inflow integrated over Δt (bert-lenses#94: `ML/mo` → `ML`, in the author's own
@@ -398,6 +413,28 @@ their line, things missing one gain it. Line endings normalize to `\n`; a
 trailing newline is preserved if present and not invented if absent.
 
 Throws (JsError) on the same name shapes `emit_sl` rejects.
+
+### `sl_agreement(source: string, canvas_json: string) → SlAgreement`
+Whether an SL text and a canvas model mean the same model. Additive
+(2026-11-02); no existing signature changed. `{ parses, agrees, only_in_text,
+only_in_model }`: the two `emit_sl` forms compared as a multiset of lines, with
+layout and view lines (`@pos`, `@system`, `@lens`) and blank lines set aside;
+the two lists are the canonical lines one side has and the other lacks. A
+faulted text reports `parses: false, agrees: false` and no lines. The one
+definition of agreement the face uses. Throws only when the model cannot be
+written as SL (§7.3 of the spec).
+
+### `sync_sl(source: string, canvas_json: string) → string`
+Rewrite an SL text so it means what the model means, keeping its comments.
+Additive (2026-11-02). Empty text: the model's canonical form. A text that
+already agrees: returned unchanged, except that a text pinning positions has
+them brought in step (`splice_positions`). A disagreeing text: `emit_sl_with`
+(the formatter's path) with the source's trivia re-keyed onto the model by
+name, since ids renumber; comments whose declaration is gone move to the end of
+the file rather than being dropped. A text that pinned any position pins every
+thing. Throws on a faulted text, so text mid-edit is never rewritten. Held over
+every corpus file by `crates/facets-canvas/tests/sl_sync.rs`: the result means
+the model, keeps every comment, and an agreeing text comes back byte for byte.
 
 **v1.5 (#399) — a description may sit beneath its declaration.** `compile_sl`
 accepts `description "<prose>"` on its own indented line directly under the
@@ -869,7 +906,7 @@ reopens it from the document.
 - `BenchHandle.open_unforced(model_json: string, dt: number) → BenchHandle` — open a model from its declared amounts alone, at tick 0.
 - `BenchHandle.open_forced(model_json: string, csv_text: string, manifest_json: string, dt: number, today: string) → BenchHandle` — open with a CSV bound through its manifest, at tick 0.
 - `step(n: number)` · `step_over(t: number)` (to the horizon `t` by the batch run's own tick count) · `reset()` · `tick() → number`.
-- `set_flow_amount(label: string, from: string, to: string, v: number)` · `set_component_param(thing: string, field: string, v: number)` — the knobs, by the same names the app shows and `facets bench --set` takes.
+- `set_flow_amount(label: string, from: string, to: string, v: number)` · `set_flow_amount_as_written(canvas_json: string, label: string, from: string, to: string, v: number)` · `set_component_param(thing: string, field: string, v: number)` — the knobs, by the same names the app shows and `facets bench --set` takes.
 - `readout() → RunResultRich` — the run as it stands, the same shape the batch run returns.
 - `tick_log_since(from_tick: number) → TickLog[]` — every node's and wire's flux for the ticks at or after `from_tick`, and (since v1.13) the `decisions` an agent took.
 - `edits() → KnobEdit[]` — the knobs turned on this session, with the tick each applied at; since v1.13 a `KnobEdit` carries `by: KnobAuthor` (`{ kind: "human" }` or `{ kind: "agent", name }`).
@@ -960,3 +997,96 @@ like a thing's `x`/`y`: `project` ignores it, `to_canvas` reads it back as
 absent, and the archive (`write_archive`/`open_model`) keeps it. Absent, it is
 skipped on write, so every existing model serializes unchanged.
 `splice_positions` writes it with the `@pos` block. No signature changed.
+
+### `engine_knobs(canvas_json: string) → EngineKnob[]`
+Every engine knob the model's components offer, each at the value the run will
+use. Additive (2026-11-02, the new-user walk's decision 2). `EngineKnob` is
+`{ thing, field, word, value, declared, needs_unit?, own? }`: `field` is the session
+key (`initial_storage`, `release_rate`, `time_constant`, `capacity`,
+`maintenance`, `setpoint`), or for a process's own parameter its SL word
+(`gain`, `efficiency`, `impedance`), `value` is the declared value or, when not
+declared, the default read off the circuit the run builds (`project` then
+`from_world_model`), and `null` where the field is off by default (no capacity
+limit, no upkeep). Only fields SL can write on the component's line are listed:
+Buffering's starting level (with `needs_unit`, the stock unit SL welds to it,
+`""` when there is none), release (or time constant where one is declared, never
+both), capacity and maintenance; Inverting's setpoint; and a process's own
+parameter (walk row 18, SL v1.15): Sensing's and Amplifying's gain, Propelling's
+efficiency, Impeding's impedance. Those four carry `own: { offset, scale,
+max_param, range }`, the map from the SL value `v` to the engine's `param`
+(`Thing.agency_capacity`), `v = offset + scale · p`, accepted when `p > 0` and
+`p ≤ max_param` where it is not `null`; `range` says the same in the word's
+terms. The map is `OWN_PARAMS` (in `facets-core/src/own_param.rs` since
+2026-11-04, re-exported by `facets-canvas/src/sl.rs`), so the face writes
+`agency_capacity` without holding it. A model that builds no circuit yields an
+empty list.
+
+### `flow_knobs(canvas_json: string) → FlowKnob[]`
+Every non-ample bond's amount as the run uses it. Additive (2026-11-02, the
+new-user walk's row 21). `FlowKnob` is `{ relation, value, declared }`: `value`
+is read off the projected interaction, so an undeclared flow reports the amount
+it runs at (`DEFAULT_FLOW_AMOUNT`, 1, or the amount a fused crossing leg takes
+from its interior leg). A relation that does not project, or is ample, is not
+listed.
+
+### `flow_kinds(canvas_json: string) → FlowKind[]`
+What every bond carries in the run. Additive (2026-11-02, the walk's row 29).
+`FlowKind` is `{ relation, kind, said, from, mixed, waits_on, gate_passes }`. A written kind is
+`said`. An unwritten one takes the kind that comes into its source when that is
+one kind (signals do not count while anything physical comes in), and `from`
+lists those inflows. When the inflows differ, `kind` is `null` and `mixed`
+lists them; when nothing comes in, `kind` is `null` and `mixed` is empty.
+`waits_on` lists the flows into its source that are not worked out either, when
+those are the only reason; answering them settles this one.
+`gate_passes` (walk row 34) is set on a flow out of a gate (a Modulating
+process), which passes on what comes in unchanged: it lists the physical kinds
+coming into the gate when they are more than one, or when they are not what
+this flow carries. Empty otherwise.
+`project` reads an unwritten kind this way; one that cannot be worked out keeps
+the historical Energy reading there.
+
+### `run_projection(canvas_json: string) → WorldModel`
+`project` for a run. Throws when any bond's kind cannot be worked out, naming
+the flows to answer (not those that only wait on them, which it counts):
+`"N flows do not say what they carry (K more after them follow once they are
+said):"` then one `"\n· A -> B: …"` line per flow, the same shape as the run's
+not-executable message. It also throws for a gate clash (`gate_passes`), one
+line per mismatched flow or per gate given two kinds; with no other question
+the head line is `"N gate flows do not match what comes in:"`.
+
+## Bench knobs by the names the SL writes (appended 2026-11-04)
+
+`BenchHandle.set_component_param(thing, field, v)` (and `facets bench --set
+thing.field=value`) also takes a process's own parameter by its SL word and
+value: `gain` on Sensing and Amplifying, `efficiency` on Propelling,
+`impedance` on Impeding. The value is converted to the engine's `param` through
+`OWN_PARAMS`, the same map `engine_knobs` hands the face as `own`, and refused
+when SL would refuse it: a word the primitive does not read (the refusal names
+the primitive's own word), or a value outside the word's range. On an agent,
+`gain` stays its rule's word. `field: "param"` with the engine value still
+works. The `KnobEdit` logs the word and the value as given. No signature
+changed.
+
+`facets bench` (not the wasm surface) also finds a flow knob as the SL writes it,
+through `interaction_as_written` (`facets-canvas`, the projection's own
+`interaction_of`), so `brook|Stream|Inlet` lands where `Inlet` is a pass-way
+fused away; and a bare `name=value` turns the declared `param` of that name.
+`BenchHandle.set_flow_amount` is unchanged: it still matches the names after
+fusion, and a pass-way fused into a processor that has a second fused pass-way
+is not found by its own name there (the processor records only one). The face's
+knob uses `BenchHandle.set_flow_amount_as_written(canvas_json, label, from, to,
+v)` instead (added 2026-11-04): the same `interaction_as_written` lookup the
+bench uses, over the canvas document, falling through to the post-fusion names
+when the document names no such flow. So the pond's `brook` into `Inlet` is a
+live knob in the app, not a re-run.
+
+## `ParamAnchor.Own` (appended 2026-11-04, SL v1.16)
+
+`ParamAnchor` (on `CanvasModel.params[].anchor`) gains one variant,
+`{ Own: { thing } }`: a `param` naming a work process's own parameter
+(`param "stage gain" : gain of Stage range 1.1..30`). The word (`gain`,
+`efficiency`, `impedance`) is not stored; it is read off the thing's primitive
+through `OWN_PARAMS`. The value is the thing's `agency_capacity` (engine terms),
+and `range` is in the word's terms, the same terms as that thing's
+`engine_knobs` row, whose `own` map the face uses to write it. Additive: models
+without such a param serialize unchanged, and no signature changed.

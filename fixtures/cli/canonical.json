@@ -46,17 +46,17 @@
           {
             "hint": "Attach an AgentModel carrying a Mobus primitive",
             "location": "systems[1]",
-            "reason": "\"1\" has no agent model — nothing states which work process it is"
+            "reason": "\"1\" has no work process — give it a primitive, or, if it only passes what crosses, write it as a pass-way (`interface 1`)"
           },
           {
             "hint": "Attach an AgentModel carrying a Mobus primitive",
             "location": "systems[2]",
-            "reason": "\"2\" has no agent model — nothing states which work process it is"
+            "reason": "\"2\" has no work process — give it a primitive, or, if it only passes what crosses, write it as a pass-way (`interface 2`)"
           },
           {
             "hint": "Attach an AgentModel carrying a Mobus primitive",
             "location": "systems[3]",
-            "reason": "\"3\" has no agent model — nothing states which work process it is"
+            "reason": "\"3\" has no work process — give it a primitive, or, if it only passes what crosses, write it as a pass-way (`interface 3`)"
           },
           {
             "hint": "Point the flow at a level-1 work process, a Source, or a Sink — or fix the endpoint that failed to project (see the errors above for why it was skipped)",
@@ -208,6 +208,7 @@
           "environment_thing_ids": [],
           "orphan_env_thing_ids": [],
           "ports": [],
+          "source_thing_ids": [],
           "unresolved_thing_id": null
         },
         "issue_targets": [],
@@ -320,6 +321,7 @@
           "environment_thing_ids": [],
           "orphan_env_thing_ids": [],
           "ports": [],
+          "source_thing_ids": [],
           "unresolved_thing_id": null
         },
         "issue_targets": [],
@@ -423,6 +425,7 @@
           "environment_thing_ids": [],
           "orphan_env_thing_ids": [],
           "ports": [],
+          "source_thing_ids": [],
           "unresolved_thing_id": null
         },
         "issue_targets": [
@@ -564,7 +567,7 @@
           {
             "hint": "Attach an AgentModel carrying a Mobus primitive",
             "location": "systems[1]",
-            "reason": "\"c\" has no agent model — nothing states which work process it is"
+            "reason": "\"c\" has no work process — give it a primitive, or, if it only passes what crosses, write it as a pass-way (`interface c`)"
           },
           {
             "hint": "Point the flow at a level-1 work process, a Source, or a Sink — or fix the endpoint that failed to project (see the errors above for why it was skipped)",
@@ -795,6 +798,12 @@
               ]
             }
           ],
+          "source_thing_ids": [
+            2,
+            3,
+            4,
+            5
+          ],
           "unresolved_thing_id": null
         },
         "issue_targets": [
@@ -1011,6 +1020,12 @@
               ]
             }
           ],
+          "source_thing_ids": [
+            2,
+            3,
+            4,
+            5
+          ],
           "unresolved_thing_id": null
         },
         "issue_targets": [],
@@ -1209,6 +1224,12 @@
               ]
             }
           ],
+          "source_thing_ids": [
+            2,
+            3,
+            4,
+            5
+          ],
           "unresolved_thing_id": null
         },
         "issue_targets": [
@@ -1395,17 +1416,17 @@
           {
             "hint": "Attach an AgentModel carrying a Mobus primitive",
             "location": "systems[1]",
-            "reason": "\"Synaptic Compartments\" has no agent model — nothing states which work process it is"
+            "reason": "\"Synaptic Compartments\" has no work process — give it a primitive, or, if it only passes what crosses, write it as a pass-way (`interface Synaptic Compartments`)"
           },
           {
             "hint": "Attach an AgentModel carrying a Mobus primitive",
             "location": "systems[2]",
-            "reason": "\"Cell Membrane\" has no agent model — nothing states which work process it is"
+            "reason": "\"Cell Membrane\" has no work process — give it a primitive, or, if it only passes what crosses, write it as a pass-way (`interface Cell Membrane`)"
           },
           {
             "hint": "Attach an AgentModel carrying a Mobus primitive",
             "location": "systems[3]",
-            "reason": "\"Axonal Hillock\" has no agent model — nothing states which work process it is"
+            "reason": "\"Axonal Hillock\" has no work process — give it a primitive, or, if it only passes what crosses, write it as a pass-way (`interface Axonal Hillock`)"
           },
           {
             "hint": "Point the flow at a level-1 work process, a Source, or a Sink — or fix the endpoint that failed to project (see the errors above for why it was skipped)",
@@ -1610,6 +1631,10 @@
               ]
             }
           ],
+          "source_thing_ids": [
+            4,
+            5
+          ],
           "unresolved_thing_id": null
         },
         "issue_targets": [],
@@ -1772,6 +1797,10 @@
                 12
               ]
             }
+          ],
+          "source_thing_ids": [
+            4,
+            5
           ],
           "unresolved_thing_id": null
         },
@@ -1943,6 +1972,10 @@
               ]
             }
           ],
+          "source_thing_ids": [
+            4,
+            5
+          ],
           "unresolved_thing_id": null
         },
         "issue_targets": [],
@@ -2045,6 +2078,33 @@
     "relations": 25,
     "run": {
       "answer": {
+        "columns": [
+          "t",
+          "Primary Dealers.activity",
+          "Primary Dealers.storage",
+          "Primary Dealers.total",
+          "Banking System.activity",
+          "Banking System.storage",
+          "Banking System.total",
+          "U.S. Treasury.activity",
+          "U.S. Treasury.storage",
+          "U.S. Treasury.total",
+          "Statistical Agencies.activity",
+          "Statistical Agencies.storage",
+          "Statistical Agencies.total",
+          "Financial Markets.activity",
+          "Financial Markets.storage",
+          "Financial Markets.total",
+          "FOMC.activity",
+          "FOMC.storage",
+          "FOMC.total",
+          "Open Market Desk.activity",
+          "Open Market Desk.storage",
+          "Open Market Desk.total",
+          "Balance Sheet.activity",
+          "Balance Sheet.storage",
+          "Balance Sheet.total"
+        ],
         "dt": 1.0,
         "final_balance": 0.0,
         "history": [
@@ -2055,10 +2115,10 @@
             0.0,
             1.0,
             0.0,
-            0.0,
+            360.52847,
             1.0,
             0.0,
-            0.0,
+            129.47154,
             1.0,
             0.0,
             0.0,
@@ -2082,10 +2142,10 @@
             0.0,
             1.0,
             0.0,
-            0.0,
+            721.05695,
             1.0,
             0.0,
-            0.0,
+            258.94308,
             1.0,
             0.0,
             0.0,
@@ -2109,10 +2169,10 @@
             0.0,
             1.0,
             0.0,
-            0.0,
+            1081.5854,
             1.0,
             0.0,
-            0.0,
+            388.4146,
             1.0,
             0.0,
             0.0,
@@ -2136,10 +2196,10 @@
             0.0,
             1.0,
             0.0,
-            0.0,
+            1442.1139,
             1.0,
             0.0,
-            0.0,
+            517.88617,
             1.0,
             0.0,
             0.0,
@@ -2160,28 +2220,55 @@
         "ledger_history": [
           [
             4.0,
-            0.0,
+            490.0,
             6699512.0,
-            492.0
+            2.0
           ],
           [
             8.0,
-            0.0,
+            980.0,
             6699024.0,
-            984.0
+            4.0
           ],
           [
             12.0,
-            0.0,
+            1470.0,
             6698536.0,
-            1476.0
+            6.0
           ],
           [
             16.0,
-            0.0,
+            1960.0,
             6698048.0,
-            1968.0
+            8.0
           ]
+        ],
+        "start": [
+          0.0,
+          0.0,
+          0.0,
+          0.0,
+          0.0,
+          0.0,
+          0.0,
+          0.0,
+          0.0,
+          0.0,
+          0.0,
+          0.0,
+          0.0,
+          0.0,
+          0.0,
+          0.0,
+          0.0,
+          0.0,
+          0.0,
+          0.0,
+          0.0,
+          0.0,
+          0.0,
+          6700000.0,
+          0.0
         ]
       },
       "outcome": "runs"
@@ -2604,6 +2691,13 @@
                 35
               ]
             }
+          ],
+          "source_thing_ids": [
+            7,
+            8,
+            9,
+            10,
+            11
           ],
           "unresolved_thing_id": null
         },
@@ -3031,6 +3125,13 @@
               ]
             }
           ],
+          "source_thing_ids": [
+            7,
+            8,
+            9,
+            10,
+            11
+          ],
           "unresolved_thing_id": null
         },
         "issue_targets": [],
@@ -3452,6 +3553,13 @@
               ]
             }
           ],
+          "source_thing_ids": [
+            7,
+            8,
+            9,
+            10,
+            11
+          ],
           "unresolved_thing_id": null
         },
         "issue_targets": [],
@@ -3563,6 +3671,39 @@
     "relations": 12,
     "run": {
       "answer": {
+        "columns": [
+          "t",
+          "Routed demand.activity",
+          "Routed demand.storage",
+          "Routed demand.total",
+          "Self-hosted demand.activity",
+          "Self-hosted demand.storage",
+          "Self-hosted demand.total",
+          "Frontier labs.activity",
+          "Frontier labs.storage",
+          "Frontier labs.total",
+          "Open-weight labs.activity",
+          "Open-weight labs.storage",
+          "Open-weight labs.total",
+          "Customers.activity",
+          "Customers.storage",
+          "Customers.total",
+          "Router.activity",
+          "Router.storage",
+          "Router.total",
+          "Serving endpoint.activity",
+          "Serving endpoint.storage",
+          "Serving endpoint.total",
+          "Frontier serving.activity",
+          "Frontier serving.storage",
+          "Frontier serving.total",
+          "Open-weight serving.activity",
+          "Open-weight serving.storage",
+          "Open-weight serving.total",
+          "Routed buyers.activity",
+          "Routed buyers.storage",
+          "Routed buyers.total"
+        ],
         "dt": 1.0,
         "final_balance": 0.0,
         "history": [
@@ -3724,6 +3865,39 @@
             0.0,
             88788.0
           ]
+        ],
+        "start": [
+          0.0,
+          0.0,
+          0.0,
+          0.0,
+          0.0,
+          0.0,
+          0.0,
+          0.0,
+          0.0,
+          0.0,
+          0.0,
+          0.0,
+          0.0,
+          0.0,
+          0.0,
+          0.0,
+          0.0,
+          0.0,
+          0.0,
+          0.0,
+          0.0,
+          0.0,
+          0.0,
+          0.0,
+          0.0,
+          0.0,
+          0.0,
+          0.0,
+          0.0,
+          0.0,
+          0.0
         ]
       },
       "outcome": "runs"
@@ -3987,6 +4161,12 @@
                 24
               ]
             }
+          ],
+          "source_thing_ids": [
+            1,
+            2,
+            3,
+            4
           ],
           "unresolved_thing_id": null
         },
@@ -4254,6 +4434,12 @@
                 24
               ]
             }
+          ],
+          "source_thing_ids": [
+            1,
+            2,
+            3,
+            4
           ],
           "unresolved_thing_id": null
         },
@@ -4529,6 +4715,12 @@
               ]
             }
           ],
+          "source_thing_ids": [
+            1,
+            2,
+            3,
+            4
+          ],
           "unresolved_thing_id": null
         },
         "issue_targets": [],
@@ -4598,6 +4790,24 @@
     "relations": 6,
     "run": {
       "answer": {
+        "columns": [
+          "t",
+          "Sunlight.activity",
+          "Sunlight.storage",
+          "Sunlight.total",
+          "Grass.activity",
+          "Grass.storage",
+          "Grass.total",
+          "Decomposition.activity",
+          "Decomposition.storage",
+          "Decomposition.total",
+          "Rabbits.activity",
+          "Rabbits.storage",
+          "Rabbits.total",
+          "Foxes.activity",
+          "Foxes.storage",
+          "Foxes.total"
+        ],
         "dt": 1.0,
         "final_balance": 0.0,
         "history": [
@@ -4608,7 +4818,7 @@
             0.0,
             1.0,
             0.0,
-            0.0,
+            1.0,
             0.0,
             0.0,
             0.0,
@@ -4626,7 +4836,7 @@
             0.0,
             1.0,
             0.0,
-            0.0,
+            2.0,
             0.0,
             0.0,
             0.0,
@@ -4644,7 +4854,7 @@
             0.0,
             1.0,
             0.0,
-            0.0,
+            3.0,
             1.0,
             0.0,
             1.0,
@@ -4662,7 +4872,7 @@
             0.0,
             1.0,
             0.0,
-            0.0,
+            4.0,
             1.0,
             0.0,
             2.0,
@@ -4677,28 +4887,46 @@
         "ledger_history": [
           [
             2.0,
-            0.0,
             1.0,
-            1.0
+            1.0,
+            0.0
           ],
           [
             4.0,
-            0.0,
             2.0,
-            2.0
+            2.0,
+            0.0
           ],
           [
             6.0,
-            1.0,
+            4.0,
             2.0,
-            3.0
+            0.0
           ],
           [
             8.0,
+            6.0,
             2.0,
-            2.0,
-            4.0
+            0.0
           ]
+        ],
+        "start": [
+          0.0,
+          0.0,
+          0.0,
+          0.0,
+          0.0,
+          0.0,
+          0.0,
+          0.0,
+          0.0,
+          0.0,
+          0.0,
+          0.0,
+          0.0,
+          0.0,
+          0.0,
+          0.0
         ]
       },
       "outcome": "runs"
@@ -4848,6 +5076,10 @@
                 13
               ]
             }
+          ],
+          "source_thing_ids": [
+            5,
+            6
           ],
           "unresolved_thing_id": null
         },
@@ -5006,6 +5238,10 @@
                 13
               ]
             }
+          ],
+          "source_thing_ids": [
+            5,
+            6
           ],
           "unresolved_thing_id": null
         },
@@ -5171,6 +5407,10 @@
                 13
               ]
             }
+          ],
+          "source_thing_ids": [
+            5,
+            6
           ],
           "unresolved_thing_id": null
         },

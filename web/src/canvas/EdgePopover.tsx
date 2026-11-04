@@ -2,19 +2,19 @@
 // each lens offering ITS author's operations and no other's:
 //   Klir:  toggle neutral ⇄ directed (the observer's act), read the signature.
 //   Bunge: set connection-kind, toggle bond ⇄ mere relation, reverse direction.
-//   Mobus: name, endpoints, substance, description — ONE job (#336). Driving
-//          a flow with data is Data/Run-mode business; structure mode shows at
-//          most a one-sentence residue when a binding or declared amount
-//          already exists, and never the form.
+//   Mobus: name, endpoints, amount, substance, description. Driving a flow
+//          with data is Data/Run-mode business (#336); since the 2026-11-02
+//          walk a source's rate or a process outflow's weight is set here,
+//          where the flow is clicked.
 // Every edit flows through onModelChange → App re-runs validate_mode +
 // lens_facts in Rust; the popover itself decides nothing about systemhood.
 import { useEffect, useRef, useState } from "react";
-import type { EdgeFact, Kind, Lens, Manifest, ParamDecl, Relation } from "../kernel/types";
+import type { EdgeFact, FlowKind, FlowKnob, Kind, Lens, Manifest, ParamDecl, Relation } from "../kernel/types";
 import { channelCopy } from "./lenses/bunge";
-import { ParamControl } from "../ParamControl";
+import { AmountField, ParamControl } from "../ParamControl";
 import type { Pt } from "./geometry";
-import { DescriptionField, GroundingField, InspectorRow as Row, InspectorTitle as Title, ToolButton as SmallButton } from "../ui";
-import { PopoverDialog } from "./PopoverDialog";
+import { DescriptionField, GroundingField, InspectorRow as Row, InspectorTitle as Title, Select, ToolButton as SmallButton } from "../ui";
+import { DockOrPopover, useDocked } from "./PopoverDialog";
 import {
   FormalismLine,
   SUBSTANCES,
@@ -24,6 +24,15 @@ import {
   substanceToKind,
   type Substance,
 } from "./lenses/glossary";
+
+/** A flow's amount as the popover edits it: the kernel's `flow_knobs` row
+ *  (what an undeclared flow runs at), whether it is a split weight rather
+ *  than a rate, and the input path that re-runs. */
+export interface FlowAmount {
+  knob?: FlowKnob;
+  weight: boolean;
+  onEdit: (r: Relation) => void;
+}
 
 const KINDS: Kind[] = ["Unspecified", "Energy", "Matter", "Field", "Informational"];
 
@@ -43,12 +52,31 @@ export function EdgePopover({
   onUpdateRelation,
   onDelete,
   onClose,
+  amount,
+  carried,
+  carriedFrom,
+  askKind,
 }: {
+  /** Bumped to put the cursor on the substance picker (the run strip's
+   *  refusal opened this flow to answer it). */
+  askKind?: number;
+  /** The kernel's `flow_kinds` row (walk row 29): what an unwritten kind
+   *  carries in the run, or that it cannot be worked out. */
+  carried?: FlowKind;
+  /** A flow's "A -> B" by id, to say where an inherited kind comes from. */
+  carriedFrom?: (relation: number) => string;
+  /** The flow's own amount, set where the flow was clicked (2026-11-02 walk,
+   *  Shingai: click a thing and tune it there; this supersedes #336's "no
+   *  quantity form in structure mode" for the amount alone). Absent = this
+   *  flow has no amount worth setting here (it leaves an interface or an
+   *  agent, or the model does not run). */
+  amount?: FlowAmount;
   relation: Relation;
   lens: Lens;
   sigIndex: number;
   manifest: Manifest;
-  anchor: Pt;
+  /** Where it floats; absent = docked in the inspector. */
+  anchor?: Pt;
   /** The kernel's edge-ladder reading — Bunge shows its coupling channel (F6). */
   fact?: EdgeFact;
   /** The declared parameter naming this flow's amount, when one does (#13) —
@@ -83,7 +111,13 @@ export function EdgePopover({
   // Shared viewport-clamped Popover (walkthrough #16): a mid-canvas wire's
   // editor used to run past the canvas bottom with its fields unreachable.
   return (
-    <PopoverDialog x={anchor.x} y={anchor.y} width={230} label={`Edit flow${relation.name ? ` ${relation.name}` : ""}`} onClose={onClose}>
+    <DockOrPopover
+      at={anchor}
+      width={230}
+      label={`Edit flow${relation.name ? ` ${relation.name}` : ""}`}
+      title={`flow ${fromName ?? "?"} → ${toName ?? "?"}`}
+      onClose={onClose}
+    >
       {/* Flow name — shared across lenses. A flow's name is its identity (and the
           manifest key when tethered); an FSA transition IS a named trigger. */}
       <FlowNameField relation={relation} onUpdateRelation={onUpdateRelation} />
@@ -102,6 +136,10 @@ export function EdgePopover({
           toName={toName}
           onUpdate={onUpdateRelation}
           onClose={onClose}
+          amount={amount}
+          carried={carried}
+          carriedFrom={carriedFrom}
+          askKind={askKind}
         />
       )}
       <div className="mt-1 flex justify-start border-t pt-1" style={{ borderColor: "var(--hairline)" }}>
@@ -109,7 +147,7 @@ export function EdgePopover({
           <SmallButton onClick={onDelete}>delete flow</SmallButton>
         </span>
       </div>
-    </PopoverDialog>
+    </DockOrPopover>
   );
 }
 
@@ -214,6 +252,7 @@ export function FlowNameField({
 }
 
 function CloseRow({ onClose }: { onClose: () => void }) {
+  if (useDocked()) return null;
   return (
     <div className="flex justify-end">
       <SmallButton onClick={onClose}>close</SmallButton>
@@ -344,7 +383,15 @@ export function MobusBody({
   toName,
   onUpdate,
   onClose,
+  amount,
+  carried,
+  carriedFrom,
+  askKind,
 }: {
+  askKind?: number;
+  amount?: FlowAmount;
+  carried?: FlowKind;
+  carriedFrom?: (relation: number) => string;
   relation: Relation;
   manifest: Manifest;
   paramName?: string;
@@ -369,11 +416,116 @@ export function MobusBody({
     ? `driven by “${driven.column}” — adjust in Data`
     : relation.ample
       ? "ample — never binding"
-      : relation.amount && !sliderPresent
+      : relation.amount && !sliderPresent && !amount
         ? `amount ${relation.amount}${relation.unit ? ` ${relation.unit}` : ""}${
             paramName ? ` (“${paramName}”)` : ""
-          } — adjust in Run · Inputs`
+          }`
         : null;
+  const amountRow =
+    amount && !driven && !relation.ample && !sliderPresent ? (
+      <div className="mb-2" data-testid="flow-amount">
+        <Row>
+          <span style={{ color: "var(--text-secondary)" }}>{amount.weight ? "weight" : "amount per tick"}</span>
+          <span className="flex items-center gap-1">
+            <AmountField
+              relation={relation}
+              onEdit={amount.onEdit}
+              placeholder={
+                relation.amount == null && amount.knob ? `${Number(amount.knob.value.toPrecision(4))} default` : undefined
+              }
+              withdrawable={!paramName}
+            />
+            {relation.unit && (
+              <span className="text-[11px]" style={{ color: "var(--text-muted)" }}>
+                {relation.unit}
+              </span>
+            )}
+          </span>
+        </Row>
+        <p className="text-[11px] leading-snug" style={{ color: "var(--text-muted)" }}>
+          {amount.weight
+            ? `${fromName ?? "The process"}'s output divides across its ways out by weight. Edits re-run.`
+            : "What this flow brings in each tick. Edits re-run."}
+        </p>
+      </div>
+    ) : null;
+
+  // Walk row 29: a flow with no written kind runs as what comes into its
+  // source when that is one kind; otherwise the run cannot tell and refuses.
+  // The kernel decides which (`flow_kinds`); this only says it, and when the
+  // run waits on it the question moves to the top of the popover.
+  const unsaid = relation.kind === "Unspecified" && carried !== undefined && !carried.said;
+  // Walk row 34 (ruling B): a gate passes on what comes in unchanged, so a
+  // flow out of one that says another kind, or a gate given two kinds, is
+  // asked about the same way.
+  const clash = carried !== undefined && carried.gate_passes.length > 0;
+  const unworked = (unsaid && carried.kind === null) || clash;
+  const word = (k: Kind) => kindToSubstance(k);
+  const kindHint = clash
+    ? carried.gate_passes.length > 1
+      ? `${fromName ?? "This gate"} takes in ${carried.gate_passes.map(word).join(" and ")}, but a gate passes on one kind unchanged. Make what flows into ${fromName ?? "it"} one kind; the run waits on it.`
+      : `${fromName ?? "This gate"} is a gate: it passes on the ${word(carried.gate_passes[0])} it takes in unchanged, so this flow carries ${word(carried.gate_passes[0])}. Pick ${word(carried.gate_passes[0])}, or change what flows into ${fromName ?? "it"}; the run waits on it.`
+    : !unsaid
+    ? null
+    : carried.kind
+      ? `Not written: it carries ${word(carried.kind)}, as ${carried.from.map((id) => carriedFrom?.(id) ?? "").filter(Boolean).join(" and ") || "what comes in"} does. Pick one to write it in the SL.`
+      : carried.mixed.length > 1
+        ? `${fromName ?? "Its source"} takes in ${carried.mixed.map(word).join(" and ")}, so the run cannot tell which this flow carries. Say which; the run waits on it.`
+        : carried.waits_on.length > 0
+          ? `It waits on what comes into ${fromName ?? "its source"} (${carried.waits_on.map((id) => carriedFrom?.(id) ?? "").filter(Boolean).join(", ")}): say what that carries and this one follows, or say it here.`
+          : `Nothing says what ${fromName ?? "its source"} sends, so the run cannot tell what this flow carries. Say it here, and the flows after it carry it on.`;
+  // Walk, 2026-11-03 (Shingai): what a flow carries decides the run, so it
+  // sits first and at full size, above the amount and the notes, and stays
+  // there whether or not the run is waiting on it.
+  const substanceRef = useRef<HTMLSelectElement>(null);
+  useEffect(() => {
+    if (askKind) substanceRef.current?.focus();
+  }, [askKind]);
+  const substanceRow = (
+    <div className="mb-2" data-testid="flow-substance">
+      {/* Mobus's substances are material · energy · message (concordance row 6);
+          the model stores a Kind, so map both ways via kind_to_substance. An
+          unwritten kind never reads as one: it shows what the run carries,
+          or asks. */}
+      <label
+        htmlFor={`flow-substance-${relation.id}`}
+        className="mb-1 block text-[11px] font-semibold uppercase whitespace-nowrap"
+        style={{ color: unworked ? "var(--verdict-warning)" : "var(--text-secondary)" }}
+      >
+        {unworked ? "what does it carry?" : "substance"}
+      </label>
+      <Select
+        ref={substanceRef}
+        id={`flow-substance-${relation.id}`}
+        value={relation.kind === "Unspecified" ? "" : kindToSubstance(relation.kind)}
+        onChange={(e) => {
+          if (e.target.value) onUpdate({ ...relation, kind: substanceToKind(e.target.value as Substance) });
+        }}
+        className="w-full text-xs"
+        style={unworked ? { borderColor: "var(--verdict-warning)" } : undefined}
+      >
+        {relation.kind === "Unspecified" && (
+          <option value="" disabled>
+            {unsaid && carried.kind ? `${word(carried.kind)}, carried on` : unworked ? "choose" : "unspecified"}
+          </option>
+        )}
+        {SUBSTANCES.map((s) => (
+          <option key={s} value={s}>
+            {s}
+          </option>
+        ))}
+      </Select>
+      {kindHint && (
+        <p
+          className="text-[11px] leading-snug"
+          style={{ color: unworked ? "var(--verdict-warning)" : "var(--text-muted)" }}
+          data-testid="flow-kind-hint"
+        >
+          {kindHint}
+        </p>
+      )}
+    </div>
+  );
 
   return (
     <>
@@ -382,34 +534,10 @@ export function MobusBody({
           from {fromName} → to {toName}
         </p>
       )}
+      {substanceRow}
+      {amountRow}
       <FlowDescriptionField relation={relation} onUpdateRelation={onUpdate} />
       <FlowGroundingField relation={relation} onUpdateRelation={onUpdate} />
-      <Row>
-        {/* Mobus's substances are material · energy · message (concordance row 6);
-            the model stores a Kind, so map both ways via kind_to_substance. An
-            unspecified kind shows as "unspecified" — the residue register counts
-            it, so the picker never silently reads it as energy. */}
-        <span style={{ color: "var(--text-secondary)" }}>substance</span>
-        <select
-          value={relation.kind === "Unspecified" ? "" : kindToSubstance(relation.kind)}
-          onChange={(e) => {
-            if (e.target.value) onUpdate({ ...relation, kind: substanceToKind(e.target.value as Substance) });
-          }}
-          className="rounded-md px-1.5 py-0.5 text-xs"
-          style={{ border: "1px solid var(--border)", background: "var(--bg-primary)", color: "var(--text-primary)" }}
-        >
-          {relation.kind === "Unspecified" && (
-            <option value="" disabled>
-              unspecified
-            </option>
-          )}
-          {SUBSTANCES.map((s) => (
-            <option key={s} value={s}>
-              {s}
-            </option>
-          ))}
-        </select>
-      </Row>
       {residue && (
         <p className="mb-1 text-[11px] leading-snug" style={{ color: "var(--text-muted)" }}>
           {residue}

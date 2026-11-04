@@ -844,7 +844,10 @@ export function MaskTable({
   const kind: "conservation" | "markov" = markovRun ? "markov" : "conservation";
   const columns: MaskColumn[] = markovRun
     ? markovRun.states.map((name, i) => ({ name, series: markovRun.history.map((row) => row[i] ?? 0) }))
-    : (result?.trajectories ?? []).map((tr) => ({ name: tr.name, series: tr.series }));
+    : // The state vector is the levels (walk, 2026-11-03): each holds one
+      // value per instant from the start, so row 0 is x0 → x1, as the Markov
+      // history's t0 row already gave. Per-step throughput is not state.
+      (result?.trajectories ?? []).filter((tr) => tr.holds).map((tr) => ({ name: tr.name, series: tr.series }));
 
   const n = columns.length === 0 ? 0 : Math.min(...columns.map((c) => c.series.length));
   // Each row is a step t → t+1, so the final sampled tick yields no row.

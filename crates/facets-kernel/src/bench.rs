@@ -69,6 +69,30 @@ impl BenchHandle {
         self.inner.set_flow_amount(label, from, to, v).map_err(err)
     }
 
+    /// Set a flow's amount as the author wrote it in the canvas document:
+    /// found through the projection's own map, so a flow into a pass-way the
+    /// projection fuses away (`brook` from Stream to Inlet) is still a live
+    /// knob. A flow the document does not name falls through to the
+    /// post-fusion names, as `set_flow_amount` reads them.
+    pub fn set_flow_amount_as_written(
+        &mut self,
+        canvas_json: &str,
+        label: &str,
+        from: &str,
+        to: &str,
+        v: f32,
+    ) -> Result<(), JsError> {
+        let model: facets_canvas::canvas::CanvasModel = serde_json::from_str(canvas_json)
+            .map_err(|e| JsError::new(&format!("invalid canvas model: {e}")))?;
+        match facets_canvas::canvas::interaction_as_written(&model, label, from, to).map_err(err)? {
+            Some(id) => self
+                .inner
+                .set_interaction_amount(&id, &format!("{from} -> {to} : {label}"), v)
+                .map_err(err),
+            None => self.inner.set_flow_amount(label, from, to, v).map_err(err),
+        }
+    }
+
     pub fn set_component_param(&mut self, thing: &str, field: &str, v: f32) -> Result<(), JsError> {
         self.inner.set_component_param(thing, field, v).map_err(err)
     }

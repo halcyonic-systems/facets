@@ -1043,7 +1043,7 @@ pub fn parse_sl_full(text: &str) -> Result<SlParse, Vec<SlError>> {
                 let mut back_pressure = false;
                 let mut limiting = false;
                 let mut reservoir: Option<f64> = None;
-                let mut gain: Option<f64> = None;
+                let mut own_words: Vec<(String, f64)> = Vec::new();
                 let mut description = String::new();
                 let mut grounding: Option<Grounding> = None;
                 let mut scale: Option<ScaleType> = None;
@@ -1497,35 +1497,55 @@ pub fn parse_sl_full(text: &str) -> Result<SlParse, Vec<SlError>> {
                             limiting = true;
                             i += 1;
                         }
-                        // `gain <n>` — a Sensing process's gain k (#496): the
-                        // multiplier between the level it reads and the signal
-                        // it reports. The engine's `param` on a sensor; default
-                        // 1.0 (a sensor reports what it sees). Sensing-only.
-                        Tok::Word(w) if w.eq_ignore_ascii_case("gain") => {
+                        // A process's own parameter, the engine's `param`
+                        // (`OWN_PARAMS`): `gain <n>` on a Sensing process (#496,
+                        // the multiplier from level to signal, default 1) or an
+                        // Amplifying one (the signal multiplier, walk row 18),
+                        // `efficiency <n>` on Propelling, `impedance <n>` on
+                        // Impeding (row 18). Each is gated to its primitive
+                        // after the line is read; the range is checked there.
+                        Tok::Word(w)
+                            if ["gain", "efficiency", "impedance"]
+                                .iter()
+                                .any(|k| w.eq_ignore_ascii_case(k)) =>
+                        {
+                            let word = w.to_ascii_lowercase();
                             if role == Role::Environment {
                                 fail(
-                                    "`gain` applies to components only (environment \
-                                     internals are opaque)"
-                                        .into(),
+                                    format!(
+                                        "`{word}` applies to components only (environment \
+                                         internals are opaque)"
+                                    ),
                                     &mut errors,
                                 );
                                 ok = false;
                             }
-                            if gain.is_some() {
-                                fail("`gain` already given on this component".into(), &mut errors);
+                            if own_words.iter().any(|(k, _)| *k == word) {
+                                fail(format!("`{word}` already given on this component"), &mut errors);
                                 ok = false;
                             }
-                            match attrs.get(i + 1) {
-                                Some(Tok::Word(n))
-                                    if n.parse::<f64>().is_ok_and(|v| v.is_finite() && v > 0.0) =>
-                                {
-                                    gain = Some(n.parse::<f64>().unwrap());
-                                }
-                                _ => {
+                            // `gain` keeps its #496 syntax rule (positive);
+                            // the other two take any finite number here and
+                            // meet their range at the gate.
+                            let parsed = match attrs.get(i + 1) {
+                                Some(Tok::Word(n)) => n
+                                    .parse::<f64>()
+                                    .ok()
+                                    .filter(|v| v.is_finite() && (word != "gain" || *v > 0.0)),
+                                _ => None,
+                            };
+                            match parsed {
+                                Some(v) => own_words.push((word, v)),
+                                None => {
                                     fail(
-                                        "gain syntax: `gain <positive number>` — the sensor's \
-                                         multiplier from level to signal (e.g. `gain 1`)"
-                                            .into(),
+                                        match word.as_str() {
+                                            "gain" => "gain syntax: `gain <positive number>` — the \
+                                                       sensor's or amplifier's multiplier (e.g. `gain 1`)"
+                                                .to_string(),
+                                            _ => format!(
+                                                "{word} syntax: `{word} <number>` (e.g. `{word} 0.2`)"
+                                            ),
+                                        },
                                         &mut errors,
                                     );
                                     ok = false;
@@ -1739,7 +1759,9 @@ pub fn parse_sl_full(text: &str) -> Result<SlParse, Vec<SlError>> {
                                      `primitive <Name>`, `interface`, `stock \"<unit>\"`, \
                                      `release <n>`, `capacity <n>`, `time constant <n>`, \
                                      `setpoint <n>`, `maintenance <n>`, `backpressure`, `limiting`, \
-                                     `reservoir <n>` (source lines), `gain <n>` (Sensing), \
+                                     `reservoir <n>` (source lines), `gain <n>` (Sensing, \
+                                     Amplifying), `efficiency <n>` (Propelling), \
+                                     `impedance <n>` (Impeding), \
                                      `scale <Scale>`, `states {{…}}`, `kind <Basic|Support>` \
                                      and `decomposes …` may follow",
                                     other.display()
@@ -1803,14 +1825,18 @@ pub fn parse_sl_full(text: &str) -> Result<SlParse, Vec<SlError>> {
                     );
                     ok = false;
                 }
-                if gain.is_some() && primitive != Some(ProcessPrimitive::Sensing) {
-                    fail(
-                        "`gain` applies to a Sensing component only — it is the sensor's \
-                         multiplier from level to signal, and no other primitive reads it"
-                            .into(),
-                        &mut errors,
-                    );
-                    ok = false;
+                // The own-parameter gate (row 18): a word on a primitive that
+                // does not read it is a fault naming the primitives that do,
+                // and the primitive's own word if it has one.
+                let mut own_param_value: Option<f32> = None;
+                for (word, v) in &own_words {
+                    match facets_core::own_param::resolve(primitive, word, *v) {
+                        Ok(p) => own_param_value = Some(p as f32),
+                        Err(m) => {
+                            fail(m, &mut errors);
+                            ok = false;
+                        }
+                    }
                 }
                 if setpoint.is_some() && primitive != Some(ProcessPrimitive::Inverting) {
                     fail(
@@ -1931,9 +1957,10 @@ pub fn parse_sl_full(text: &str) -> Result<SlParse, Vec<SlError>> {
                     variable_kind,
                     cognitive_params,
                     initial_state,
-                    // `gain <n>` on a Sensing component (#496) is the engine's
-                    // own parameter for a sensor, so it rides agency_capacity.
-                    agency_capacity: gain.map(|g| g as f32),
+                    // A process's own parameter (`gain` #496, `efficiency`
+                    // and `impedance` row 18) is the engine's `param`, so it
+                    // rides agency_capacity, mapped by `OWN_PARAMS`.
+                    agency_capacity: own_param_value,
                 });
                 next_id += 1;
             }
@@ -2485,6 +2512,24 @@ pub fn parse_sl_full(text: &str) -> Result<SlParse, Vec<SlError>> {
                                          or another agent's field is coordination, the rung after \
                                          (ADR 0008 D2)",
                                         field.word(),
+                                        thing_name(thing)
+                                    ),
+                                    &mut errors,
+                                );
+                                continue;
+                            }
+                            crate::canvas::ParamAnchor::Own { thing } => {
+                                let t = things.iter().find(|t| t.id == thing);
+                                let word = t
+                                    .and_then(|t| t.primitive)
+                                    .and_then(own_param)
+                                    .map(|o| o.word)
+                                    .unwrap_or("own parameter");
+                                fail(
+                                    format!(
+                                        "param \"{pname}\" names `{word}` of `{}` — the command form sets a \
+                                         flow amount or a two-way split; an agent setting a component's \
+                                         own parameter is coordination, the rung after (ADR 0008 D2)",
                                         thing_name(thing)
                                     ),
                                     &mut errors,
@@ -3053,8 +3098,8 @@ pub fn parse_sl_full(text: &str) -> Result<SlParse, Vec<SlError>> {
                 let syntax = "param syntax: `param \"Name\" : flow <a> -> <b> \
                               [\"label\"] [range <min>..<max>]`, `param shares \
                               \"Name\" : from <process>`, or `param \"Name\" : \
-                              <release|capacity|time constant|setpoint|maintenance> \
-                              of <component> [range <min>..<max>]`";
+                              <release|capacity|time constant|setpoint|maintenance|\
+                              gain|efficiency|impedance> of <component> [range <min>..<max>]`";
                 let is_shares = matches!(rest, [Tok::Word(w), ..] if w.eq_ignore_ascii_case("shares"));
                 let body = if is_shares { &rest[1..] } else { rest };
                 let (name_tok, after_colon) = match body {
@@ -3128,6 +3173,114 @@ pub fn parse_sl_full(text: &str) -> Result<SlParse, Vec<SlError>> {
                         range: None,
                     });
                     continue;
+                }
+                // own form (v1.16): `: <gain|efficiency|impedance> of <component>
+                // [range <min>..<max>]` — a domain name over a work process's
+                // own parameter (§4.3, `OWN_PARAMS`), in the word's terms.
+                // `gain` is also a proportional or trace rule's word: on an
+                // agent it is the rule's, and the field form below takes it.
+                if let [Tok::Word(w), Tok::Word(o), t, tail @ ..] = after_colon {
+                    let word = w.to_ascii_lowercase();
+                    let of_thing = o.eq_ignore_ascii_case("of") && t.is_name();
+                    let target = if of_thing { by_name.get(&t.name()).copied() } else { None };
+                    let on_agent = target.is_some_and(|ti| things[ti].rule.is_some());
+                    if facets_core::own_param::is_own_word(&word) && of_thing && !on_agent {
+                        let thing_name = t.name();
+                        let (range, tail) = match parse_param_range(tail) {
+                            Ok(x) => x,
+                            Err(m) => {
+                                fail(m, &mut errors);
+                                continue;
+                            }
+                        };
+                        if !tail.is_empty() {
+                            fail(format!("unexpected `{}` at end of param — {syntax}", tail[0].display()), &mut errors);
+                            continue;
+                        }
+                        let Some(ti) = target else {
+                            fail(
+                                format!("`{thing_name}` is not declared (declare things before params)"),
+                                &mut errors,
+                            );
+                            continue;
+                        };
+                        let thing = &things[ti];
+                        if thing.role != Role::Component {
+                            fail(
+                                format!(
+                                    "`{thing_name}` is an environment thing — engine parameters belong \
+                                     to components (environment internals are opaque)"
+                                ),
+                                &mut errors,
+                            );
+                            continue;
+                        }
+                        let Some(op) = thing.primitive.and_then(own_param).filter(|o| o.word == word) else {
+                            fail(
+                                format!(
+                                    "`{thing_name}`: {}{}",
+                                    facets_core::own_param::wrong_primitive(thing.primitive, &word),
+                                    if word == "gain" {
+                                        "; on an agent, `gain` is its rule's (facets#269)"
+                                    } else {
+                                        ""
+                                    }
+                                ),
+                                &mut errors,
+                            );
+                            continue;
+                        };
+                        let Some(p) = thing.agency_capacity else {
+                            fail(
+                                format!(
+                                    "`{thing_name}` declares no `{word}` — a param names an adjustable \
+                                     declared magnitude; add `{word} <n>` to the line that declares `{thing_name}`"
+                                ),
+                                &mut errors,
+                            );
+                            continue;
+                        };
+                        if let Some(r) = &range {
+                            let (lo, hi): (f64, f64) = (
+                                r.min.try_into().unwrap_or(f64::NAN),
+                                r.max.try_into().unwrap_or(f64::NAN),
+                            );
+                            // The word's legal values are one interval, so a
+                            // range inside it is one whose two ends are legal.
+                            if !(op.admits_value(lo) && op.admits_value(hi)) {
+                                fail(
+                                    format!(
+                                        "param \"{pname}\"'s range {}..{} reaches values `{word}` cannot \
+                                         take: {}",
+                                        r.min,
+                                        r.max,
+                                        op.out_of_range()
+                                    ),
+                                    &mut errors,
+                                );
+                                continue;
+                            }
+                            let value = op.value_of(p);
+                            if value < lo || value > hi {
+                                fail(
+                                    format!(
+                                        "`{thing_name}`'s declared {word} {value} lies outside the param's \
+                                         range {}..{} — the range contradicts the model",
+                                        r.min,
+                                        r.max
+                                    ),
+                                    &mut errors,
+                                );
+                                continue;
+                            }
+                        }
+                        params.push(crate::canvas::ParamDecl {
+                            name: pname,
+                            anchor: crate::canvas::ParamAnchor::Own { thing: thing.id },
+                            range,
+                        });
+                        continue;
+                    }
                 }
                 // field form (#343): `: <field> of <component> [range <min>..<max>]`
                 // — a domain name over one of the component line's own engine
@@ -4183,6 +4336,12 @@ fn tangle(wires: &[(usize, usize)], pts: &[(f32, f32)]) -> i64 {
     total
 }
 
+/// A work process's own parameter, as SL says it (walk row 18). The table
+/// lives in `facets-core` (`own_param.rs`) so the bench session, which sees
+/// only the engine side, converts a knob through the same map SL parses and
+/// emits with.
+pub use facets_core::own_param::{own_param, OwnParam, OWN_PARAMS};
+
 /// Serialize a [`CanvasModel`] to canonical SL text — the model→text direction.
 ///
 /// Canonical form: things first (declaration order), then flows, then boundary,
@@ -4508,9 +4667,27 @@ pub fn emit_sl_with(model: &CanvasModel, layout: Option<&SlLayout>) -> Result<St
                     "limiting" => t.primitive == Some(ProcessPrimitive::Combining),
                     _ => false,
                 }));
-        // An agency parameter is sayable in SL only as a sensor's `gain`
-        // (#496); on any other primitive it came from a JSON bag or the
-        // sandbox and is carried, not written — as before this word existed.
+        // A process's own parameter (walk row 18): the four primitives the
+        // engine reads it on each have a word (`OWN_PARAMS`), and a value
+        // the word cannot say refuses here rather than being dropped. On a
+        // primitive the engine never reads it on, it changes no run and is
+        // carried, not written, as before.
+        if t.role == Role::Component {
+            if let (Some(op), Some(a)) = (t.primitive.and_then(own_param), t.agency_capacity) {
+                if !op.admits(a as f64) {
+                    return Err(format!(
+                        "`{}` carries a {:?} {} of {} (engine parameter {a}), outside what SL \
+                         can say ({} {}) — export the model as kernel JSON instead of SL",
+                        t.name,
+                        op.primitive,
+                        op.word,
+                        op.value_of(a),
+                        op.word,
+                        op.range
+                    ));
+                }
+            }
+        }
         if !(initial_expressible && cognitive_expressible) {
             return Err(format!(
                 "`{}` carries engine parameters SL cannot express (#112 covers \
@@ -4598,10 +4775,9 @@ pub fn emit_sl_with(model: &CanvasModel, layout: Option<&SlLayout>) -> Result<St
             if let Some(sp) = t.cognitive_params.get("setpoint") {
                 write!(out, " setpoint {sp}").unwrap();
             }
-            if t.primitive == Some(ProcessPrimitive::Sensing) {
-                if let Some(g) = t.agency_capacity {
-                    write!(out, " gain {g}").unwrap();
-                }
+            // The process's own parameter in its word (row 18), gated above.
+            if let (Some(op), Some(a)) = (t.primitive.and_then(own_param), t.agency_capacity) {
+                write!(out, " {} {}", op.word, op.value_of(a)).unwrap();
             }
             if let Some(m) = t.cognitive_params.get("maintenance") {
                 write!(out, " maintenance {m}").unwrap();
@@ -4782,6 +4958,24 @@ pub fn emit_sl_with(model: &CanvasModel, layout: Option<&SlLayout>) -> Result<St
                     name_token(&name_of(thing)?)?
                 )
                 .unwrap();
+                if let Some(range) = &p.range {
+                    write!(out, " range {}..{}", range.min, range.max).unwrap();
+                }
+            }
+            crate::canvas::ParamAnchor::Own { thing } => {
+                // The word is the primitive's (OWN_PARAMS); a thing whose
+                // primitive reads no own parameter has nothing the line can say.
+                let word = model
+                    .things
+                    .iter()
+                    .find(|t| t.id == thing)
+                    .and_then(|t| t.primitive)
+                    .and_then(own_param)
+                    .map(|o| o.word)
+                    .ok_or_else(|| {
+                        format!("param `{}` names a process's own parameter on a thing whose primitive reads none", p.name)
+                    })?;
+                write!(out, "param {} : {word} of {}", quote(&p.name)?, name_token(&name_of(thing)?)?).unwrap();
                 if let Some(range) = &p.range {
                     write!(out, " range {}..{}", range.min, range.max).unwrap();
                 }
@@ -5093,6 +5287,8 @@ pub const RESERVED_WORDS: &[&str] = &[
     "limiting",
     "reservoir",
     "gain",
+    "efficiency",
+    "impedance",
     "agent",
     "watches",
     "rule",
@@ -5527,6 +5723,184 @@ fn tokenize_with_comment(line: &str) -> Result<(Vec<Tok>, Option<String>), Strin
         }
     }
     Ok((tokens, None))
+}
+
+// ---- Text and model agreement (2026-11-02 walk) -----------------------------
+//
+// SL text and the canvas model are two views of one model, and the face must
+// never show them disagreeing silently. These two functions are the single
+// definition the face uses: `sl_agreement` says whether a text and a model
+// mean the same thing, and `sync_sl` rewrites a text to mean what a model
+// means while keeping the author's comments. Layout (`@pos`, `@system`) and
+// view state (`@lens`) are not meaning: they are compared by neither, and
+// `sync_sl` keeps positions in step only where the text already pins them.
+
+/// Whether `source` and `model` mean the same model. `only_in_text` and
+/// `only_in_model` are the canonical lines one side has and the other lacks
+/// (a multiset difference of the two `emit_sl` forms, layout and view lines
+/// dropped), so the face can say what differs in the language's own words.
+#[derive(Serialize, Clone, Debug, PartialEq)]
+pub struct SlAgreement {
+    /// The text parsed. A faulted text cannot be compared; `agrees` is false.
+    pub parses: bool,
+    pub agrees: bool,
+    pub only_in_text: Vec<String>,
+    pub only_in_model: Vec<String>,
+}
+
+/// The lines of a model's canonical text that carry meaning: every non-blank
+/// line of `emit_sl` except layout and view annotations.
+fn meaning_lines(model: &CanvasModel) -> Result<Vec<String>, String> {
+    Ok(emit_sl(model)?
+        .lines()
+        .filter(|l| {
+            let t = l.trim_start();
+            !t.is_empty() && !t.starts_with("@pos ") && !t.starts_with("@system ") && !t.starts_with("@lens ")
+        })
+        .map(str::to_string)
+        .collect())
+}
+
+/// Multiset difference `a − b`, in `a`'s order.
+fn lines_minus(a: &[String], b: &[String]) -> Vec<String> {
+    let mut left: HashMap<&str, usize> = HashMap::new();
+    for l in b {
+        *left.entry(l.as_str()).or_default() += 1;
+    }
+    a.iter()
+        .filter(|l| match left.get_mut(l.as_str()) {
+            Some(n) if *n > 0 => {
+                *n -= 1;
+                false
+            }
+            _ => true,
+        })
+        .cloned()
+        .collect()
+}
+
+/// Compare a text with a model on meaning (see the section note). Errs only
+/// when the model itself cannot be written as SL (§7.3).
+pub fn sl_agreement(source: &str, model: &CanvasModel) -> Result<SlAgreement, String> {
+    let theirs = meaning_lines(model)?;
+    let parsed = match parse_sl(source) {
+        Ok(m) => m,
+        Err(_) => {
+            return Ok(SlAgreement { parses: false, agrees: false, only_in_text: vec![], only_in_model: vec![] })
+        }
+    };
+    let ours = meaning_lines(&parsed)?;
+    let only_in_text = lines_minus(&ours, &theirs);
+    let only_in_model = lines_minus(&theirs, &ours);
+    Ok(SlAgreement { parses: true, agrees: only_in_text.is_empty() && only_in_model.is_empty(), only_in_text, only_in_model })
+}
+
+/// A flow's identity across a re-parse: its endpoints' names, its label, and
+/// its ordinal among flows sharing all three (ids are renumbered, names are
+/// the text's identifiers).
+fn relation_keys(model: &CanvasModel) -> Vec<(u64, (String, String, String, usize))> {
+    let name_of = |id: u64| model.things.iter().find(|t| t.id == id).map(|t| t.name.clone()).unwrap_or_default();
+    let mut seen: HashMap<(String, String, String), usize> = HashMap::new();
+    model
+        .relations
+        .iter()
+        .map(|r| {
+            let base = (name_of(r.a), name_of(r.b), r.name.clone());
+            let n = seen.entry(base.clone()).or_default();
+            let key = (base.0, base.1, base.2, *n);
+            *n += 1;
+            (r.id, key)
+        })
+        .collect()
+}
+
+/// Rewrite `source` so it means what `model` means, keeping the author's
+/// comments and blank lines (re-keyed by name, since ids renumber).
+///
+/// - Empty text: the model's canonical text.
+/// - Faulted text: an error, and the caller keeps the text. Text mid-edit is
+///   the author's, and a rewrite must never eat it.
+/// - Already agreeing: the text unchanged, except that a text which pins
+///   positions has them brought in step (`splice_positions`), so a drag is
+///   saved without touching another byte.
+/// - Disagreeing: `emit_sl_with(model, layout)`, the formatter's path, with
+///   the source's trivia carried to the same declarations by name. A text
+///   that pinned any position pins every thing (the canvas holds them all);
+///   one that pinned none stays unpinned. Trivia whose declaration is gone
+///   moves to the end of the file rather than being dropped.
+pub fn sync_sl(source: &str, model: &CanvasModel) -> Result<String, String> {
+    if source.trim().is_empty() {
+        return emit_sl(model);
+    }
+    let parsed = parse_sl_full(source).map_err(|errs| {
+        format!("the text has {} fault{}", errs.len(), if errs.len() == 1 { "" } else { "s" })
+    })?;
+    let pins_positions = !parsed.layout.pinned.is_empty() || parsed.model.system_pos.is_some();
+    if sl_agreement(source, model)?.agrees {
+        if !pins_positions {
+            return Ok(source.to_string());
+        }
+        let pos_of = |m: &CanvasModel| {
+            let mut v: Vec<(String, u32, u32)> =
+                m.things.iter().map(|t| (t.name.clone(), t.x.to_bits(), t.y.to_bits())).collect();
+            v.sort();
+            (v, m.system_pos.map(|[x, y]| (x.to_bits(), y.to_bits())))
+        };
+        return if pos_of(&parsed.model) == pos_of(model) {
+            Ok(source.to_string())
+        } else {
+            splice_positions(source, model)
+        };
+    }
+
+    // Re-key the source's trivia from its own (parse) ids to the model's.
+    let thing_by_name: HashMap<&str, u64> = model.things.iter().map(|t| (t.name.as_str(), t.id)).collect();
+    let parsed_thing_name: HashMap<u64, &str> =
+        parsed.model.things.iter().map(|t| (t.id, t.name.as_str())).collect();
+    let model_rel: HashMap<(String, String, String, usize), u64> =
+        relation_keys(model).into_iter().map(|(id, k)| (k, id)).collect();
+    let parsed_rel: HashMap<u64, (String, String, String, usize)> =
+        relation_keys(&parsed.model).into_iter().collect();
+
+    let mut blocks: HashMap<Anchor, TriviaBlock> = HashMap::new();
+    let mut orphaned: Vec<String> = Vec::new();
+    for (anchor, block) in parsed.layout.blocks {
+        let mapped = match &anchor {
+            Anchor::Thing(pid) => {
+                parsed_thing_name.get(pid).and_then(|n| thing_by_name.get(n)).map(|&id| Anchor::Thing(id))
+            }
+            Anchor::Relation(pid) => {
+                parsed_rel.get(pid).and_then(|k| model_rel.get(k)).map(|&id| Anchor::Relation(id))
+            }
+            Anchor::Milieu(n) => model.milieu.iter().any(|m| &m.name == n).then(|| anchor.clone()),
+            Anchor::Param(n) => model.params.iter().any(|p| &p.name == n).then(|| anchor.clone()),
+            Anchor::Metric(n) => model.metrics.iter().any(|m| &m.name == n).then(|| anchor.clone()),
+            _ => Some(anchor.clone()),
+        };
+        match mapped {
+            Some(a) => {
+                blocks.insert(a, block);
+            }
+            None => {
+                // Words are never dropped: a comment above a declaration that
+                // is gone, and any same-line comment it carried, go to the end.
+                orphaned.extend(block.leading.iter().filter(|l| !l.trim().is_empty()).cloned());
+                orphaned.extend(block.trailing.iter().cloned());
+                orphaned.extend(block.prose_trailing.iter().cloned());
+            }
+        }
+    }
+    if !orphaned.is_empty() {
+        let end = blocks.entry(Anchor::End).or_default();
+        end.leading.extend(orphaned);
+    }
+    let pinned = if pins_positions {
+        model.things.iter().map(|t| t.name.clone()).collect()
+    } else {
+        std::collections::BTreeSet::new()
+    };
+    let layout = SlLayout { blocks, pinned, lens_pinned: parsed.layout.lens_pinned };
+    emit_sl_with(model, Some(&layout))
 }
 
 #[cfg(test)]

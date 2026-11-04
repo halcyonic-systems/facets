@@ -64,7 +64,7 @@ export function surfaceEntities(model: CanvasModel | null | undefined, result: R
   const names: string[] = [];
   if (result) {
     const internal = new Set(result.levels.filter((l) => l.category === "internal").map((l) => l.name));
-    for (const t of result.trajectories) if (internal.has(t.name)) names.push(t.name);
+    for (const t of result.trajectories) if (internal.has(t.name) && t.holds) names.push(t.name);
     for (const c of result.comparisons) names.push(c.element);
     if (model) for (const r of evaluateMetrics(model, result)?.readings ?? []) names.push(r.entity);
   }

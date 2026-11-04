@@ -364,8 +364,9 @@ pub fn validate_operational(model: &WorldModel) -> Result<OperationalSpec, Vec<O
             errors.push(OperationalError::new(
                 format!("systems[{i}]"),
                 format!(
-                    "\"{}\" has no agent model — nothing states which work process it is",
-                    sys.info.name
+                    "\"{}\" has no work process — give it a primitive, or, if it only \
+                     passes what crosses, write it as a pass-way (`interface {}`)",
+                    sys.info.name, sys.info.name
                 ),
                 Some("Attach an AgentModel carrying a Mobus primitive"),
             ));
@@ -554,9 +555,11 @@ pub fn validate_operational(model: &WorldModel) -> Result<OperationalSpec, Vec<O
         if !touched.contains(&p.id) {
             errors.push(OperationalError::new(
                 format!("process \"{}\"", p.name),
-                "no flow touches this component — it would ride along in the \
-                 circuit without participating"
-                    .to_string(),
+                format!(
+                    "no flow touches \"{}\" — it would ride along in the circuit \
+                     without participating",
+                    p.name
+                ),
                 Some("Wire it into the flow graph or remove it"),
             ));
         }
@@ -977,7 +980,7 @@ mod tests {
         let errs = validate_operational(&m).unwrap_err();
         assert!(errs
             .iter()
-            .any(|e| e.reason.contains("Tank") && e.reason.contains("no agent model")));
+            .any(|e| e.reason.contains("Tank") && e.reason.contains("no work process")));
     }
 
     /// Law: hierarchy below level 1 has no executable reading in the flat circuit vocabulary — any system at level 2+ is refused.

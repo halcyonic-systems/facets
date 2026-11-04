@@ -62,6 +62,10 @@ export interface OperationalError {
 /** Phase-0 authored-run result (no forcing). */
 export interface RunResult {
   dt: number;
+  /** What each history column is: `t`, then `<node>.activity|storage|total`. */
+  columns: string[];
+  /** The point x0 in the same columns, before the first step. */
+  start: number[];
   history: number[][];
   ledger_history: [number, number, number, number][];
   final_balance: number;
@@ -156,6 +160,10 @@ export interface Trajectory {
   unit: string;
   /** See Level.unit_derived. */
   unit_derived: boolean;
+  /** A level the element holds (a stock, or what a sink has received); false
+   *  = what it does each tick (a source's emission, a process's throughput),
+   *  never drawn as a fill. */
+  holds: boolean;
   series: number[];
 }
 /** One flow's executed per-tick delivery (#203) — the circuit's own recording
@@ -181,7 +189,8 @@ export interface NodeFlux {
   overflow: number;
   /** NaN (serialized null) when the model declines the conservation ledger. */
   dissipated: number | null;
-  /** The stock after the tick (Buffering), else the activity. */
+  /** What the element holds after the tick: a stock's storage, a sink's or
+   *  receiving environment object's total received; else the activity. */
   level: number | null;
 }
 
@@ -520,7 +529,12 @@ export type AgentRule = "proportional" | "threshold" | "table" | "trace";
 export type ParamAnchor =
   | { Flow: { relation: number } }
   | { Shares: { thing: number } }
-  | { Field: { thing: number; field: EngineField } };
+  | { Field: { thing: number; field: EngineField } }
+  /** A work process's own parameter (SL v1.16): gain, efficiency or
+   *  impedance, the word read off the primitive by the kernel. The value is
+   *  the thing's `agency_capacity` (engine terms); the range is in the
+   *  word's terms, mapped by the thing's `EngineKnob.own`. */
+  | { Own: { thing: number } };
 
 /** Inclusive slider bounds, decimal STRINGS in the flow's own unit. */
 export interface ParamRange {
@@ -555,6 +569,75 @@ export interface MetricDecl {
 export interface SlError {
   line: number;
   message: string;
+}
+
+/** engine_knobs: one knob a component offers. `value` is what the run uses
+ *  (declared, or the engine's default when not); null = off by default (no
+ *  capacity limit, no upkeep). `needs_unit` rides the starting level only: SL
+ *  writes it with a stock unit, "" = the component has none yet. */
+export interface EngineKnob {
+  thing: number;
+  field:
+    | "initial_storage"
+    | "release_rate"
+    | "capacity"
+    | "time_constant"
+    | "maintenance"
+    | "setpoint"
+    | "gain"
+    | "efficiency"
+    | "impedance";
+  word: string;
+  value: number | null;
+  declared: boolean;
+  needs_unit?: string;
+  /** A process's own parameter only (walk row 18): the SL value v maps onto
+   *  the engine's param (`agency_capacity`) as v = offset + scale · p, and SL
+   *  takes p > 0 and p ≤ max_param when there is one. */
+  own?: OwnKnob;
+}
+
+export interface OwnKnob {
+  offset: number;
+  scale: number;
+  max_param: number | null;
+  range: string;
+}
+
+/** flow_knobs: a non-ample flow's amount as the run uses it (walk row 21):
+ *  the declared amount, or what an undeclared flow runs at. */
+export interface FlowKnob {
+  relation: number;
+  value: number;
+  declared: boolean;
+}
+
+/** flow_kinds: what a flow carries in the run (walk row 29). `said` when the
+ *  author wrote it; otherwise inherited from the flows into its source
+ *  (`from`), or `null` when that cannot be worked out: `mixed` lists the
+ *  differing kinds that come in, empty when nothing comes in. */
+export interface FlowKind {
+  relation: number;
+  kind: Kind | null;
+  said: boolean;
+  from: number[];
+  mixed: Kind[];
+  /** Not worked out only because these flows into its source are not
+   *  either; answering them settles this one. */
+  waits_on: number[];
+  /** The flow leaves a gate, which passes on what comes in unchanged (walk
+   *  row 34): when not empty, the physical kinds coming into the gate, which
+   *  this flow does not carry as written, or which are more than one. */
+  gate_passes: Kind[];
+}
+
+/** sl_agreement: whether a text and a model mean the same model (layout and
+ *  lens set aside), and the canonical lines each has that the other lacks. */
+export interface SlAgreement {
+  parses: boolean;
+  agrees: boolean;
+  only_in_text: string[];
+  only_in_model: string[];
 }
 
 /** compile_sl: the compiled canvas model (plus whether the text pinned a lens
@@ -616,6 +699,11 @@ export interface LensFacts {
   /** Env things no bond touches — project() drops these as orphan terminals;
    *  not yet in ℰ (Bunge Def 1.2 ii). Rendered pending, never re-derived. */
   orphan_env_thing_ids: number[];
+  /** The environment things the projection files as sources: an authored
+   *  `source`, or a neutral environment thing a flow leaves. Kernel verdict;
+   *  a canvas-drawn object carries no authored word, so read this, never
+   *  `env_kind` alone, to know whether a thing emits. */
+  source_thing_ids: number[];
   /** Authored members of I. Effective I = boundary_thing_ids ∪ this set;
    *  authored-flowless members are Mobus-visible and Bunge-blind. */
   authored_interface_thing_ids: number[];
@@ -743,6 +831,8 @@ export interface ResidueEntry {
 export interface LensResidue {
   hidden: ResidueEntry[];
   unspecified: ResidueEntry[];
+  /** Answered by the model, not the text (walk row 35); absent when none. */
+  carried?: ResidueEntry[];
 }
 
 export interface CanvasAnalysis {

@@ -36,6 +36,16 @@ use facets_core::operational::OperationalSpec;
 #[derive(Serialize, Clone, Debug)]
 pub struct RunReport {
     pub dt: f64,
+    /// What each `history` column is: `t`, then `<node>.activity`,
+    /// `<node>.storage`, `<node>.total` per node (toy-model walk,
+    /// 2026-11-03: the rows were bare numbers).
+    pub columns: Vec<String>,
+    /// The run's point x0, the state before the first step, in the same
+    /// columns as a `history` row (t = 0, every activity and total 0, each
+    /// stock at its initial level). `history` holds T(x0), T²(x0), … as the
+    /// recorder writes them (spec §8.2), so a level series is `start`
+    /// followed by `history`.
+    pub start: Vec<f32>,
     pub history: Vec<Vec<f32>>,
     pub ledger_history: Vec<[f32; 4]>,
     pub final_balance: f32,
@@ -44,6 +54,10 @@ pub struct RunReport {
 /// One recorded run: the trace a circuit traced, the Δt it advanced under, and
 /// the spec-hash key that says which model the trace belongs to.
 pub struct RecordedRun {
+    /// See [`RunReport::columns`].
+    pub columns: Vec<String>,
+    /// See [`RunReport::start`].
+    pub start: Vec<f32>,
     /// [`OperationalSpec::content_hash`] at the moment of the run — the identity
     /// of the model this trace belongs to. Not the model itself: A2 keeps the
     /// trace out of the `WorldModel`, so the tie is a hash held here, never a
@@ -64,6 +78,22 @@ pub struct RecordedRun {
     pub final_balance: f32,
 }
 
+/// The `history` column names of `circuit` (see [`RunReport::columns`]).
+fn columns_of(circuit: &Circuit) -> Vec<String> {
+    std::iter::once("t".to_string())
+        .chain(circuit.nodes.iter().flat_map(|n| {
+            ["activity", "storage", "total"].map(|c| format!("{}.{c}", n.name))
+        }))
+        .collect()
+}
+
+/// The point x0 in `history` columns (see [`RunReport::start`]).
+fn start_of(circuit: &Circuit) -> Vec<f32> {
+    std::iter::once(0.0)
+        .chain(circuit.nodes.iter().flat_map(|n| [0.0, n.initial_storage, 0.0]))
+        .collect()
+}
+
 impl RecordedRun {
     /// Run `circuit` for `ticks` steps of size `dt`, recording the trace keyed
     /// to `spec` — the projection the circuit was built from. Resets first so the
@@ -74,6 +104,8 @@ impl RecordedRun {
             circuit.step_dt(dt as f32);
         }
         Self {
+            columns: columns_of(circuit),
+            start: start_of(circuit),
             key: spec.content_hash(),
             dt,
             history: circuit.history.clone(),
@@ -128,6 +160,8 @@ impl RecordedRun {
     /// run alike.
     pub fn from_live(circuit: &Circuit, spec: &OperationalSpec, dt: f64) -> Self {
         Self {
+            columns: columns_of(circuit),
+            start: start_of(circuit),
             key: spec.content_hash(),
             dt,
             history: circuit.history.clone(),
@@ -140,6 +174,8 @@ impl RecordedRun {
     pub fn report(&self) -> RunReport {
         RunReport {
             dt: self.dt,
+            columns: self.columns.clone(),
+            start: self.start.clone(),
             history: self.history.clone(),
             ledger_history: self.ledger_history.clone(),
             final_balance: self.final_balance,

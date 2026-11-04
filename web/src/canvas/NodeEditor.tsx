@@ -91,6 +91,7 @@ export function NodeEditorRows({
   onDelete,
   onClose,
   decompose = null,
+  settings = null,
 }: {
   thing: Thing;
   lens: Lens;
@@ -100,6 +101,9 @@ export function NodeEditorRows({
    *  keeps the element face up whether or not anything is selected. */
   onClose: (() => void) | null;
   decompose?: DecomposeAffordance | null;
+  /** This thing's own settings (knobs, rates, how its output divides), drawn
+   *  right under what it does (2026-11-02 walk: click a thing, tune it there). */
+  settings?: React.ReactNode;
 }) {
   const isComponent = thing.role === "Component";
   return (
@@ -123,12 +127,6 @@ export function NodeEditorRows({
       <DescriptionField
         value={thing.description ?? ""}
         onChange={(description) => onUpdateThing({ ...thing, description })}
-      />
-      {/* #411: whose word this thing rests on. Beneath the description, as it
-          emits — what it is called, what it is, then on whose word. */}
-      <GroundingField
-        value={thing.grounding}
-        onChange={(grounding) => onUpdateThing({ ...thing, grounding })}
       />
       {/* The re-cut (#100 phase 2, ratified scope + F8): Bunge's C/E split is
           indexed to a chosen reference class A — 𝒞_A, 𝓔_A, 𝒮_A — so which
@@ -172,17 +170,33 @@ export function NodeEditorRows({
         </>
       )}
       {lens === "Mobus" && isComponent && (
+        /* What it does (2026-11-02 walk, row 23): a work process and a
+           decision rule were two menus, but they are one choice. An agent is
+           its own kind of thing (facets#269), so choosing a rule clears the
+           work process and choosing a work process clears the rule; the seam
+           refuses the pair. One menu says so by construction. A rule's numbers
+           live in the bag under the rule's own words. */
         <Row>
-          <span style={{ color: "var(--text-secondary)" }}>work process</span>
+          <span style={{ color: "var(--text-secondary)" }}>what it does</span>
           <Select
-            aria-label="work process"
-            value={thing.primitive ?? ""}
+            aria-label="what it does"
+            value={thing.rule ? `rule:${thing.rule}` : thing.primitive ? `process:${thing.primitive}` : ""}
             onChange={(e) => {
-              const v = e.target.value as ProcessPrimitive | "";
+              const v = e.target.value;
               const next = { ...thing };
-              if (v === "") delete next.primitive;
-              else {
-                next.primitive = v;
+              if (v === "") {
+                delete next.primitive;
+                if (next.rule) {
+                  delete next.rule;
+                  delete next.cognitive_params;
+                }
+              } else if (v.startsWith("rule:")) {
+                const rule = v.slice(5) as AgentRule;
+                next.rule = rule;
+                next.cognitive_params = { ...AGENT_RULE_DEFAULTS[rule] };
+                delete next.primitive;
+              } else {
+                next.primitive = v.slice(8) as ProcessPrimitive;
                 if (next.rule) {
                   delete next.rule;
                   delete next.cognitive_params;
@@ -190,50 +204,32 @@ export function NodeEditorRows({
               }
               onUpdateThing(next);
             }}
+            data-testid="does-select"
           >
-            <option value="">none</option>
-            {PRIMITIVES.map((p) => (
-              <option key={p} value={p}>
-                {p.toLowerCase()}
-              </option>
-            ))}
+            <option value="">nothing yet</option>
+            <optgroup label="work process: changes what flows through">
+              {PRIMITIVES.map((p) => (
+                <option key={p} value={`process:${p}`}>
+                  {p.toLowerCase()}
+                </option>
+              ))}
+            </optgroup>
+            <optgroup label="decision rule: an agent that reads a level and commands">
+              {RULES.map((r) => (
+                <option key={r.rule} value={`rule:${r.rule}`}>
+                  {r.rule}
+                </option>
+              ))}
+            </optgroup>
           </Select>
         </Row>
       )}
-      {lens === "Mobus" && isComponent && (
-        /* facets#269: the decision rule. An agent is its own kind of thing, so
-           choosing a rule clears the work process and choosing a work process
-           clears the rule (the seam refuses the pair). The numbers live in
-           the bag under the rule's own words, where the param layer and the
-           run surface read them. */
-        <Row>
-          <span style={{ color: "var(--text-secondary)" }}>decision rule</span>
-          <Select
-            aria-label="decision rule"
-            value={thing.rule ?? ""}
-            onChange={(e) => {
-              const v = e.target.value as AgentRule | "";
-              const next = { ...thing };
-              if (v === "") {
-                delete next.rule;
-                delete next.cognitive_params;
-              } else {
-                next.rule = v;
-                next.cognitive_params = { ...AGENT_RULE_DEFAULTS[v] };
-                delete next.primitive;
-              }
-              onUpdateThing(next);
-            }}
-            data-testid="rule-select"
-          >
-            <option value="">none</option>
-            {RULES.map((r) => (
-              <option key={r.rule} value={r.rule}>
-                {r.rule}
-              </option>
-            ))}
-          </Select>
-        </Row>
+      {lens === "Mobus" && isComponent && thing.primitive && (
+        /* #418 item 4: what the stamped process IS, from the same table the
+           rail's hover card reads. */
+        <p className="mb-2 text-xs leading-snug" style={{ color: "var(--text-muted)" }} data-testid="primitive-gloss">
+          {PRIMITIVE_WORD[thing.primitive]}: {PRIMITIVE_GLOSS[thing.primitive]}
+        </p>
       )}
       {lens === "Mobus" && isComponent && thing.rule && (
         <>
@@ -274,13 +270,25 @@ export function NodeEditorRows({
           </p>
         </>
       )}
-      {lens === "Mobus" && isComponent && thing.primitive && (
-        /* #418 item 4: what the stamped process IS, from the same table the
-           rail's hover card reads. */
-        <p className="mb-2 text-xs leading-snug" style={{ color: "var(--text-muted)" }} data-testid="primitive-gloss">
-          {thing.primitive} · {PRIMITIVE_WORD[thing.primitive]} — {PRIMITIVE_GLOSS[thing.primitive]}
-        </p>
-      )}
+      {settings}
+      {/* #411: whose word this thing rests on. Folded away (walk row 25): it
+          is the author's note on the claim, read by no verdict, and a
+          newcomer meets it after what the thing does, not before. Open when
+          a grade is already set, so a grounded model shows it. */}
+      <details className="mb-2" open={Boolean(thing.grounding)} data-testid="grounding-details">
+        <summary className="cursor-pointer text-xs" style={{ color: "var(--text-secondary)" }}>
+          how do you know this?
+          {thing.grounding && (
+            <span style={{ color: "var(--text-muted)" }}> · {thing.grounding.grade}</span>
+          )}
+        </summary>
+        <div className="mt-1">
+          <GroundingField
+            value={thing.grounding}
+            onChange={(grounding) => onUpdateThing({ ...thing, grounding })}
+          />
+        </div>
+      </details>
       {decompose && <DecomposeRows decompose={decompose} />}
       <div className="flex justify-between">
         <Button size={28} variant="quiet" icon="delete" onClick={onDelete} style={{ color: "var(--verdict-error)" }}>
