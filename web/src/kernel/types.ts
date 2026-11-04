@@ -62,6 +62,10 @@ export interface OperationalError {
 /** Phase-0 authored-run result (no forcing). */
 export interface RunResult {
   dt: number;
+  /** What each history column is: `t`, then `<node>.activity|storage|total`. */
+  columns: string[];
+  /** The point x0 in the same columns, before the first step. */
+  start: number[];
   history: number[][];
   ledger_history: [number, number, number, number][];
   final_balance: number;

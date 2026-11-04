@@ -576,9 +576,11 @@ function parseMappingStatus(v: unknown): MappingStatus {
 }
 
 function parseRunResult(v: unknown): RunResult {
-  const o = shape(v, "RunResult", ["dt", "history", "ledger_history", "final_balance"]);
+  const o = shape(v, "RunResult", ["dt", "columns", "start", "history", "ledger_history", "final_balance"]);
   return {
     dt: num(o.dt, "RunResult.dt"),
+    columns: arr(o.columns, "columns").map((c, i) => str(c, `columns[${i}]`)),
+    start: arr(o.start, "start").map((x, i) => num(x, `start[${i}]`)),
     history: arr(o.history, "history").map((row, i) => arr(row, `history[${i}]`).map((x, j) => num(x, `history[${i}][${j}]`))),
     ledger_history: arr(o.ledger_history, "ledger_history").map((row, i) => {
       const cells = arr(row, `ledger_history[${i}]`).map((x, j) => num(x, `ledger_history[${i}][${j}]`));

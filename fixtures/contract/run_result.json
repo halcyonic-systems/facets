@@ -1,5 +1,29 @@
 {
   "dt": 1.0,
+  "columns": [
+    "t",
+    "Source 1.activity",
+    "Source 1.storage",
+    "Source 1.total",
+    "Sink 3.activity",
+    "Sink 3.storage",
+    "Sink 3.total",
+    "Buffering 2.activity",
+    "Buffering 2.storage",
+    "Buffering 2.total"
+  ],
+  "start": [
+    0.0,
+    0.0,
+    0.0,
+    0.0,
+    0.0,
+    0.0,
+    0.0,
+    0.0,
+    0.0,
+    0.0
+  ],
   "history": [
     [
       1.0,

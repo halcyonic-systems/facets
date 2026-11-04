@@ -61,7 +61,9 @@ sizes agree to within O(Δt) drift (`dt_invariance.rs`). Runs the model
 ```ts
 type RunResult = {
   dt: number,
-  history: number[][],        // per-tick [tick, n0.activity, n0.storage, n0.total, n1...]
+  columns: string[],          // names of history's columns: "t", "<node>.activity|storage|total"
+  start: number[],            // x0 in those columns: t 0, stocks at their initial level, the rest 0
+  history: number[][],        // per-tick [tick, n0.activity, n0.storage, n0.total, n1...], T(x0) onward
   ledger_history: [number, number, number, number][], // [emitted, sunk, stored, dissipated]
   final_balance: number,      // conservation residual (≈0 = mass conserved)
 }
