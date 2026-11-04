@@ -1107,6 +1107,48 @@ pub fn flow_kinds(model: &CanvasModel) -> Vec<FlowKind> {
         .collect()
 }
 
+/// The interaction a flow runs as, found as the author wrote it: the bond
+/// labelled `label` from the thing named `from` to the thing named `to`,
+/// mapped through the projection's own `interaction_of`. So a flow into a
+/// pass-way the projection fuses away (`flow Stream -> Inlet`, where `Inlet`
+/// becomes the pond's boundary interface) is found by the names on the page.
+/// `Ok(None)` when no such bond is written, so a caller can try the
+/// post-fusion names; an error when the bond is written but does not run on
+/// its own (a pass-way's interior leg lowers to nothing, its crossing leg
+/// carries the flow) or when the names fit several bonds.
+pub fn interaction_as_written(model: &CanvasModel, label: &str, from: &str, to: &str) -> Result<Option<Id>, String> {
+    let name = |id: u64| model.things.iter().find(|t| t.id == id).map(|t| t.name.as_str()).unwrap_or("");
+    let hits: Vec<&Relation> = model
+        .relations
+        .iter()
+        .filter(|r| r.is_bond && r.name == label && name(r.a) == from && name(r.b) == to)
+        .collect();
+    let r = match hits.as_slice() {
+        [] => return Ok(None),
+        [r] => *r,
+        _ => {
+            return Err(format!(
+                "several flows \"{label}\" from \"{from}\" to \"{to}\"; the edit is ambiguous"
+            ))
+        }
+    };
+    let map = project_with_map(model).interaction_of;
+    if let Some(id) = map.get(&r.id) {
+        return Ok(Some(id.clone()));
+    }
+    let crossing: Vec<String> = model
+        .relations
+        .iter()
+        .filter(|x| x.is_bond && x.id != r.id && (x.b == r.a || x.a == r.b) && map.contains_key(&x.id))
+        .map(|x| format!("\"{}|{}|{}\"", x.name, name(x.a), name(x.b)))
+        .collect();
+    Err(format!(
+        "flow \"{label}\" from \"{from}\" to \"{to}\" does not run on its own: the projection \
+         fuses it into the flow that crosses the pass-way{}",
+        if crossing.is_empty() { String::new() } else { format!("; turn {}", crossing.join(" or ")) }
+    ))
+}
+
 /// [`project`] for a run: refuses, naming each flow, when a flow's kind cannot
 /// be worked out ([`flow_kinds`]), since the run would otherwise have to guess
 /// what it carries. Only a model the run's gate would otherwise accept is

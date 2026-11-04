@@ -523,6 +523,68 @@ fn a_process_knob_refuses_the_wrong_word_and_an_unsayable_value() {
     assert!(refused("Stage.efficiency=0.5").contains("Propelling component only"));
 }
 
+/// A pond with two pass-ways, both fused into it: the brook enters through
+/// Inlet and leaves through Outlet. Two declared params name a flow and a
+/// field.
+const POND: &str = "\
+source Stream
+sink Downstream
+interface Inlet
+component Pond primitive Buffering stock m3 initial 100 time constant 10 capacity 400
+interface Outlet
+flow Stream -> Inlet : matter \"brook\" substance water amount 30
+flow Inlet -> Pond : matter \"inflow\" substance water
+flow Pond -> Outlet : matter \"outflow\" substance water
+flow Outlet -> Downstream : matter \"outflow\" substance water
+param \"stream\" : flow Stream -> Inlet \"brook\" range 0..100
+param \"outlet time\" : time constant of Pond range 1..40
+";
+
+/// A flow knob takes the flow as the SL writes it, found through the
+/// projection's own map, even where its endpoint is a pass-way fused away
+/// beside another (the pond's Inlet; its Outlet is fused too, which is what
+/// the name match after fusion missed). The post-fusion names still work,
+/// and both land on the same wire.
+#[test]
+fn a_flow_knob_takes_the_flow_as_written_through_a_fused_pass_way() {
+    let run = |set: &str| {
+        let out = facets_stdin(&["bench", "-", "--t", "3", "--no-log", "--set", set], POND);
+        assert_eq!(code(&out), 0, "{set}: {}", stderr(&out));
+        stdout_json(&out)
+    };
+    let written = run("brook|Stream|Inlet=50");
+    assert_eq!(last_of(&written, "brook"), 50.0);
+    assert_eq!(written["edits"][0]["target"], "Stream -> Inlet : brook");
+    let fused = run("brook|Stream|Pond=50");
+    assert_eq!(fused["flows"], written["flows"]);
+    // The interior leg lowers to nothing; the refusal names the crossing leg.
+    let out = facets_stdin(&["bench", "-", "--t", "3", "--set", "inflow|Inlet|Pond=5"], POND);
+    assert_eq!(code(&out), 4, "{}", stderr(&out));
+    assert!(stderr(&out).contains("\"brook|Stream|Inlet\""), "{}", stderr(&out));
+}
+
+/// A declared param is a knob by its name: the flow or field it names, as
+/// the run inputs card turns it. A bare name that is no param says the
+/// forms a knob takes and the params the model declares.
+#[test]
+fn a_declared_param_is_a_knob_by_its_name() {
+    let run = |set: &str| {
+        let out = facets_stdin(&["bench", "-", "--t", "3", "--no-log", "--set", set], POND);
+        assert_eq!(code(&out), 0, "{set}: {}", stderr(&out));
+        stdout_json(&out)
+    };
+    let by_name = run("stream=50");
+    assert_eq!(by_name["flows"], run("brook|Stream|Inlet=50")["flows"]);
+    assert_eq!(by_name["edits"][0]["target"], "Stream -> Inlet : brook");
+    let quoted = run("\"outlet time\"=5");
+    assert_eq!(quoted["edits"][0]["field"], "time_constant");
+    assert_eq!(quoted["trajectories"], run("Pond.time_constant=5")["trajectories"]);
+    let out = facets_stdin(&["bench", "-", "--set", "streem=50"], POND);
+    assert_eq!(code(&out), 2, "{}", stderr(&out));
+    let e = stderr(&out);
+    assert!(e.contains("no param is named \"streem\"") && e.contains("\"stream\", \"outlet time\""), "{e}");
+}
+
 /// On an agent, `gain` is its rule's word, not a process's own parameter.
 #[test]
 fn gain_on_an_agent_stays_the_rules_word() {

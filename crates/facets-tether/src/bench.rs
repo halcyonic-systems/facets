@@ -303,6 +303,45 @@ impl BenchSession {
             ));
         }
         let k = self.flow_index(label, from, to)?;
+        self.write_flow(k, label, format!("{from} -> {to} : {label}"), v)
+    }
+
+    /// Set the amount of the flow the projection made interaction `id`,
+    /// live, logged under `target` (the flow as the author wrote it). The
+    /// door for a caller holding the canvas, which finds the interaction
+    /// through the projection's own map (`interaction_as_written` in
+    /// facets-canvas) instead of matching names after fusion.
+    pub fn set_interaction_amount(&mut self, id: &Id, target: &str, v: f32) -> Result<(), String> {
+        if !(v.is_finite() && v >= 0.0) {
+            return Err(format!(
+                "an amount is a non-negative finite number, not {v}"
+            ));
+        }
+        let ix = self
+            .model
+            .interactions
+            .iter()
+            .find(|i| i.info.id == *id)
+            .ok_or_else(|| format!("{target} is not a flow of this run"))?;
+        let (label, source, sink) = (ix.info.name.clone(), ix.source.clone(), ix.sink.clone());
+        let hits: Vec<usize> = self
+            .spec
+            .flows
+            .iter()
+            .enumerate()
+            .filter(|(_, f)| f.name == label && f.source == source && f.sink == sink)
+            .map(|(k, _)| k)
+            .collect();
+        let k = match hits.as_slice() {
+            [k] => *k,
+            [] => return Err(format!("{target} does not run (it is not in the executable model)")),
+            _ => return Err(format!("several flows run as {target}; the edit is ambiguous")),
+        };
+        self.write_flow(k, &label, target.to_string(), v)
+    }
+
+    /// Write wire `k`'s amount and log the edit under `target`.
+    fn write_flow(&mut self, k: usize, label: &str, target: String, v: f32) -> Result<(), String> {
         let circuit = &mut self.session.circuit;
         if circuit.wires[k].rate_series.is_some() {
             return Err(format!(
@@ -312,7 +351,7 @@ impl BenchSession {
         circuit.write_amount(k, v).map_err(|e| format!("\"{label}\" {e}"))?;
         self.note_edit(KnobEdit {
             tick: self.session.circuit.tick,
-            target: format!("{from} -> {to} : {label}"),
+            target,
             field: "amount".into(),
             value: v,
             by: KnobAuthor::Human,

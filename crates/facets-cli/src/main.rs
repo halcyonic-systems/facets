@@ -131,7 +131,9 @@ enum Command {
     ///
     /// This is the terminal's seat at the bench: the same engine, the same
     /// knobs by the same names the app shows, with no browser in the loop.
-    /// `--set` takes `label|from|to=value[@tick]` for a flow amount or
+    /// `--set` takes `label|from|to=value[@tick]` for a flow amount (the
+    /// endpoints as the SL writes them, or as the projection fuses them),
+    /// `name=value[@tick]` for a declared `param` by its name, or
     /// `thing.field=value[@tick]` for a component's engine parameter
     /// (release_rate, capacity, setpoint, time_constant, maintenance,
     /// back_pressure, initial_storage, param; a process's own parameter by
@@ -148,7 +150,8 @@ enum Command {
         /// The step size Δt.
         #[arg(long, default_value_t = 1.0)]
         dt: f64,
-        /// A knob: `label|from|to=value[@tick]` or `thing.field=value[@tick]`.
+        /// A knob: `label|from|to=value[@tick]`, `param=value[@tick]` or
+        /// `thing.field=value[@tick]`.
         #[arg(long = "set")]
         sets: Vec<String>,
         /// Leave the per-tick log out of the answer (the readout and the
@@ -425,6 +428,9 @@ struct Knob {
 enum KnobTarget {
     Flow { label: String, from: String, to: String },
     Component { thing: String, field: String },
+    /// A bare name: a declared `param`, or (holding a `.`) `thing.field`.
+    /// Which one is known only once the model is loaded.
+    Named(String),
 }
 
 fn parse_knob(s: &str) -> Result<Knob, String> {
@@ -443,15 +449,59 @@ fn parse_knob(s: &str) -> Result<Knob, String> {
         };
         KnobTarget::Flow { label: label.to_string(), from: from.to_string(), to: to.to_string() }
     } else {
-        let (thing, field) = target
-            .rsplit_once('.')
-            .ok_or_else(|| format!("`{s}`: a component knob is `thing.field=value`"))?;
-        // A spaced name may arrive quoted, as SL writes it: `"Rain Barrel".release_rate=30`.
-        let thing = thing.trim();
-        let thing = thing.strip_prefix('"').and_then(|t| t.strip_suffix('"')).unwrap_or(thing);
-        KnobTarget::Component { thing: thing.to_string(), field: field.trim().to_string() }
+        KnobTarget::Named(target.trim().to_string())
     };
     Ok(Knob { tick, target, value })
+}
+
+/// A name as SL writes it, quotes and all: `"Rain Barrel"` is `Rain Barrel`.
+fn unquote(s: &str) -> &str {
+    let s = s.trim();
+    s.strip_prefix('"').and_then(|t| t.strip_suffix('"')).unwrap_or(s)
+}
+
+/// A bare knob target against the loaded model: a declared param's name,
+/// whole (a param name may hold a `.`), wins; else `thing.field`. The
+/// param's anchor says which knob it is, as on the run inputs card.
+fn resolve_named(model: &CanvasModel, raw: &str, spelled: &str) -> Result<KnobTarget, String> {
+    use facets_canvas::canvas::ParamAnchor;
+    let name_of = |id: u64| model.things.iter().find(|t| t.id == id).map(|t| t.name.clone()).unwrap_or_default();
+    if let Some(p) = model.params.iter().find(|p| p.name == unquote(raw)) {
+        return match p.anchor {
+            ParamAnchor::Flow { relation } => {
+                let r = model
+                    .relations
+                    .iter()
+                    .find(|r| r.id == relation)
+                    .ok_or_else(|| format!("param \"{}\" anchors a flow that is not declared", p.name))?;
+                Ok(KnobTarget::Flow { label: r.name.clone(), from: name_of(r.a), to: name_of(r.b) })
+            }
+            ParamAnchor::Field { thing, field } => {
+                Ok(KnobTarget::Component { thing: name_of(thing), field: field.key().to_string() })
+            }
+            ParamAnchor::Shares { thing } => Err(format!(
+                "`{spelled}`: param \"{}\" is the shares of {}'s split, one weight per branch; \
+                 turn a branch by its flow, `label|{}|to=weight`",
+                p.name,
+                name_of(thing),
+                name_of(thing)
+            )),
+        };
+    }
+    let Some((thing, field)) = raw.rsplit_once('.') else {
+        let declared: Vec<String> = model.params.iter().map(|p| format!("\"{}\"", p.name)).collect();
+        return Err(format!(
+            "`{spelled}`: no param is named \"{}\"; a knob is `label|from|to=value`, \
+             `thing.field=value`, or a declared param's name{}",
+            unquote(raw),
+            if declared.is_empty() {
+                " (this model declares none)".to_string()
+            } else {
+                format!(" ({})", declared.join(", "))
+            }
+        ));
+    };
+    Ok(KnobTarget::Component { thing: unquote(thing).to_string(), field: field.trim().to_string() })
 }
 
 #[derive(Serialize)]
@@ -499,7 +549,13 @@ fn bench_cmd(file: PathBuf, t: f64, dt: f64, sets: Vec<String>, no_log: bool) ->
     };
     let mut knobs = Vec::new();
     for s in &sets {
-        match parse_knob(s) {
+        let parsed = parse_knob(s).and_then(|mut k| {
+            if let KnobTarget::Named(raw) = &k.target {
+                k.target = resolve_named(&model, raw, s)?;
+            }
+            Ok(k)
+        });
+        match parsed {
             Ok(k) => knobs.push(k),
             Err(reason) => {
                 eprintln!("facets: {reason}");
@@ -538,8 +594,20 @@ fn bench_cmd(file: PathBuf, t: f64, dt: f64, sets: Vec<String>, no_log: bool) ->
             bench.step((at - bench.tick()) as u32);
         }
         let turned = match &k.target {
-            KnobTarget::Flow { label, from, to } => bench.set_flow_amount(label, from, to, k.value),
+            // As written first, through the projection's map, so a flow into
+            // a pass-way the projection fuses away is found by the names on
+            // the page; the post-fusion names still work.
+            KnobTarget::Flow { label, from, to } => {
+                match facets_canvas::canvas::interaction_as_written(&model, label, from, to) {
+                    Ok(Some(id)) => {
+                        bench.set_interaction_amount(&id, &format!("{from} -> {to} : {label}"), k.value)
+                    }
+                    Ok(None) => bench.set_flow_amount(label, from, to, k.value),
+                    Err(reason) => Err(reason),
+                }
+            }
             KnobTarget::Component { thing, field } => bench.set_component_param(thing, field, k.value),
+            KnobTarget::Named(_) => unreachable!("resolved against the model above"),
         };
         if let Err(reason) = turned {
             eprintln!("facets: knob refused: {reason}");
