@@ -640,6 +640,13 @@ pub struct Circuit {
     /// advances. The recorder-side source for declared metrics — cleared with
     /// `history` on reset; decoded per epoch after a topology change.
     pub wire_history: Vec<Vec<f32>>,
+    /// Each node's storage at the START of the last completed step: the
+    /// level an observation tap read on it (toy-model walk, 2026-11-03).
+    /// `wire_amount` reports a tap from here, so the recorded reading is the
+    /// one the sensor or agent acted on, not the level the step then left.
+    /// Empty before the first step and after `reset`, when a tap reports the
+    /// current storage (nothing has been read yet).
+    pub read_levels: Vec<f32>,
     /// Per-tick, per-node flux record (facets#463, the tick log): row `t` is
     /// `[tick, n0.delivered, n0.released, n0.gradient_out, n0.maintenance,
     /// n0.overflow, n0.dissipated, n1…]` — what each node was handed, what it
@@ -731,6 +738,7 @@ impl Circuit {
         self.history.clear();
         self.ledger_history.clear();
         self.wire_history.clear();
+        self.read_levels.clear();
         self.node_flux_history.clear();
         self.agent_readings.clear();
         self.decision_history.clear();
@@ -850,6 +858,9 @@ impl Circuit {
             name: self.nodes[i].name.clone(),
         };
         self.nodes.remove(i);
+        if i < self.read_levels.len() {
+            self.read_levels.remove(i);
+        }
         if i < self.agent_readings.len() {
             self.agent_readings.remove(i);
         }
@@ -1168,7 +1179,8 @@ impl Circuit {
             };
         }
         if self.is_observation(w) {
-            return self.nodes[w.from].storage; // non-draining level read
+            // non-draining level read: the level the last step read
+            return self.read_levels.get(w.from).copied().unwrap_or(self.nodes[w.from].storage);
         }
         self.delivery_share(k, self.nodes[self.wires[k].from].activity)
     }
@@ -1438,6 +1450,7 @@ impl Circuit {
         };
         let n = self.nodes.len();
         let nw = self.wires.len();
+        self.read_levels = self.nodes.iter().map(|n| n.storage).collect();
 
         // Axis D: run the mass ledger only when the model declares conservation
         // (the default). A declined invariant steps the identical transition
@@ -2707,6 +2720,32 @@ mod tests {
         let tenth = level_after(0.1, 100);
         assert!((whole - 80.0).abs() < 1e-3, "dt 1: {whole}");
         assert!((tenth - 80.0).abs() < 1e-2, "dt 0.1: {tenth}");
+    }
+
+    /// Law: an observation tap records the level it READ, the start-of-step
+    /// storage the sensor transduced, not the level the step then left
+    /// (toy-model water tower, 2026-11-03: the tap showed 10 while the
+    /// sensor had read 0). The sensor's own activity is gain x that reading.
+    #[test]
+    fn a_tap_records_the_level_it_read() {
+        let mut c = Circuit::default();
+        c.nodes.push(node(NodeKind::Source)); // 0
+        c.nodes.push(node(NodeKind::Process(ProcessPrimitive::Buffering))); // 1
+        c.nodes.push(node(NodeKind::Process(ProcessPrimitive::Sensing))); // 2
+        c.nodes[0].param = 10.0;
+        c.wires.push(Wire::new(0, 1));
+        let mut tap = Wire::new(1, 2);
+        tap.substance_override = Some(SubstanceType::Message);
+        c.wires.push(tap);
+        assert!(c.is_observation(&c.wires[1]));
+        for _ in 0..3 {
+            let before = c.nodes[1].storage;
+            c.step();
+            let read = *c.wire_history.last().unwrap().get(1).unwrap();
+            assert_eq!(read, before, "the tap records the opening level");
+            assert_eq!(c.wire_amount(1), before);
+            assert!(c.nodes[1].storage > before, "the stock filled after the read");
+        }
     }
 
     /// Law: an unset (or 1) dt_stride is the single-clock case — the series

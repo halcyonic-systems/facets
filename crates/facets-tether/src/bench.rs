@@ -140,6 +140,12 @@ impl BenchSession {
         for p in &spec.processes {
             names.insert(p.id.clone(), p.name.clone());
         }
+        // An agent is a flow endpoint too: its reading arrives and its signal
+        // leaves (toy-model warehouse, 2026-11-03: the tick log named both
+        // ends of those wires "").
+        for a in &spec.agents {
+            names.insert(a.id.clone(), a.name.clone());
+        }
         let next_n = circuit.nodes.len() + 1;
         let session = Session::from_circuit(circuit, next_n);
         Ok(Self {
