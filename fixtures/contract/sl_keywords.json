@@ -117,5 +117,6 @@
       "Interval",
       "Ratio"
     ]
-  }
+  },
+  "version": "1.15"
 }

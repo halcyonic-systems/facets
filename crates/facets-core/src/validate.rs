@@ -355,6 +355,7 @@ pub fn validate_mode(model: &WorldModel, target: Mode) -> ValidationResult {
             check_declared_direction(model, issues);
             check_self_loops(model, issues);
             check_flows_are_consumed(model, issues);
+            check_gates_have_control(model, issues);
             check_dead_ends(model, issues);
             check_reachability(model, issues);
             check_reachability_requirements(model, issues);
@@ -367,6 +368,7 @@ pub fn validate_mode(model: &WorldModel, target: Mode) -> ValidationResult {
             check_declared_direction(model, issues);
             check_self_loops(model, issues);
             check_flows_are_consumed(model, issues);
+            check_gates_have_control(model, issues);
             check_dead_ends(model, issues);
             check_reachability(model, issues);
             check_reachability_requirements(model, issues);
@@ -531,6 +533,39 @@ pub fn primitive_consumes(p: ProcessPrimitive, s: SubstanceType) -> bool {
         Amplifying => s != SubstanceType::Material,
         Splitting | Combining => physical,
         _ => true,
+    }
+}
+
+/// **Severity: Warning (Operational/Full).** A Modulating gate meters what
+/// passes by a control signal (Mobus Fig 3.18); with no informational inflow
+/// the engine reads it held fully open, so it passes everything and gates
+/// nothing (toy-model walk, 2026-11-03: the default was silent). A warning,
+/// not a refusal: a gate drawn before its control is wired is mid-authoring.
+fn check_gates_have_control(model: &WorldModel, issues: &mut Vec<ValidationIssue>) {
+    for (i, sys) in model.systems.iter().enumerate() {
+        if sys.agent.as_ref().and_then(|a| a.primitive) != Some(ProcessPrimitive::Modulating) {
+            continue;
+        }
+        let controlled = model
+            .interactions
+            .iter()
+            .any(|ia| ia.sink == sys.info.id && ia.substance.ty == SubstanceType::Message);
+        if controlled {
+            continue;
+        }
+        issues.push(ValidationIssue::warning(
+            "gate_without_control",
+            format!("systems[{i}]"),
+            format!(
+                "the gate '{}' has no control signal coming in, so it is held fully open: \
+                 it passes everything it takes in and gates nothing",
+                sys.info.name
+            ),
+            Some(
+                "Wire an informational flow into it (from a sensor, a comparator or an \
+                 agent), or, if nothing should meter it, give it a different process",
+            ),
+        ));
     }
 }
 
@@ -2830,6 +2865,30 @@ mod tests {
         );
     }
 
+    /// Law (toy-model walk, 2026-11-03): a gate with no control signal is
+    /// held fully open, and says so; given one, it does not warn.
+    #[test]
+    fn gate_without_control_warns() {
+        let mut m = two_component_model();
+        m.systems[1].agent = Some(AgentModel {
+            primitive: Some(ProcessPrimitive::Buffering),
+            ..AgentModel::default()
+        });
+        m.systems[2].agent = Some(AgentModel {
+            primitive: Some(ProcessPrimitive::Modulating),
+            ..AgentModel::default()
+        });
+        m.interactions.push(flow(0, "water", sys_id(vec![0, 0]), sys_id(vec![0, 1])));
+        let open = |m: &WorldModel| {
+            validate_mode(m, Mode::Operational).issues.iter().any(|i| i.code == "gate_without_control")
+        };
+        assert!(open(&m), "an uncontrolled gate warns");
+        let mut c = flow(1, "setting", sys_id(vec![0, 0]), sys_id(vec![0, 1]));
+        c.substance.ty = SubstanceType::Message;
+        m.interactions.push(c);
+        assert!(!open(&m), "a controlled gate does not");
+    }
+
     /// Law: Bunge Def 1.1 — an unbonded collection of components is a valid Core model but not a Structural system; entering Structural requires at least one bond.
     #[test]
     fn aggregate_enters_core_but_not_structural() {
@@ -4210,6 +4269,13 @@ mod tests {
                    this (informational order into a Combining factory) and ran \
                    green while regulating nothing — #261; full matrix + hints \
                    in tests/flows_consumed.rs",
+        },
+        CheckAudit {
+            check: "check_gates_have_control",
+            witness: Some("gate_without_control_warns"),
+            canvas: true,
+            note: "toy-model walk 2026-11-03: a Modulating gate with no \
+                   informational inflow ran held open with nothing said",
         },
         CheckAudit {
             check: "check_s0_interface_processors",

@@ -12,9 +12,11 @@ import { Button, Menu, MenuItem, Pill } from "./ui";
 import { Icon } from "./icons";
 import { MODE_BY_LENS } from "./review";
 import type { CanvasModel, ValidationResult } from "./kernel/types";
+import keywordFixture from "../../fixtures/contract/sl_keywords.json";
 
-/** docs/language/spec.md's title line carries the language version. */
-export const SL_VERSION = "1.7";
+// docs/language/spec.md's title line carries the language version. Read from the keyword contract, which the kernel's tests write from the
+// spec's title line, so the footer cannot drift from the language.
+export const SL_VERSION: string = keywordFixture.version;
 
 export function StatusBar({
   model,

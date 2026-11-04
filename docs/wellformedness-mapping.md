@@ -93,6 +93,7 @@ All 28 codes from `validate.rs`. Nineteen have **no counterpart in `WellFormed`*
 | `unreachable` | Warning · Operational, Full | **NO COUNTERPART.** Mobus-semantic observation; a disconnected island is well-formed |
 | `flow_not_consumed` | Warning · Operational, Full | **NO COUNTERPART.** Mobus-semantic: the receiving primitive cannot read the substance. `PreTuple`'s `τ` is opaque, so the Lean cannot state it |
 | `sensor_drains_stock` | Warning · Operational, Full | **NO COUNTERPART.** Mobus-semantic, the same reason: a matter or energy flow from a stock into a sensor is an outflow the sensor dissipates, where a level read (informational) takes nothing |
+| `gate_without_control` | Warning · Operational, Full | **NO COUNTERPART.** Mobus-semantic: a Modulating gate meters by a control signal, and with none the engine holds it fully open |
 | `duplicate_edge` | Warning · all | **NO COUNTERPART.** `N.edges` is a `Set`, so parallel identical edges are not expressible in the Lean at all |
 | `dynamical_face_empty` | Warning · Full | **NO COUNTERPART.** An observation about `T`/`H`/`Δt` being unpopulated; the Lean's are opaque type parameters |
 | `stock_unit_rate_like` | Warning · all | **NO COUNTERPART.** Dimensional analysis on declared units |

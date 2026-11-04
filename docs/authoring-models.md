@@ -216,6 +216,14 @@ new verb for the language, not a formula — see ADR 0006 for the growth rule.
    `sensor_drains_stock` warns. (This fact said the opposite until the
    2026-11-03 toy-model walk; the engine changed in 4cb56b1, 2026-08-14, and
    every shipped sensor model reads informationally.)
+   A stock and the step: a stock releases only what it held at
+   the start of a step, so what arrives during a step waits one step. A
+   stock drained harder than it is filled therefore rests at about one
+   step's inflow, not at zero, and that resting level shrinks with Δt (a
+   treasury paid 9 a step and drawn 25 a step rests at 9 at Δt 1, 4 at
+   Δt 0.5, near 0 at Δt 0.1; toy-model walk, 2026-11-03). It is the explicit
+   step, not a parameter: compare drained levels at the same Δt, or refine
+   Δt to read the continuous limit.
 3. **`amount` is an absolute rate only on source-originating flows.** On flows
    out of processes it is a *relative weight* for the fanout split; the actual
    outflow of a stock is its `release`/time-constant behavior. Don't decorate
