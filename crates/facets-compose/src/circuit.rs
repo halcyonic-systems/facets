@@ -1872,9 +1872,11 @@ impl Circuit {
             // Maintenance respiration: a constant upkeep loss from the stock,
             // dissipated (never delivered). The ledger charges it
             // automatically — the stock falls but no outflow carries it.
-            // Odum depreciation / Mobus Fig 3.17.
+            // Odum depreciation / Mobus Fig 3.17. × dt (#258): upkeep is a
+            // RATE per time unit like a release, so a run's totals do not
+            // depend on how finely the time unit is stepped.
             if node.maintenance > 0.0 {
-                let taken = node.maintenance.min(storage.max(0.0));
+                let taken = (dt * node.maintenance).min(storage.max(0.0));
                 storage -= taken;
                 maint_taken[i] = taken;
             }
@@ -2682,6 +2684,29 @@ mod tests {
             );
         }
         assert!(c.balance().abs() < 1e-3, "conserved: {}", c.balance());
+    }
+
+    /// Law: maintenance is upkeep per TIME UNIT, like a release (toy-model
+    /// pond, 2026-11-03): ten whole steps and a hundred tenth-steps take the
+    /// same 20 from a stock of 100 at maintenance 2. It was charged once per
+    /// step, so the finer run lost ten times as much.
+    #[test]
+    fn maintenance_is_a_rate_per_time_unit() {
+        let level_after = |dt: f32, steps: usize| {
+            let mut c = Circuit::default();
+            let mut n = node(NodeKind::Process(ProcessPrimitive::Buffering));
+            n.storage = 100.0;
+            n.maintenance = 2.0;
+            c.nodes.push(n);
+            for _ in 0..steps {
+                c.step_dt(dt);
+            }
+            c.nodes[0].storage
+        };
+        let whole = level_after(1.0, 10);
+        let tenth = level_after(0.1, 100);
+        assert!((whole - 80.0).abs() < 1e-3, "dt 1: {whole}");
+        assert!((tenth - 80.0).abs() < 1e-2, "dt 0.1: {tenth}");
     }
 
     /// Law: an unset (or 1) dt_stride is the single-clock case — the series
