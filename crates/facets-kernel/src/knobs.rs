@@ -43,7 +43,7 @@ pub struct EngineKnob {
 
 /// The map from a knob's SL value `v` to the engine's `p`:
 /// `v = offset + scale · p`, accepted when `p > 0` and `p ≤ max_param`
-/// (when there is one). Read off `OWN_PARAMS` in `facets-canvas/src/sl.rs`.
+/// (when there is one). Read off `OWN_PARAMS` (`facets-core/src/own_param.rs`).
 #[derive(Serialize, Clone, Debug, PartialEq)]
 pub struct OwnKnob {
     pub offset: f64,

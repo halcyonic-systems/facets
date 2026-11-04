@@ -1016,7 +1016,8 @@ efficiency, Impeding's impedance. Those four carry `own: { offset, scale,
 max_param, range }`, the map from the SL value `v` to the engine's `param`
 (`Thing.agency_capacity`), `v = offset + scale · p`, accepted when `p > 0` and
 `p ≤ max_param` where it is not `null`; `range` says the same in the word's
-terms. The map is `OWN_PARAMS` in `facets-canvas/src/sl.rs`, so the face writes
+terms. The map is `OWN_PARAMS` (in `facets-core/src/own_param.rs` since
+2026-11-04, re-exported by `facets-canvas/src/sl.rs`), so the face writes
 `agency_capacity` without holding it. A model that builds no circuit yields an
 empty list.
 
@@ -1052,3 +1053,35 @@ said):"` then one `"\n· A -> B: …"` line per flow, the same shape as the run'
 not-executable message. It also throws for a gate clash (`gate_passes`), one
 line per mismatched flow or per gate given two kinds; with no other question
 the head line is `"N gate flows do not match what comes in:"`.
+
+## Bench knobs by the names the SL writes (appended 2026-11-04)
+
+`BenchHandle.set_component_param(thing, field, v)` (and `facets bench --set
+thing.field=value`) also takes a process's own parameter by its SL word and
+value: `gain` on Sensing and Amplifying, `efficiency` on Propelling,
+`impedance` on Impeding. The value is converted to the engine's `param` through
+`OWN_PARAMS`, the same map `engine_knobs` hands the face as `own`, and refused
+when SL would refuse it: a word the primitive does not read (the refusal names
+the primitive's own word), or a value outside the word's range. On an agent,
+`gain` stays its rule's word. `field: "param"` with the engine value still
+works. The `KnobEdit` logs the word and the value as given. No signature
+changed.
+
+`facets bench` (not the wasm surface) also finds a flow knob as the SL writes it,
+through `interaction_as_written` (`facets-canvas`, the projection's own
+`interaction_of`), so `brook|Stream|Inlet` lands where `Inlet` is a pass-way
+fused away; and a bare `name=value` turns the declared `param` of that name.
+`BenchHandle.set_flow_amount` is unchanged: it still matches the names after
+fusion, and a pass-way fused into a processor that has a second fused pass-way
+is not found by its own name there (the processor records only one).
+
+## `ParamAnchor.Own` (appended 2026-11-04, SL v1.16)
+
+`ParamAnchor` (on `CanvasModel.params[].anchor`) gains one variant,
+`{ Own: { thing } }`: a `param` naming a work process's own parameter
+(`param "stage gain" : gain of Stage range 1.1..30`). The word (`gain`,
+`efficiency`, `impedance`) is not stored; it is read off the thing's primitive
+through `OWN_PARAMS`. The value is the thing's `agency_capacity` (engine terms),
+and `range` is in the word's terms, the same terms as that thing's
+`engine_knobs` row, whose `own` map the face uses to write it. Additive: models
+without such a param serialize unchanged, and no signature changed.

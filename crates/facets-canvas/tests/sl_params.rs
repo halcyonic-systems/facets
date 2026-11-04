@@ -262,3 +262,95 @@ fn field_param_faults_are_named() {
     assert!(f("param \"x\" : time constant of Barrel").contains("declares no `time constant`"), "two-word field");
     assert!(f("param \"x\" : release of Nobody").contains("not declared"), "unknown thing");
 }
+
+// ---- own form (v1.16) ---------------------------------------------------
+
+const STAGE: &str = "\
+system \"Amp\" : Concrete/Technical
+source Mic
+source Rail
+sink Speaker
+component \"Supply Line\" primitive Impeding impedance 0.25
+component Stage primitive Amplifying gain 5
+component Van primitive Propelling efficiency 0.9
+component Probe primitive Sensing gain 2
+component Store primitive Buffering stock L release 1
+component Switch primitive Modulating
+agent Boss watches Store rule proportional target 2 gain 0.5 manages Switch
+flow Mic -> Stage : informational \"audio in\" amount 0.2
+flow Rail -> \"Supply Line\" : energy \"rail\" amount 4
+flow \"Supply Line\" -> Stage : energy \"power\"
+flow Stage -> Van : energy \"audio out\"
+flow Van -> Store : energy \"pushed\"
+flow Store -> Switch : energy \"held\"
+flow Switch -> Speaker : energy \"out\"
+flow Store -> Probe : informational \"level\"
+flow Probe -> Speaker : informational \"reading\"
+param \"stage gain\" : gain of Stage range 1.1..30
+param \"line loss\" : impedance of \"Supply Line\" range 0..0.99
+param \"van efficiency\" : efficiency of Van range 0.1..1
+param \"probe gain\" : gain of Probe
+param \"boss gain\" : gain of Boss range 0.1..2
+";
+
+/// Law: a param over a process's own parameter anchors to the thing by id,
+/// reads its word off the primitive, keeps its range in the word's terms,
+/// and round-trips (parse, emit, parse) as the line it was read from. On an
+/// agent `gain` stays the rule's field.
+#[test]
+fn an_own_param_names_a_processs_own_parameter_in_its_word() {
+    use facets_canvas::canvas::EngineField;
+    let m = parse_sl(STAGE).unwrap();
+    let id = |n: &str| m.things.iter().find(|t| t.name == n).unwrap().id;
+    let by = |n: &str| m.params.iter().find(|p| p.name == n).unwrap();
+    assert_eq!(by("stage gain").anchor, ParamAnchor::Own { thing: id("Stage") });
+    assert_eq!(by("stage gain").range.map(|r| (r.min, r.max)), Some(("1.1".parse().unwrap(), Decimal::from(30))));
+    assert_eq!(by("line loss").anchor, ParamAnchor::Own { thing: id("Supply Line") });
+    assert_eq!(by("van efficiency").anchor, ParamAnchor::Own { thing: id("Van") });
+    assert_eq!(by("probe gain").anchor, ParamAnchor::Own { thing: id("Probe") });
+    assert_eq!(by("boss gain").anchor, ParamAnchor::Field { thing: id("Boss"), field: EngineField::Gain });
+
+    let text = emit_sl(&m).unwrap();
+    assert!(text.contains("param \"stage gain\" : gain of Stage range 1.1..30\n"), "{text}");
+    assert!(text.contains("param \"line loss\" : impedance of \"Supply Line\" range 0..0.99\n"), "{text}");
+    assert!(text.contains("param \"van efficiency\" : efficiency of Van range 0.1..1\n"), "{text}");
+    assert!(text.contains("param \"probe gain\" : gain of Probe\n"), "{text}");
+    let again = parse_sl(&text).unwrap();
+    assert_eq!(again.params, m.params);
+    assert_eq!(emit_sl(&again).unwrap(), text, "emit is a fixed point");
+}
+
+/// Each refusal owes a fixture that earns it: a word the primitive does not
+/// read (naming the right one), a range reaching past what the word can say,
+/// a declared value outside the range, an undeclared value, an environment
+/// thing.
+#[test]
+fn own_param_faults_are_named() {
+    let base = STAGE.split("param ").next().unwrap().to_string();
+    let f = |line: &str| errs(&format!("{base}{line}\n"));
+    let wrong = f("param \"x\" : impedance of Stage range 0..0.5");
+    assert!(wrong.contains("Impeding component only") && wrong.contains("own parameter is `gain`"), "{wrong}");
+    let store = f("param \"x\" : gain of Store");
+    assert!(store.contains("Sensing or Amplifying") && store.contains("on an agent"), "{store}");
+    assert!(f("param \"x\" : gain of Stage range 1..30").contains("cannot take"), "gain 1 is not an amplifier's");
+    assert!(f("param \"x\" : impedance of \"Supply Line\" range 0..1").contains("less than 1"), "impedance 1");
+    assert!(f("param \"x\" : efficiency of Van range 0.5..2").contains("at most 1"), "efficiency 2");
+    assert!(f("param \"x\" : gain of Stage range 6..30").contains("outside the param's range"), "declared 5");
+    assert!(f("param \"x\" : gain of Mic").contains("environment thing"), "env");
+    let undeclared = STAGE.replace(" gain 5", "").split("param ").next().unwrap().to_string();
+    let e = errs(&format!("{undeclared}param \"x\" : gain of Stage\n"));
+    assert!(e.contains("declares no `gain`"), "{e}");
+    assert!(f("param \"x\" : efficiency of Van range 0.1..1 extra").contains("unexpected"), "trailing");
+}
+
+/// A command-form agent cannot turn a process's own parameter: that is
+/// coordination, the rung after (ADR 0008 D2), as for any field.
+#[test]
+fn a_command_form_agent_refuses_an_own_param() {
+    let text = STAGE
+        .replace("agent Boss watches Store rule proportional target 2 gain 0.5 manages Switch\n", "")
+        .replace("param \"boss gain\" : gain of Boss range 0.1..2\n", "")
+        + "agent Chief watches Store rule threshold above 5 emit 2 else 6 manages param \"stage gain\"\n";
+    let e = errs(&text);
+    assert!(e.contains("names `gain` of `Stage`") && e.contains("coordination"), "{e}");
+}

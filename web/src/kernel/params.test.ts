@@ -120,3 +120,24 @@ describe("kernel/params · Field anchors", () => {
     expect(flowParamFor(m, 1)).toBeNull();
   });
 });
+
+// SL v1.16: an Own anchor resolves to its process when the process declares
+// its own parameter; one that declares none, or names no thing, drops out.
+describe("kernel/params · Own anchors", () => {
+  it("resolve to the process that declares its own parameter, and drop the rest", () => {
+    const stage = { id: 7, name: "Stage", role: "Component", primitive: "Amplifying", agency_capacity: 0.4 };
+    const bare = { id: 8, name: "Bare", role: "Component", primitive: "Impeding" };
+    const m = {
+      name: "m",
+      lens: "Mobus",
+      things: [stage, bare],
+      relations: [],
+      params: [
+        { name: "stage gain", anchor: { Own: { thing: 7 } }, range: { min: "1.1", max: "30" } },
+        { name: "bare loss", anchor: { Own: { thing: 8 } } },
+        { name: "ghost", anchor: { Own: { thing: 9 } } },
+      ],
+    } as unknown as CanvasModel;
+    expect(resolveParamRows(m).map((r) => [r.param.name, r.thing?.name, r.own])).toEqual([["stage gain", "Stage", true]]);
+  });
+});

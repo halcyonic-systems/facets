@@ -25,6 +25,9 @@ export interface ParamRow {
   /** Field-anchored (#343): the component and the engine field it declares. */
   thing?: Thing;
   field?: EngineField;
+  /** Own-anchored (SL v1.16): the process's own parameter on `thing`. Its
+   *  word, value and map are the kernel's `EngineKnob` for that thing. */
+  own?: true;
 }
 
 /** Declared params in declaration order, each resolved to its relation(s).
@@ -43,6 +46,9 @@ export function resolveParamRows(model: CanvasModel): ParamRow[] {
       if (t && t.cognitive_params?.[anchor.Field.field] !== undefined) {
         rows.push({ param: p, thing: t, field: anchor.Field.field });
       }
+    } else if ("Own" in anchor) {
+      const t = model.things.find((t) => t.id === anchor.Own.thing);
+      if (t && t.agency_capacity !== undefined) rows.push({ param: p, thing: t, own: true });
     } else {
       const group = declared.filter((r) => r.a === anchor.Shares.thing);
       if (group.length >= 2) rows.push({ param: p, group });

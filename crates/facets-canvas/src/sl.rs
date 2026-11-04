@@ -1830,41 +1830,10 @@ pub fn parse_sl_full(text: &str) -> Result<SlParse, Vec<SlError>> {
                 // and the primitive's own word if it has one.
                 let mut own_param_value: Option<f32> = None;
                 for (word, v) in &own_words {
-                    let mine = primitive.and_then(own_param).filter(|o| o.word == *word);
-                    match mine {
-                        Some(op) => {
-                            let p = op.param_of(*v);
-                            if op.admits(p) {
-                                own_param_value = Some(p as f32);
-                            } else {
-                                fail(
-                                    format!(
-                                        "`{word}` on a {:?} component must be {} — it is {}",
-                                        op.primitive, op.range, op.meaning
-                                    ),
-                                    &mut errors,
-                                );
-                                ok = false;
-                            }
-                        }
-                        None => {
-                            let readers: Vec<String> = OWN_PARAMS
-                                .iter()
-                                .filter(|o| o.word == *word)
-                                .map(|o| format!("{:?}", o.primitive))
-                                .collect();
-                            let instead = primitive
-                                .and_then(own_param)
-                                .map(|o| format!("; a {:?} component's own parameter is `{}`", o.primitive, o.word))
-                                .unwrap_or_default();
-                            fail(
-                                format!(
-                                    "`{word}` applies to a {} component only — no other primitive \
-                                     reads it{instead}",
-                                    readers.join(" or ")
-                                ),
-                                &mut errors,
-                            );
+                    match facets_core::own_param::resolve(primitive, word, *v) {
+                        Ok(p) => own_param_value = Some(p as f32),
+                        Err(m) => {
+                            fail(m, &mut errors);
                             ok = false;
                         }
                     }
@@ -2549,6 +2518,24 @@ pub fn parse_sl_full(text: &str) -> Result<SlParse, Vec<SlError>> {
                                 );
                                 continue;
                             }
+                            crate::canvas::ParamAnchor::Own { thing } => {
+                                let t = things.iter().find(|t| t.id == thing);
+                                let word = t
+                                    .and_then(|t| t.primitive)
+                                    .and_then(own_param)
+                                    .map(|o| o.word)
+                                    .unwrap_or("own parameter");
+                                fail(
+                                    format!(
+                                        "param \"{pname}\" names `{word}` of `{}` — the command form sets a \
+                                         flow amount or a two-way split; an agent setting a component's \
+                                         own parameter is coordination, the rung after (ADR 0008 D2)",
+                                        thing_name(thing)
+                                    ),
+                                    &mut errors,
+                                );
+                                continue;
+                            }
                             crate::canvas::ParamAnchor::Shares { thing } => {
                                 let split = relations
                                     .iter()
@@ -3111,8 +3098,8 @@ pub fn parse_sl_full(text: &str) -> Result<SlParse, Vec<SlError>> {
                 let syntax = "param syntax: `param \"Name\" : flow <a> -> <b> \
                               [\"label\"] [range <min>..<max>]`, `param shares \
                               \"Name\" : from <process>`, or `param \"Name\" : \
-                              <release|capacity|time constant|setpoint|maintenance> \
-                              of <component> [range <min>..<max>]`";
+                              <release|capacity|time constant|setpoint|maintenance|\
+                              gain|efficiency|impedance> of <component> [range <min>..<max>]`";
                 let is_shares = matches!(rest, [Tok::Word(w), ..] if w.eq_ignore_ascii_case("shares"));
                 let body = if is_shares { &rest[1..] } else { rest };
                 let (name_tok, after_colon) = match body {
@@ -3186,6 +3173,114 @@ pub fn parse_sl_full(text: &str) -> Result<SlParse, Vec<SlError>> {
                         range: None,
                     });
                     continue;
+                }
+                // own form (v1.16): `: <gain|efficiency|impedance> of <component>
+                // [range <min>..<max>]` — a domain name over a work process's
+                // own parameter (§4.3, `OWN_PARAMS`), in the word's terms.
+                // `gain` is also a proportional or trace rule's word: on an
+                // agent it is the rule's, and the field form below takes it.
+                if let [Tok::Word(w), Tok::Word(o), t, tail @ ..] = after_colon {
+                    let word = w.to_ascii_lowercase();
+                    let of_thing = o.eq_ignore_ascii_case("of") && t.is_name();
+                    let target = if of_thing { by_name.get(&t.name()).copied() } else { None };
+                    let on_agent = target.is_some_and(|ti| things[ti].rule.is_some());
+                    if facets_core::own_param::is_own_word(&word) && of_thing && !on_agent {
+                        let thing_name = t.name();
+                        let (range, tail) = match parse_param_range(tail) {
+                            Ok(x) => x,
+                            Err(m) => {
+                                fail(m, &mut errors);
+                                continue;
+                            }
+                        };
+                        if !tail.is_empty() {
+                            fail(format!("unexpected `{}` at end of param — {syntax}", tail[0].display()), &mut errors);
+                            continue;
+                        }
+                        let Some(ti) = target else {
+                            fail(
+                                format!("`{thing_name}` is not declared (declare things before params)"),
+                                &mut errors,
+                            );
+                            continue;
+                        };
+                        let thing = &things[ti];
+                        if thing.role != Role::Component {
+                            fail(
+                                format!(
+                                    "`{thing_name}` is an environment thing — engine parameters belong \
+                                     to components (environment internals are opaque)"
+                                ),
+                                &mut errors,
+                            );
+                            continue;
+                        }
+                        let Some(op) = thing.primitive.and_then(own_param).filter(|o| o.word == word) else {
+                            fail(
+                                format!(
+                                    "`{thing_name}`: {}{}",
+                                    facets_core::own_param::wrong_primitive(thing.primitive, &word),
+                                    if word == "gain" {
+                                        "; on an agent, `gain` is its rule's (facets#269)"
+                                    } else {
+                                        ""
+                                    }
+                                ),
+                                &mut errors,
+                            );
+                            continue;
+                        };
+                        let Some(p) = thing.agency_capacity else {
+                            fail(
+                                format!(
+                                    "`{thing_name}` declares no `{word}` — a param names an adjustable \
+                                     declared magnitude; add `{word} <n>` to the line that declares `{thing_name}`"
+                                ),
+                                &mut errors,
+                            );
+                            continue;
+                        };
+                        if let Some(r) = &range {
+                            let (lo, hi): (f64, f64) = (
+                                r.min.try_into().unwrap_or(f64::NAN),
+                                r.max.try_into().unwrap_or(f64::NAN),
+                            );
+                            // The word's legal values are one interval, so a
+                            // range inside it is one whose two ends are legal.
+                            if !(op.admits_value(lo) && op.admits_value(hi)) {
+                                fail(
+                                    format!(
+                                        "param \"{pname}\"'s range {}..{} reaches values `{word}` cannot \
+                                         take: {}",
+                                        r.min,
+                                        r.max,
+                                        op.out_of_range()
+                                    ),
+                                    &mut errors,
+                                );
+                                continue;
+                            }
+                            let value = op.value_of(p);
+                            if value < lo || value > hi {
+                                fail(
+                                    format!(
+                                        "`{thing_name}`'s declared {word} {value} lies outside the param's \
+                                         range {}..{} — the range contradicts the model",
+                                        r.min,
+                                        r.max
+                                    ),
+                                    &mut errors,
+                                );
+                                continue;
+                            }
+                        }
+                        params.push(crate::canvas::ParamDecl {
+                            name: pname,
+                            anchor: crate::canvas::ParamAnchor::Own { thing: thing.id },
+                            range,
+                        });
+                        continue;
+                    }
                 }
                 // field form (#343): `: <field> of <component> [range <min>..<max>]`
                 // — a domain name over one of the component line's own engine
@@ -4241,100 +4336,11 @@ fn tangle(wires: &[(usize, usize)], pts: &[(f32, f32)]) -> i64 {
     total
 }
 
-/// A work process's own parameter, as SL says it (walk row 18).
-///
-/// The engine runs one number per process, `Node.param`, carried on the
-/// canvas as `Thing.agency_capacity`. Four primitives read it
-/// (`facets-compose/src/circuit.rs`, the step), and each says it in its own
-/// word, the one the engine's teaching cards already use
-/// (`facets-compose/src/docs.rs`): a sensor's and an amplifier's `gain`, a
-/// pump's `efficiency`, a resistance's `impedance`. The SL value `v` and the
-/// engine's `p` are related by `v = offset + scale · p`, so an amplifier's
-/// `gain` is the multiplier the step applies (`1 + 9p`) and an impedance is
-/// the share held back (`1 − p`). SL accepts `p > 0`, and `p ≤ max_param`
-/// where there is one; a model carrying anything else refuses to emit.
-#[derive(Clone, Copy, Debug, PartialEq)]
-pub struct OwnParam {
-    pub primitive: ProcessPrimitive,
-    pub word: &'static str,
-    pub offset: f64,
-    pub scale: f64,
-    pub max_param: Option<f64>,
-    /// The accepted range in the word's own terms, for faults and the knob.
-    pub range: &'static str,
-    /// What the number is, in Mobus's terms, for faults.
-    pub meaning: &'static str,
-}
-
-pub const OWN_PARAMS: &[OwnParam] = &[
-    OwnParam {
-        primitive: ProcessPrimitive::Sensing,
-        word: "gain",
-        offset: 0.0,
-        scale: 1.0,
-        max_param: None,
-        range: "greater than 0",
-        meaning: "the sensor's multiplier from level to signal",
-    },
-    OwnParam {
-        primitive: ProcessPrimitive::Amplifying,
-        word: "gain",
-        offset: 1.0,
-        scale: 9.0,
-        max_param: None,
-        range: "greater than 1",
-        meaning: "the amplifier's multiplier from weak signal to strong, capped by the power it is fed",
-    },
-    OwnParam {
-        primitive: ProcessPrimitive::Propelling,
-        word: "efficiency",
-        offset: 0.0,
-        scale: 1.0,
-        max_param: Some(1.0),
-        range: "greater than 0 and at most 1",
-        meaning: "the share of what the pump is handed that it pushes on; the rest is lost to the work",
-    },
-    OwnParam {
-        primitive: ProcessPrimitive::Impeding,
-        word: "impedance",
-        offset: 1.0,
-        scale: -1.0,
-        max_param: Some(1.0),
-        range: "at least 0 and less than 1",
-        meaning: "the share of the flow the resistance holds back",
-    },
-];
-
-/// The own parameter `p` reads, if the engine reads one for it.
-pub fn own_param(p: ProcessPrimitive) -> Option<&'static OwnParam> {
-    OWN_PARAMS.iter().find(|o| o.primitive == p)
-}
-
-impl OwnParam {
-    /// The engine value an SL value means.
-    pub fn param_of(&self, v: f64) -> f64 {
-        (v - self.offset) / self.scale
-    }
-
-    /// Whether SL can say engine value `p`.
-    pub fn admits(&self, p: f64) -> bool {
-        p.is_finite() && p > 0.0 && self.max_param.is_none_or(|m| p <= m)
-    }
-
-    /// The SL value for engine value `p`: the shortest decimal that parses
-    /// back to the same `f32`, so `impedance 0.3` re-emits as `0.3` and not
-    /// as the float error of `1 − 0.7`.
-    pub fn value_of(&self, p: f32) -> f64 {
-        let exact = self.offset + self.scale * p as f64;
-        for digits in 1..=17 {
-            let candidate: f64 = format!("{:.*e}", digits - 1, exact).parse().unwrap_or(exact);
-            if self.param_of(candidate) as f32 == p {
-                return candidate;
-            }
-        }
-        exact
-    }
-}
+/// A work process's own parameter, as SL says it (walk row 18). The table
+/// lives in `facets-core` (`own_param.rs`) so the bench session, which sees
+/// only the engine side, converts a knob through the same map SL parses and
+/// emits with.
+pub use facets_core::own_param::{own_param, OwnParam, OWN_PARAMS};
 
 /// Serialize a [`CanvasModel`] to canonical SL text — the model→text direction.
 ///
@@ -4952,6 +4958,24 @@ pub fn emit_sl_with(model: &CanvasModel, layout: Option<&SlLayout>) -> Result<St
                     name_token(&name_of(thing)?)?
                 )
                 .unwrap();
+                if let Some(range) = &p.range {
+                    write!(out, " range {}..{}", range.min, range.max).unwrap();
+                }
+            }
+            crate::canvas::ParamAnchor::Own { thing } => {
+                // The word is the primitive's (OWN_PARAMS); a thing whose
+                // primitive reads no own parameter has nothing the line can say.
+                let word = model
+                    .things
+                    .iter()
+                    .find(|t| t.id == thing)
+                    .and_then(|t| t.primitive)
+                    .and_then(own_param)
+                    .map(|o| o.word)
+                    .ok_or_else(|| {
+                        format!("param `{}` names a process's own parameter on a thing whose primitive reads none", p.name)
+                    })?;
+                write!(out, "param {} : {word} of {}", quote(&p.name)?, name_token(&name_of(thing)?)?).unwrap();
                 if let Some(range) = &p.range {
                     write!(out, " range {}..{}", range.min, range.max).unwrap();
                 }

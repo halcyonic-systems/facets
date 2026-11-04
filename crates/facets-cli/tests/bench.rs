@@ -4,7 +4,31 @@
 //! without a browser in the loop.
 mod support;
 
-use support::{code, facets, stderr, stdout_json};
+use support::{code, facets, facets_stdin, stderr, stdout_json};
+
+/// A one-stage amplifier: a 0.2 signal, a 4-unit rail through a resistance
+/// holding back a quarter, a stage of gain 5 (out = min(0.2 · gain, power)).
+const AMPLIFIER: &str = "\
+source Mic
+source Rail
+sink Speaker
+interface \"In Jack\"
+interface \"Out Jack\"
+component \"Supply Line\" primitive Impeding impedance 0.25 interface
+component Stage primitive Amplifying gain 5
+flow Mic -> \"In Jack\" : informational \"audio in\" amount 0.2
+flow \"In Jack\" -> Stage : informational \"audio in\"
+flow Rail -> \"Supply Line\" : energy \"rail\" substance power amount 4
+flow \"Supply Line\" -> Stage : energy \"power\" substance power
+flow Stage -> \"Out Jack\" : energy \"audio out\" substance power
+flow \"Out Jack\" -> Speaker : energy \"audio out\" substance power
+";
+
+/// The last delivery of the flow labelled `name`.
+fn last_of(v: &serde_json::Value, name: &str) -> f64 {
+    let f = v["flows"].as_array().unwrap().iter().find(|f| f["name"] == name).unwrap();
+    f["series"].as_array().unwrap().last().unwrap().as_f64().unwrap()
+}
 
 /// A trajectory as one value after each step. A level's series starts with
 /// the state before the first step (N + 1 values, walk 2026-11-03); these
@@ -455,4 +479,135 @@ fn the_feedforward_compensator_reads_the_supply_and_holds_the_room() {
     assert!(series(&v, "Compensator").iter().all(|&x| x == 1.0));
     let room = series(&v, "Room");
     assert!(near(room[12], 12.0) && near(room[13], 13.6) && near(room[23], 19.3132), "{room:?}");
+}
+
+/// A process's own parameter is a bench knob by its SL word and value, the
+/// same number the line writes, converted through the one map SL uses. Gain
+/// 20 wants 4 and clips at the 3 the supply line passes; impedance 0.9
+/// passes 0.4; `param` at the engine's own value still lands the same.
+#[test]
+fn a_process_knob_takes_its_sl_word_and_value() {
+    let run = |set: &str| {
+        let out = facets_stdin(&["bench", "-", "--t", "3", "--no-log", "--set", set], AMPLIFIER);
+        assert_eq!(code(&out), 0, "{set}: {}", stderr(&out));
+        stdout_json(&out)
+    };
+    assert_eq!(last_of(&run("Stage.gain=5"), "audio out"), 1.0);
+    let clipped = run("Stage.gain=20");
+    assert_eq!(last_of(&clipped, "audio out"), 3.0);
+    assert_eq!(clipped["edits"][0]["field"], "gain");
+    assert_eq!(clipped["edits"][0]["value"], 20.0);
+    let by_param = run(&format!("Stage.param={}", 19.0f32 / 9.0));
+    assert_eq!(last_of(&by_param, "audio out"), 3.0);
+    let choked = run("\"Supply Line\".impedance=0.9");
+    assert!((last_of(&choked, "power") - 0.4).abs() < 1e-6, "{choked}");
+    assert!((last_of(&choked, "audio out") - 0.4).abs() < 1e-6, "{choked}");
+}
+
+/// The knob refuses what the SL line would refuse, with the line's fault: a
+/// word on a primitive that does not read it names that primitive's own word,
+/// and a value outside the word's range names the range.
+#[test]
+fn a_process_knob_refuses_the_wrong_word_and_an_unsayable_value() {
+    let refused = |set: &str| {
+        let out = facets_stdin(&["bench", "-", "--t", "3", "--no-log", "--set", set], AMPLIFIER);
+        assert_eq!(code(&out), 4, "{set}: {}", stderr(&out));
+        stderr(&out)
+    };
+    let wrong = refused("Stage.impedance=0.5");
+    assert!(wrong.contains("Impeding component only") && wrong.contains("own parameter is `gain`"), "{wrong}");
+    let other = refused("\"Supply Line\".gain=3");
+    assert!(other.contains("own parameter is `impedance`"), "{other}");
+    assert!(refused("Stage.gain=1").contains("greater than 1"));
+    assert!(refused("\"Supply Line\".impedance=1").contains("less than 1"));
+    assert!(refused("Stage.efficiency=0.5").contains("Propelling component only"));
+}
+
+/// A pond with two pass-ways, both fused into it: the brook enters through
+/// Inlet and leaves through Outlet. Two declared params name a flow and a
+/// field.
+const POND: &str = "\
+source Stream
+sink Downstream
+interface Inlet
+component Pond primitive Buffering stock m3 initial 100 time constant 10 capacity 400
+interface Outlet
+flow Stream -> Inlet : matter \"brook\" substance water amount 30
+flow Inlet -> Pond : matter \"inflow\" substance water
+flow Pond -> Outlet : matter \"outflow\" substance water
+flow Outlet -> Downstream : matter \"outflow\" substance water
+param \"stream\" : flow Stream -> Inlet \"brook\" range 0..100
+param \"outlet time\" : time constant of Pond range 1..40
+";
+
+/// A flow knob takes the flow as the SL writes it, found through the
+/// projection's own map, even where its endpoint is a pass-way fused away
+/// beside another (the pond's Inlet; its Outlet is fused too, which is what
+/// the name match after fusion missed). The post-fusion names still work,
+/// and both land on the same wire.
+#[test]
+fn a_flow_knob_takes_the_flow_as_written_through_a_fused_pass_way() {
+    let run = |set: &str| {
+        let out = facets_stdin(&["bench", "-", "--t", "3", "--no-log", "--set", set], POND);
+        assert_eq!(code(&out), 0, "{set}: {}", stderr(&out));
+        stdout_json(&out)
+    };
+    let written = run("brook|Stream|Inlet=50");
+    assert_eq!(last_of(&written, "brook"), 50.0);
+    assert_eq!(written["edits"][0]["target"], "Stream -> Inlet : brook");
+    let fused = run("brook|Stream|Pond=50");
+    assert_eq!(fused["flows"], written["flows"]);
+    // The interior leg lowers to nothing; the refusal names the crossing leg.
+    let out = facets_stdin(&["bench", "-", "--t", "3", "--set", "inflow|Inlet|Pond=5"], POND);
+    assert_eq!(code(&out), 4, "{}", stderr(&out));
+    assert!(stderr(&out).contains("\"brook|Stream|Inlet\""), "{}", stderr(&out));
+}
+
+/// A declared param is a knob by its name: the flow or field it names, as
+/// the run inputs card turns it. A bare name that is no param says the
+/// forms a knob takes and the params the model declares.
+#[test]
+fn a_declared_param_is_a_knob_by_its_name() {
+    let run = |set: &str| {
+        let out = facets_stdin(&["bench", "-", "--t", "3", "--no-log", "--set", set], POND);
+        assert_eq!(code(&out), 0, "{set}: {}", stderr(&out));
+        stdout_json(&out)
+    };
+    let by_name = run("stream=50");
+    assert_eq!(by_name["flows"], run("brook|Stream|Inlet=50")["flows"]);
+    assert_eq!(by_name["edits"][0]["target"], "Stream -> Inlet : brook");
+    let quoted = run("\"outlet time\"=5");
+    assert_eq!(quoted["edits"][0]["field"], "time_constant");
+    assert_eq!(quoted["trajectories"], run("Pond.time_constant=5")["trajectories"]);
+    let out = facets_stdin(&["bench", "-", "--set", "streem=50"], POND);
+    assert_eq!(code(&out), 2, "{}", stderr(&out));
+    let e = stderr(&out);
+    assert!(e.contains("no param is named \"streem\"") && e.contains("\"stream\", \"outlet time\""), "{e}");
+}
+
+/// A param naming a process's own parameter (SL v1.16) is a knob by its
+/// name, in the word's terms: the same run as the word itself.
+#[test]
+fn an_own_param_is_a_knob_by_its_name() {
+    let model = format!(
+        "{AMPLIFIER}param \"stage gain\" : gain of Stage range 1.1..30\n\
+         param \"line loss\" : impedance of \"Supply Line\" range 0..0.99\n"
+    );
+    let run = |set: &str| {
+        let out = facets_stdin(&["bench", "-", "--t", "3", "--no-log", "--set", set], &model);
+        assert_eq!(code(&out), 0, "{set}: {}", stderr(&out));
+        stdout_json(&out)
+    };
+    let by_name = run("stage gain=20");
+    assert_eq!(by_name["flows"], run("Stage.gain=20")["flows"]);
+    assert_eq!((by_name["edits"][0]["field"].as_str(), by_name["edits"][0]["value"].as_f64()), (Some("gain"), Some(20.0)));
+    assert_eq!(run("line loss=0.9")["flows"], run("\"Supply Line\".impedance=0.9")["flows"]);
+}
+
+/// On an agent, `gain` is its rule's word, not a process's own parameter.
+#[test]
+fn gain_on_an_agent_stays_the_rules_word() {
+    let out = facets(&["bench", "assets/bench/thermostat-agent.sl", "--t", "3", "--no-log", "--set", "Thermostat.gain=2"]);
+    assert_eq!(code(&out), 0, "{}", stderr(&out));
+    assert_eq!(stdout_json(&out)["edits"][0]["field"], "gain");
 }

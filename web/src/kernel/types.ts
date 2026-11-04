@@ -529,7 +529,12 @@ export type AgentRule = "proportional" | "threshold" | "table" | "trace";
 export type ParamAnchor =
   | { Flow: { relation: number } }
   | { Shares: { thing: number } }
-  | { Field: { thing: number; field: EngineField } };
+  | { Field: { thing: number; field: EngineField } }
+  /** A work process's own parameter (SL v1.16): gain, efficiency or
+   *  impedance, the word read off the primitive by the kernel. The value is
+   *  the thing's `agency_capacity` (engine terms); the range is in the
+   *  word's terms, mapped by the thing's `EngineKnob.own`. */
+  | { Own: { thing: number } };
 
 /** Inclusive slider bounds, decimal STRINGS in the flow's own unit. */
 export interface ParamRange {

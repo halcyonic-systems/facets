@@ -634,7 +634,10 @@ export class Sandbox {
 // ---- The bench seam (facets#463): the Model bench on a held engine ----------
 
 /** Component engine fields a bench knob may set (`session.rs::set_node_param`). */
-export type BenchComponentField = SandboxNodeField;
+// The bench also takes a process's own parameter by its SL word and value
+// (`gain` on Sensing/Amplifying, `efficiency`, `impedance`); the kernel
+// converts it through OWN_PARAMS and refuses what SL would refuse.
+export type BenchComponentField = SandboxNodeField | "efficiency" | "impedance";
 
 /**
  * The Model bench's handle on a held engine session — the face's typed wrapper
