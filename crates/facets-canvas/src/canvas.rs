@@ -578,6 +578,12 @@ pub enum ParamAnchor {
     /// thing's `cognitive_params` under the field's key, exactly as the
     /// component line put it there; the param names it and bounds it.
     Field { thing: u64, field: EngineField },
+    /// A work process's own parameter (SL v1.16): Sensing's and Amplifying's
+    /// `gain`, Propelling's `efficiency`, Impeding's `impedance`, the word
+    /// read off the thing's primitive through `OWN_PARAMS`. The value lives
+    /// on `Thing.agency_capacity` in the engine's terms; the param's range is
+    /// in the word's terms, as the line writes the value.
+    Own { thing: u64 },
 }
 
 /// The engine parameters a `param … of <component>` line may name — the #112
@@ -1811,7 +1817,7 @@ pub fn project_with_map(model: &CanvasModel) -> Projection {
                     _ => None,
                 }
             }
-            ParamAnchor::Field { .. } => None,
+            ParamAnchor::Field { .. } | ParamAnchor::Own { .. } => None,
         };
         if let Some(command) = command {
             if let Some(agent) = systems[sys_idx].agent.as_mut() {

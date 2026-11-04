@@ -1072,3 +1072,14 @@ fused away; and a bare `name=value` turns the declared `param` of that name.
 `BenchHandle.set_flow_amount` is unchanged: it still matches the names after
 fusion, and a pass-way fused into a processor that has a second fused pass-way
 is not found by its own name there (the processor records only one).
+
+## `ParamAnchor.Own` (appended 2026-11-04, SL v1.16)
+
+`ParamAnchor` (on `CanvasModel.params[].anchor`) gains one variant,
+`{ Own: { thing } }`: a `param` naming a work process's own parameter
+(`param "stage gain" : gain of Stage range 1.1..30`). The word (`gain`,
+`efficiency`, `impedance`) is not stored; it is read off the thing's primitive
+through `OWN_PARAMS`. The value is the thing's `agency_capacity` (engine terms),
+and `range` is in the word's terms, the same terms as that thing's
+`engine_knobs` row, whose `own` map the face uses to write it. Additive: models
+without such a param serialize unchanged, and no signature changed.

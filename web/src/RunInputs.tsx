@@ -251,6 +251,104 @@ export function FieldControl({
   );
 }
 
+/** An own-anchored param (SL v1.16): a slider + number over a process's own
+ *  parameter (gain, efficiency, impedance) in its word's terms. The word,
+ *  the value the run uses and the map onto `agency_capacity` are the
+ *  kernel's (`knob`, from `engine_knobs`); the range is the param's. Commits
+ *  through `applyKnob`, the same path as the knob row, so a value the word
+ *  cannot take is refused with the kernel's range. */
+export function OwnControl({
+  param,
+  thing,
+  knob,
+  onEdit,
+  wrap = false,
+}: {
+  param: ParamDecl;
+  thing: Thing;
+  knob: EngineKnob;
+  onEdit: (next: Thing) => void;
+  wrap?: boolean;
+}) {
+  const [drag, setDrag] = useState<number | null>(null);
+  const [draft, setDraft] = useState<string | null>(null);
+  const [hint, setHint] = useState<string | null>(null);
+  const current = knob.value ?? 0;
+  const min = Number(param.range?.min ?? 0);
+  const max = Number(param.range?.max ?? 0);
+  const step = sliderStep(min, max);
+  const value = drag ?? current;
+  const put = (v: number) => {
+    if (!Number.isFinite(v) || v === current) return;
+    const next = applyKnob(thing, knob.field, v, undefined, knob.own);
+    if (next === null) {
+      setHint(`${knob.word} must be ${knob.own?.range ?? "in its range"}`);
+      return;
+    }
+    setHint(null);
+    onEdit(next);
+  };
+  const commit = () => {
+    if (drag !== null) put(snapToStep(drag, step));
+    setDrag(null);
+  };
+  useCommitOnRelease(drag !== null, commit);
+  return (
+    <div className="py-0.5" data-testid={`own-param-${param.name}`}>
+      <div className={wrap ? RAIL_ROW : "flex items-center justify-between gap-2 text-xs"}>
+        <span className={wrap ? RAIL_LABEL : "min-w-0 flex-1 truncate"} style={{ color: "var(--text-primary)" }} title={`${thing.name} · ${knob.word}`}>
+          {param.name}
+        </span>
+        <span className={wrap ? RAIL_VALUE : "contents"}>
+        <Input
+          className="w-24 text-right font-mono tabular"
+          value={draft ?? String(value)}
+          onChange={(e) => setDraft(e.target.value)}
+          onBlur={() => {
+            if (draft !== null && draft.trim() !== "") put(Number(draft));
+            setDraft(null);
+          }}
+          onKeyDown={(e) => {
+            if (e.key === "Enter") (e.target as HTMLInputElement).blur();
+            if (e.key === "Escape") setDraft(null);
+          }}
+          aria-label={param.name}
+        />
+        <span className="w-16 min-w-0 shrink truncate text-[11px]" style={{ color: "var(--text-muted)" }}>
+          {knob.word}
+        </span>
+        </span>
+      </div>
+      {param.range && (
+        <input
+          type="range"
+          className="mt-0.5 block w-full"
+          min={min}
+          max={max}
+          step={step}
+          value={value}
+          onChange={(e) => setDrag(Number(e.target.value))}
+          onPointerUp={commit}
+          onLostPointerCapture={commit}
+          onBlur={commit}
+          onKeyUp={commit}
+          aria-label={`${param.name} slider`}
+        />
+      )}
+      {hint && (
+        <p className="text-[11px]" style={{ color: "var(--verdict-warning)" }}>
+          {hint}
+        </p>
+      )}
+    </div>
+  );
+}
+
+/** The kernel's own-parameter knob for `thing`, if it offers one. */
+function ownKnobOf(knobs: EngineKnob[] | undefined, thing: Thing): EngineKnob | undefined {
+  return (knobs ?? []).find((k) => k.thing === thing.id && k.own);
+}
+
 /** The engine fields a component line can declare, in the order the
  *  sandbox inspector shows them. Keys are the session's own. */
 const ENGINE_FIELDS: Array<[EngineField, string]> = [
@@ -593,8 +691,10 @@ export function RunInputs({
   // no `param` names, grouped under the component.
   const fieldCovered = new Map<number, Set<string>>();
   for (const row of paramRows) {
-    if (row.thing && row.field) {
-      fieldCovered.set(row.thing.id, new Set([...(fieldCovered.get(row.thing.id) ?? []), row.field]));
+    // An own param covers the knob row the kernel keys "param" here.
+    const key = row.field ?? (row.own ? "param" : undefined);
+    if (row.thing && key) {
+      fieldCovered.set(row.thing.id, new Set([...(fieldCovered.get(row.thing.id) ?? []), key]));
     }
   }
   const engineGroups = onEditThing
@@ -649,7 +749,7 @@ export function RunInputs({
           reset to declared
         </Button>
       )}
-      {paramRows.map(({ param, relation, group, thing: fieldThing, field }) =>
+      {paramRows.map(({ param, relation, group, thing: fieldThing, field, own }) =>
         relation ? (
           <ParamControl
             key={param.name}
@@ -664,6 +764,13 @@ export function RunInputs({
           onEditThing ? (
             <FieldControl key={param.name} param={param} thing={fieldThing} field={field} onEdit={onEditThing} wrap />
           ) : null
+        ) : fieldThing && own ? (
+          (() => {
+            const knob = ownKnobOf(knobs, fieldThing);
+            return onEditThing && knob ? (
+              <OwnControl key={param.name} param={param} thing={fieldThing} knob={knob} onEdit={onEditThing} wrap />
+            ) : null;
+          })()
         ) : (
           <div key={param.name}>
             <GroupHeader>{`${param.name} · % of split`}</GroupHeader>
@@ -793,7 +900,9 @@ export function ElementSettings({
       (row.group && row.group.every((r) => outIds.has(r.id))),
   );
   const coveredRel = new Set(mine.flatMap((row) => (row.relation ? [row.relation.id] : (row.group ?? []).map((r) => r.id))));
-  const coveredField = new Set<string>(mine.flatMap((row) => (row.field ? [row.field] : [])));
+  const coveredField = new Set<string>(
+    mine.flatMap((row) => (row.field ? [row.field] : row.own ? ["param"] : [])),
+  );
 
   const isComponent = t.role === "Component" && !t.passway;
   const isSource = t.role === "Environment" && (sourceIds ? sourceIds.includes(t.id) : t.env_kind === "Source");
@@ -823,7 +932,7 @@ export function ElementSettings({
       <div className="mb-1 text-[11px] font-semibold uppercase" style={{ letterSpacing: "var(--tracking-label)", color: "var(--text-muted)" }}>
         settings · edits re-run
       </div>
-      {mine.map(({ param, relation, group, thing: fieldThing, field }) =>
+      {mine.map(({ param, relation, group, thing: fieldThing, field, own }) =>
         relation ? (
           <ParamControl
             key={param.name}
@@ -836,6 +945,13 @@ export function ElementSettings({
           />
         ) : fieldThing && field ? (
           <FieldControl key={param.name} param={param} thing={fieldThing} field={field} onEdit={onEditThing} wrap />
+        ) : fieldThing && own ? (
+          (() => {
+            const knob = ownKnobOf(knobs, fieldThing);
+            return knob ? (
+              <OwnControl key={param.name} param={param} thing={fieldThing} knob={knob} onEdit={onEditThing} wrap />
+            ) : null;
+          })()
         ) : (
           <div key={param.name}>
             <GroupHeader>{`${param.name} · % of split`}</GroupHeader>

@@ -278,3 +278,54 @@ describe("a thing's own settings", () => {
   });
 });
 
+// SL v1.16: a param naming a process's own parameter is a slider in the run
+// inputs, in its word's terms, read off the kernel's knob for that thing; the
+// knob row it covers is not shown twice.
+describe("an own-parameter param", () => {
+  const stage = { id: 7, name: "Stage", role: "Component", primitive: "Amplifying", agency_capacity: 4 / 9 } as unknown as Thing;
+  const own = { offset: 1, scale: 9, max_param: null, range: "greater than 1" };
+  const knobs: EngineKnob[] = [{ thing: 7, field: "gain", word: "gain", value: 5, declared: true, own }];
+  const ownModel = {
+    name: "m",
+    lens: "Mobus",
+    things: [stage],
+    relations: [],
+    params: [{ name: "stage gain", anchor: { Own: { thing: 7 } }, range: { min: "1.1", max: "30" } }],
+  } as unknown as CanvasModel;
+
+  it("renders as a slider over the kernel's value, once", () => {
+    const html = renderToStaticMarkup(
+      <RunInputs model={ownModel} manifest={null} onEdit={() => {}} onEditThing={() => {}} knobs={knobs} />,
+    );
+    expect(html).toContain("own-param-stage gain");
+    expect(html).toContain('aria-label="stage gain slider"');
+    expect(html).toContain('min="1.1"');
+    expect(html).toContain('max="30"');
+    expect(html).toContain('value="5"');
+    expect(html).not.toContain('data-knob="gain"');
+  });
+
+  it("renders on the thing's own settings too", () => {
+    const html = renderToStaticMarkup(
+      <ElementSettings
+        thing={stage}
+        model={ownModel}
+        manifest={null}
+        knobs={knobs}
+        flowKnobs={[]}
+        onEdit={() => {}}
+        onEditThing={() => {}}
+      />,
+    );
+    expect(html).toContain("own-param-stage gain");
+    expect(html).not.toContain('data-knob="gain"');
+  });
+
+  it("renders nothing without the kernel's knob (no circuit, no map)", () => {
+    const html = renderToStaticMarkup(
+      <RunInputs model={ownModel} manifest={null} onEdit={() => {}} onEditThing={() => {}} knobs={[]} />,
+    );
+    expect(html).not.toContain("own-param-");
+  });
+});
+

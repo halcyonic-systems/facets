@@ -479,6 +479,18 @@ fn resolve_named(model: &CanvasModel, raw: &str, spelled: &str) -> Result<KnobTa
             ParamAnchor::Field { thing, field } => {
                 Ok(KnobTarget::Component { thing: name_of(thing), field: field.key().to_string() })
             }
+            // A process's own parameter, by its word (the bench converts it).
+            ParamAnchor::Own { thing } => {
+                let word = model
+                    .things
+                    .iter()
+                    .find(|t| t.id == thing)
+                    .and_then(|t| t.primitive)
+                    .and_then(facets_canvas::sl::own_param)
+                    .map(|o| o.word)
+                    .ok_or_else(|| format!("param \"{}\" names an own parameter its thing does not read", p.name))?;
+                Ok(KnobTarget::Component { thing: name_of(thing), field: word.to_string() })
+            }
             ParamAnchor::Shares { thing } => Err(format!(
                 "`{spelled}`: param \"{}\" is the shares of {}'s split, one weight per branch; \
                  turn a branch by its flow, `label|{}|to=weight`",

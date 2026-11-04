@@ -585,6 +585,25 @@ fn a_declared_param_is_a_knob_by_its_name() {
     assert!(e.contains("no param is named \"streem\"") && e.contains("\"stream\", \"outlet time\""), "{e}");
 }
 
+/// A param naming a process's own parameter (SL v1.16) is a knob by its
+/// name, in the word's terms: the same run as the word itself.
+#[test]
+fn an_own_param_is_a_knob_by_its_name() {
+    let model = format!(
+        "{AMPLIFIER}param \"stage gain\" : gain of Stage range 1.1..30\n\
+         param \"line loss\" : impedance of \"Supply Line\" range 0..0.99\n"
+    );
+    let run = |set: &str| {
+        let out = facets_stdin(&["bench", "-", "--t", "3", "--no-log", "--set", set], &model);
+        assert_eq!(code(&out), 0, "{set}: {}", stderr(&out));
+        stdout_json(&out)
+    };
+    let by_name = run("stage gain=20");
+    assert_eq!(by_name["flows"], run("Stage.gain=20")["flows"]);
+    assert_eq!((by_name["edits"][0]["field"].as_str(), by_name["edits"][0]["value"].as_f64()), (Some("gain"), Some(20.0)));
+    assert_eq!(run("line loss=0.9")["flows"], run("\"Supply Line\".impedance=0.9")["flows"]);
+}
+
 /// On an agent, `gain` is its rule's word, not a process's own parameter.
 #[test]
 fn gain_on_an_agent_stays_the_rules_word() {
