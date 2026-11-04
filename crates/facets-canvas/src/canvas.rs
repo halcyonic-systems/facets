@@ -1134,6 +1134,8 @@ pub fn with_primitive(prev: &Thing, mut next: Thing) -> Thing {
         "setpoint" => p == Some(ProcessPrimitive::Inverting),
         "limiting" => p == Some(ProcessPrimitive::Combining),
         "back_pressure" => p == Some(ProcessPrimitive::Modulating),
+        // The rate law (#573) is kept between Combining and Copying.
+        "mass_action" => matches!(p, Some(ProcessPrimitive::Combining | ProcessPrimitive::Copying)),
         _ => true,
     });
     let own = |q: Option<ProcessPrimitive>| q.and_then(facets_core::own_param::own_param);

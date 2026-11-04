@@ -222,3 +222,93 @@ fn an_unsayable_own_parameter_refuses_to_emit() {
     m.things[0].agency_capacity = Some(0.5);
     assert!(!emit_sl(&m).unwrap().contains("0.5"));
 }
+
+/// #573 and #575 (walk row 48, SL v1.17): `mass action <k>` on a Combining
+/// or Copying line. SIR without the sensor-and-valve: infection draws
+/// `k · S · I` from the susceptibles, the infected read, not used up.
+const SIR_LAW: &str = "\
+system \"Town\" : Concrete/Biological
+time unit day
+interface Border
+component Susceptible primitive Buffering stock share initial 0.9
+component Infected primitive Buffering stock share initial 0.1 time constant 4
+component Removed primitive Buffering stock share
+component Infection primitive Combining mass action 0.5
+source Imports
+flow Imports -> Border : matter \"imported\" substance people amount 0.005
+flow Border -> Infected : matter \"arrivals\" substance people
+flow Susceptible -> Infection : matter \"exposure\" substance people
+flow Infected -> Infection : informational \"contacts\" substance people
+flow Infection -> Infected : matter \"new cases\" substance people
+flow Infected -> Removed : matter \"recovery\" substance people
+";
+
+#[test]
+fn mass_action_parses_runs_and_emits_back() {
+    let m = parse_sl(SIR_LAW).unwrap();
+    let inf = m.things.iter().find(|t| t.name == "Infection").unwrap();
+    assert_eq!(inf.cognitive_params.get("mass_action"), Some(&0.5));
+    let text = emit_sl(&m).unwrap();
+    assert!(text.contains("component Infection primitive Combining mass action 0.5"), "{text}");
+    assert_eq!(
+        parse_sl(&text).unwrap().things.iter().find(|t| t.name == "Infection").unwrap().cognitive_params,
+        inf.cognitive_params
+    );
+
+    // The read is consumed: no `flow_not_consumed` on the contacts flow.
+    let world = project(&m);
+    let issues = facets_core::validate::validate_mode(&world, facets_core::Mode::Operational);
+    let flagged: Vec<_> = issues
+        .issues
+        .iter()
+        .filter(|i| i.code == "flow_not_consumed" || i.code == "law_input_not_a_stock")
+        .map(|i| i.message.clone())
+        .collect();
+    assert!(flagged.is_empty(), "{flagged:?}");
+
+    // And it runs as Euler SIR plus the imported trickle, one tick a day.
+    let spec = facets_core::operational::validate_operational(&world).unwrap();
+    let mut c = facets_compose::from_spec(&spec);
+    let ix = |n: &str| c.nodes.iter().position(|x| x.name == n).unwrap();
+    let (s, i, r) = (ix("Susceptible"), ix("Infected"), ix("Removed"));
+    let (mut es, mut ei, mut er) = (0.9f64, 0.1f64, 0.0f64);
+    for _ in 0..30 {
+        c.step();
+        let new = 0.5 * es * ei;
+        let rec = ei / 4.0;
+        es -= new;
+        ei += new - rec + 0.005;
+        er += rec;
+        assert!((c.nodes[s].storage as f64 - es).abs() < 1e-4, "S");
+        assert!((c.nodes[i].storage as f64 - ei).abs() < 1e-4, "I {} vs {ei}", c.nodes[i].storage);
+        assert!((c.nodes[r].storage as f64 - er).abs() < 1e-4, "R");
+    }
+    assert!(c.dissipated.abs() < 1e-4, "nothing shed: {}", c.dissipated);
+}
+
+#[test]
+fn mass_action_refuses_off_its_readers() {
+    let base = "system \"S\" : Concrete/Technical\nsource In\nsink Out\n";
+    let f = |line: &str| errs(&format!("{base}{line}\nflow In -> X : matter \"a\"\nflow X -> Out : matter \"b\"\n"));
+    assert!(f("component X primitive Buffering mass action 1 interface").contains("Combining or Copying component only"));
+    assert!(f("component X primitive Splitting mass action 1 interface").contains("Combining or Copying component only"));
+    assert!(f("component X primitive Combining mass action 0 interface").contains("mass action syntax"));
+    assert!(f("component X primitive Combining mass 1 interface").contains("mass action syntax"));
+    assert!(f("component X primitive Combining mass action 1 mass action 2 interface").contains("already given"));
+    assert!(errs(&format!("{base}environment E mass action 1\n")).contains("components only"));
+    // Copying takes it too.
+    parse_sl(&format!("{base}component X primitive Copying mass action 1 interface\nflow In -> X : informational \"a\"\nflow X -> Out : informational \"b\"\n")).unwrap();
+}
+
+/// The law draws on stocks; a pushed flow from anything else is named.
+#[test]
+fn a_law_fed_by_a_non_stock_is_warned() {
+    let m = parse_sl(
+        "system \"S\" : Concrete/Technical\ninterface Door\ncomponent Rx primitive Combining mass action 1\n\
+         component Out primitive Buffering stock kg\nsource Feed\n\
+         flow Feed -> Door : matter \"feed\" amount 1\nflow Door -> Rx : matter \"feed\"\nflow Rx -> Out : matter \"made\"\n",
+    )
+    .unwrap();
+    let issues = facets_core::validate::validate_mode(&project(&m), facets_core::Mode::Operational);
+    assert!(issues.issues.iter().any(|i| i.code == "law_input_not_a_stock"), "{:?}", issues.issues);
+}

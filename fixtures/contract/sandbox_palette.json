@@ -56,10 +56,10 @@
     "card": {
       "plain": "Merges several inflows into one.",
       "everyday": "Tributaries joining a river, incomes pooling into a budget.",
-      "math": "out = Σ inflows",
-      "substance": "matter/energy only — you can't 'merge' information by adding it (that's not how signals work).",
-      "theory": "Mobus atomic work process. Conserves: nothing is lost or made.",
-      "code": "activity = sum(physical inflows)"
+      "math": "out = Σ inflows · limiting: min(inflows) × n · mass action: each stock it draws on gives k · ∏ levels",
+      "substance": "matter/energy only — you can't 'merge' information by adding it (that's not how signals work). With `limiting` the scarcest input bounds it. With `mass action <k>` it draws k times the product of the levels of the stocks that feed it (an informational flow from a stock is read, a catalyst, not used up): predation, infection, a reaction.",
+      "theory": "Mobus atomic work process. Conserves: nothing is lost or made. A rate law lives on the work process (facets#573); pushing is the degenerate case.",
+      "code": "activity = sum(physical inflows)\n// mass action: pull = dt·k·Π(opening levels), scaled whole if a stock runs short"
     }
   },
   {
@@ -150,12 +150,12 @@
     "inherits_substance": false,
     "default_out": "Message",
     "card": {
-      "plain": "Replicates a signal to everyone downstream — free of charge.",
-      "everyday": "Broadcasting news, sharing a file, announcing a vote.",
-      "math": "each out = in",
-      "substance": "information only. Information is the one substance that copies for free — copying matter would be counterfeiting; copying energy, perpetual motion.",
-      "theory": "Mobus atomic work process. NOT conservative — and that's exactly the point. The asymmetry between matter and information.",
-      "code": "for each output: out = signal"
+      "plain": "Replicates a pattern. A signal copies to everyone downstream free of charge; a pattern copied onto material uses the material up.",
+      "everyday": "Broadcasting news, sharing a file; a printing press, a rumor reaching the uninformed.",
+      "math": "each out = in · onto material: out = min(pattern, material) · mass action: k · ∏ levels",
+      "substance": "a signal copies freely. With a matter output it is the two-input form (facets#575): the pattern copies freely, the blank material is used up, and unused material dissipates. Copying matter itself would be counterfeiting.",
+      "theory": "Mobus ch. 3: copying 'takes a patterned input substance and an un-patterned one'. The pattern is not conserved — that's the point — but the material it is imprinted on is.",
+      "code": "for each output: out = signal\n// matter output: out = min(signal, material in), or the law's pull"
     }
   },
   {

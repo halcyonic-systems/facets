@@ -31,12 +31,12 @@ export const PRIMITIVES: ReadonlyArray<readonly [ProcessPrimitive, string]> = [
  *  paraphrased; fresh-eyes pass 2026-08-18). One line each: what a click on a
  *  processor can honestly say is happening to the flow inside it. */
 export const PRIMITIVE_LAWS: Readonly<Record<ProcessPrimitive, string>> = {
-  Combining: "out = Σ inflows of its output kind — other kinds drive the work and dissipate (no limiting-factor coupling yet)",
+  Combining: "out = Σ inflows of its output kind — other kinds drive the work and dissipate · limiting: the scarcest input bounds it · mass action: draws k × the product of the levels of the stocks that feed it",
   Splitting: "out = Σ matched inflows, divided across outwires by declared shares",
   Buffering: "stock += inflow − release · release = declared rate (or stock/τ) read from the step's opening stock, never more than it holds",
   Impeding: "out = matched inflow × agency (0–1)",
   Propelling: "out = matched inflow × agency (0–1)",
-  Copying: "out = the message, duplicated — copyable, not conserved",
+  Copying: "out = the message, duplicated — copyable, not conserved · onto material: min(pattern, material), the material used up · mass action: draws k × the product of the stock levels",
   Sensing: "signal out = physical inflow × agency — crosses substance, drains nothing",
   Modulating: "out = physical inflow × control gate (0–1) · no control wire = open valve",
   Amplifying: "out = min(signal × gain, metered energy in) — no free mass",

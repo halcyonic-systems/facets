@@ -343,6 +343,21 @@ pub struct Node {
     /// Impeding "slows the rate of flow with a consequent back-pressure". The
     /// push-model default (`false`) sheds; this makes the valve back up.
     pub back_pressure: bool,
+    /// Mass action (facets#573, walk row 48): a rate law on a Combining or
+    /// Copying work process. `> 0` declares the law with this rate constant
+    /// `k`: each tick the process draws `dt · k · ∏ x` from every stock that
+    /// feeds it a physical flow, where the product runs over the opening
+    /// levels of the stocks it draws on (drained) and reads (an informational
+    /// flow from a stock, a catalyst that is not used up). The pull is taken
+    /// from the opening state, as back-pressure is, so the Moore anchor holds
+    /// (#259). `0.0` = no law: the process passes what is pushed into it, the
+    /// degenerate case and the default.
+    pub mass_action: f32,
+    /// What a mass-action process drew from EACH stock it drains on the last
+    /// completed step (all its drained stocks give the same amount). Written
+    /// by `step_dt`; `wire_amount` reports a drained wire from it. `0.0`
+    /// before the first step and for every other node.
+    pub pulled: f32,
     /// An agent's decision model (facets#269). Only `NodeKind::Agent` reads
     /// it, the way only Inverting reads `setpoint`; its numbers are the
     /// declared policy (the goal) and the kernel's `Policy::decide` is the
@@ -410,6 +425,8 @@ impl Node {
             time_constant: 0.0,   // 0 = fixed-rate drain
             maintenance: 0.0,     // 0 = no upkeep loss
             back_pressure: false, // false = push model sheds; true = backs up
+            mass_action: 0.0,     // 0 = no rate law: pushed throughput
+            pulled: 0.0,
             policy: facets_core::Policy::default(),
             knob: None,
             watch: None,
@@ -732,6 +749,7 @@ impl Circuit {
             n.activity = 0.0;
             n.total = 0.0;
             n.watched = 0.0;
+            n.pulled = 0.0;
             n.spark.clear();
         }
         self.tick = 0;
@@ -1133,10 +1151,37 @@ impl Circuit {
                 self.nodes[w.from].kind,
                 NodeKind::Process(ProcessPrimitive::Buffering)
             )
-            && matches!(
+            && (matches!(
                 self.nodes[w.to].kind,
                 NodeKind::Process(ProcessPrimitive::Sensing) | NodeKind::Agent
+            ) || self.has_law(w.to))
+    }
+
+    /// Whether node `i` is a work process with a declared rate law (#573):
+    /// a Combining or Copying with `mass_action > 0`. An informational flow
+    /// from a stock into it is a level read (a catalyst, `is_observation`),
+    /// and a physical flow from a stock into it is drawn by the law
+    /// (`is_law_pull`), not pushed by the stock's own release.
+    pub fn has_law(&self, i: usize) -> bool {
+        let node = &self.nodes[i];
+        node.mass_action > 0.0
+            && matches!(
+                node.kind,
+                NodeKind::Process(ProcessPrimitive::Combining | ProcessPrimitive::Copying)
             )
+    }
+
+    /// A physical flow from a stock into a process with a rate law (#573):
+    /// the law sets its amount from the opening state, and the stock's own
+    /// release (time constant or release rate) never goes down it.
+    pub fn is_law_pull(&self, w: &Wire) -> bool {
+        w.mode == FlowMode::Pushed
+            && self.wire_substance(w) != SubstanceType::Message
+            && matches!(
+                self.nodes[w.from].kind,
+                NodeKind::Process(ProcessPrimitive::Buffering)
+            )
+            && self.has_law(w.to)
     }
 
     /// Amount delivered over wire `k` this tick — the per-wire truth the view
@@ -1182,6 +1227,9 @@ impl Circuit {
         if self.is_observation(w) {
             // non-draining level read: the level the last step read
             return self.read_levels.get(w.from).copied().unwrap_or(self.nodes[w.from].storage);
+        }
+        if self.is_law_pull(w) {
+            return self.nodes[w.to].pulled; // what the law drew (#573)
         }
         self.delivery_share(k, self.nodes[self.wires[k].from].activity)
     }
@@ -1239,7 +1287,10 @@ impl Circuit {
         let outwires: Vec<usize> = (0..self.wires.len())
             .filter(|&j| {
                 let x = &self.wires[j];
-                x.from == w.from && x.mode == FlowMode::Pushed && !self.is_observation(x)
+                x.from == w.from
+                    && x.mode == FlowMode::Pushed
+                    && !self.is_observation(x)
+                    && !self.is_law_pull(x) // the law sets its own amount (#573)
             })
             .collect();
         let total_weight: f32 = outwires
@@ -1515,6 +1566,69 @@ impl Circuit {
             })
             .collect();
 
+        // ── Rate laws on work processes (#573, walk row 48): mass action.
+        // A law process's rate is `dt · k · ∏ x` over the OPENING levels of
+        // the stocks it draws on and reads, so, like the gradient above, it
+        // is fixed before the activity pass (the Moore anchor, #259). Each
+        // stock it drains gives that rate, one for one. Non-negativity: a
+        // stock that cannot cover every law drawing on it (net of its
+        // gradient drain) scales them down, and each law then takes the
+        // smallest scale among its drained stocks, so a reaction is always
+        // scaled WHOLE. That is the form the conservation lemma covers
+        // (systems-science-foundations, `stoichRun_conserves`): a cap that
+        // clipped one stock's share and not its partners' would break
+        // `S + I + R`. ──
+        let law_rate: Vec<f32> = (0..n)
+            .map(|j| {
+                if !self.has_law(j) {
+                    return 0.0;
+                }
+                (0..nw)
+                    .filter(|&k| {
+                        let w = &self.wires[k];
+                        w.to == j && (self.is_law_pull(w) || self.is_observation(w))
+                    })
+                    .fold(dt * self.nodes[j].mass_action, |r, k| {
+                        r * self.nodes[self.wires[k].from].storage.max(0.0)
+                    })
+            })
+            .collect();
+        let stock_scale: Vec<f32> = (0..n)
+            .map(|i| {
+                let asked: f32 = (0..nw)
+                    .filter(|&k| self.wires[k].from == i && self.is_law_pull(&self.wires[k]))
+                    .map(|k| law_rate[self.wires[k].to])
+                    .sum();
+                let available = (self.nodes[i].storage - gradient_out[i]).max(0.0);
+                if asked > available && asked > 0.0 {
+                    available / asked
+                } else {
+                    1.0
+                }
+            })
+            .collect();
+        let law_pull: Vec<f32> = (0..n)
+            .map(|j| {
+                if law_rate[j] == 0.0 {
+                    return 0.0;
+                }
+                let scale = (0..nw)
+                    .filter(|&k| self.wires[k].to == j && self.is_law_pull(&self.wires[k]))
+                    .map(|k| stock_scale[self.wires[k].from])
+                    .fold(1.0f32, f32::min);
+                law_rate[j] * scale
+            })
+            .collect();
+        // What the laws take out of each stock this tick.
+        let law_out: Vec<f32> = (0..n)
+            .map(|i| {
+                (0..nw)
+                    .filter(|&k| self.wires[k].from == i && self.is_law_pull(&self.wires[k]))
+                    .map(|k| law_pull[self.wires[k].to])
+                    .sum()
+            })
+            .collect();
+
         // Amount delivered over wire index k THIS step, given the same-step
         // activities computed so far: pushed wires use the shared per-wire
         // delivery rule (`delivery_share` — fanout split, observation taps,
@@ -1528,6 +1642,8 @@ impl Circuit {
                 grad[k]
             } else if self.is_observation(w) {
                 self.nodes[w.from].storage // non-draining level read (state)
+            } else if self.is_law_pull(w) {
+                law_pull[w.to] // drawn by the process's rate law (#573)
             } else {
                 self.delivery_share(k, act[w.from])
             }
@@ -1699,10 +1815,14 @@ impl Circuit {
                         // tank with no spout. Without one, the release would drain
                         // the stock into nowhere (mass destroyed). Gradient outwires
                         // are NOT spouts for release; they carry gradient_out above.
+                        // A flow a rate law draws (#573) is no spout either:
+                        // the law sets its amount, and the release goes only
+                        // down the stock's other outflows.
                         let has_pushed_outlet = (0..nw).any(|k| {
                             self.wires[k].from == i
                                 && self.wires[k].mode == FlowMode::Pushed
                                 && !self.is_observation(&self.wires[k])
+                                && !self.is_law_pull(&self.wires[k])
                         });
                         if has_pushed_outlet {
                             // First-order drain (τ > 0): release ≈ stock/τ, an
@@ -1723,8 +1843,10 @@ impl Circuit {
                             // cap stays OUTSIDE the scaling: you cannot release
                             // more than the opening stock holds (net of this
                             // step's gradient drain), however long the step.
+                            // What the rate laws draw (#573) comes first: they
+                            // were fixed from the opening state.
                             (dt * base * gate * bp_factor_of(i, &act))
-                                .min((node.storage - gradient_out[i]).max(0.0))
+                                .min((node.storage - gradient_out[i] - law_out[i]).max(0.0))
                         } else {
                             0.0
                         }
@@ -1812,6 +1934,25 @@ impl Circuit {
                     // Comparator: reference − measured (Mobus Fig 4.12). The
                     // setpoint defaults to 1.0, so this is the bare 1 − signal.
                     ProcessPrimitive::Inverting => (node.setpoint - message).max(0.0),
+                    // Mobus ch. 3 (#575, walk row 48): copying "takes a
+                    // patterned input substance and an un-patterned one".
+                    // A Copying whose output is declared Message copies its
+                    // signal free of charge, as before. One whose output is
+                    // declared Material is the two-input form: the pattern
+                    // (its messages) copies freely, the blank material is
+                    // used up, so the copies are capped by the material that
+                    // came in, and unused material dissipates on the ledger.
+                    // With a rate law (#573) the law sets the throughput: the
+                    // copies are the material it drew.
+                    ProcessPrimitive::Copying
+                        if node.out_substance.base == SubstanceType::Material =>
+                    {
+                        if self.has_law(i) {
+                            matched
+                        } else {
+                            message.min(matched)
+                        }
+                    }
                     ProcessPrimitive::Copying => message,
                 },
                 // The agent's decision model over the level it watches: the
@@ -1882,7 +2023,8 @@ impl Circuit {
             ) {
                 continue;
             }
-            let mut storage = node.storage + delivered[i] - gradient_out[i] - act[i];
+            let mut storage =
+                node.storage + delivered[i] - gradient_out[i] - law_out[i] - act[i];
             // Maintenance respiration: a constant upkeep loss from the stock,
             // dissipated (never delivered). The ledger charges it
             // automatically — the stock falls but no outflow carries it.
@@ -2016,6 +2158,7 @@ impl Circuit {
         for (i, node) in self.nodes.iter_mut().enumerate() {
             node.activity = act[i];
             node.storage = next_storage[i];
+            node.pulled = law_pull[i];
             node.total += sink_add[i];
             // An environment object's received side (see the Source arm):
             // what arrived this step, the amount the ledger counts as sunk.
@@ -2222,6 +2365,16 @@ impl Circuit {
         for (i, node) in self.nodes.iter().enumerate() {
             for w in self.wires.iter().filter(|w| w.to == i) {
                 let got = self.nodes[w.from].out_substance.clone();
+                // A level read into a rate-law process is a catalyst (#573),
+                // and a material Copying takes its blank material (#575):
+                // both are consumed, though the per-kind table says no.
+                if (self.has_law(i) && self.is_observation(w))
+                    || (matches!(node.kind, NodeKind::Process(ProcessPrimitive::Copying))
+                        && node.out_substance.base == SubstanceType::Material
+                        && got.base == SubstanceType::Material)
+                {
+                    continue;
+                }
                 if !node.kind.consumes(got.base) {
                     // Report what it wants: the first substance it does consume.
                     let wants = [
@@ -3816,7 +3969,9 @@ mod tests {
     }
 
     /// Law: a Copying node relabeled to a physical substance splits its
-    /// fanout instead of duplicating — matter cannot be copied.
+    /// fanout instead of duplicating — matter cannot be copied. Since #575 a
+    /// Material Copying is the two-input form, so fed only a pattern and no
+    /// blank material it makes nothing, which still splits (0 + 0).
     /// Matter doesn't copy: a Copying node relabeled to a physical substance
     /// splits across its fanout instead of duplicating to every receiver.
     #[test]
@@ -4936,5 +5091,177 @@ mod tests {
             build(0.5).history,
             "no source to gate — porosity leaves an internal run identical"
         );
+    }
+
+    // ── Rate laws on work processes (#573, #575; walk row 48) ──────────────
+
+    /// A stock with `level` and no release of its own (the law draws it).
+    fn stock(level: f32) -> Node {
+        let mut n = node(NodeKind::Process(ProcessPrimitive::Buffering));
+        n.initial_storage = level;
+        n.storage = level;
+        n.time_constant = 0.0;
+        n.release_rate = 0.0;
+        n
+    }
+
+    fn read(from: usize, to: usize) -> Wire {
+        let mut w = Wire::new(from, to);
+        w.substance_override = Some(SubstanceType::Message);
+        w
+    }
+
+    /// SIR as mass action: infection draws `β·S·I` from S (I read, not
+    /// used up), recovery drains I at `I/τ`. The step is forward Euler of
+    /// Kermack–McKendrick at the opening state, and `S + I + R` holds, as
+    /// `stoichRun_conserves` says it must for any rates.
+    #[test]
+    fn mass_action_sir_is_euler_and_conserves_the_town() {
+        let mut c = Circuit::default();
+        c.nodes.push(stock(0.9)); // 0 S
+        c.nodes.push(stock(0.1)); // 1 I
+        c.nodes[1].time_constant = 4.0;
+        c.nodes.push(stock(0.0)); // 2 R
+        let mut inf = node(NodeKind::Process(ProcessPrimitive::Combining));
+        inf.mass_action = 0.5;
+        c.nodes.push(inf); // 3 infection
+        c.wires.push(Wire::new(0, 3)); // S drawn by the law
+        c.wires.push(read(1, 3)); // I read: a catalyst
+        c.wires.push(Wire::new(3, 1)); // new cases
+        c.wires.push(Wire::new(1, 2)); // recovery
+        let (mut s, mut i, mut r) = (0.9f64, 0.1f64, 0.0f64);
+        for _ in 0..60 {
+            c.step();
+            let new = 0.5 * s * i;
+            let rec = i / 4.0;
+            s -= new;
+            i += new - rec;
+            r += rec;
+            let (cs, ci, cr) = (c.nodes[0].storage, c.nodes[1].storage, c.nodes[2].storage);
+            assert!((cs as f64 - s).abs() < 1e-5, "S {cs} vs {s}");
+            assert!((ci as f64 - i).abs() < 1e-5, "I {ci} vs {i}");
+            assert!((cr as f64 - r).abs() < 1e-5, "R {cr} vs {r}");
+            assert!((cs + ci + cr - 1.0).abs() < 1e-5, "town not conserved: {}", cs + ci + cr);
+        }
+        assert!(c.dissipated.abs() < 1e-5, "nothing shed: {}", c.dissipated);
+        // The display reports what the law drew, from the committed step.
+        assert!((c.wire_amount(0) - c.nodes[3].pulled).abs() < f32::EPSILON);
+    }
+
+    /// The cap scales a reaction WHOLE: A + B → C with B nearly gone takes
+    /// the same from both, and no stock goes below zero.
+    #[test]
+    fn mass_action_cap_scales_the_whole_reaction() {
+        let mut c = Circuit::default();
+        c.nodes.push(stock(10.0)); // 0 A
+        c.nodes.push(stock(0.2)); // 1 B
+        c.nodes.push(stock(0.0)); // 2 C
+        let mut rx = node(NodeKind::Process(ProcessPrimitive::Combining));
+        rx.mass_action = 5.0; // asks 5·10·0.2 = 10 of each
+        c.nodes.push(rx);
+        c.wires.push(Wire::new(0, 3));
+        c.wires.push(Wire::new(1, 3));
+        c.wires.push(Wire::new(3, 2));
+        c.step();
+        assert!((c.nodes[1].storage).abs() < 1e-6, "B drawn to zero, not below");
+        assert!((c.nodes[0].storage - 9.8).abs() < 1e-5, "A gave what B gave");
+        assert!((c.nodes[2].storage - 0.4).abs() < 1e-5, "C got both");
+        assert!(c.dissipated.abs() < 1e-5);
+    }
+
+    /// A stock drawn by a law keeps its own release on its other outflow:
+    /// prey eaten by mass action AND dying at their own rate, each charged
+    /// separately (the `bp_factor_of` coupling scaled both).
+    #[test]
+    fn mass_action_leaves_the_stocks_own_release_alone() {
+        let mut c = Circuit::default();
+        c.nodes.push(stock(4.0)); // 0 prey
+        c.nodes[0].time_constant = 8.0; // natural death 4/8 = 0.5
+        c.nodes.push(stock(2.0)); // 1 predators
+        c.nodes.push(node(NodeKind::Sink)); // 2 dead prey
+        let mut eat = node(NodeKind::Process(ProcessPrimitive::Combining));
+        eat.mass_action = 0.1; // 0.1·4·2 = 0.8
+        c.nodes.push(eat); // 3
+        c.nodes.push(stock(0.0)); // 4 eaten (booked)
+        c.wires.push(Wire::new(0, 2)); // death
+        c.wires.push(Wire::new(0, 3)); // predation
+        c.wires.push(read(1, 3));
+        c.wires.push(Wire::new(3, 4));
+        c.step();
+        assert!((c.nodes[2].total - 0.5).abs() < 1e-6, "death is the prey's own: {}", c.nodes[2].total);
+        assert!((c.nodes[4].storage - 0.8).abs() < 1e-6, "predation is the law's");
+        assert!((c.nodes[0].storage - 2.7).abs() < 1e-6);
+        assert!((c.nodes[1].storage - 2.0).abs() < 1e-6, "a catalyst is read, not used");
+    }
+
+    /// No law, no change: the same wiring without `mass_action` is a push.
+    #[test]
+    fn without_a_law_combining_still_passes_what_is_pushed() {
+        let mut c = Circuit::default();
+        c.nodes.push(stock(4.0));
+        c.nodes[0].time_constant = 2.0;
+        c.nodes.push(node(NodeKind::Process(ProcessPrimitive::Combining)));
+        c.nodes.push(stock(0.0));
+        c.wires.push(Wire::new(0, 1));
+        c.wires.push(Wire::new(1, 2));
+        c.step();
+        assert!((c.nodes[2].storage - 2.0).abs() < 1e-6);
+        assert_eq!(c.nodes[1].pulled, 0.0);
+    }
+
+    /// Two-input Copying (#575): the pattern copies freely, the blank
+    /// material is used up, so the copies are capped by the material. The
+    /// unused material dissipates on the books, not into nowhere.
+    #[test]
+    fn material_copying_is_capped_by_its_blank_material() {
+        let mut c = Circuit::default();
+        let mut pattern = node(NodeKind::Source);
+        pattern.out_substance = SubstanceType::Message.into();
+        pattern.param = 5.0; // asks for 5 copies
+        c.nodes.push(pattern); // 0
+        let mut blank = node(NodeKind::Source);
+        blank.param = 3.0; // 3 units of blank material
+        c.nodes.push(blank); // 1
+        let mut press = node(NodeKind::Process(ProcessPrimitive::Copying));
+        press.out_substance = SubstanceType::Material.into();
+        c.nodes.push(press); // 2
+        c.nodes.push(node(NodeKind::Sink)); // 3
+        c.wires.push(Wire::new(0, 2));
+        c.wires.push(Wire::new(1, 2));
+        c.wires.push(Wire::new(2, 3));
+        assert!(c.substance_mismatches().is_empty(), "the blank material is consumed");
+        c.step();
+        assert!((c.nodes[2].activity - 3.0).abs() < 1e-6, "capped by material");
+        c.nodes[0].param = 2.0;
+        c.step();
+        assert!((c.nodes[2].activity - 2.0).abs() < 1e-6, "capped by the pattern");
+        assert!((c.dissipated - 1.0).abs() < 1e-5, "the unused blank is shed: {}", c.dissipated);
+    }
+
+    /// Rumor (#575 with #573): Copying onto the uninformed, at a rate set by
+    /// how many are uninformed and how many are informed. `U + K` holds.
+    #[test]
+    fn rumor_is_mass_action_copying_and_conserves_the_crowd() {
+        let mut c = Circuit::default();
+        c.nodes.push(stock(0.99)); // 0 uninformed
+        c.nodes.push(stock(0.01)); // 1 informed
+        let mut tell = node(NodeKind::Process(ProcessPrimitive::Copying));
+        tell.out_substance = SubstanceType::Material.into();
+        tell.mass_action = 0.8;
+        c.nodes.push(tell); // 2
+        c.wires.push(Wire::new(0, 2));
+        c.wires.push(read(1, 2));
+        c.wires.push(Wire::new(2, 1));
+        assert!(c.substance_mismatches().is_empty(), "{:?}", c.substance_mismatches());
+        let (mut u, mut k) = (0.99f64, 0.01f64);
+        for _ in 0..40 {
+            c.step();
+            let told = 0.8 * u * k;
+            u -= told;
+            k += told;
+            assert!((c.nodes[1].storage as f64 - k).abs() < 1e-5);
+            assert!((c.nodes[0].storage + c.nodes[1].storage - 1.0).abs() < 1e-5);
+        }
+        assert!(c.nodes[1].storage > 0.9, "the rumor spreads: {}", c.nodes[1].storage);
     }
 }

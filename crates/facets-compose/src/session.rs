@@ -163,6 +163,7 @@ impl Session {
             "time_constant" => n.time_constant = v,
             "maintenance" => n.maintenance = v,
             "back_pressure" => n.back_pressure = v != 0.0,
+            "mass_action" => n.mass_action = v, // the rate law, #573
             // #463 move 5: a negative reservoir means unbounded (None).
             "reservoir" => {
                 n.reservoir = (v >= 0.0).then_some(v);

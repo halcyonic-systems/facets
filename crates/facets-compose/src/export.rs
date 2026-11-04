@@ -237,6 +237,19 @@ pub fn to_world_model(circuit: &Circuit, name: &str) -> WorldModel {
                             if primitive == ProcessPrimitive::Modulating && node.back_pressure {
                                 p.insert("back_pressure".to_string(), 1.0);
                             }
+                            // Dropped on the way back before 2026-11-04
+                            // (the flag was read, never written).
+                            if primitive == ProcessPrimitive::Combining && node.limiting {
+                                p.insert("limiting".to_string(), 1.0);
+                            }
+                            // The rate law (#573) on the processes that take it.
+                            if matches!(
+                                primitive,
+                                ProcessPrimitive::Combining | ProcessPrimitive::Copying
+                            ) && node.mass_action > 0.0
+                            {
+                                p.insert("mass_action".to_string(), node.mass_action as f64);
+                            }
                             p
                         },
                         process_configs: Vec::new(),
@@ -511,6 +524,9 @@ pub fn from_spec(spec: &facets_core::operational::OperationalSpec) -> Circuit {
         }
         if p.cognitive_params.contains_key("limiting") {
             node.limiting = true;
+        }
+        if let Some(&k) = p.cognitive_params.get("mass_action") {
+            node.mass_action = k as f32;
         }
         ids.push((p.id.clone(), c.nodes.len()));
         c.nodes.push(node);

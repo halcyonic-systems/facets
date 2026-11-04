@@ -1042,6 +1042,7 @@ pub fn parse_sl_full(text: &str) -> Result<SlParse, Vec<SlError>> {
                 let mut maintenance: Option<f64> = None;
                 let mut back_pressure = false;
                 let mut limiting = false;
+                let mut mass_action: Option<f64> = None;
                 let mut reservoir: Option<f64> = None;
                 let mut own_words: Vec<(String, f64)> = Vec::new();
                 let mut description = String::new();
@@ -1497,6 +1498,45 @@ pub fn parse_sl_full(text: &str) -> Result<SlParse, Vec<SlError>> {
                             limiting = true;
                             i += 1;
                         }
+                        // `mass action <k>` — a rate law on a Combining or
+                        // Copying process (#573, walk row 48): the kernel's
+                        // cognitive_params["mass_action"], the rate constant
+                        // k in `k · ∏ x` over the opening levels of the stocks
+                        // the process draws on and reads. `action` sits
+                        // behind the reserved `mass` clause head, as
+                        // `constant` sits behind `time`. Combining/Copying
+                        // only, > 0.
+                        Tok::Word(w) if w.eq_ignore_ascii_case("mass") => {
+                            if role == Role::Environment {
+                                fail(
+                                    "`mass action` applies to components only \
+                                     (environment internals are opaque)"
+                                        .into(),
+                                    &mut errors,
+                                );
+                                ok = false;
+                            }
+                            if mass_action.is_some() {
+                                fail("`mass action` already given on this component".into(), &mut errors);
+                                ok = false;
+                            }
+                            let syntax = "mass action syntax: `mass action <positive number>` \
+                                          — the rate constant k of the law k · ∏ x over the \
+                                          stocks the process draws on (e.g. `mass action 0.5`)";
+                            match (attrs.get(i + 1), attrs.get(i + 2)) {
+                                (Some(Tok::Word(a)), Some(Tok::Word(n)))
+                                    if a.eq_ignore_ascii_case("action")
+                                        && n.parse::<f64>().is_ok_and(|v| v.is_finite() && v > 0.0) =>
+                                {
+                                    mass_action = Some(n.parse::<f64>().unwrap());
+                                }
+                                _ => {
+                                    fail(syntax.into(), &mut errors);
+                                    ok = false;
+                                }
+                            }
+                            i += 3;
+                        }
                         // A process's own parameter, the engine's `param`
                         // (`OWN_PARAMS`): `gain <n>` on a Sensing process (#496,
                         // the multiplier from level to signal, default 1) or an
@@ -1759,6 +1799,7 @@ pub fn parse_sl_full(text: &str) -> Result<SlParse, Vec<SlError>> {
                                      `primitive <Name>`, `interface`, `stock \"<unit>\"`, \
                                      `release <n>`, `capacity <n>`, `time constant <n>`, \
                                      `setpoint <n>`, `maintenance <n>`, `backpressure`, `limiting`, \
+                                     `mass action <n>` (Combining, Copying), \
                                      `reservoir <n>` (source lines), `gain <n>` (Sensing, \
                                      Amplifying), `efficiency <n>` (Propelling), \
                                      `impedance <n>` (Impeding), \
@@ -1856,6 +1897,21 @@ pub fn parse_sl_full(text: &str) -> Result<SlParse, Vec<SlError>> {
                     );
                     ok = false;
                 }
+                if mass_action.is_some()
+                    && !matches!(
+                        primitive,
+                        Some(ProcessPrimitive::Combining | ProcessPrimitive::Copying)
+                    )
+                {
+                    fail(
+                        "`mass action` applies to a Combining or Copying component only — \
+                         it is a rate law on a work process that draws on stocks, and no \
+                         other primitive reads it"
+                            .into(),
+                        &mut errors,
+                    );
+                    ok = false;
+                }
                 if back_pressure && primitive != Some(ProcessPrimitive::Modulating) {
                     fail(
                         "`backpressure` applies to a Modulating component only — it is \
@@ -1915,6 +1971,9 @@ pub fn parse_sl_full(text: &str) -> Result<SlParse, Vec<SlError>> {
                 }
                 if limiting {
                     cognitive_params.insert("limiting".to_string(), 1.0);
+                }
+                if let Some(k) = mass_action {
+                    cognitive_params.insert("mass_action".to_string(), k);
                 }
                 if let Some(r) = reservoir {
                     cognitive_params.insert("reservoir".to_string(), r);
@@ -4665,6 +4724,13 @@ pub fn emit_sl_with(model: &CanvasModel, layout: Option<&SlLayout>) -> Result<St
                     }
                     "back_pressure" => t.primitive == Some(ProcessPrimitive::Modulating),
                     "limiting" => t.primitive == Some(ProcessPrimitive::Combining),
+                    "mass_action" => {
+                        matches!(
+                            t.primitive,
+                            Some(ProcessPrimitive::Combining | ProcessPrimitive::Copying)
+                        ) && v.is_finite()
+                            && *v > 0.0
+                    }
                     _ => false,
                 }));
         // A process's own parameter (walk row 18): the four primitives the
@@ -4694,7 +4760,8 @@ pub fn emit_sl_with(model: &CanvasModel, layout: Option<&SlLayout>) -> Result<St
                  `stock <unit> initial <n>` and, gated to their reading \
                  primitive, `release <n>` / `capacity <n>` / `time constant <n>` \
                  / `maintenance <n>` on Buffering, `setpoint <n>` on Inverting, \
-                 `backpressure` on Modulating, and `limiting` on Combining) — export the model as kernel \
+                 `backpressure` on Modulating, `limiting` on Combining, and `mass action <n>` on \
+                 Combining or Copying) — export the model as kernel \
                  JSON instead of SL",
                 t.name
             ));
@@ -4787,6 +4854,9 @@ pub fn emit_sl_with(model: &CanvasModel, layout: Option<&SlLayout>) -> Result<St
             }
             if t.cognitive_params.contains_key("limiting") {
                 write!(out, " limiting").unwrap();
+            }
+            if let Some(k) = t.cognitive_params.get("mass_action") {
+                write!(out, " mass action {k}").unwrap();
             }
         }
         // Klir source-system metadata (#154): kind, then scale, then state set.
@@ -5285,6 +5355,7 @@ pub const RESERVED_WORDS: &[&str] = &[
     "maintenance",
     "backpressure",
     "limiting",
+    "mass",
     "reservoir",
     "gain",
     "efficiency",
@@ -5340,6 +5411,8 @@ pub const UNRESOLVED: &str = "unresolved";
 pub const POSITIONAL_KEYWORDS: &[&str] = &[
     "param", "metric", "ample", "range", "shares", "from", "share", "of", "sum", "into", "klir",
     "bunge", "mobus", "constant",
+    // the rate law (#573): `action` only ever follows `mass`
+    "action",
     // the agent line (facets#269): `proportional` is the word after `rule`, `target`
     // sits behind it; `gain` is already reserved from the Sensing clause
     "proportional", "target", "threshold", "above", "below", "emit", "else",
