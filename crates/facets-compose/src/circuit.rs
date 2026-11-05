@@ -370,6 +370,13 @@ pub struct Node {
     /// A source's potential for field flows (#574), apart from its emission
     /// rate. `None` = the source's `param`, as before.
     pub potential: Option<f32>,
+    /// An informational stock (#576, walk row 48): a memory. It adds up the
+    /// messages flowing into it (they are inflows, not a gate), forgets at
+    /// `storage / time_constant`, and its informational outflows carry its
+    /// level, copied, not drained. Information is not conserved, so it is
+    /// off the matter and energy books. A knowledge stock with forgetting is
+    /// a leaky integrator, memory in the state (H stays a record, #97).
+    pub holds_message: bool,
     /// An agent's decision model (facets#269). Only `NodeKind::Agent` reads
     /// it, the way only Inverting reads `setpoint`; its numbers are the
     /// declared policy (the goal) and the kernel's `Policy::decide` is the
@@ -442,6 +449,7 @@ impl Node {
             spilled: 0.0,
             capacitance: 1.0,
             potential: None,
+            holds_message: false,
             policy: facets_core::Policy::default(),
             knob: None,
             watch: None,
@@ -1092,11 +1100,13 @@ impl Circuit {
             if w.mode != FlowMode::Pushed || self.is_observation(w) {
                 continue;
             }
+            // An informational stock (#576) is a memory: it broadcasts its
+            // opening level, so what flows into it is no dependency either.
             let receiver_reads_state = matches!(self.nodes[w.to].kind, NodeKind::Source)
                 || (matches!(
                     self.nodes[w.to].kind,
                     NodeKind::Process(ProcessPrimitive::Buffering)
-                ) && self.wire_substance(w) != SubstanceType::Message);
+                ) && (self.wire_substance(w) != SubstanceType::Message || self.nodes[w.to].holds_message));
             if !receiver_reads_state {
                 add(w.from, w.to);
             }
@@ -1152,7 +1162,8 @@ impl Circuit {
 
     /// Σ stock across all nodes.
     pub fn stored(&self) -> f32 {
-        self.nodes.iter().map(|n| n.storage).sum()
+        // An informational stock is off the books (#576).
+        self.nodes.iter().filter(|n| !n.holds_message).map(|n| n.storage).sum()
     }
 
     /// Conservation residual. ≈0 (float noise) means every unit of physical
@@ -1163,7 +1174,7 @@ impl Circuit {
     /// a bug by definition. (Editing a stock mid-run moves the baseline;
     /// Reset re-baselines.)
     pub fn balance(&self) -> f32 {
-        let baseline: f32 = self.nodes.iter().map(|n| n.initial_storage).sum();
+        let baseline: f32 = self.nodes.iter().filter(|n| !n.holds_message).map(|n| n.initial_storage).sum();
         self.emitted + baseline - (self.stored() + self.sunk + self.dissipated)
     }
 
@@ -1963,6 +1974,9 @@ impl Circuit {
                     // storage += inflow (incl. gradient in); −release (pushed
                     // out) −gradient_out (field-driven out). The gradient drain
                     // already left via its wires; subtract it from the stock.
+                    // A memory broadcasts its opening level (#576): its
+                    // informational outflows copy it, nothing is released.
+                    ProcessPrimitive::Buffering if node.holds_message => node.storage.max(0.0),
                     ProcessPrimitive::Buffering => {
                         // Moore anchor (#259): release is computed from the
                         // START-OF-STEP stock — the state that cuts every loop
@@ -2182,6 +2196,38 @@ impl Circuit {
             ) {
                 continue;
             }
+            if node.holds_message {
+                // A memory (#576): what the messages into it said, added up,
+                // less what it forgets (`storage / τ`), bounded by capacity.
+                // Off the books: no upkeep or overflow is charged.
+                let heard: f32 = (0..nw)
+                    .filter(|&k| {
+                        let w = &self.wires[k];
+                        w.to == i
+                            && w.mode == FlowMode::Pushed
+                            && !w.ample
+                            && self.wire_substance(w) == SubstanceType::Message
+                    })
+                    // A source's message is already an amount this step
+                    // (× dt at emission, #258); a process's is a signal
+                    // value, heard for dt.
+                    .map(|k| {
+                        let a = amount_on(k, &act);
+                        if matches!(self.nodes[self.wires[k].from].kind, NodeKind::Source) { a } else { dt * a }
+                    })
+                    .sum();
+                let forget = if node.time_constant > 0.0 {
+                    (dt * node.storage.max(0.0) / node.time_constant).min(node.storage.max(0.0))
+                } else {
+                    0.0
+                };
+                let mut m = node.storage + heard - forget;
+                if node.capacity > 0.0 {
+                    m = m.min(node.capacity);
+                }
+                next_storage[i] = m.max(0.0);
+                continue;
+            }
             let (storage, taken, over) = settle(i, delivered[i], act[i]);
             maint_taken[i] = taken;
             overflow[i] = over;
@@ -2254,6 +2300,11 @@ impl Circuit {
                     }
                     // An agent takes nothing physical (its tap is a read)
                     // and sends only a message, so this arm charges it zero.
+                    // A memory is off the books (#576): nothing physical
+                        // passes through it, and its level is not mass.
+                    NodeKind::Process(_) if node.holds_message => {
+                        node_diss[i] = 0.0;
+                    }
                     NodeKind::Process(_) | NodeKind::Agent => {
                         let d = delivered[i]
                             - released[i]

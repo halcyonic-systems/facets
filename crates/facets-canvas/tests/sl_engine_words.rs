@@ -445,3 +445,59 @@ fn field_words_refuse_off_their_readers() {
     assert!(errs("system \"S\" : Concrete/Physical\nsink Out potential 3\n").contains("`source` line only"));
     assert!(errs("system \"S\" : Concrete/Physical\ncomponent X primitive Combining capacitance 2 interface\n").contains("Buffering component only"));
 }
+
+/// #576 (walk row 48): an `informational` stock is a memory. It adds up the
+/// messages into it and forgets over its time constant, a leaky integrator
+/// (an EWMA), so it rests at inflow × τ. It is off the matter and energy
+/// books, and what reads it copies its level without draining it.
+const MEMORY: &str = "\
+system \"Learner\" : Concrete/Social
+time unit day
+interface Ear
+interface Gate
+component Memory primitive Buffering stock ideas time constant 5 informational
+component Pantry primitive Buffering stock kg initial 20 time constant 4
+component Tap primitive Modulating interface
+source News
+source Farm
+sink Table
+flow News -> Ear : informational \"lessons\" substance ideas amount 2
+flow Ear -> Memory : informational \"lessons\" substance ideas
+flow Memory -> Tap : informational \"recall\" substance ideas
+flow Farm -> Gate : matter \"food\" substance food amount 3
+flow Gate -> Pantry : matter \"food\" substance food
+flow Pantry -> Tap : matter \"meals\" substance food
+flow Tap -> Table : matter \"meals\" substance food
+";
+
+#[test]
+fn an_informational_stock_is_a_leaky_memory_off_the_books() {
+    let m = parse_sl(MEMORY).unwrap();
+    let mem = m.things.iter().find(|t| t.name == "Memory").unwrap();
+    assert_eq!(mem.cognitive_params.get("informational"), Some(&1.0));
+    let text = emit_sl(&m).unwrap();
+    assert!(text.contains("component Memory primitive Buffering stock ideas time constant 5 informational"), "{text}");
+    let spec = facets_core::operational::validate_operational(&project(&m)).unwrap();
+    let mut c = facets_compose::from_spec(&spec);
+    let ix = |c: &facets_compose::Circuit, n: &str| c.nodes.iter().position(|x| x.name == n).unwrap();
+    let (mem, tap) = (ix(&c, "Memory"), ix(&c, "Tap"));
+    let mut ewma = 0.0f64;
+    for _ in 0..60 {
+        c.step();
+        ewma = ewma * (1.0 - 1.0 / 5.0) + 2.0;
+        assert!((c.nodes[mem].storage as f64 - ewma).abs() < 1e-4, "{} vs {ewma}", c.nodes[mem].storage);
+        assert!(c.balance().abs() < 1e-3, "the books hold the food only: {}", c.balance());
+    }
+    assert!((c.nodes[mem].storage - 10.0).abs() < 1e-2, "rests at inflow × τ");
+    // Recall gates the tap open (level ≥ 1) and drains nothing from memory.
+    assert!((c.nodes[tap].activity - c.nodes[ix(&c, "Pantry")].activity).abs() < 1e-5);
+    let warn = facets_core::validate::validate_mode(&project(&m), facets_core::Mode::Operational);
+    let errors: Vec<_> = warn.issues.iter().filter(|i| i.severity == facets_core::validate::Severity::Error).collect();
+    assert!(errors.is_empty(), "{errors:?}");
+}
+
+#[test]
+fn informational_refuses_off_a_stock() {
+    assert!(errs("system \"S\" : Concrete/Social\ncomponent X primitive Combining informational interface\n").contains("Buffering component only"));
+    assert!(errs("system \"S\" : Concrete/Social\nsource X informational\n").contains("component's stock only"));
+}

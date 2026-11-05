@@ -234,6 +234,12 @@ new verb for the language, not a formula — see ADR 0006 for the growth rule.
    sensor opening a valve is still right for real control, a thermostat or
    a float valve; it is the wrong idiom for an encounter, because the gate
    clamps at 1. `assets/bench/sir-epidemic.sl` is the worked case.
+   A memory is a stock declared `informational` (#576): `component Memory
+   primitive Buffering stock ideas time constant 5 informational`. An
+   informational flow into it is an inflow, not a gate; it forgets at
+   level / τ, so it rests at inflow × τ (a leaky integrator); reading it
+   copies its level without draining it; and it is off the matter and energy
+   books. An informational flow into any other stock is still its gate.
 3. **`amount` is an absolute rate only on source-originating flows.** On flows
    out of processes it is a *relative weight* for the fanout split; the actual
    outflow of a stock is its `release`/time-constant behavior. Don't decorate

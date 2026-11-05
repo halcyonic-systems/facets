@@ -170,6 +170,7 @@ impl Session {
                 n.remaining = n.reservoir.unwrap_or(0.0);
             }
             "limiting" => n.limiting = v != 0.0,
+            "informational" => n.holds_message = v != 0.0, // a memory, #576
             // An agent's policy numbers are knobs like a setpoint (#269):
             // the goal is declared, the procedure is the kernel's, and the
             // kernel names the refusal (a word not the rule's, a bin the

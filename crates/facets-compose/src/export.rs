@@ -235,6 +235,9 @@ pub fn to_world_model(circuit: &Circuit, name: &str) -> WorldModel {
                                 if node.capacitance != 1.0 {
                                     p.insert("capacitance".to_string(), node.capacitance as f64);
                                 }
+                                if node.holds_message {
+                                    p.insert("informational".to_string(), 1.0);
+                                }
                             }
                             if primitive == ProcessPrimitive::Inverting && node.setpoint != 1.0 {
                                 p.insert("setpoint".to_string(), node.setpoint as f64);
@@ -541,6 +544,9 @@ pub fn from_spec(spec: &facets_core::operational::OperationalSpec) -> Circuit {
         }
         if let Some(&c) = p.cognitive_params.get("capacitance") {
             node.capacitance = c as f32; // #574
+        }
+        if p.cognitive_params.contains_key("informational") {
+            node.holds_message = true; // a memory, #576
         }
         ids.push((p.id.clone(), c.nodes.len()));
         c.nodes.push(node);

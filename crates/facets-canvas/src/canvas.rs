@@ -1144,7 +1144,7 @@ pub fn with_primitive(prev: &Thing, mut next: Thing) -> Thing {
     }
     let p = next.primitive;
     next.cognitive_params.retain(|k, _| match k.as_str() {
-        "release_rate" | "capacity" | "time_constant" | "maintenance" | "capacitance" => p == Some(ProcessPrimitive::Buffering),
+        "release_rate" | "capacity" | "time_constant" | "maintenance" | "capacitance" | "informational" => p == Some(ProcessPrimitive::Buffering),
         "setpoint" => p == Some(ProcessPrimitive::Inverting),
         "limiting" => p == Some(ProcessPrimitive::Combining),
         "back_pressure" => p == Some(ProcessPrimitive::Modulating),

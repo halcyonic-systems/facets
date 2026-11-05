@@ -1046,6 +1046,7 @@ pub fn parse_sl_full(text: &str) -> Result<SlParse, Vec<SlError>> {
                 let mut reservoir: Option<f64> = None;
                 let mut potential: Option<f64> = None;
                 let mut capacitance: Option<f64> = None;
+                let mut holds_message = false;
                 let mut own_words: Vec<(String, f64)> = Vec::new();
                 let mut description = String::new();
                 let mut grounding: Option<Grounding> = None;
@@ -1650,6 +1651,23 @@ pub fn parse_sl_full(text: &str) -> Result<SlParse, Vec<SlError>> {
                             }
                             i += 2;
                         }
+                        // `informational` on a stock (#576, walk row 48): a memory.
+                        // It adds up the messages flowing into it (inflows, not
+                        // a gate), forgets over its `time constant`, and is off
+                        // the matter and energy books: information copies, so it
+                        // is not conserved. Bare; a Buffering component only.
+                        Tok::Word(w) if w.eq_ignore_ascii_case("informational") => {
+                            if role != Role::Component {
+                                fail("`informational` on a thing line applies to a component's stock only".into(), &mut errors);
+                                ok = false;
+                            }
+                            if holds_message {
+                                fail("`informational` already given on this component".into(), &mut errors);
+                                ok = false;
+                            }
+                            holds_message = true;
+                            i += 1;
+                        }
                         Tok::Word(w) if w.eq_ignore_ascii_case("reservoir") => {
                             if !(role == Role::Environment && env_kind == EnvKind::Source) {
                                 fail(
@@ -1940,6 +1958,15 @@ pub fn parse_sl_full(text: &str) -> Result<SlParse, Vec<SlError>> {
                     );
                     ok = false;
                 }
+                if holds_message && primitive != Some(ProcessPrimitive::Buffering) {
+                    fail(
+                        "`informational` applies to a Buffering component only — it makes the \
+                         stock a memory of the messages flowing into it"
+                            .into(),
+                        &mut errors,
+                    );
+                    ok = false;
+                }
                 if capacitance.is_some() && primitive != Some(ProcessPrimitive::Buffering) {
                     fail(
                         "`capacitance` applies to a Buffering component only — it is a stock's \
@@ -2044,6 +2071,9 @@ pub fn parse_sl_full(text: &str) -> Result<SlParse, Vec<SlError>> {
                 }
                 if let Some(c) = capacitance {
                     cognitive_params.insert("capacitance".to_string(), c);
+                }
+                if holds_message {
+                    cognitive_params.insert("informational".to_string(), 1.0);
                 }
                 let mut initial_state = std::collections::HashMap::new();
                 if let Some(v) = initial_stock {
@@ -4897,6 +4927,7 @@ pub fn emit_sl_with(model: &CanvasModel, layout: Option<&SlLayout>) -> Result<St
                     }
                     "back_pressure" => t.primitive == Some(ProcessPrimitive::Modulating),
                     "limiting" => t.primitive == Some(ProcessPrimitive::Combining),
+                    "informational" => t.primitive == Some(ProcessPrimitive::Buffering),
                     "mass_action" => {
                         matches!(
                             t.primitive,
@@ -5017,6 +5048,9 @@ pub fn emit_sl_with(model: &CanvasModel, layout: Option<&SlLayout>) -> Result<St
             }
             if let Some(c) = t.cognitive_params.get("capacitance") {
                 write!(out, " capacitance {c}").unwrap();
+            }
+            if t.cognitive_params.contains_key("informational") {
+                write!(out, " informational").unwrap();
             }
             if let Some(sp) = t.cognitive_params.get("setpoint") {
                 write!(out, " setpoint {sp}").unwrap();
