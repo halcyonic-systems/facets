@@ -1090,3 +1090,15 @@ through `OWN_PARAMS`. The value is the thing's `agency_capacity` (engine terms),
 and `range` is in the word's terms, the same terms as that thing's
 `engine_knobs` row, whose `own` map the face uses to write it. Additive: models
 without such a param serialize unchanged, and no signature changed.
+
+## `with_primitive` (appended 2026-11-04, walk row 51)
+
+`with_primitive(prev_json: string, next_json: string) -> Thing`: a thing after
+its work process changed, with the settings the new process does not read
+cleared, so the canvas never holds a model SL cannot write. The keys follow
+SL's refusals: `release_rate`, `capacity`, `time_constant` and `maintenance`
+are Buffering's, `setpoint` Inverting's, `limiting` Combining's and
+`back_pressure` Modulating's. `agency_capacity` is kept only when both
+processes read the same own word on the same scale. The stock unit and starting
+level are kept. A thing with a rule is returned as given. Rule:
+`facets_canvas::canvas::with_primitive`.

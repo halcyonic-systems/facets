@@ -1,6 +1,6 @@
 import { Suspense, lazy, useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { buildRunRecord, postRunRecord, runRecordFilename, type RunRecord } from "./runRecord";
-import { ready, runMarkov, Bench, parseCsv, openModel, writeArchive, project, analyzeCanvas, checkDecompositionsCanvas, decomposeComponent, compileSl, type ArchiveText, mintModelId, emitSl, sandboxPalette, slAgreement, syncSl, engineKnobs, flowKnobs, flowKinds, runProjection } from "./kernel";
+import { ready, runMarkov, Bench, parseCsv, openModel, writeArchive, project, analyzeCanvas, checkDecompositionsCanvas, decomposeComponent, compileSl, type ArchiveText, mintModelId, emitSl, sandboxPalette, slAgreement, syncSl, engineKnobs, withPrimitive, flowKnobs, flowKinds, runProjection } from "./kernel";
 import type {
   TickLog,
   CanvasModel,
@@ -330,11 +330,13 @@ function Workspace() {
   useEffect(() => {
     saveCoauthorTurns(coauthorTurns);
   }, [coauthorTurns]);
-  const [manifest, setManifest] = useState<Manifest>({ model: "", data: "", t: 12, mapping: [] });
+  const [manifest, setManifest] = useState<Manifest>({ model: "", data: "", t: 100, mapping: [] });
   const [dt, setDt] = useState(1);
   // The discard-confirm's parked resolver (in-app ConfirmDialog; see guardDiscard).
   const [discardAsk, setDiscardAsk] = useState<{ resolve: (ok: boolean) => void } | null>(null);
-  const [t, setT] = useState(12);
+  // The default run length (2026-11-04 toy walk, Shingai): 100 ticks, long
+  // enough to see a stock settle; 12 ended most runs before anything happened.
+  const [t, setT] = useState(100);
   const [result, setResult] = useState<RunResultRich | null>(null);
   // #463 move 2: the run lives on a held engine session. `result` is its
   // readout; `tickLog` is what every component did each tick, in the model's
@@ -391,6 +393,9 @@ function Workspace() {
   // Ticks at which a knob landed while the run kept going (walk row 11): the
   // strip names them, since the totals then mix two settings.
   const [knobTicks, setKnobTicks] = useState<number[]>([]);
+  // The knobs a running-on run took, with their settings, for the chart's
+  // markers (walk row 52).
+  const [knobEdits, setKnobEdits] = useState<import("./kernel/types").KnobEdit[]>([]);
   // #67 J9: a Klir state machine's run is a distribution trajectory, not a
   // conservation ledger — held apart so its result never reaches for a
   // conservation `residual`/`conserved` field (and the conservation pill, driven
@@ -418,7 +423,10 @@ function Workspace() {
   // tick, and a knob turned while it plays lands at that tick. Off = the
   // play-once posture above, exactly. `ranOnRef` marks that the engine was
   // stepped past the recorded run since the last record was written.
-  const [runOn, setRunOn] = useState(true);
+  // Off by default since 2026-11-04 (toy walk, Shingai): a run with a length
+  // that then ticked on forever read as broken. Run plays to the length and
+  // stops; "keep going" turns the live run on.
+  const [runOn, setRunOn] = useState(false);
   const ranOnRef = useRef(false);
   const [selectedRelationId, setSelectedRelationId] = useState<number | null>(null);
   const [selectedThingId, setSelectedThingId] = useState<number | null>(null);
@@ -1165,7 +1173,7 @@ function Workspace() {
       setCanvasModel(cm);
       syncSlPane(null, cm);
       setOpenRef(null);
-      setManifest({ model: "", data: "", t: 12, mapping: [] });
+      setManifest({ model: "", data: "", t: 100, mapping: [] });
       setResult(null);
       setRunError(null);
       setSelectedRelationId(null);
@@ -1212,7 +1220,7 @@ function Workspace() {
     // A pane compile authors a new model with no gallery address; the corpus
     // and example openers restore theirs right after this call returns.
     setOpenRef(null);
-    setManifest({ model: "", data: "", t: 12, mapping: [] });
+    setManifest({ model: "", data: "", t: 100, mapping: [] });
     setResult(null);
     setRunError(null);
     setSelectedRelationId(null);
@@ -1562,7 +1570,7 @@ function Workspace() {
     setSlText(""); // blank canvas, blank page — the seed is for first launch, not File → New
     setSlErrors([]);
     setOpenRef(null);
-    setManifest({ model: "", data: "", t: 12, mapping: [] });
+    setManifest({ model: "", data: "", t: 100, mapping: [] });
     setResult(null);
     setRunError(null);
     setSelectedRelationId(null);
@@ -1965,7 +1973,7 @@ function Workspace() {
       setCanvasModel(cm);
       syncSlPane(null, cm);
       markOpen({ kind: "library", ref: name });
-      setManifest({ model: "", data: "", t: 12, mapping: [] });
+      setManifest({ model: "", data: "", t: 100, mapping: [] });
       setResult(null);
       setRunError(null);
       setSelectedRelationId(null);
@@ -2491,6 +2499,7 @@ function Workspace() {
           setRanEdited(true);
           setRunError(null);
           setKnobTicks(b.edits().filter((e) => e.tick > 0).map((e) => e.tick));
+          setKnobEdits(b.edits().filter((e) => e.tick > 0));
           return;
         }
         if (!structural && changed.length + fieldEdits.length > 0 && b.edits().some((e) => e.tick > 0)) {
@@ -2501,6 +2510,7 @@ function Workspace() {
           // log; the scrubber rests at the end as a knob's answer does.
           const len = Math.max(t, result ? result.ticks * dt : 0);
           setKnobTicks([]);
+      setKnobEdits([]);
           let json: string;
           try {
             json = JSON.stringify(runProjection(nextModel));
@@ -2519,6 +2529,7 @@ function Workspace() {
           // as if it had taken effect at the end (feel-test 2026-10-09).
           b.reset();
           setKnobTicks([]);
+      setKnobEdits([]);
           for (const r of changed) {
             b.setFlowAmountAsWritten(docJson, r.name, nameOf(r.a), nameOf(r.b), Number(r.amount ?? 0));
           }
@@ -2650,6 +2661,7 @@ function Workspace() {
           : "No mechanism stated (⊘M), so structure alone gives Run nothing to execute.";
     const onRun = () => {
       setKnobTicks([]);
+      setKnobEdits([]);
       // #345: no mode transition — the transport lives on the Model surface,
       // so the run happens where the author already is.
       if (runKind === "dtmc") {
@@ -2838,6 +2850,33 @@ function Workspace() {
     setDirty(true);
   }
 
+  // The Element tab's node edit (2026-11-04 toy walk: switching the pond to
+  // impeding left the run on screen stepping the old pond). What a thing
+  // does decides the run, so with a run on screen a change to its work
+  // process, rule, role or interface re-runs, as the door's popover does; a
+  // rename or a description stays a document edit.
+  function updateThingFromElement(edited: import("./kernel/types").Thing) {
+    const prev = canvasModel?.things.find((t) => t.id === edited.id);
+    // Walk row 51: a new work process drops the settings it does not read
+    // (the kernel's rule), so the model stays one SL can write.
+    const next = prev && prev.primitive !== edited.primitive ? withPrimitive(prev, edited) : edited;
+    const decidesRun =
+      prev !== undefined &&
+      (prev.primitive !== next.primitive ||
+        prev.rule !== next.rule ||
+        prev.role !== next.role ||
+        prev.env_kind !== next.env_kind ||
+        prev.interface !== next.interface);
+    if (canvasModel && decidesRun && (result || runError)) {
+      commitInputModel({
+        ...canvasModel,
+        things: canvasModel.things.map((x) => (x.id === next.id ? next : x)),
+      });
+    } else {
+      updateThing(next);
+    }
+  }
+
   const selectedThing =
     canvasModel && selectedThingId !== null ? (thingById(canvasModel, selectedThingId) ?? null) : null;
 
@@ -2966,7 +3005,7 @@ function Workspace() {
     if (!(await guardDiscard()) || !(await flushWalk())) return;
     setDemo(null); setAttachedCsv(null);
     setCanvasModel(null);
-    setManifest({ model: "", data: "", t: 12, mapping: [] });
+    setManifest({ model: "", data: "", t: 100, mapping: [] });
     setResult(null);
     setRunError(null);
     setSelectedRelationId(null);
@@ -3130,7 +3169,7 @@ function Workspace() {
       setDemo(null); setAttachedCsv(null);
       setCanvasModel(cm);
       syncSlPane(null, cm);
-      setManifest({ model: "", data: "", t: 12, mapping: [] });
+      setManifest({ model: "", data: "", t: 100, mapping: [] });
       setResult(null);
       setRunError(null);
       setSelectedRelationId(null);
@@ -4399,6 +4438,7 @@ function Workspace() {
                       lens={canvasModel.lens}
                       onAcceptUnit={acceptDerivedUnit}
                       tick={tick}
+                      knobEdits={knobEdits}
                       model={canvasModel}
                       sourceIds={facts?.source_thing_ids}
                       runKind={LensPalette[canvasModel.lens].run}
@@ -4499,7 +4539,7 @@ function Workspace() {
                       thing: selectedThing,
                       lens: canvasModel.lens,
                       decompose: selectedThing ? decomposeFor(selectedThing) : null,
-                      onUpdate: updateThing,
+                      onUpdate: updateThingFromElement,
                       onDelete: () => selectedThing && deleteThing(selectedThing.id),
                       onDeselect: () => setSelectedThingId(null),
                       settings:

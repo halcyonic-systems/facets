@@ -2,7 +2,7 @@
 // name + unit; every number is the kernel's. The face renders, it does not judge.
 import { useState } from "react";
 import { Line, ReferenceArea, ReferenceLine } from "recharts";
-import type { CanvasModel, Comparison, Level, MarkovRunResult, RunResultRich } from "./kernel/types";
+import type { CanvasModel, Comparison, Level, MarkovRunResult, RunResultRich, KnobEdit } from "./kernel/types";
 import { Button, Card, Pill, Verdict, humanize } from "./ui";
 import { Icon } from "./icons";
 
@@ -206,6 +206,7 @@ export function RunStory({
   model,
   baseline = null,
   sourceIds,
+  knobEdits = [],
 }: {
   result: RunResultRich;
   lens: CanvasModel["lens"];
@@ -215,6 +216,8 @@ export function RunStory({
   baseline?: RunResultRich | null;
   /** Kernel `source_thing_ids`: lets the no-metrics hint name a drawn sink. */
   sourceIds?: number[];
+  /** Knobs a running-on run took (walk row 52), marked on each metric chart. */
+  knobEdits?: KnobEdit[];
 }) {
   const metrics = model ? evaluateMetrics(model, result) : null;
   const baseMetrics = model && baseline ? evaluateMetrics(model, baseline) : null;
@@ -229,7 +232,7 @@ export function RunStory({
         <div className="grid gap-x-8 gap-y-5 xl:grid-cols-2">
           {groupReadings(metrics.readings).map((g) =>
             g.length === 1 ? (
-              <MetricRow key={g[0].name} r={g[0]} tick={tick} height={CHART_H} timeUnit={model?.time_unit} baseline={baseFor(g[0].name)} slot={slots.get(g[0].entity)} />
+              <MetricRow key={g[0].name} r={g[0]} tick={tick} height={CHART_H} timeUnit={model?.time_unit} baseline={baseFor(g[0].name)} slot={slots.get(g[0].entity)} knobEdits={knobEdits} />
             ) : (
               <MetricFamilyChart
                 key={g[0].familyKey}
@@ -649,10 +652,23 @@ function ComparisonFamilyChart({ comparisons, tick, height = 150, timeUnit, slot
   );
 }
 
+/** The knob edits a chart marks, one per tick inside the run, each labelled
+ *  with what was set there ("impedance 0.9"; several at one tick joined). */
+export function knobMarks(edits: KnobEdit[], n: number): { tick: number; label: string }[] {
+  const byTick = new Map<number, string[]>();
+  for (const e of edits) {
+    // An agent writes its knob every tick; only the author's turns are marked.
+    if (e.by?.kind === "agent" || e.tick <= 0 || e.tick >= n) continue;
+    const word = e.field === "amount" ? e.target.split(" : ").pop() ?? e.target : e.field;
+    byTick.set(e.tick, [...(byTick.get(e.tick) ?? []), `${word} ${e.value}`]);
+  }
+  return [...byTick.entries()].sort((a, b) => a[0] - b[0]).map(([tick, ls]) => ({ tick, label: ls.join(", ") }));
+}
+
 /** One declared metric's reading (#203): the author's name and endpoint
  *  number lead; the executed series rides below as a small chart. Same-verb
  *  families arrive pre-sorted by endpoint — the leaderboard reading. */
-export function MetricRow({ r, tick, height = 90, timeUnit, baseline = null, slot = FALLBACK_SLOT }: { r: MetricReading; tick?: number; height?: number; timeUnit?: string | null; baseline?: MetricReading | null; slot?: SeriesSlot }) {
+export function MetricRow({ r, tick, height = 90, timeUnit, baseline = null, slot = FALLBACK_SLOT, knobEdits = [] }: { r: MetricReading; tick?: number; height?: number; timeUnit?: string | null; baseline?: MetricReading | null; slot?: SeriesSlot; knobEdits?: KnobEdit[] }) {
   // Per step: frame 0 (the start) has no value, the i-th step sits at i + 1.
   const n = 1 + Math.max(r.series.length, baseline?.series.length ?? 0);
   const mid = midRun(tick, n);
@@ -674,6 +690,14 @@ export function MetricRow({ r, tick, height = 90, timeUnit, baseline = null, slo
         : `${humanize(baseline.endpoint)}${baseline.unit ? ` ${baseline.unit}` : ""}`
       : null;
   const endpoint = fmt(r.endpoint);
+  // Walk row 52: one marker per knob tick, labelled with what was set, and
+  // the rate read since the last knob rather than averaged across settings.
+  const marks = knobMarks(knobEdits, n);
+  const lastKnob = marks.length > 0 ? marks[marks.length - 1].tick : null;
+  const rateLine =
+    lastKnob !== null && lastKnob < n - 1
+      ? `≈${humanize((r.endpoint - (exactAtFrame(r.series, lastKnob, true) ?? 0)) / (n - 1 - lastKnob))}/tick since the last knob (t=${lastKnob})`
+      : `over ${n} ticks · ≈${humanize(r.endpoint / Math.max(1, n))}/tick`;
   return (
     <div>
       <div className="mb-1 flex items-baseline justify-between gap-3">
@@ -696,7 +720,7 @@ export function MetricRow({ r, tick, height = 90, timeUnit, baseline = null, slo
               ? `at t=${at} · run end ${endpoint}`
               : r.kind === "share"
                 ? "at run end"
-                : `over ${n} ticks · ≈${humanize(r.endpoint / Math.max(1, n))}/tick`}
+                : rateLine}
             {baseEndpoint && <span className="tabular"> · vs baseline {baseEndpoint}</span>}
           </div>
         </div>
@@ -733,6 +757,15 @@ export function MetricRow({ r, tick, height = 90, timeUnit, baseline = null, slo
               tooltipType="none"
             />
           )}
+          {marks.map((m) => (
+            <ReferenceLine
+              key={`knob-${m.tick}`}
+              x={m.tick}
+              stroke="var(--text-muted)"
+              strokeDasharray="2 3"
+              label={{ value: m.label, position: "insideTopLeft", fontSize: 10, fill: "var(--text-muted)" }}
+            />
+          ))}
           {baseline && (
             <Line
               type="monotone"
