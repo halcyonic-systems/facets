@@ -179,13 +179,25 @@ export function LanguagePanel({ onOpenModel }: { onOpenModel?: (model: string) =
         </div>
       </div>
       {/* A fixed height under the figure, so switching readings never moves
-          the page: the generic sentence or the model line and its door. */}
-      <div className="min-h-20">
-        <p className="mt-3 text-sm leading-6" style={{ color: "var(--text-secondary)" }}>
-          {reading.model
-            ? `The same shapes, named as the ${reading.system} model names them.`
-            : "A source sends a flow across an interface to a component inside the system, and on to a sink."}
-        </p>
+          the page: the generic sentence, or the model's question, its measurement
+          and its door. */}
+      <div className="min-h-36">
+        {reading.question ? (
+          <>
+            <p className="mt-3 text-base font-semibold leading-6" style={{ color: "var(--text-primary)" }}>
+              {reading.question}
+            </p>
+            <p className="mt-1 text-sm leading-6" style={{ color: "var(--text-secondary)" }}>
+              What would answer it: {reading.measure} The model maps the system. It does not answer the question yet.
+            </p>
+          </>
+        ) : (
+          <p className="mt-3 text-sm leading-6" style={{ color: "var(--text-secondary)" }}>
+            {reading.model
+              ? `The same shapes, named as the ${reading.system} model names them.`
+              : "A source sends a flow across an interface to a component inside the system, and on to a sink."}
+          </p>
+        )}
         {reading.model && onOpenModel && (
           <button
             type="button"

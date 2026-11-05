@@ -91,4 +91,11 @@ describe("the language figure", () => {
     // the generic reading opens no model
     expect(html).not.toContain("Open the ");
   });
+
+  it("gives every model reading its question and the measurement that would answer it", () => {
+    for (const r of MODEL_READINGS) {
+      expect(r.question).toBeTruthy();
+      expect(r.measure).toBeTruthy();
+    }
+  });
 });
