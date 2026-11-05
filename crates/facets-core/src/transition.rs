@@ -944,6 +944,7 @@ mod tests {
                     is_same_as_id: None,
                     authored_direction: true,
                     reservoir: None,
+                    potential: None,
                 }],
                 sinks: vec![],
                 milieu: Vec::new(),

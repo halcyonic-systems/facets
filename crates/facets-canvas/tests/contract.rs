@@ -86,6 +86,8 @@ fn relation(id: u64, a: u64, b: u64, name: &str, is_bond: bool, kind: Kind) -> R
         substance: String::new(),
         ample: false,
         spill: false,
+        conductance: None,
+        one_way: false,
     }
 }
 

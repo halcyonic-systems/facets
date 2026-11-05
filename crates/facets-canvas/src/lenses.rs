@@ -1869,6 +1869,8 @@ mod tests {
             substance: String::new(),
             ample: false,
             spill: false,
+            conductance: None,
+            one_way: false,
         }
     }
     fn model(things: Vec<Thing>, relations: Vec<Relation>) -> CanvasModel {

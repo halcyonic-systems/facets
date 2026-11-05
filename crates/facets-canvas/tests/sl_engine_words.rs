@@ -372,3 +372,76 @@ fn spill_refuses_off_a_bounded_stock() {
     assert!(refuse("component T primitive Buffering stock kg capacity 5", "flow T -> Out : matter \"over\" amount 2 spill").contains("no magnitude"));
     assert!(refuse("component T primitive Buffering stock kg capacity 5", "flow T -> Out : informational \"over\" spill").contains("cannot spill"));
 }
+
+/// #574 (walk row 48): `: field ... conductance G [one way]`, `capacitance`
+/// on a stock, `potential` on a source. Two connected tanks of different
+/// widths even out by height (level / capacitance), not by volume.
+fn field_run(text: &str, ticks: usize) -> facets_compose::Circuit {
+    let m = parse_sl(text).unwrap();
+    let again = parse_sl(&emit_sl(&m).unwrap()).unwrap();
+    assert_eq!(
+        again.relations.iter().map(|r| (r.conductance, r.one_way)).collect::<Vec<_>>(),
+        m.relations.iter().map(|r| (r.conductance, r.one_way)).collect::<Vec<_>>()
+    );
+    let spec = facets_core::operational::validate_operational(&project(&m)).unwrap();
+    let mut c = facets_compose::from_spec(&spec);
+    for _ in 0..ticks {
+        c.step();
+    }
+    c
+}
+
+#[test]
+fn field_flows_even_out_potential_both_ways() {
+    let tanks = |a: f64, b: f64, way: &str| {
+        format!(
+            "system \"Tanks\" : Concrete/Physical\n\
+             component Narrow primitive Buffering stock m3 initial {a}\n\
+             component Wide primitive Buffering stock m3 initial {b} capacitance 4\n\
+             flow Narrow -> Wide : field \"pipe\" substance water conductance 0.3{way}\n"
+        )
+    };
+    let ix = |c: &facets_compose::Circuit, n: &str| c.nodes.iter().position(|x| x.name == n).unwrap();
+    // Forward: 10 m3 in the narrow tank settle at height 2 in both: 2 and 8.
+    let c = field_run(&tanks(10.0, 0.0, ""), 200);
+    assert!((c.nodes[ix(&c, "Narrow")].storage - 2.0).abs() < 1e-3, "{}", c.nodes[ix(&c, "Narrow")].storage);
+    assert!((c.nodes[ix(&c, "Wide")].storage - 8.0).abs() < 1e-3);
+    // Backward: the wide tank full, the same pipe runs the other way.
+    let c = field_run(&tanks(0.0, 10.0, ""), 200);
+    assert!((c.nodes[ix(&c, "Narrow")].storage - 2.0).abs() < 1e-3, "{}", c.nodes[ix(&c, "Narrow")].storage);
+    // `one way`: a check valve holds the backward flow.
+    let c = field_run(&tanks(0.0, 10.0, " one way"), 200);
+    assert_eq!(c.nodes[ix(&c, "Narrow")].storage, 0.0);
+    // Never past level, however large G · Δt: one step at G = 100 evens out.
+    let c = field_run(&tanks(10.0, 0.0, "").replace("conductance 0.3", "conductance 100"), 1);
+    assert!((c.nodes[ix(&c, "Narrow")].storage - 2.0).abs() < 1e-4, "{}", c.nodes[ix(&c, "Narrow")].storage);
+    assert!(c.balance().abs() < 1e-4);
+}
+
+#[test]
+fn a_capacitor_charges_to_its_sources_potential() {
+    let c = field_run(
+        "system \"RC\" : Concrete/Physical\n\
+         source Battery potential 12\n\
+         interface Lead\n\
+         component Cap primitive Buffering stock C capacitance 2\n\
+         flow Battery -> Lead : field \"current\" substance charge conductance 0.25\n\
+         flow Lead -> Cap : field \"current\" substance charge conductance 0.25\n",
+        300,
+    );
+    let cap = c.nodes.iter().position(|x| x.name == "Cap").unwrap();
+    // Charge = C · V = 24 at rest, approached from below.
+    assert!((c.nodes[cap].storage - 24.0).abs() < 1e-2, "{}", c.nodes[cap].storage);
+    assert!(c.nodes[cap].storage <= 24.0 + 1e-4);
+}
+
+#[test]
+fn field_words_refuse_off_their_readers() {
+    let base = "system \"S\" : Concrete/Physical\ncomponent A primitive Buffering stock m\ncomponent B primitive Buffering stock m\n";
+    let f = |line: &str| errs(&format!("{base}{line}\n"));
+    assert!(f("flow A -> B : matter \"x\" conductance 1").contains("write the flow `: field`"));
+    assert!(f("flow A -> B : field \"x\" conductance -1").contains("conductance syntax"));
+    assert!(f("flow A -> B : field \"x\" amount 2 conductance 1").contains("not a declared amount"));
+    assert!(errs("system \"S\" : Concrete/Physical\nsink Out potential 3\n").contains("`source` line only"));
+    assert!(errs("system \"S\" : Concrete/Physical\ncomponent X primitive Combining capacitance 2 interface\n").contains("Buffering component only"));
+}

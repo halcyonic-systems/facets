@@ -1974,6 +1974,11 @@ pub struct ExternalEntity {
     /// model written before this field stays byte-identical.
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub reservoir: Option<f64>,
+    /// A source's potential for field flows (#574), apart from its emission
+    /// rate: what a `: field ... conductance` flow out of it compares. SL:
+    /// `source Battery potential 12`. `None` = the old shared number.
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub potential: Option<f64>,
 }
 
 fn default_true() -> bool {

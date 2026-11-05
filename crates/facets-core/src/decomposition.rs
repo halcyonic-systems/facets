@@ -547,6 +547,7 @@ pub fn derive_child(parent: &WorldModel, comp: &Id) -> Result<WorldModel, Vec<Va
             // to its direction (#216).
             authored_direction: true,
             reservoir: None,
+            potential: None,
         });
         of.insert(neighbor.clone(), id);
     };

@@ -1044,6 +1044,8 @@ pub fn parse_sl_full(text: &str) -> Result<SlParse, Vec<SlError>> {
                 let mut limiting = false;
                 let mut mass_action: Option<f64> = None;
                 let mut reservoir: Option<f64> = None;
+                let mut potential: Option<f64> = None;
+                let mut capacitance: Option<f64> = None;
                 let mut own_words: Vec<(String, f64)> = Vec::new();
                 let mut description = String::new();
                 let mut grounding: Option<Grounding> = None;
@@ -1598,6 +1600,56 @@ pub fn parse_sl_full(text: &str) -> Result<SlParse, Vec<SlError>> {
                         // engine's Node.reservoir, after which its flows stop.
                         // Source lines only: a sink receives, a component holds
                         // a `stock`, and an unbounded source is the default.
+                        // `potential <n>` on a source line and `capacitance <n>`
+                        // on a stock (#574, walk row 48): what a field flow
+                        // compares. A source's potential is its own number,
+                        // apart from its emission rate; a stock's potential is
+                        // its level over its capacitance (volume over area,
+                        // charge over capacitance, heat over heat capacity).
+                        Tok::Word(w) if w.eq_ignore_ascii_case("potential") => {
+                            if !(role == Role::Environment && env_kind == EnvKind::Source) {
+                                fail("`potential` applies to a `source` line only — the fixed potential a field flow out of it compares (a stock's potential is its level over its `capacitance`)".into(), &mut errors);
+                                ok = false;
+                            }
+                            if potential.is_some() {
+                                fail("`potential` already given on this line".into(), &mut errors);
+                                ok = false;
+                            }
+                            match attrs.get(i + 1) {
+                                Some(Tok::Word(n))
+                                    if n.parse::<f64>().is_ok_and(|v| v.is_finite() && v > 0.0) =>
+                                {
+                                    potential = Some(n.parse::<f64>().unwrap());
+                                }
+                                _ => {
+                                    fail("potential syntax: `potential <positive number>` — the source's fixed potential for its field flows (e.g. `potential 12`)".into(), &mut errors);
+                                    ok = false;
+                                }
+                            }
+                            i += 2;
+                        }
+                        Tok::Word(w) if w.eq_ignore_ascii_case("capacitance") => {
+                            if !(role == Role::Component) {
+                                fail("`capacitance` applies to a component's stock only — a stock's quantity per unit of potential".into(), &mut errors);
+                                ok = false;
+                            }
+                            if capacitance.is_some() {
+                                fail("`capacitance` already given on this line".into(), &mut errors);
+                                ok = false;
+                            }
+                            match attrs.get(i + 1) {
+                                Some(Tok::Word(n))
+                                    if n.parse::<f64>().is_ok_and(|v| v.is_finite() && v > 0.0) =>
+                                {
+                                    capacitance = Some(n.parse::<f64>().unwrap());
+                                }
+                                _ => {
+                                    fail("capacitance syntax: `capacitance <positive number>` — the stock's quantity per unit of potential; its field flows compare level / capacitance (e.g. `capacitance 4`)".into(), &mut errors);
+                                    ok = false;
+                                }
+                            }
+                            i += 2;
+                        }
                         Tok::Word(w) if w.eq_ignore_ascii_case("reservoir") => {
                             if !(role == Role::Environment && env_kind == EnvKind::Source) {
                                 fail(
@@ -1888,6 +1940,15 @@ pub fn parse_sl_full(text: &str) -> Result<SlParse, Vec<SlError>> {
                     );
                     ok = false;
                 }
+                if capacitance.is_some() && primitive != Some(ProcessPrimitive::Buffering) {
+                    fail(
+                        "`capacitance` applies to a Buffering component only — it is a stock's \
+                         quantity per unit of potential, and only a stock holds a quantity"
+                            .into(),
+                        &mut errors,
+                    );
+                    ok = false;
+                }
                 if limiting && primitive != Some(ProcessPrimitive::Combining) {
                     fail(
                         "`limiting` applies to a Combining component only — it bounds the \
@@ -1977,6 +2038,12 @@ pub fn parse_sl_full(text: &str) -> Result<SlParse, Vec<SlError>> {
                 }
                 if let Some(r) = reservoir {
                     cognitive_params.insert("reservoir".to_string(), r);
+                }
+                if let Some(p) = potential {
+                    cognitive_params.insert("potential".to_string(), p);
+                }
+                if let Some(c) = capacitance {
+                    cognitive_params.insert("capacitance".to_string(), c);
                 }
                 let mut initial_state = std::collections::HashMap::new();
                 if let Some(v) = initial_stock {
@@ -2744,6 +2811,8 @@ pub fn parse_sl_full(text: &str) -> Result<SlParse, Vec<SlError>> {
                         substance: String::new(),
                         ample: false,
                         spill: false,
+                        conductance: None,
+                        one_way: false,
                     });
                     next_id += 1;
                 }
@@ -2947,6 +3016,60 @@ pub fn parse_sl_full(text: &str) -> Result<SlParse, Vec<SlError>> {
                 // stock's overflow at capacity, and nothing else. A
                 // Buffering's own law, so it has no magnitude to declare;
                 // the source is checked once the endpoints resolve below.
+                // `conductance <G> [one way]` (#574, walk row 48): a field
+                // flow, moving `G · (potential difference)` a time unit, both
+                // ways unless `one way` (a diode, a check valve). `: field`
+                // only; it lowers to a Force interaction, the engine's
+                // gradient wire.
+                let mut conductance: Option<f64> = None;
+                let mut one_way = false;
+                if let [Tok::Word(w), rest_tail @ ..] = tail {
+                    if w.eq_ignore_ascii_case("conductance") {
+                        match rest_tail {
+                            [Tok::Word(g), more @ ..]
+                                if g.parse::<f64>().is_ok_and(|v| v.is_finite() && v > 0.0) =>
+                            {
+                                conductance = Some(g.parse::<f64>().unwrap());
+                                tail = more;
+                            }
+                            _ => {
+                                fail(
+                                    "conductance syntax: `conductance <positive number>` — the \
+                                     field flow's G, moving G times the potential difference \
+                                     a time unit (e.g. `conductance 0.2`)"
+                                        .into(),
+                                    &mut errors,
+                                );
+                                continue;
+                            }
+                        }
+                        if let [Tok::Word(o), Tok::Word(w2), more @ ..] = tail {
+                            if o.eq_ignore_ascii_case("one") && w2.eq_ignore_ascii_case("way") {
+                                one_way = true;
+                                tail = more;
+                            }
+                        }
+                    }
+                }
+                if conductance.is_some() && kind != Kind::Field {
+                    fail(
+                        "`conductance` makes a field flow — write the flow `: field` (heat, \
+                         charge, a concentration or a level evening out); a pushed matter, \
+                         energy or informational flow has no conductance"
+                            .into(),
+                        &mut errors,
+                    );
+                    continue;
+                }
+                if conductance.is_some() && (amount.is_some() || ample) {
+                    fail(
+                        "`conductance` with `amount` or `ample` — a field flow's rate is G \
+                         times the potential difference, not a declared amount; remove one"
+                            .into(),
+                        &mut errors,
+                    );
+                    continue;
+                }
                 let mut spill = false;
                 if let [Tok::Word(w), rest_tail @ ..] = tail {
                     if w.eq_ignore_ascii_case("spill") {
@@ -3189,6 +3312,8 @@ pub fn parse_sl_full(text: &str) -> Result<SlParse, Vec<SlError>> {
                     substance,
                     ample,
                     spill,
+                    conductance,
+                    one_way,
                 });
                 next_id += 1;
             }
@@ -4751,14 +4876,16 @@ pub fn emit_sl_with(model: &CanvasModel, layout: Option<&SlLayout>) -> Result<St
             && t.cognitive_params.contains_key("time_constant");
         let source_reservoir_only = t.role == Role::Environment
             && t.env_kind == EnvKind::Source
-            && t.cognitive_params.len() == 1
-            && t.cognitive_params.get("reservoir").is_some_and(|v| v.is_finite() && *v > 0.0);
+            && !t.cognitive_params.is_empty()
+            && t.cognitive_params.iter().all(|(k, v)| {
+                matches!(k.as_str(), "reservoir" | "potential") && v.is_finite() && *v > 0.0
+            });
         let cognitive_expressible = t.cognitive_params.is_empty()
             || source_reservoir_only
             || (t.role == Role::Component
                 && !release_tc_conflict
                 && t.cognitive_params.iter().all(|(k, v)| match k.as_str() {
-                    "release_rate" | "capacity" | "time_constant" | "maintenance" => {
+                    "release_rate" | "capacity" | "time_constant" | "maintenance" | "capacitance" => {
                         t.primitive == Some(ProcessPrimitive::Buffering)
                             && v.is_finite()
                             && *v > 0.0
@@ -4852,6 +4979,9 @@ pub fn emit_sl_with(model: &CanvasModel, layout: Option<&SlLayout>) -> Result<St
             if let Some(r) = t.cognitive_params.get("reservoir") {
                 write!(out, " reservoir {r}").unwrap();
             }
+            if let Some(p) = t.cognitive_params.get("potential") {
+                write!(out, " potential {p}").unwrap();
+            }
         }
         if t.role == Role::Component {
             if let Some(p) = t.primitive {
@@ -4884,6 +5014,9 @@ pub fn emit_sl_with(model: &CanvasModel, layout: Option<&SlLayout>) -> Result<St
             }
             if let Some(tc) = t.cognitive_params.get("time_constant") {
                 write!(out, " time constant {tc}").unwrap();
+            }
+            if let Some(c) = t.cognitive_params.get("capacitance") {
+                write!(out, " capacitance {c}").unwrap();
             }
             if let Some(sp) = t.cognitive_params.get("setpoint") {
                 write!(out, " setpoint {sp}").unwrap();
@@ -5011,6 +5144,12 @@ pub fn emit_sl_with(model: &CanvasModel, layout: Option<&SlLayout>) -> Result<St
         }
         if !r.unit.is_empty() {
             write!(out, " unit {}", name_token(&r.unit)?).unwrap();
+        }
+        if let Some(g) = r.conductance {
+            write!(out, " conductance {g}").unwrap();
+            if r.one_way {
+                write!(out, " one way").unwrap();
+            }
         }
         if r.spill {
             write!(out, " spill").unwrap();
@@ -5406,6 +5545,8 @@ pub const RESERVED_WORDS: &[&str] = &[
     "limiting",
     "mass",
     "reservoir",
+    "potential",
+    "capacitance",
     "gain",
     "efficiency",
     "impedance",
@@ -5462,6 +5603,8 @@ pub const POSITIONAL_KEYWORDS: &[&str] = &[
     "bunge", "mobus", "constant",
     // the overflow route (#578): a flow-line word after the quantity clauses
     "spill",
+    // the field flow (#574): flow-line words after the quantity clauses
+    "conductance", "one", "way",
     // the rate law (#573): `action` only ever follows `mass`
     "action",
     // the agent line (facets#269): `proportional` is the word after `rule`, `target`

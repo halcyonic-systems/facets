@@ -113,6 +113,7 @@ pub fn to_world_model(circuit: &Circuit, name: &str) -> WorldModel {
                     // A compose circuit node's kind IS its direction (#216).
                     authored_direction: true,
                     reservoir: None,
+                    potential: None,
                 });
                 node_id.insert(i, eid);
             }
@@ -129,6 +130,7 @@ pub fn to_world_model(circuit: &Circuit, name: &str) -> WorldModel {
                     // A compose circuit node's kind IS its direction (#216).
                     authored_direction: true,
                     reservoir: None,
+                    potential: None,
                 });
                 node_id.insert(i, eid);
             }
@@ -230,6 +232,9 @@ pub fn to_world_model(circuit: &Circuit, name: &str) -> WorldModel {
                                 if node.maintenance > 0.0 {
                                     p.insert("maintenance".to_string(), node.maintenance as f64);
                                 }
+                                if node.capacitance != 1.0 {
+                                    p.insert("capacitance".to_string(), node.capacitance as f64);
+                                }
                             }
                             if primitive == ProcessPrimitive::Inverting && node.setpoint != 1.0 {
                                 p.insert("setpoint".to_string(), node.setpoint as f64);
@@ -324,11 +329,15 @@ pub fn to_world_model(circuit: &Circuit, name: &str) -> WorldModel {
             ample: wire.ample,
             spill: wire.spill,
             parameters: if wire.mode == FlowMode::Gradient {
-                vec![Parameter {
+                let mut ps = vec![Parameter {
                     name: "conductance".to_string(),
                     value: wire.conductance.to_string(),
                     ..Default::default()
-                }]
+                }];
+                if wire.one_way {
+                    ps.push(Parameter { name: "one_way".to_string(), value: "1".to_string(), ..Default::default() });
+                }
+                ps
             } else {
                 Vec::new()
             },
@@ -482,6 +491,7 @@ pub fn from_spec(spec: &facets_core::operational::OperationalSpec) -> Circuit {
         let mut node = Node::new(NodeKind::Source, ids.len() + 1, grid(ids.len()));
         node.name = t.name.clone();
         node.reservoir = t.reservoir.map(|r| r as f32);
+        node.potential = t.potential.map(|p| p as f32); // #574
         node.remaining = node.reservoir.unwrap_or(0.0);
         ids.push((t.id.clone(), c.nodes.len()));
         c.nodes.push(node);
@@ -528,6 +538,9 @@ pub fn from_spec(spec: &facets_core::operational::OperationalSpec) -> Circuit {
         }
         if let Some(&k) = p.cognitive_params.get("mass_action") {
             node.mass_action = k as f32;
+        }
+        if let Some(&c) = p.cognitive_params.get("capacitance") {
+            node.capacitance = c as f32; // #574
         }
         ids.push((p.id.clone(), c.nodes.len()));
         c.nodes.push(node);
@@ -598,6 +611,7 @@ pub fn from_spec(spec: &facets_core::operational::OperationalSpec) -> Circuit {
         // ample wire to a 0 delivery, so whatever `amount` the lowering
         // defaulted to can never act.
         wire.ample = f.ample;
+        wire.one_way = f.one_way; // a field flow that only runs forward, #574
         wire.spill = f.spill; // the overflow route, #578
         if substance_named.insert(from) {
             c.nodes[from].out_substance = DeclaredSubstance {
@@ -752,6 +766,7 @@ mod tests {
             amount,
             ample: false,
             spill: false,
+            one_way: false,
             conductance: None,
             interface_routing: None,
             rate_series: None,
@@ -763,18 +778,21 @@ mod tests {
             sources: vec![OperationalTerminal {
                 id: id(IdType::Source, 0),
                 name: "Provider".into(),
-                reservoir: None
+                reservoir: None,
+                potential: None,
             }],
             sinks: vec![
                 OperationalTerminal {
                     id: id(IdType::Sink, 0),
                     name: "Dev channel".into(),
-                    reservoir: None
+                    reservoir: None,
+                    potential: None,
                 },
                 OperationalTerminal {
                     id: id(IdType::Sink, 1),
                     name: "Enterprise channel".into(),
-                    reservoir: None
+                    reservoir: None,
+                    potential: None,
                 },
             ],
             flows: vec![flow("dev tokens", 0, 12.0), flow("ent tokens", 1, 1.0)],
@@ -847,6 +865,7 @@ mod tests {
                 amount,
                 ample,
                 spill: false,
+                one_way: false,
                 conductance: None,
                 interface_routing: None,
                 rate_series: None,
@@ -864,10 +883,10 @@ mod tests {
                     stock_unit: String::new(),
                 }],
                 sources: vec![
-                    OperationalTerminal { id: id(IdType::Source, 0), name: "Lab".into(), reservoir: None },
-                    OperationalTerminal { id: id(IdType::Source, 1), name: "Grid".into(), reservoir: None },
+                    OperationalTerminal { id: id(IdType::Source, 0), name: "Lab".into(), reservoir: None, potential: None },
+                    OperationalTerminal { id: id(IdType::Source, 1), name: "Grid".into(), reservoir: None, potential: None },
                 ],
-                sinks: vec![OperationalTerminal { id: id(IdType::Sink, 0), name: "Served".into(), reservoir: None }],
+                sinks: vec![OperationalTerminal { id: id(IdType::Sink, 0), name: "Served".into(), reservoir: None, potential: None }],
                 flows: vec![
                     flow("weights", id(IdType::Source, 0), id(IdType::Subsystem, 0), SubstanceType::Message, signal_amount, ample),
                     flow("compute", id(IdType::Source, 1), id(IdType::Subsystem, 0), SubstanceType::Energy, 100.0, false),
@@ -933,12 +952,14 @@ mod tests {
             sources: vec![OperationalTerminal {
                 id: id(IdType::Source, 0),
                 name: "Provider".into(),
-                reservoir: None
+                reservoir: None,
+                potential: None,
             }],
             sinks: vec![OperationalTerminal {
                 id: id(IdType::Sink, 0),
                 name: "Dev channel".into(),
-                reservoir: None
+                reservoir: None,
+                potential: None,
             }],
             flows: vec![OperationalFlow {
                 name: "forced tokens".into(),
@@ -950,6 +971,7 @@ mod tests {
                 amount: 999.0, // the mean must NOT govern — the series does
                 ample: false,
                 spill: false,
+                one_way: false,
                 conductance: None,
                 interface_routing: None,
                 rate_series: Some(vec![4.0, 8.0, 0.5]),
@@ -1000,6 +1022,7 @@ mod tests {
             amount: 4.0,
             ample: false,
             spill: false,
+            one_way: false,
             conductance: None,
             interface_routing: None,
             rate_series: weight,
@@ -1019,11 +1042,12 @@ mod tests {
             sources: vec![OperationalTerminal {
                 id: id(IdType::Source, 0),
                 name: "Demand".into(),
-                reservoir: None
+                reservoir: None,
+                potential: None,
             }],
             sinks: vec![
-                OperationalTerminal { id: id(IdType::Sink, 0), name: "Big".into(), reservoir: None },
-                OperationalTerminal { id: id(IdType::Sink, 1), name: "Small".into(), reservoir: None },
+                OperationalTerminal { id: id(IdType::Sink, 0), name: "Big".into(), reservoir: None, potential: None },
+                OperationalTerminal { id: id(IdType::Sink, 1), name: "Small".into(), reservoir: None, potential: None },
             ],
             flows: vec![
                 flow("demand", id(IdType::Source, 0), id(IdType::Subsystem, 1), None),
@@ -1064,8 +1088,8 @@ mod tests {
         let spec = OperationalSpec {
             agents: Vec::new(),
             processes: vec![],
-            sources: vec![OperationalTerminal { id: id(IdType::Source, 0), name: "Demand".into(), reservoir: None }],
-            sinks: vec![OperationalTerminal { id: id(IdType::Sink, 0), name: "Channel".into(), reservoir: None }],
+            sources: vec![OperationalTerminal { id: id(IdType::Source, 0), name: "Demand".into(), reservoir: None, potential: None }],
+            sinks: vec![OperationalTerminal { id: id(IdType::Sink, 0), name: "Channel".into(), reservoir: None, potential: None }],
             flows: vec![OperationalFlow {
                 name: "annual demand".into(),
                 source: id(IdType::Source, 0),
@@ -1076,6 +1100,7 @@ mod tests {
                 amount: 1.0,
                 ample: false,
                 spill: false,
+                one_way: false,
                 conductance: None,
                 interface_routing: None,
                 rate_series: Some(vec![10.0, 20.0]),

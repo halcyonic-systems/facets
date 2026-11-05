@@ -64,6 +64,8 @@ fn rel(id: u64, a: u64, b: u64) -> Relation {
         substance: String::new(),
         ample: false,
         spill: false,
+        conductance: None,
+        one_way: false,
     }
 }
 

@@ -362,6 +362,14 @@ pub struct Node {
     /// step (#578): its overflow at capacity, split evenly when it has
     /// several. `wire_amount` reports a spill wire from it.
     pub spilled: f32,
+    /// A stock's capacitance C (#574): its quantity per unit of potential,
+    /// so a field flow compares `storage / C` (a tank's height is volume over
+    /// area, a capacitor's voltage charge over capacitance, a body's
+    /// temperature heat over heat capacity). `1.0` = the raw level, as before.
+    pub capacitance: f32,
+    /// A source's potential for field flows (#574), apart from its emission
+    /// rate. `None` = the source's `param`, as before.
+    pub potential: Option<f32>,
     /// An agent's decision model (facets#269). Only `NodeKind::Agent` reads
     /// it, the way only Inverting reads `setpoint`; its numbers are the
     /// declared policy (the goal) and the kernel's `Policy::decide` is the
@@ -432,6 +440,8 @@ impl Node {
             mass_action: 0.0,     // 0 = no rate law: pushed throughput
             pulled: 0.0,
             spilled: 0.0,
+            capacitance: 1.0,
+            potential: None,
             policy: facets_core::Policy::default(),
             knob: None,
             watch: None,
@@ -498,6 +508,9 @@ pub struct Wire {
     /// stock cannot hold at its capacity, the same tick, and nothing else.
     /// It is no spout for the release and joins no fanout split.
     pub spill: bool,
+    /// A gradient wire that only runs forward (#574). Off, a gradient wire
+    /// follows the sign of the potential difference, both ways.
+    pub one_way: bool,
     /// Multi-timescale (rung 3): this wire's `rate_series` is sampled once every
     /// `dt_stride` time units and ZERO-ORDER-HELD between — the channel's own
     /// Δt = `dt_stride ×` the model's time unit, Mobus's per-node `Δt_{i,l}` as
@@ -527,6 +540,7 @@ impl Wire {
             substance_override: None,
             ample: false,
             spill: false,
+            one_way: false,
         }
     }
     pub fn gradient(from: usize, to: usize, conductance: f32) -> Self {
@@ -542,6 +556,7 @@ impl Wire {
             substance_override: None,
             ample: false,
             spill: false,
+            one_way: false,
         }
     }
 }
@@ -1254,12 +1269,9 @@ impl Circuit {
             return 0.0; // availability, not quantity (#9) — same as the engine
         }
         if w.mode == FlowMode::Gradient {
-            return if self.has_potential(w.from) {
-                self.crossing_factor(w.from)
-                    * (w.conductance * (self.level(w.from) - self.level(w.to))).max(0.0)
-            } else {
-                0.0
-            };
+            // Signed, per time unit (#574): the same law as the step, less
+            // the donor cap the step applies to its own rates.
+            return self.field_flux(k, 1.0);
         }
         if self.is_observation(w) {
             // non-draining level read: the level the last step read
@@ -1503,6 +1515,60 @@ impl Circuit {
         )
     }
 
+    /// What a field flow compares at node `i` (#574): a stock's level over
+    /// its capacitance, a source's declared potential (else its `param`), a
+    /// sink's zero. Equal to `level` wherever nothing new is declared.
+    pub fn potential(&self, i: usize) -> f32 {
+        let node = &self.nodes[i];
+        match node.kind {
+            NodeKind::Process(ProcessPrimitive::Buffering) => node.storage / node.capacitance,
+            NodeKind::Source => node.potential.unwrap_or(node.param),
+            _ => self.level(i),
+        }
+    }
+
+    /// `1 / C` at a field flow's end: a stock's, or zero where the potential
+    /// is held fixed (a source, a sink).
+    fn inverse_capacitance(&self, i: usize) -> f32 {
+        match self.nodes[i].kind {
+            NodeKind::Process(ProcessPrimitive::Buffering) => 1.0 / self.nodes[i].capacitance,
+            _ => 0.0,
+        }
+    }
+
+    /// One field flow's signed rate law (#574), uncapped by what the donor
+    /// holds: `G · (potential(from) − potential(to))`, positive forward. It
+    /// runs backward only when the wire is not `one_way` and the far end has
+    /// a potential to give from. Capped at the amount that evens the two
+    /// potentials out, `Δp / (1/C_from + 1/C_to)`: a passive gradient never
+    /// reverses itself in a step, whatever `dt · G` (the step's error shows
+    /// as reaching level, never as overshoot). `amount` is per `dt`.
+    fn field_flux(&self, k: usize, dt: f32) -> f32 {
+        let w = &self.wires[k];
+        let dp = self.potential(w.from) - self.potential(w.to);
+        // Backward needs a potential at BOTH ends: a gradient lies between
+        // two potentials, and a process or sink at the head has none to take
+        // a flow back into. Forward is as before: anything with a potential
+        // drives a flow into whatever it feeds.
+        let flows = if dp > 0.0 {
+            self.has_potential(w.from)
+        } else {
+            !w.one_way && self.has_potential(w.to) && self.has_potential(w.from)
+        };
+        if !flows || dp == 0.0 {
+            return 0.0;
+        }
+        let raw = dt * self.crossing_factor(w.from) * w.conductance * dp;
+        let inv = self.inverse_capacitance(w.from) + self.inverse_capacitance(w.to);
+        if inv > 0.0 {
+            let even = dp / inv;
+            if raw.abs() > even.abs() {
+                return even;
+            }
+        }
+        raw
+    }
+
     /// One step at the model's own Δt (`dt = 1.0`, one time unit per step).
     ///
     /// Kept so the 60-odd call sites that mean "advance one tick of this level"
@@ -1562,22 +1628,15 @@ impl Circuit {
         // ── Gradient flows (Potential Fields): rate = conductance·(Δlevel),
         // forward-only, read from pre-tick levels (synchronous). Capped so a
         // buffer source can't drain below zero in one tick. ──
-        let mut grad: Vec<f32> = self
-            .wires
-            .iter()
-            .map(|w| {
-                if w.mode == FlowMode::Gradient && self.has_potential(w.from) {
-                    // Boundary porosity scales a source-fed crossing gradient
-                    // (bert-lenses#54), mirroring `wire_amount`'s gradient path
-                    // so display and run agree.
-                    // × dt: conductance × Δlevel is a rate (#258)
-                    dt * self.crossing_factor(w.from)
-                        * (w.conductance * (self.level(w.from) - self.level(w.to))).max(0.0)
-                } else {
-                    0.0
-                }
-            })
+        // Signed since #574: positive runs forward, negative back, and a
+        // wire's donor is whichever end it drains. Boundary porosity scales
+        // a source-fed crossing gradient (bert-lenses#54), as in
+        // `wire_amount`, so display and run agree. × dt: G × Δpotential is a
+        // rate (#258).
+        let mut grad: Vec<f32> = (0..nw)
+            .map(|k| if self.wires[k].mode == FlowMode::Gradient { self.field_flux(k, dt) } else { 0.0 })
             .collect();
+        let donor = |k: usize, g: f32| if g >= 0.0 { self.wires[k].from } else { self.wires[k].to };
         for i in 0..n {
             // Buffers can over-drain; a finite source can run dry; an
             // unbounded source is a fixed potential and never caps.
@@ -1587,9 +1646,9 @@ impl Circuit {
                 _ => continue,
             };
             let idxs: Vec<usize> = (0..nw)
-                .filter(|&k| self.wires[k].from == i && self.wires[k].mode == FlowMode::Gradient)
+                .filter(|&k| self.wires[k].mode == FlowMode::Gradient && grad[k] != 0.0 && donor(k, grad[k]) == i)
                 .collect();
-            let total: f32 = idxs.iter().map(|&k| grad[k]).sum();
+            let total: f32 = idxs.iter().map(|&k| grad[k].abs()).sum();
             if total > available && total > 0.0 {
                 let scale = available.max(0.0) / total;
                 for k in idxs {
@@ -1597,12 +1656,23 @@ impl Circuit {
                 }
             }
         }
-        // Gradient outflow leaving each node (drains buffers).
+        // Net field flow leaving each node: what it sent forward less what
+        // came back to it from wires it heads (negative = a gain). The
+        // stock's settle reads it signed; `field_drain` is what the field
+        // flows took out of it, either direction, the bound on its release.
         let gradient_out: Vec<f32> = (0..n)
             .map(|i| {
                 (0..nw)
                     .filter(|&k| self.wires[k].from == i)
                     .map(|k| grad[k])
+                    .sum()
+            })
+            .collect();
+        let field_drain: Vec<f32> = (0..n)
+            .map(|i| {
+                (0..nw)
+                    .filter(|&k| grad[k] != 0.0 && donor(k, grad[k]) == i)
+                    .map(|k| grad[k].abs())
                     .sum()
             })
             .collect();
@@ -1640,7 +1710,7 @@ impl Circuit {
                     .filter(|&k| self.wires[k].from == i && self.is_law_pull(&self.wires[k]))
                     .map(|k| law_rate[self.wires[k].to])
                     .sum();
-                let available = (self.nodes[i].storage - gradient_out[i]).max(0.0);
+                let available = (self.nodes[i].storage - field_drain[i]).max(0.0);
                 if asked > available && asked > 0.0 {
                     available / asked
                 } else {
@@ -1881,7 +1951,7 @@ impl Circuit {
                     match node.reservoir {
                         // A finite source emits what it has left after this
                         // tick's gradient drain, then nothing (#260).
-                        Some(_) => rate.min((node.remaining - gradient_out[i]).max(0.0)),
+                        Some(_) => rate.min((node.remaining - field_drain[i]).max(0.0)),
                         None => rate,
                     }
                 }
@@ -1947,7 +2017,7 @@ impl Circuit {
                             // What the rate laws draw (#573) comes first: they
                             // were fixed from the opening state.
                             (dt * base * gate * bp_factor_of(i, &act))
-                                .min((node.storage - gradient_out[i] - law_out[i]).max(0.0))
+                                .min((node.storage - field_drain[i] - law_out[i]).max(0.0))
                         } else {
                             0.0
                         }
