@@ -163,12 +163,14 @@ impl Session {
             "time_constant" => n.time_constant = v,
             "maintenance" => n.maintenance = v,
             "back_pressure" => n.back_pressure = v != 0.0,
+            "mass_action" => n.mass_action = v, // the rate law, #573
             // #463 move 5: a negative reservoir means unbounded (None).
             "reservoir" => {
                 n.reservoir = (v >= 0.0).then_some(v);
                 n.remaining = n.reservoir.unwrap_or(0.0);
             }
             "limiting" => n.limiting = v != 0.0,
+            "informational" => n.holds_message = v != 0.0, // a memory, #576
             // An agent's policy numbers are knobs like a setpoint (#269):
             // the goal is declared, the procedure is the kernel's, and the
             // kernel names the refusal (a word not the rule's, a bin the

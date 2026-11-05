@@ -601,6 +601,45 @@ fn check_flows_are_consumed(model: &WorldModel, issues: &mut Vec<ValidationIssue
         if p == ProcessPrimitive::Sensing && ia.substance.ty == SubstanceType::Message && from_stock {
             continue;
         }
+        // A rate law (#573): an informational flow from a stock into a
+        // Combining or Copying that declares `mass action` is a level read,
+        // a catalyst the law multiplies by and does not use up
+        // (`Circuit::is_observation`).
+        let has_law = receiver
+            .agent
+            .as_ref()
+            .and_then(|a| a.cognitive_params.get("mass_action"))
+            .is_some_and(|&k| k > 0.0)
+            && matches!(p, ProcessPrimitive::Combining | ProcessPrimitive::Copying);
+        if has_law && ia.substance.ty == SubstanceType::Message && from_stock {
+            continue;
+        }
+        if has_law && ia.substance.ty != SubstanceType::Message && !from_stock {
+            issues.push(ValidationIssue::warning(
+                "law_input_not_a_stock",
+                format!("interactions[{idx}]"),
+                format!(
+                    "'{}' flows into '{}', which draws by mass action on the levels of the \
+                     stocks that feed it; this flow does not come from a stock, so the law \
+                     cannot read it and the process passes it on as pushed",
+                    ia.info.name, receiver.info.name
+                ),
+                Some(
+                    "Feed the process from a stock (a Buffering component), or remove \
+                     `mass action` to let it pass what is pushed into it",
+                ),
+            ));
+            continue;
+        }
+        // Two-input Copying (#575, Mobus ch. 3): a Copying whose output is
+        // material takes blank material and imprints the pattern on it.
+        let copies_material = p == ProcessPrimitive::Copying
+            && model.interactions.iter().any(|o| {
+                o.source == receiver.info.id && o.substance.ty == SubstanceType::Material
+            });
+        if copies_material && ia.substance.ty == SubstanceType::Material {
+            continue;
+        }
         if p == ProcessPrimitive::Sensing && ia.substance.ty != SubstanceType::Message && from_stock {
             let stock = model
                 .systems
@@ -2175,6 +2214,7 @@ mod tests {
             is_same_as_id: None,
             authored_direction: true,
             reservoir: None,
+            potential: None,
         });
         let result = validate(&model);
         assert!(result.has_errors());
@@ -2206,6 +2246,7 @@ mod tests {
             is_same_as_id: None,
             authored_direction: true,
             reservoir: None,
+            potential: None,
         });
         let result = validate(&model);
         assert!(result.has_errors());
@@ -2249,6 +2290,7 @@ mod tests {
             amount: rust_decimal::Decimal::ZERO,
             unit: String::new(),
             ample: false,
+            spill: false,
             parameters: vec![],
             smart_parameters: vec![],
             endpoint_offset: None,
@@ -2567,6 +2609,7 @@ mod tests {
             is_same_as_id: None,
             authored_direction: true,
             reservoir: None,
+            potential: None,
         });
         model.interactions.push(Interaction {
             info: Info {
@@ -2598,6 +2641,7 @@ mod tests {
             amount: rust_decimal::Decimal::ZERO,
             unit: String::new(),
             ample: false,
+            spill: false,
             parameters: vec![],
             smart_parameters: vec![],
             endpoint_offset: None,
@@ -2694,6 +2738,7 @@ mod tests {
             is_same_as_id: None,
             authored_direction: true,
             reservoir: None,
+            potential: None,
         });
         model.interactions.push(Interaction {
             info: Info {
@@ -2725,6 +2770,7 @@ mod tests {
             amount: rust_decimal::Decimal::ZERO,
             unit: String::new(),
             ample: false,
+            spill: false,
             parameters: vec![],
             smart_parameters: vec![],
             endpoint_offset: None,
@@ -2818,6 +2864,7 @@ mod tests {
             amount: rust_decimal::Decimal::ZERO,
             unit: String::new(),
             ample: false,
+            spill: false,
             parameters: vec![],
             smart_parameters: vec![],
             endpoint_offset: None,
@@ -3119,6 +3166,7 @@ mod tests {
             is_same_as_id: None,
             authored_direction: true,
             reservoir: None,
+            potential: None,
         };
         let snk = ExternalEntity {
             info: Info {
@@ -3138,6 +3186,7 @@ mod tests {
             is_same_as_id: None,
             authored_direction: true,
             reservoir: None,
+            potential: None,
         };
         let src_id = src.info.id.clone();
         let snk_id = snk.info.id.clone();
@@ -3847,6 +3896,7 @@ mod tests {
                 is_same_as_id: None,
                 authored_direction: authored,
                 reservoir: None,
+                potential: None,
             });
             model.interactions.push(flow(0, "orders", snk_id, model.systems[0].info.id.clone()));
             model
@@ -3871,6 +3921,7 @@ mod tests {
             is_same_as_id: None,
             authored_direction: true,
             reservoir: None,
+            potential: None,
         });
         model.interactions.push(Interaction {
             info: Info {
@@ -3890,6 +3941,7 @@ mod tests {
             amount: Decimal::ONE,
             unit: String::new(),
             ample: false,
+            spill: false,
             parameters: vec![],
             smart_parameters: vec![],
             endpoint_offset: None,
@@ -3950,6 +4002,7 @@ mod tests {
                 is_same_as_id: None,
                 authored_direction: true,
                 reservoir: None,
+                potential: None,
             });
         }
         model.systems[0].boundary.interfaces.push(Interface {
@@ -3978,6 +4031,7 @@ mod tests {
             amount: rust_decimal::Decimal::ONE,
             unit: String::new(),
             ample: false,
+            spill: false,
             parameters: vec![],
             smart_parameters: vec![],
             endpoint_offset: None,
@@ -4030,6 +4084,7 @@ mod tests {
             is_same_as_id: None,
             authored_direction: true,
             reservoir: None,
+            potential: None,
         });
         model.systems[0].boundary.interfaces.push(Interface {
             info: Info {
@@ -4063,6 +4118,7 @@ mod tests {
             amount: rust_decimal::Decimal::ONE,
             unit: String::new(),
             ample: false,
+            spill: false,
             parameters: vec![],
             smart_parameters: vec![],
             endpoint_offset: None,

@@ -1042,7 +1042,11 @@ pub fn parse_sl_full(text: &str) -> Result<SlParse, Vec<SlError>> {
                 let mut maintenance: Option<f64> = None;
                 let mut back_pressure = false;
                 let mut limiting = false;
+                let mut mass_action: Option<f64> = None;
                 let mut reservoir: Option<f64> = None;
+                let mut potential: Option<f64> = None;
+                let mut capacitance: Option<f64> = None;
+                let mut holds_message = false;
                 let mut own_words: Vec<(String, f64)> = Vec::new();
                 let mut description = String::new();
                 let mut grounding: Option<Grounding> = None;
@@ -1497,6 +1501,45 @@ pub fn parse_sl_full(text: &str) -> Result<SlParse, Vec<SlError>> {
                             limiting = true;
                             i += 1;
                         }
+                        // `mass action <k>` — a rate law on a Combining or
+                        // Copying process (#573, walk row 48): the kernel's
+                        // cognitive_params["mass_action"], the rate constant
+                        // k in `k · ∏ x` over the opening levels of the stocks
+                        // the process draws on and reads. `action` sits
+                        // behind the reserved `mass` clause head, as
+                        // `constant` sits behind `time`. Combining/Copying
+                        // only, > 0.
+                        Tok::Word(w) if w.eq_ignore_ascii_case("mass") => {
+                            if role == Role::Environment {
+                                fail(
+                                    "`mass action` applies to components only \
+                                     (environment internals are opaque)"
+                                        .into(),
+                                    &mut errors,
+                                );
+                                ok = false;
+                            }
+                            if mass_action.is_some() {
+                                fail("`mass action` already given on this component".into(), &mut errors);
+                                ok = false;
+                            }
+                            let syntax = "mass action syntax: `mass action <positive number>` \
+                                          — the rate constant k of the law k · ∏ x over the \
+                                          stocks the process draws on (e.g. `mass action 0.5`)";
+                            match (attrs.get(i + 1), attrs.get(i + 2)) {
+                                (Some(Tok::Word(a)), Some(Tok::Word(n)))
+                                    if a.eq_ignore_ascii_case("action")
+                                        && n.parse::<f64>().is_ok_and(|v| v.is_finite() && v > 0.0) =>
+                                {
+                                    mass_action = Some(n.parse::<f64>().unwrap());
+                                }
+                                _ => {
+                                    fail(syntax.into(), &mut errors);
+                                    ok = false;
+                                }
+                            }
+                            i += 3;
+                        }
                         // A process's own parameter, the engine's `param`
                         // (`OWN_PARAMS`): `gain <n>` on a Sensing process (#496,
                         // the multiplier from level to signal, default 1) or an
@@ -1558,6 +1601,73 @@ pub fn parse_sl_full(text: &str) -> Result<SlParse, Vec<SlError>> {
                         // engine's Node.reservoir, after which its flows stop.
                         // Source lines only: a sink receives, a component holds
                         // a `stock`, and an unbounded source is the default.
+                        // `potential <n>` on a source line and `capacitance <n>`
+                        // on a stock (#574, walk row 48): what a field flow
+                        // compares. A source's potential is its own number,
+                        // apart from its emission rate; a stock's potential is
+                        // its level over its capacitance (volume over area,
+                        // charge over capacitance, heat over heat capacity).
+                        Tok::Word(w) if w.eq_ignore_ascii_case("potential") => {
+                            if !(role == Role::Environment && env_kind == EnvKind::Source) {
+                                fail("`potential` applies to a `source` line only — the fixed potential a field flow out of it compares (a stock's potential is its level over its `capacitance`)".into(), &mut errors);
+                                ok = false;
+                            }
+                            if potential.is_some() {
+                                fail("`potential` already given on this line".into(), &mut errors);
+                                ok = false;
+                            }
+                            match attrs.get(i + 1) {
+                                Some(Tok::Word(n))
+                                    if n.parse::<f64>().is_ok_and(|v| v.is_finite() && v > 0.0) =>
+                                {
+                                    potential = Some(n.parse::<f64>().unwrap());
+                                }
+                                _ => {
+                                    fail("potential syntax: `potential <positive number>` — the source's fixed potential for its field flows (e.g. `potential 12`)".into(), &mut errors);
+                                    ok = false;
+                                }
+                            }
+                            i += 2;
+                        }
+                        Tok::Word(w) if w.eq_ignore_ascii_case("capacitance") => {
+                            if !(role == Role::Component) {
+                                fail("`capacitance` applies to a component's stock only — a stock's quantity per unit of potential".into(), &mut errors);
+                                ok = false;
+                            }
+                            if capacitance.is_some() {
+                                fail("`capacitance` already given on this line".into(), &mut errors);
+                                ok = false;
+                            }
+                            match attrs.get(i + 1) {
+                                Some(Tok::Word(n))
+                                    if n.parse::<f64>().is_ok_and(|v| v.is_finite() && v > 0.0) =>
+                                {
+                                    capacitance = Some(n.parse::<f64>().unwrap());
+                                }
+                                _ => {
+                                    fail("capacitance syntax: `capacitance <positive number>` — the stock's quantity per unit of potential; its field flows compare level / capacitance (e.g. `capacitance 4`)".into(), &mut errors);
+                                    ok = false;
+                                }
+                            }
+                            i += 2;
+                        }
+                        // `informational` on a stock (#576, walk row 48): a memory.
+                        // It adds up the messages flowing into it (inflows, not
+                        // a gate), forgets over its `time constant`, and is off
+                        // the matter and energy books: information copies, so it
+                        // is not conserved. Bare; a Buffering component only.
+                        Tok::Word(w) if w.eq_ignore_ascii_case("informational") => {
+                            if role != Role::Component {
+                                fail("`informational` on a thing line applies to a component's stock only".into(), &mut errors);
+                                ok = false;
+                            }
+                            if holds_message {
+                                fail("`informational` already given on this component".into(), &mut errors);
+                                ok = false;
+                            }
+                            holds_message = true;
+                            i += 1;
+                        }
                         Tok::Word(w) if w.eq_ignore_ascii_case("reservoir") => {
                             if !(role == Role::Environment && env_kind == EnvKind::Source) {
                                 fail(
@@ -1759,6 +1869,7 @@ pub fn parse_sl_full(text: &str) -> Result<SlParse, Vec<SlError>> {
                                      `primitive <Name>`, `interface`, `stock \"<unit>\"`, \
                                      `release <n>`, `capacity <n>`, `time constant <n>`, \
                                      `setpoint <n>`, `maintenance <n>`, `backpressure`, `limiting`, \
+                                     `mass action <n>` (Combining, Copying), \
                                      `reservoir <n>` (source lines), `gain <n>` (Sensing, \
                                      Amplifying), `efficiency <n>` (Propelling), \
                                      `impedance <n>` (Impeding), \
@@ -1847,10 +1958,43 @@ pub fn parse_sl_full(text: &str) -> Result<SlParse, Vec<SlError>> {
                     );
                     ok = false;
                 }
+                if holds_message && primitive != Some(ProcessPrimitive::Buffering) {
+                    fail(
+                        "`informational` applies to a Buffering component only — it makes the \
+                         stock a memory of the messages flowing into it"
+                            .into(),
+                        &mut errors,
+                    );
+                    ok = false;
+                }
+                if capacitance.is_some() && primitive != Some(ProcessPrimitive::Buffering) {
+                    fail(
+                        "`capacitance` applies to a Buffering component only — it is a stock's \
+                         quantity per unit of potential, and only a stock holds a quantity"
+                            .into(),
+                        &mut errors,
+                    );
+                    ok = false;
+                }
                 if limiting && primitive != Some(ProcessPrimitive::Combining) {
                     fail(
                         "`limiting` applies to a Combining component only — it bounds the \
                          combination by its scarcest input, and no other primitive reads it"
+                            .into(),
+                        &mut errors,
+                    );
+                    ok = false;
+                }
+                if mass_action.is_some()
+                    && !matches!(
+                        primitive,
+                        Some(ProcessPrimitive::Combining | ProcessPrimitive::Copying)
+                    )
+                {
+                    fail(
+                        "`mass action` applies to a Combining or Copying component only — \
+                         it is a rate law on a work process that draws on stocks, and no \
+                         other primitive reads it"
                             .into(),
                         &mut errors,
                     );
@@ -1916,8 +2060,20 @@ pub fn parse_sl_full(text: &str) -> Result<SlParse, Vec<SlError>> {
                 if limiting {
                     cognitive_params.insert("limiting".to_string(), 1.0);
                 }
+                if let Some(k) = mass_action {
+                    cognitive_params.insert("mass_action".to_string(), k);
+                }
                 if let Some(r) = reservoir {
                     cognitive_params.insert("reservoir".to_string(), r);
+                }
+                if let Some(p) = potential {
+                    cognitive_params.insert("potential".to_string(), p);
+                }
+                if let Some(c) = capacitance {
+                    cognitive_params.insert("capacitance".to_string(), c);
+                }
+                if holds_message {
+                    cognitive_params.insert("informational".to_string(), 1.0);
                 }
                 let mut initial_state = std::collections::HashMap::new();
                 if let Some(v) = initial_stock {
@@ -2684,6 +2840,9 @@ pub fn parse_sl_full(text: &str) -> Result<SlParse, Vec<SlError>> {
                         unit: String::new(),
                         substance: String::new(),
                         ample: false,
+                        spill: false,
+                        conductance: None,
+                        one_way: false,
                     });
                     next_id += 1;
                 }
@@ -2883,6 +3042,89 @@ pub fn parse_sl_full(text: &str) -> Result<SlParse, Vec<SlError>> {
                     );
                     continue;
                 }
+                // `spill` (#578, walk row 48): this flow carries its source
+                // stock's overflow at capacity, and nothing else. A
+                // Buffering's own law, so it has no magnitude to declare;
+                // the source is checked once the endpoints resolve below.
+                // `conductance <G> [one way]` (#574, walk row 48): a field
+                // flow, moving `G · (potential difference)` a time unit, both
+                // ways unless `one way` (a diode, a check valve). `: field`
+                // only; it lowers to a Force interaction, the engine's
+                // gradient wire.
+                let mut conductance: Option<f64> = None;
+                let mut one_way = false;
+                if let [Tok::Word(w), rest_tail @ ..] = tail {
+                    if w.eq_ignore_ascii_case("conductance") {
+                        match rest_tail {
+                            [Tok::Word(g), more @ ..]
+                                if g.parse::<f64>().is_ok_and(|v| v.is_finite() && v > 0.0) =>
+                            {
+                                conductance = Some(g.parse::<f64>().unwrap());
+                                tail = more;
+                            }
+                            _ => {
+                                fail(
+                                    "conductance syntax: `conductance <positive number>` — the \
+                                     field flow's G, moving G times the potential difference \
+                                     a time unit (e.g. `conductance 0.2`)"
+                                        .into(),
+                                    &mut errors,
+                                );
+                                continue;
+                            }
+                        }
+                        if let [Tok::Word(o), Tok::Word(w2), more @ ..] = tail {
+                            if o.eq_ignore_ascii_case("one") && w2.eq_ignore_ascii_case("way") {
+                                one_way = true;
+                                tail = more;
+                            }
+                        }
+                    }
+                }
+                if conductance.is_some() && kind != Kind::Field {
+                    fail(
+                        "`conductance` makes a field flow — write the flow `: field` (heat, \
+                         charge, a concentration or a level evening out); a pushed matter, \
+                         energy or informational flow has no conductance"
+                            .into(),
+                        &mut errors,
+                    );
+                    continue;
+                }
+                if conductance.is_some() && (amount.is_some() || ample) {
+                    fail(
+                        "`conductance` with `amount` or `ample` — a field flow's rate is G \
+                         times the potential difference, not a declared amount; remove one"
+                            .into(),
+                        &mut errors,
+                    );
+                    continue;
+                }
+                let mut spill = false;
+                if let [Tok::Word(w), rest_tail @ ..] = tail {
+                    if w.eq_ignore_ascii_case("spill") {
+                        spill = true;
+                        tail = rest_tail;
+                    }
+                }
+                if spill && (amount.is_some() || ample || !unit.is_empty()) {
+                    fail(
+                        "`spill` with `amount`, `unit` or `ample` — a spill carries whatever \
+                         the stock cannot hold, so it has no magnitude to declare; remove one"
+                            .into(),
+                        &mut errors,
+                    );
+                    continue;
+                }
+                if spill && kind == Kind::Informational {
+                    fail(
+                        "`spill` routes a stock's overflow, which is matter or energy — an \
+                         `: informational` flow cannot spill"
+                            .into(),
+                        &mut errors,
+                    );
+                    continue;
+                }
                 let mut is_bond = true;
                 if let [Tok::Word(w), rest_tail @ ..] = tail {
                     if w.eq_ignore_ascii_case("mere") {
@@ -2893,7 +3135,7 @@ pub fn parse_sl_full(text: &str) -> Result<SlParse, Vec<SlError>> {
                 // A quantity on a `mere` relation is a contradiction, not an
                 // option to drop: a non-bond never projects, so a magnitude on
                 // it could never mean anything. Refuse rather than default.
-                if !is_bond && (amount.is_some() || !unit.is_empty() || !substance.is_empty() || ample) {
+                if !is_bond && (amount.is_some() || !unit.is_empty() || !substance.is_empty() || ample || spill) {
                     fail(
                         "`substance`/`amount`/`unit`/`ample` on a `mere` relation — a \
                          mere relation never projects, so a quantity (or availability) \
@@ -3055,6 +3297,21 @@ pub fn parse_sl_full(text: &str) -> Result<SlParse, Vec<SlError>> {
                     );
                     continue;
                 };
+                if spill
+                    && !(things[ai].role == Role::Component
+                        && things[ai].primitive == Some(ProcessPrimitive::Buffering)
+                        && things[ai].cognitive_params.get("capacity").is_some_and(|c| *c > 0.0))
+                {
+                    fail(
+                        format!(
+                            "`spill` on a flow out of `{a}`, which is not a Buffering component \
+                             with a `capacity` — only a bounded stock overflows; give `{a}` a \
+                             capacity or remove the `spill`"
+                        ),
+                        &mut errors,
+                    );
+                    continue;
+                }
                 if let Some(agent) = [ai, bi].into_iter().find(|&i| things[i].rule.is_some()) {
                     fail(
                         format!(
@@ -3084,6 +3341,9 @@ pub fn parse_sl_full(text: &str) -> Result<SlParse, Vec<SlError>> {
                     unit,
                     substance,
                     ample,
+                    spill,
+                    conductance,
+                    one_way,
                 });
                 next_id += 1;
             }
@@ -4646,14 +4906,16 @@ pub fn emit_sl_with(model: &CanvasModel, layout: Option<&SlLayout>) -> Result<St
             && t.cognitive_params.contains_key("time_constant");
         let source_reservoir_only = t.role == Role::Environment
             && t.env_kind == EnvKind::Source
-            && t.cognitive_params.len() == 1
-            && t.cognitive_params.get("reservoir").is_some_and(|v| v.is_finite() && *v > 0.0);
+            && !t.cognitive_params.is_empty()
+            && t.cognitive_params.iter().all(|(k, v)| {
+                matches!(k.as_str(), "reservoir" | "potential") && v.is_finite() && *v > 0.0
+            });
         let cognitive_expressible = t.cognitive_params.is_empty()
             || source_reservoir_only
             || (t.role == Role::Component
                 && !release_tc_conflict
                 && t.cognitive_params.iter().all(|(k, v)| match k.as_str() {
-                    "release_rate" | "capacity" | "time_constant" | "maintenance" => {
+                    "release_rate" | "capacity" | "time_constant" | "maintenance" | "capacitance" => {
                         t.primitive == Some(ProcessPrimitive::Buffering)
                             && v.is_finite()
                             && *v > 0.0
@@ -4665,6 +4927,14 @@ pub fn emit_sl_with(model: &CanvasModel, layout: Option<&SlLayout>) -> Result<St
                     }
                     "back_pressure" => t.primitive == Some(ProcessPrimitive::Modulating),
                     "limiting" => t.primitive == Some(ProcessPrimitive::Combining),
+                    "informational" => t.primitive == Some(ProcessPrimitive::Buffering),
+                    "mass_action" => {
+                        matches!(
+                            t.primitive,
+                            Some(ProcessPrimitive::Combining | ProcessPrimitive::Copying)
+                        ) && v.is_finite()
+                            && *v > 0.0
+                    }
                     _ => false,
                 }));
         // A process's own parameter (walk row 18): the four primitives the
@@ -4694,7 +4964,8 @@ pub fn emit_sl_with(model: &CanvasModel, layout: Option<&SlLayout>) -> Result<St
                  `stock <unit> initial <n>` and, gated to their reading \
                  primitive, `release <n>` / `capacity <n>` / `time constant <n>` \
                  / `maintenance <n>` on Buffering, `setpoint <n>` on Inverting, \
-                 `backpressure` on Modulating, and `limiting` on Combining) — export the model as kernel \
+                 `backpressure` on Modulating, `limiting` on Combining, and `mass action <n>` on \
+                 Combining or Copying) — export the model as kernel \
                  JSON instead of SL",
                 t.name
             ));
@@ -4739,6 +5010,9 @@ pub fn emit_sl_with(model: &CanvasModel, layout: Option<&SlLayout>) -> Result<St
             if let Some(r) = t.cognitive_params.get("reservoir") {
                 write!(out, " reservoir {r}").unwrap();
             }
+            if let Some(p) = t.cognitive_params.get("potential") {
+                write!(out, " potential {p}").unwrap();
+            }
         }
         if t.role == Role::Component {
             if let Some(p) = t.primitive {
@@ -4772,6 +5046,12 @@ pub fn emit_sl_with(model: &CanvasModel, layout: Option<&SlLayout>) -> Result<St
             if let Some(tc) = t.cognitive_params.get("time_constant") {
                 write!(out, " time constant {tc}").unwrap();
             }
+            if let Some(c) = t.cognitive_params.get("capacitance") {
+                write!(out, " capacitance {c}").unwrap();
+            }
+            if t.cognitive_params.contains_key("informational") {
+                write!(out, " informational").unwrap();
+            }
             if let Some(sp) = t.cognitive_params.get("setpoint") {
                 write!(out, " setpoint {sp}").unwrap();
             }
@@ -4787,6 +5067,9 @@ pub fn emit_sl_with(model: &CanvasModel, layout: Option<&SlLayout>) -> Result<St
             }
             if t.cognitive_params.contains_key("limiting") {
                 write!(out, " limiting").unwrap();
+            }
+            if let Some(k) = t.cognitive_params.get("mass_action") {
+                write!(out, " mass action {k}").unwrap();
             }
         }
         // Klir source-system metadata (#154): kind, then scale, then state set.
@@ -4895,6 +5178,15 @@ pub fn emit_sl_with(model: &CanvasModel, layout: Option<&SlLayout>) -> Result<St
         }
         if !r.unit.is_empty() {
             write!(out, " unit {}", name_token(&r.unit)?).unwrap();
+        }
+        if let Some(g) = r.conductance {
+            write!(out, " conductance {g}").unwrap();
+            if r.one_way {
+                write!(out, " one way").unwrap();
+            }
+        }
+        if r.spill {
+            write!(out, " spill").unwrap();
         }
         if !r.is_bond {
             write!(out, " mere").unwrap();
@@ -5285,7 +5577,10 @@ pub const RESERVED_WORDS: &[&str] = &[
     "maintenance",
     "backpressure",
     "limiting",
+    "mass",
     "reservoir",
+    "potential",
+    "capacitance",
     "gain",
     "efficiency",
     "impedance",
@@ -5340,6 +5635,12 @@ pub const UNRESOLVED: &str = "unresolved";
 pub const POSITIONAL_KEYWORDS: &[&str] = &[
     "param", "metric", "ample", "range", "shares", "from", "share", "of", "sum", "into", "klir",
     "bunge", "mobus", "constant",
+    // the overflow route (#578): a flow-line word after the quantity clauses
+    "spill",
+    // the field flow (#574): flow-line words after the quantity clauses
+    "conductance", "one", "way",
+    // the rate law (#573): `action` only ever follows `mass`
+    "action",
     // the agent line (facets#269): `proportional` is the word after `rule`, `target`
     // sits behind it; `gain` is already reserved from the Sensing clause
     "proportional", "target", "threshold", "above", "below", "emit", "else",

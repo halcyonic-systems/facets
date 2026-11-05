@@ -222,3 +222,282 @@ fn an_unsayable_own_parameter_refuses_to_emit() {
     m.things[0].agency_capacity = Some(0.5);
     assert!(!emit_sl(&m).unwrap().contains("0.5"));
 }
+
+/// #573 and #575 (walk row 48, SL v1.17): `mass action <k>` on a Combining
+/// or Copying line. SIR without the sensor-and-valve: infection draws
+/// `k · S · I` from the susceptibles, the infected read, not used up.
+const SIR_LAW: &str = "\
+system \"Town\" : Concrete/Biological
+time unit day
+interface Border
+component Susceptible primitive Buffering stock share initial 0.9
+component Infected primitive Buffering stock share initial 0.1 time constant 4
+component Removed primitive Buffering stock share
+component Infection primitive Combining mass action 0.5
+source Imports
+flow Imports -> Border : matter \"imported\" substance people amount 0.005
+flow Border -> Infected : matter \"arrivals\" substance people
+flow Susceptible -> Infection : matter \"exposure\" substance people
+flow Infected -> Infection : informational \"contacts\" substance people
+flow Infection -> Infected : matter \"new cases\" substance people
+flow Infected -> Removed : matter \"recovery\" substance people
+";
+
+#[test]
+fn mass_action_parses_runs_and_emits_back() {
+    let m = parse_sl(SIR_LAW).unwrap();
+    let inf = m.things.iter().find(|t| t.name == "Infection").unwrap();
+    assert_eq!(inf.cognitive_params.get("mass_action"), Some(&0.5));
+    let text = emit_sl(&m).unwrap();
+    assert!(text.contains("component Infection primitive Combining mass action 0.5"), "{text}");
+    assert_eq!(
+        parse_sl(&text).unwrap().things.iter().find(|t| t.name == "Infection").unwrap().cognitive_params,
+        inf.cognitive_params
+    );
+
+    // The read is consumed: no `flow_not_consumed` on the contacts flow.
+    let world = project(&m);
+    let issues = facets_core::validate::validate_mode(&world, facets_core::Mode::Operational);
+    let flagged: Vec<_> = issues
+        .issues
+        .iter()
+        .filter(|i| i.code == "flow_not_consumed" || i.code == "law_input_not_a_stock")
+        .map(|i| i.message.clone())
+        .collect();
+    assert!(flagged.is_empty(), "{flagged:?}");
+
+    // And it runs as Euler SIR plus the imported trickle, one tick a day.
+    let spec = facets_core::operational::validate_operational(&world).unwrap();
+    let mut c = facets_compose::from_spec(&spec);
+    let ix = |n: &str| c.nodes.iter().position(|x| x.name == n).unwrap();
+    let (s, i, r) = (ix("Susceptible"), ix("Infected"), ix("Removed"));
+    let (mut es, mut ei, mut er) = (0.9f64, 0.1f64, 0.0f64);
+    for _ in 0..30 {
+        c.step();
+        let new = 0.5 * es * ei;
+        let rec = ei / 4.0;
+        es -= new;
+        ei += new - rec + 0.005;
+        er += rec;
+        assert!((c.nodes[s].storage as f64 - es).abs() < 1e-4, "S");
+        assert!((c.nodes[i].storage as f64 - ei).abs() < 1e-4, "I {} vs {ei}", c.nodes[i].storage);
+        assert!((c.nodes[r].storage as f64 - er).abs() < 1e-4, "R");
+    }
+    assert!(c.dissipated.abs() < 1e-4, "nothing shed: {}", c.dissipated);
+}
+
+#[test]
+fn mass_action_refuses_off_its_readers() {
+    let base = "system \"S\" : Concrete/Technical\nsource In\nsink Out\n";
+    let f = |line: &str| errs(&format!("{base}{line}\nflow In -> X : matter \"a\"\nflow X -> Out : matter \"b\"\n"));
+    assert!(f("component X primitive Buffering mass action 1 interface").contains("Combining or Copying component only"));
+    assert!(f("component X primitive Splitting mass action 1 interface").contains("Combining or Copying component only"));
+    assert!(f("component X primitive Combining mass action 0 interface").contains("mass action syntax"));
+    assert!(f("component X primitive Combining mass 1 interface").contains("mass action syntax"));
+    assert!(f("component X primitive Combining mass action 1 mass action 2 interface").contains("already given"));
+    assert!(errs(&format!("{base}environment E mass action 1\n")).contains("components only"));
+    // Copying takes it too.
+    parse_sl(&format!("{base}component X primitive Copying mass action 1 interface\nflow In -> X : informational \"a\"\nflow X -> Out : informational \"b\"\n")).unwrap();
+}
+
+/// The law draws on stocks; a pushed flow from anything else is named.
+#[test]
+fn a_law_fed_by_a_non_stock_is_warned() {
+    let m = parse_sl(
+        "system \"S\" : Concrete/Technical\ninterface Door\ncomponent Rx primitive Combining mass action 1\n\
+         component Out primitive Buffering stock kg\nsource Feed\n\
+         flow Feed -> Door : matter \"feed\" amount 1\nflow Door -> Rx : matter \"feed\"\nflow Rx -> Out : matter \"made\"\n",
+    )
+    .unwrap();
+    let issues = facets_core::validate::validate_mode(&project(&m), facets_core::Mode::Operational);
+    assert!(issues.issues.iter().any(|i| i.code == "law_input_not_a_stock"), "{:?}", issues.issues);
+}
+
+/// #578 (walk row 48): `spill` on a flow out of a bounded stock carries its
+/// overflow on, the same tick. The toy pond at a 20-day outlet time, which
+/// lost what it could not hold.
+const POND_SPILL: &str = "\
+system \"Pond\" : Concrete/Biological
+time unit day
+source Stream
+sink Downstream
+interface Inlet
+component Pond primitive Buffering stock m3 initial 100 time constant 20 capacity 400 maintenance 2
+interface Outlet
+flow Stream -> Inlet : matter \"brook\" substance water amount 30 unit \"m3/day\"
+flow Inlet -> Pond : matter \"inflow\" substance water
+flow Pond -> Outlet : matter \"outflow\" substance water
+flow Pond -> Outlet : matter \"spillway\" substance water spill
+flow Outlet -> Downstream : matter \"outflow\" substance water
+flow Outlet -> Downstream : matter \"spillway\" substance water
+";
+
+#[test]
+fn spill_parses_runs_and_emits_back() {
+    let m = parse_sl(POND_SPILL).unwrap();
+    assert!(m.relations.iter().any(|r| r.name == "spillway" && r.spill));
+    assert!(m.relations.iter().filter(|r| r.spill).count() == 1);
+    let text = emit_sl(&m).unwrap();
+    assert!(text.contains("flow Pond -> Outlet : matter \"spillway\" substance water spill"), "{text}");
+    assert!(parse_sl(&text).unwrap().relations.iter().any(|r| r.name == "spillway" && r.spill));
+
+    let world = project(&m);
+    let issues = facets_core::validate::validate_mode(&world, facets_core::Mode::Operational);
+    let errors: Vec<_> = issues.issues.iter().filter(|i| i.severity == facets_core::validate::Severity::Error).collect();
+    assert!(errors.is_empty(), "{errors:?}");
+
+    let spec = facets_core::operational::validate_operational(&world).unwrap();
+    let mut c = facets_compose::from_spec(&spec);
+    let ix = |n: &str| c.nodes.iter().position(|x| x.name == n).unwrap();
+    let (pond, down) = (ix("Pond"), ix("Downstream"));
+    for _ in 0..200 {
+        c.step();
+    }
+    // At rest the pond is full and everything it cannot hold goes on: the
+    // brook's 30, less the 2 of upkeep, reaches the stream below each day.
+    assert!((c.nodes[pond].storage - 400.0).abs() < 1e-3, "{}", c.nodes[pond].storage);
+    let before = c.nodes[down].total;
+    c.step();
+    assert!((c.nodes[down].total - before - 28.0).abs() < 1e-3, "{}", c.nodes[down].total - before);
+    assert!(c.balance().abs() < 0.05, "balance {}", c.balance());
+}
+
+#[test]
+fn spill_refuses_off_a_bounded_stock() {
+    let head = "system \"S\" : Concrete/Technical\nsource In\nsink Out\n";
+    let tail = "flow In -> T : matter \"in\" amount 1\n";
+    let refuse = |thing: &str, flow: &str| errs(&format!("{head}{thing}\n{tail}{flow}\n"));
+    assert!(refuse("component T primitive Buffering stock kg", "flow T -> Out : matter \"over\" spill").contains("with a `capacity`"));
+    assert!(refuse("component T primitive Combining interface", "flow T -> Out : matter \"over\" spill").contains("with a `capacity`"));
+    assert!(refuse("component T primitive Buffering stock kg capacity 5", "flow T -> Out : matter \"over\" amount 2 spill").contains("no magnitude"));
+    assert!(refuse("component T primitive Buffering stock kg capacity 5", "flow T -> Out : informational \"over\" spill").contains("cannot spill"));
+}
+
+/// #574 (walk row 48): `: field ... conductance G [one way]`, `capacitance`
+/// on a stock, `potential` on a source. Two connected tanks of different
+/// widths even out by height (level / capacitance), not by volume.
+fn field_run(text: &str, ticks: usize) -> facets_compose::Circuit {
+    let m = parse_sl(text).unwrap();
+    let again = parse_sl(&emit_sl(&m).unwrap()).unwrap();
+    assert_eq!(
+        again.relations.iter().map(|r| (r.conductance, r.one_way)).collect::<Vec<_>>(),
+        m.relations.iter().map(|r| (r.conductance, r.one_way)).collect::<Vec<_>>()
+    );
+    let spec = facets_core::operational::validate_operational(&project(&m)).unwrap();
+    let mut c = facets_compose::from_spec(&spec);
+    for _ in 0..ticks {
+        c.step();
+    }
+    c
+}
+
+#[test]
+fn field_flows_even_out_potential_both_ways() {
+    let tanks = |a: f64, b: f64, way: &str| {
+        format!(
+            "system \"Tanks\" : Concrete/Physical\n\
+             component Narrow primitive Buffering stock m3 initial {a}\n\
+             component Wide primitive Buffering stock m3 initial {b} capacitance 4\n\
+             flow Narrow -> Wide : field \"pipe\" substance water conductance 0.3{way}\n"
+        )
+    };
+    let ix = |c: &facets_compose::Circuit, n: &str| c.nodes.iter().position(|x| x.name == n).unwrap();
+    // Forward: 10 m3 in the narrow tank settle at height 2 in both: 2 and 8.
+    let c = field_run(&tanks(10.0, 0.0, ""), 200);
+    assert!((c.nodes[ix(&c, "Narrow")].storage - 2.0).abs() < 1e-3, "{}", c.nodes[ix(&c, "Narrow")].storage);
+    assert!((c.nodes[ix(&c, "Wide")].storage - 8.0).abs() < 1e-3);
+    // Backward: the wide tank full, the same pipe runs the other way.
+    let c = field_run(&tanks(0.0, 10.0, ""), 200);
+    assert!((c.nodes[ix(&c, "Narrow")].storage - 2.0).abs() < 1e-3, "{}", c.nodes[ix(&c, "Narrow")].storage);
+    // `one way`: a check valve holds the backward flow.
+    let c = field_run(&tanks(0.0, 10.0, " one way"), 200);
+    assert_eq!(c.nodes[ix(&c, "Narrow")].storage, 0.0);
+    // Never past level, however large G · Δt: one step at G = 100 evens out.
+    let c = field_run(&tanks(10.0, 0.0, "").replace("conductance 0.3", "conductance 100"), 1);
+    assert!((c.nodes[ix(&c, "Narrow")].storage - 2.0).abs() < 1e-4, "{}", c.nodes[ix(&c, "Narrow")].storage);
+    assert!(c.balance().abs() < 1e-4);
+}
+
+#[test]
+fn a_capacitor_charges_to_its_sources_potential() {
+    let c = field_run(
+        "system \"RC\" : Concrete/Physical\n\
+         source Battery potential 12\n\
+         interface Lead\n\
+         component Cap primitive Buffering stock C capacitance 2\n\
+         flow Battery -> Lead : field \"current\" substance charge conductance 0.25\n\
+         flow Lead -> Cap : field \"current\" substance charge conductance 0.25\n",
+        300,
+    );
+    let cap = c.nodes.iter().position(|x| x.name == "Cap").unwrap();
+    // Charge = C · V = 24 at rest, approached from below.
+    assert!((c.nodes[cap].storage - 24.0).abs() < 1e-2, "{}", c.nodes[cap].storage);
+    assert!(c.nodes[cap].storage <= 24.0 + 1e-4);
+}
+
+#[test]
+fn field_words_refuse_off_their_readers() {
+    let base = "system \"S\" : Concrete/Physical\ncomponent A primitive Buffering stock m\ncomponent B primitive Buffering stock m\n";
+    let f = |line: &str| errs(&format!("{base}{line}\n"));
+    assert!(f("flow A -> B : matter \"x\" conductance 1").contains("write the flow `: field`"));
+    assert!(f("flow A -> B : field \"x\" conductance -1").contains("conductance syntax"));
+    assert!(f("flow A -> B : field \"x\" amount 2 conductance 1").contains("not a declared amount"));
+    assert!(errs("system \"S\" : Concrete/Physical\nsink Out potential 3\n").contains("`source` line only"));
+    assert!(errs("system \"S\" : Concrete/Physical\ncomponent X primitive Combining capacitance 2 interface\n").contains("Buffering component only"));
+}
+
+/// #576 (walk row 48): an `informational` stock is a memory. It adds up the
+/// messages into it and forgets over its time constant, a leaky integrator
+/// (an EWMA), so it rests at inflow × τ. It is off the matter and energy
+/// books, and what reads it copies its level without draining it.
+const MEMORY: &str = "\
+system \"Learner\" : Concrete/Social
+time unit day
+interface Ear
+interface Gate
+component Memory primitive Buffering stock ideas time constant 5 informational
+component Pantry primitive Buffering stock kg initial 20 time constant 4
+component Tap primitive Modulating interface
+source News
+source Farm
+sink Table
+flow News -> Ear : informational \"lessons\" substance ideas amount 2
+flow Ear -> Memory : informational \"lessons\" substance ideas
+flow Memory -> Tap : informational \"recall\" substance ideas
+flow Farm -> Gate : matter \"food\" substance food amount 3
+flow Gate -> Pantry : matter \"food\" substance food
+flow Pantry -> Tap : matter \"meals\" substance food
+flow Tap -> Table : matter \"meals\" substance food
+";
+
+#[test]
+fn an_informational_stock_is_a_leaky_memory_off_the_books() {
+    let m = parse_sl(MEMORY).unwrap();
+    let mem = m.things.iter().find(|t| t.name == "Memory").unwrap();
+    assert_eq!(mem.cognitive_params.get("informational"), Some(&1.0));
+    let text = emit_sl(&m).unwrap();
+    assert!(text.contains("component Memory primitive Buffering stock ideas time constant 5 informational"), "{text}");
+    let spec = facets_core::operational::validate_operational(&project(&m)).unwrap();
+    let mut c = facets_compose::from_spec(&spec);
+    let ix = |c: &facets_compose::Circuit, n: &str| c.nodes.iter().position(|x| x.name == n).unwrap();
+    let (mem, tap) = (ix(&c, "Memory"), ix(&c, "Tap"));
+    let mut ewma = 0.0f64;
+    for _ in 0..60 {
+        c.step();
+        ewma = ewma * (1.0 - 1.0 / 5.0) + 2.0;
+        assert!((c.nodes[mem].storage as f64 - ewma).abs() < 1e-4, "{} vs {ewma}", c.nodes[mem].storage);
+        assert!(c.balance().abs() < 1e-3, "the books hold the food only: {}", c.balance());
+    }
+    assert!((c.nodes[mem].storage - 10.0).abs() < 1e-2, "rests at inflow × τ");
+    // Recall gates the tap open (level ≥ 1) and drains nothing from memory.
+    assert!((c.nodes[tap].activity - c.nodes[ix(&c, "Pantry")].activity).abs() < 1e-5);
+    let warn = facets_core::validate::validate_mode(&project(&m), facets_core::Mode::Operational);
+    let errors: Vec<_> = warn.issues.iter().filter(|i| i.severity == facets_core::validate::Severity::Error).collect();
+    assert!(errors.is_empty(), "{errors:?}");
+}
+
+#[test]
+fn informational_refuses_off_a_stock() {
+    assert!(errs("system \"S\" : Concrete/Social\ncomponent X primitive Combining informational interface\n").contains("Buffering component only"));
+    assert!(errs("system \"S\" : Concrete/Social\nsource X informational\n").contains("component's stock only"));
+}

@@ -15,7 +15,7 @@ Legend: **runs now** — expressible in SL v1.9 and bench-tested from the termin
 | Model | Shape | Knobs | Watch | Status |
 |---|---|---|---|---|
 | Wolf–sheep (NetLogo) | two stocks, Lotka–Volterra coupling | grass regrowth, predation | the lag between populations; collapse past a predation threshold | on the shelf as predator-prey; convert to split form |
-| SIR epidemic | three stocks in a chain; infection = Combining of S and I | contact rate, recovery time | the peak; the herd threshold | staged: `assets/candidates/sir-epidemic.sl` |
+| SIR epidemic | three stocks in a chain; infection = Combining of S and I with `mass action` (#573, #577) | contact rate, recovery time | the peak; the herd threshold | shipped: `assets/bench/sir-epidemic.sl` (mass action since #577) |
 | Logistic growth with harvest | one stock, a finite environment (`reservoir`), a harvest flow | harvest rate | the cliff past maximum sustainable yield | staged: `assets/candidates/logistic-harvest.sl` |
 | Daisyworld | two daisy stocks, one temperature stock, albedo feedback | solar luminosity | regulation inside a band, failure outside | runs now (feedback via Inverting) |
 

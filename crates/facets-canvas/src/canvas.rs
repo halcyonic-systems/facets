@@ -367,6 +367,20 @@ pub struct Relation {
     /// `skip` keeps pre-existing models byte-identical on disk.
     #[serde(default, skip_serializing_if = "std::ops::Not::not")]
     pub ample: bool,
+    /// `spill` (#578) — see [`facets_core::Interaction::spill`]: the flow
+    /// carries its source stock's overflow at capacity. The SL parser
+    /// refuses it off a flow out of a Buffering component with a capacity.
+    #[serde(default, skip_serializing_if = "std::ops::Not::not")]
+    pub spill: bool,
+    /// A field flow's conductance G (#574, walk row 48): `Some` makes the
+    /// flow a gradient, moving `G · (potential difference)` each time unit,
+    /// both ways unless `one_way`. `None` = a pushed flow, as before.
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub conductance: Option<f64>,
+    /// `one way` (#574): a field flow that only runs forward, a diode or a
+    /// check valve.
+    #[serde(default, skip_serializing_if = "std::ops::Not::not")]
+    pub one_way: bool,
 }
 
 fn default_true() -> bool {
@@ -1130,10 +1144,12 @@ pub fn with_primitive(prev: &Thing, mut next: Thing) -> Thing {
     }
     let p = next.primitive;
     next.cognitive_params.retain(|k, _| match k.as_str() {
-        "release_rate" | "capacity" | "time_constant" | "maintenance" => p == Some(ProcessPrimitive::Buffering),
+        "release_rate" | "capacity" | "time_constant" | "maintenance" | "capacitance" | "informational" => p == Some(ProcessPrimitive::Buffering),
         "setpoint" => p == Some(ProcessPrimitive::Inverting),
         "limiting" => p == Some(ProcessPrimitive::Combining),
         "back_pressure" => p == Some(ProcessPrimitive::Modulating),
+        // The rate law (#573) is kept between Combining and Copying.
+        "mass_action" => matches!(p, Some(ProcessPrimitive::Combining | ProcessPrimitive::Copying)),
         _ => true,
     });
     let own = |q: Option<ProcessPrimitive>| q.and_then(facets_core::own_param::own_param);
@@ -1559,6 +1575,7 @@ pub fn project_with_map(model: &CanvasModel) -> Projection {
                     // because a WorldModel has no neutral external (#216).
                     authored_direction: t.env_kind != EnvKind::Neutral,
                     reservoir: if is_source { t.cognitive_params.get("reservoir").copied() } else { None },
+                    potential: if is_source { t.cognitive_params.get("potential").copied() } else { None },
                 };
                 ext.info.grounding = t.grounding.clone();
                 if is_source {
@@ -1725,7 +1742,9 @@ pub fn project_with_map(model: &CanvasModel) -> Projection {
                 sub_type: r.substance.clone(),
                 ty: kind_to_substance(carried.get(&r.id).copied().unwrap_or(r.kind)),
             },
-            ty: InteractionType::Flow,
+            // A flow with a conductance is a field flow (#574): the kernel's
+            // Force interaction, its G and `one way` riding as parameters.
+            ty: if r.conductance.is_some() { InteractionType::Force } else { InteractionType::Flow },
             // Authored wins; undeclared keeps the historical default. The
             // default is a PROJECTION artifact and not a claim the author made
             // — which is exactly why the field above is an Option (#331).
@@ -1763,7 +1782,36 @@ pub fn project_with_map(model: &CanvasModel) -> Projection {
                 .unwrap_or(DEFAULT_FLOW_AMOUNT),
             unit: r.unit.clone(),
             ample: r.ample,
-            parameters: vec![],
+            // A spill (#578) through a fused pass-way: the interior leg
+            // `Pond -> Outlet "spillway" spill` lowers to nothing, so the
+            // crossing leg of the same label, `Outlet -> Downstream
+            // "spillway"`, which survives as `Pond -> Downstream`, carries
+            // the flag, as it carries the interior leg's amount above.
+            spill: r.spill
+                || fused_to.get(&r.a).is_some_and(|&processor| {
+                    env_things.contains(&r.b)
+                        && bonds
+                            .iter()
+                            .any(|x| x.a == processor && x.b == r.a && x.name == r.name && x.spill)
+                }),
+            parameters: r
+                .conductance
+                .map(|g| {
+                    let mut ps = vec![facets_core::Parameter {
+                        name: "conductance".to_string(),
+                        value: g.to_string(),
+                        ..Default::default()
+                    }];
+                    if r.one_way {
+                        ps.push(facets_core::Parameter {
+                            name: "one_way".to_string(),
+                            value: "1".to_string(),
+                            ..Default::default()
+                        });
+                    }
+                    ps
+                })
+                .unwrap_or_default(),
             smart_parameters: vec![],
             endpoint_offset: None,
         });
@@ -1803,6 +1851,7 @@ pub fn project_with_map(model: &CanvasModel) -> Projection {
             amount: c.amount.unwrap_or(DEFAULT_FLOW_AMOUNT),
             unit: c.unit.clone(),
             ample: false,
+            spill: false,
             parameters: vec![],
             smart_parameters: vec![],
             endpoint_offset: None,
@@ -2094,8 +2143,10 @@ pub fn to_canvas(model: &WorldModel) -> CanvasModel {
             variable_kind: None,
             cognitive_params: e
                 .reservoir
-                .map(|r| std::collections::HashMap::from([("reservoir".to_string(), r)]))
-                .unwrap_or_default(),
+                .map(|r| ("reservoir".to_string(), r))
+                .into_iter()
+                .chain(e.potential.map(|p| ("potential".to_string(), p)))
+                .collect(),
             initial_state: Default::default(),
             agency_capacity: None,
         });
@@ -2164,6 +2215,15 @@ pub fn to_canvas(model: &WorldModel) -> CanvasModel {
             unit: ix.unit.clone(),
             substance: ix.substance.sub_type.clone(),
             ample: ix.ample,
+            spill: ix.spill,
+            // A Force interaction is a field flow (#574): its conductance
+            // and `one way` ride as parameters.
+            conductance: (ix.ty == InteractionType::Force)
+                .then(|| ix.parameters.iter().find(|p| p.name == "conductance"))
+                .flatten()
+                .and_then(|p| p.value.parse::<f64>().ok()),
+            one_way: ix.ty == InteractionType::Force
+                && ix.parameters.iter().any(|p| p.name == "one_way" && p.value == "1"),
         });
     }
 
@@ -2427,6 +2487,9 @@ mod tests {
             unit: String::new(),
             substance: String::new(),
             ample: false,
+            spill: false,
+            conductance: None,
+            one_way: false,
         }
     }
 

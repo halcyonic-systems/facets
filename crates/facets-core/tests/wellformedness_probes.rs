@@ -121,6 +121,7 @@ fn sink(indices: Vec<i64>, name: &str) -> ExternalEntity {
         is_same_as_id: None,
         authored_direction: true,
         reservoir: None,
+        potential: None,
     }
 }
 
@@ -166,6 +167,7 @@ fn flow(idx: i64, name: &str, source: Id, source_interface: Option<Id>, sink: Id
         amount: Decimal::ONE,
         unit: String::new(),
         ample: false,
+        spill: false,
         parameters: vec![],
         smart_parameters: vec![],
         endpoint_offset: None,

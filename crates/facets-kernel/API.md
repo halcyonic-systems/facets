@@ -1097,7 +1097,8 @@ without such a param serialize unchanged, and no signature changed.
 its work process changed, with the settings the new process does not read
 cleared, so the canvas never holds a model SL cannot write. The keys follow
 SL's refusals: `release_rate`, `capacity`, `time_constant` and `maintenance`
-are Buffering's, `setpoint` Inverting's, `limiting` Combining's and
+are Buffering's, `setpoint` Inverting's, `limiting` Combining's,
+`mass_action` Combining's and Copying's (kept between the two), and
 `back_pressure` Modulating's. `agency_capacity` is kept only when both
 processes read the same own word on the same scale. The stock unit and starting
 level are kept. A thing with a rule is returned as given. Rule:

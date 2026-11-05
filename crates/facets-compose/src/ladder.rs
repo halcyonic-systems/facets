@@ -133,13 +133,13 @@ pub const LADDER: &[Rung] = &[
     Rung {
         slug: "05b-predator-prey-first-order",
         name: "Predator-prey (first-order)",
-        blurb: "The boundary lifts: first-order death + a back-pressured predation valve give a damped Lotka-Volterra spiral, conserved.",
-        composition: "the same two Buffers, now with a predator time_constant (death ∝ stock) and a back-pressure valve realizing βxy as Sensing×release",
-        provenance: "predator-prey, resolved — first-order drain (τ) lifted bert#85",
+        blurb: "The boundary lifts: first-order death + predation as an encounter give a damped Lotka-Volterra spiral, conserved.",
+        composition: "the same two Buffers, now with a predator time_constant (death ∝ stock) and predation as a mass-action Combining, βxy drawn from the prey and read off the predators (#573, #577)",
+        provenance: "predator-prey, resolved — first-order drain (τ) lifted bert#85; βxy as mass action since #577",
         bucket: "a",
         ticks: 240,
         in_palette: false,
-        build: predator_prey_first_order,
+        build: predator_prey_mass_action,
     },
     Rung {
         slug: "08-emergence-part",
@@ -277,6 +277,13 @@ pub fn coupled_predator_prey() -> Circuit {
 /// toward a fixed point rather than closing — the honest, mass-faithful answer
 /// (real food webs dissipate; Lotka-Volterra's closed orbits are the
 /// idealization). The first ecological test of the conservation engine.
+///
+/// **As it stands this builder does not do that** (walk row 56, found
+/// 2026-11-04): its predator → sensor wire is matter, which since 4cb56b1 is
+/// a real outflow and not a level read, so the predators drain into the
+/// sensor and die out while the prey grow without bound. Declaring the wire
+/// informational restores the orbit; it is left as is because `food_chain`
+/// builds on it. The 05b rung now builds `predator_prey_mass_action`.
 pub fn predator_prey_first_order() -> Circuit {
     let mut c = Circuit::default();
     c.nodes.push(n(NodeKind::Source, 1, 200.0, 240.0)); // 0 grass (constant inflow)
@@ -308,6 +315,45 @@ pub fn predator_prey_first_order() -> Circuit {
     c.wires.push(Wire::new(3, 4)); // η share → predator (1−η dissipates)
     c.wires.push(Wire::new(4, 5)); // predator → death (first-order)
     c.wires.push(Wire::new(4, 6)); // predator level sensed (observation tap)
+    c
+}
+
+/// The 05b rung since #577 (walk row 48): `predator_prey_first_order` with
+/// predation written as what it is, an encounter. A Combining with a mass-
+/// action law draws β·x·y a tick from the prey and reads the predators,
+/// β = 0.04 / 3, the product the valve form realized as `(x/τ)·(k·y)`. It
+/// cannot clip; the valve form clips once `k·y` passes 1 (y > 25), which
+/// this orbit never reaches, so the two agree here
+/// (`mass_action_predation_is_the_valve_form_where_it_does_not_clip`).
+/// `food_chain` still builds on the valve form.
+pub fn predator_prey_mass_action() -> Circuit {
+    let mut c = Circuit::default();
+    c.nodes.push(n(NodeKind::Source, 1, 200.0, 240.0)); // 0 grass (constant inflow)
+    c.nodes
+        .push(n(NodeKind::Process(Buffering), 2, 380.0, 240.0)); // 1 prey
+    c.nodes
+        .push(n(NodeKind::Process(Combining), 3, 560.0, 240.0)); // 2 predation (the encounter)
+    c.nodes
+        .push(n(NodeKind::Process(Propelling), 4, 560.0, 360.0)); // 3 trophic transfer (η<1)
+    c.nodes
+        .push(n(NodeKind::Process(Buffering), 5, 560.0, 500.0)); // 4 predator
+    c.nodes.push(n(NodeKind::Sink, 6, 380.0, 500.0)); // 5 predator death
+    c.nodes[0].param = 2.0; // S — grass rate
+    c.nodes[1].initial_storage = 8.0;
+    c.nodes[1].storage = 8.0;
+    c.nodes[2].mass_action = 0.04 / 3.0; // β — the valve form's k / τ_prey
+    c.nodes[3].param = 0.5; // η — trophic efficiency (the rest dissipates)
+    c.nodes[4].initial_storage = 4.0;
+    c.nodes[4].storage = 4.0;
+    c.nodes[4].time_constant = 8.0; // τ_pred — first-order death γy
+    c.wires.push(Wire::new(0, 1)); // grass → prey
+    c.wires.push(Wire::new(1, 2)); // prey drawn by the encounter
+    let mut read = Wire::new(4, 2); // predators read, not used up
+    read.substance_override = Some(facets_core::SubstanceType::Message);
+    c.wires.push(read);
+    c.wires.push(Wire::new(2, 3)); // eaten prey → trophic transfer
+    c.wires.push(Wire::new(3, 4)); // η share → predator (1−η dissipates)
+    c.wires.push(Wire::new(4, 5)); // predator → death (first-order)
     c
 }
 
@@ -406,4 +452,53 @@ pub fn emergence_part() -> Circuit {
     c.nodes[0].storage = 8.0;
     c.nodes[0].release_rate = 0.0;
     c
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    /// #577: the 05b rung moved to mass action runs the valve form's orbit
+    /// wherever the valve did not clip (k·y < 1 the whole run), and stays
+    /// conserved. The comparison is against the valve form with its tap
+    /// declared informational: as `predator_prey_first_order` stands, its
+    /// predator wire into the sensor is matter, which since 4cb56b1 is a
+    /// real outflow, not a read, so the predators drain into the sensor and
+    /// die out (walk row 56). The two then differ only by f32 rounding.
+    #[test]
+    fn mass_action_predation_is_the_valve_form_where_it_does_not_clip() {
+        let mut valve = predator_prey_first_order();
+        valve.wires[6].substance_override = Some(facets_core::SubstanceType::Message);
+        assert!(valve.is_observation(&valve.wires[6]));
+        let mut law = predator_prey_mass_action();
+        let mut worst = 0.0f32;
+        for _ in 0..240 {
+            valve.step();
+            law.step();
+            assert!(0.04 * valve.nodes[4].storage < 1.0, "the valve clipped");
+            for i in [1usize, 4] {
+                let (x, y) = (valve.nodes[i].storage, law.nodes[i].storage);
+                worst = worst.max((x - y).abs() / x.abs().max(1.0));
+            }
+        }
+        assert!(worst < 1e-4, "relative gap {worst}");
+        // A damped spiral to the Lotka-Volterra fixed point with loss:
+        // ηβx = 1/τ_pred gives x = 18.75; βxy = grass gives y = 8.
+        assert!((law.nodes[1].storage - 18.75).abs() < 0.05, "prey {}", law.nodes[1].storage);
+        assert!((law.nodes[4].storage - 8.0).abs() < 0.05, "predators {}", law.nodes[4].storage);
+        assert!(law.dissipated > 0.0, "the trophic loss is booked");
+    }
+
+    /// As shipped, the valve form's predators drain into their own sensor.
+    /// Pinned so the fix is a deliberate change (walk row 56).
+    #[test]
+    fn the_valve_form_as_shipped_drains_its_predators() {
+        let mut valve = predator_prey_first_order();
+        assert!(!valve.is_observation(&valve.wires[6]));
+        for _ in 0..240 {
+            valve.step();
+        }
+        let (prey, pred) = (valve.nodes[1].storage, valve.nodes[4].storage);
+        assert!(pred < 0.1 && prey > 300.0, "prey {prey}, predators {pred}");
+    }
 }

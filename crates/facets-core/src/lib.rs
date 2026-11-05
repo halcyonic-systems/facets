@@ -1974,6 +1974,11 @@ pub struct ExternalEntity {
     /// model written before this field stays byte-identical.
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub reservoir: Option<f64>,
+    /// A source's potential for field flows (#574), apart from its emission
+    /// rate: what a `: field ... conductance` flow out of it compares. SL:
+    /// `source Battery potential 12`. `None` = the old shared number.
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub potential: Option<f64>,
 }
 
 fn default_true() -> bool {
@@ -2017,6 +2022,13 @@ pub struct Interaction {
     /// authored before this field byte-identical on disk.
     #[serde(default, skip_serializing_if = "std::ops::Not::not")]
     pub ample: bool,
+    /// `spill` (#578, walk row 48): this flow carries its source stock's
+    /// overflow, whatever the stock cannot hold at its `capacity`, in the
+    /// same tick, and nothing else. Off (the default), overflow dissipates.
+    /// A Buffering's own law: the stock routes it, not a rule. `skip` keeps
+    /// every model authored before this field byte-identical on disk.
+    #[serde(default, skip_serializing_if = "std::ops::Not::not")]
+    pub spill: bool,
     /// List of additional parameters
     pub parameters: Vec<Parameter>,
     #[serde(default, skip_serializing_if = "Vec::is_empty")]

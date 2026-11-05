@@ -106,6 +106,11 @@ pub fn engine_knobs(model: &CanvasModel) -> Vec<EngineKnob> {
             ProcessPrimitive::Inverting => {
                 out.push(knob("setpoint", "setpoint", positive(node.setpoint), declared("setpoint")));
             }
+            // The rate law's constant k (#573), on a process that declares
+            // it. One that does not passes what is pushed, and has no k.
+            ProcessPrimitive::Combining | ProcessPrimitive::Copying if declared("mass_action") => {
+                out.push(knob("mass_action", "mass action", positive(node.mass_action), true));
+            }
             _ => {}
         }
         // A process's own parameter (walk row 18): Sensing's and Amplifying's
@@ -200,6 +205,14 @@ mod tests {
     }
 
     /// Only what SL can write: a Splitting process has no line-level knob.
+    #[test]
+    fn a_declared_rate_law_offers_its_constant() {
+        // #573: `mass action <k>` is a knob; a Combining without it has none.
+        let k = knobs("component A primitive Buffering stock n initial 5\ncomponent B primitive Buffering stock n\ncomponent Rx primitive Combining mass action 0.4\ncomponent Push primitive Combining\nflow A -> Rx : matter\nflow Rx -> Push : matter\nflow Push -> B : matter\n");
+        assert!(k.iter().any(|r| r.field == "mass_action" && r.word == "mass action" && r.value == Some(0.4f32 as f64) && r.declared), "{k:?}");
+        assert_eq!(k.iter().filter(|r| r.field == "mass_action").count(), 1, "{k:?}");
+    }
+
     #[test]
     fn only_knobs_the_text_can_say_are_offered() {
         let k = knobs("component S primitive Splitting interface\ncomponent C primitive Copying interface\nenvironment In\nenvironment Out\nflow In -> S : matter\nflow S -> C : informational\nflow C -> Out : informational\n");

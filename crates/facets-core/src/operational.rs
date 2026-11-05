@@ -145,6 +145,9 @@ pub struct OperationalTerminal {
     /// A source's finite supply (#260); `None` = unbounded. Always `None` on a sink.
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub reservoir: Option<f64>,
+    /// A source's field-flow potential (#574); `None` = its emission number.
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub potential: Option<f64>,
 }
 
 /// The work process a boundary interface recapitulates when an interface-routed
@@ -178,6 +181,13 @@ pub struct OperationalFlow {
     /// quantity through this flow; gate-type receivers treat it as held open.
     #[serde(default, skip_serializing_if = "std::ops::Not::not")]
     pub ample: bool,
+    /// Overflow route (#578) — see `Interaction::spill`.
+    #[serde(default, skip_serializing_if = "std::ops::Not::not")]
+    pub spill: bool,
+    /// A gradient flow that only runs forward (#574): the `one_way`
+    /// parameter of a Force interaction.
+    #[serde(default, skip_serializing_if = "std::ops::Not::not")]
+    pub one_way: bool,
     pub conductance: Option<f64>,
     /// `Some` iff this flow lowered from boundary-interface routing (bert#108),
     /// naming the work process the interface recapitulates. Unparameterized (the
@@ -330,6 +340,7 @@ pub fn validate_operational(model: &WorldModel) -> Result<OperationalSpec, Vec<O
             id: ext.info.id.clone(),
             name: ext.info.name.clone(),
             reservoir: ext.reservoir,
+            potential: ext.potential,
         });
     }
     for ext in &model.environment.sinks {
@@ -341,6 +352,7 @@ pub fn validate_operational(model: &WorldModel) -> Result<OperationalSpec, Vec<O
             id: ext.info.id.clone(),
             name: ext.info.name.clone(),
             reservoir: None,
+            potential: None,
         });
     }
 
@@ -544,6 +556,10 @@ pub fn validate_operational(model: &WorldModel) -> Result<OperationalSpec, Vec<O
             unit: ix.unit.clone(),
             amount: ix.amount.to_string().parse::<f64>().unwrap_or(1.0),
             ample: ix.ample,
+            spill: ix.spill,
+            // `one way` rides a Force interaction as a parameter (#574).
+            one_way: ix.ty == InteractionType::Force
+                && ix.parameters.iter().any(|p| p.name == "one_way" && p.value == "1"),
             conductance,
             interface_routing,
             rate_series,
@@ -790,6 +806,7 @@ mod tests {
             amount: crate::rust_decimal::Decimal::ONE,
             unit: "L".to_string(),
             ample: false,
+            spill: false,
             parameters: vec![],
             smart_parameters: vec![],
             endpoint_offset: None,
@@ -829,6 +846,7 @@ mod tests {
                     is_same_as_id: None,
                     authored_direction: true,
                     reservoir: None,
+                    potential: None,
                 }],
                 sinks: vec![ExternalEntity {
                     info: info(snk.clone(), -1, "Drain"),
@@ -839,6 +857,7 @@ mod tests {
                     is_same_as_id: None,
                     authored_direction: true,
                     reservoir: None,
+                    potential: None,
                 }],
                 milieu: Vec::new(),
             },

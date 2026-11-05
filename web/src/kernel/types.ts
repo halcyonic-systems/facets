@@ -406,6 +406,14 @@ export interface Relation {
   /** Availability assertion (#9): the signal is present and never the binding
    *  constraint — no magnitude. serde skip-if-false; absent on old models. */
   ample?: boolean;
+  /** Overflow route (#578): carries its source stock's overflow at capacity.
+   *  serde skip-if-false; absent on old models. */
+  spill?: boolean;
+  /** A field flow's conductance G (#574): makes it a gradient, both ways
+   *  unless `one_way`. serde skip-if-none; absent on old models. */
+  conductance?: number;
+  /** A field flow that only runs forward (#574). */
+  one_way?: boolean;
 }
 
 /** Authored B properties for the root membrane — P = ⟨porosity, fuzziness⟩.

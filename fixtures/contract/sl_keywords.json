@@ -19,6 +19,11 @@
     "bunge",
     "mobus",
     "constant",
+    "spill",
+    "conductance",
+    "one",
+    "way",
+    "action",
     "proportional",
     "target",
     "threshold",
@@ -70,7 +75,10 @@
     "maintenance",
     "backpressure",
     "limiting",
+    "mass",
     "reservoir",
+    "potential",
+    "capacitance",
     "gain",
     "efficiency",
     "impedance",
@@ -118,5 +126,5 @@
       "Ratio"
     ]
   },
-  "version": "1.16"
+  "version": "1.17"
 }
