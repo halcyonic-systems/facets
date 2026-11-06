@@ -3649,8 +3649,8 @@
         "env_kind": "Neutral",
         "name": "Frontier serving",
         "role": "Component",
-        "x": 480.0,
-        "y": 150.0
+        "x": 333.0,
+        "y": 405.0
       },
       {
         "env_kind": "Neutral",
@@ -3663,12 +3663,12 @@
         "env_kind": "Neutral",
         "name": "Routed buyers",
         "role": "Component",
-        "x": 333.0,
-        "y": 405.0
+        "x": 480.0,
+        "y": 150.0
       }
     ],
     "pins": "Mobus",
-    "relations": 12,
+    "relations": 13,
     "run": {
       "answer": {
         "columns": [
@@ -3906,7 +3906,7 @@
     "verdict_under": {
       "bunge": {
         "description": {
-          "bondage": 12,
+          "bondage": 13,
           "boundary_components": [
             "Router",
             "Serving endpoint",
@@ -3930,9 +3930,10 @@
             "Open-weight serving — Router",
             "Open-weight serving — Self-hosting",
             "Frontier serving — Serving endpoint",
-            "Open-weight serving — Serving endpoint"
+            "Open-weight serving — Serving endpoint",
+            "Routed buyers — Router"
           ],
-          "endostructure": 7,
+          "endostructure": 8,
           "environment": [
             "Routed demand",
             "Self-hosted demand",
@@ -4105,6 +4106,17 @@
               "locus": "Exo",
               "mobus_ok": true,
               "self_loop": false
+            },
+            {
+              "a": 25,
+              "b": 6,
+              "bond": true,
+              "channel": "Internuncial",
+              "id": 26,
+              "kind": "Informational",
+              "locus": "Endo",
+              "mobus_ok": true,
+              "self_loop": false
             }
           ],
           "environment_thing_ids": [
@@ -4207,7 +4219,8 @@
             "Open-weight serving — Self-hosting",
             "Frontier serving — Serving endpoint",
             "Open-weight serving — Serving endpoint",
-            "Customers — Serving endpoint"
+            "Customers — Serving endpoint",
+            "Routed buyers — Router"
           ],
           "directed": 0,
           "ladder": {
@@ -4221,10 +4234,10 @@
           },
           "lens": "Klir",
           "level": "Structure",
-          "neutral": 12,
+          "neutral": 13,
           "note": "a system is what is distinguished as a system by the investigator; the distinction frame is the observer's act, not a boundary",
           "question": "what does the data commit me to? — the behavior function answers, and deliberately refuses to say what is behind it",
-          "relations": 12,
+          "relations": 13,
           "things": 13
         },
         "facts": {
@@ -4378,6 +4391,17 @@
               "locus": "Exo",
               "mobus_ok": true,
               "self_loop": false
+            },
+            {
+              "a": 25,
+              "b": 6,
+              "bond": true,
+              "channel": "Internuncial",
+              "id": 26,
+              "kind": "Informational",
+              "locus": "Endo",
+              "mobus_ok": true,
+              "self_loop": false
             }
           ],
           "environment_thing_ids": [
@@ -4451,7 +4475,7 @@
               "label": "environment roles"
             },
             {
-              "count": 12,
+              "count": 13,
               "label": "connection kinds"
             },
             {
@@ -4500,7 +4524,7 @@
           "h_note": "H: history (accumulated state conditioning T) — NOT hierarchy",
           "lens": "Mobus",
           "milieu_note": "μ (milieu) is parametric/opaque — the one element with no cross-lens preimage (milieuOnly_bunge_empty)",
-          "n": 7,
+          "n": 8,
           "perceptive_fuzziness": 0.0,
           "porosity": 0.0,
           "question": "how is the mechanism built, and what happens when it runs?",
@@ -4656,6 +4680,17 @@
               "id": 24,
               "kind": "Informational",
               "locus": "Exo",
+              "mobus_ok": true,
+              "self_loop": false
+            },
+            {
+              "a": 25,
+              "b": 6,
+              "bond": true,
+              "channel": "Internuncial",
+              "id": 26,
+              "kind": "Informational",
+              "locus": "Endo",
               "mobus_ok": true,
               "self_loop": false
             }

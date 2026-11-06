@@ -434,7 +434,11 @@ fn the_command_form_parses_projects_as_a_share_command_and_emits_back() {
     assert_eq!(q.manages_param.as_deref(), Some("landed share"));
     let fish = m.things.iter().find(|t| t.name == "Fish").unwrap();
     assert!(m.relations.iter().any(|r| r.a == fish.id && r.b == q.id), "the tap is drawn");
-    assert!(m.relations.iter().all(|r| r.a != q.id), "no command wire in the command form");
+    // The command form's wire (#588): agent to the actuator whose law the
+    // param names, carrying the param's name; a shares param lands on the
+    // splitting stock itself.
+    let wire = m.relations.iter().find(|r| r.a == q.id).expect("the command wire is drawn");
+    assert_eq!((wire.b, wire.name.as_str(), wire.kind), (fish.id, "landed share", Kind::Informational));
 
     // The command names the stock and the wire the author wrote first; the
     // pass-way fusion re-anchors that wire to the market, and the projected
@@ -444,6 +448,10 @@ fn the_command_form_parses_projects_as_a_share_command_and_emits_back() {
     let command = sys.agent.as_ref().unwrap().command.clone().expect("the command projects");
     let AgentCommand::Share { param, of, first } = command else { panic!("a share command") };
     assert_eq!(param, "landed share");
+    assert!(
+        world.interactions.iter().all(|ix| ix.source != sys.info.id),
+        "the wire is no interaction: the command is the knob write"
+    );
     assert_eq!(of, world.systems.iter().find(|s| s.info.name == "Fish").unwrap().info.id);
     let landed = world.interactions.iter().find(|ix| ix.info.id == first).unwrap();
     assert_eq!(landed.info.name, "landed");
@@ -469,6 +477,8 @@ fn the_command_form_parses_projects_as_a_share_command_and_emits_back() {
     let q = back.things.iter().find(|t| t.name == "Quota").unwrap();
     assert_eq!(q.manages_param.as_deref(), Some("landed share"));
     assert!(back.params.iter().any(|p| p.name == "landed share"));
+    let fish = back.things.iter().find(|t| t.name == "Fish").unwrap();
+    assert!(back.relations.iter().any(|r| r.a == q.id && r.b == fish.id && r.name == "landed share"), "the wire reads back");
     assert!(emit_sl(&back).unwrap().contains("manages param \"landed share\""));
 }
 
@@ -508,6 +518,12 @@ fn the_command_form_faults_are_named() {
     let ranged = swap("param shares \"landed share\" : from Fish", "param \"feed rate\" : flow Feed -> Feeder range 0..2")
         .replace("manages param \"landed share\"", "manages param \"feed rate\"");
     let m = parse_sl(&ranged).unwrap();
+    // A source flow's knob is the pass-way's admission (#588): the wire
+    // lands on Feeder, never on the source.
+    let q = m.things.iter().find(|t| t.name == "Quota").unwrap();
+    let feeder = m.things.iter().find(|t| t.name == "Feeder").unwrap();
+    let wire = m.relations.iter().find(|r| r.a == q.id).expect("the command wire is drawn");
+    assert_eq!((wire.b, wire.name.as_str()), (feeder.id, "feed rate"));
     let world = project(&m);
     let sys = world.systems.iter().find(|s| s.info.name == "Quota").unwrap();
     assert!(matches!(sys.agent.as_ref().unwrap().command, Some(facets_core::AgentCommand::Amount { .. })));
@@ -591,7 +607,11 @@ fn a_flow_watch_drives_the_command_form() {
     let m = parse_sl(&text).unwrap();
     let q = m.things.iter().find(|t| t.name == "Quota").unwrap();
     assert!(q.watches_flow.is_some() && q.manages_param.as_deref() == Some("landed share"));
-    assert!(m.relations.iter().all(|r| r.a != q.id && r.b != q.id), "neither a tap nor a command wire");
+    // No tap (the flow watch reads a declared flow), but the command wire
+    // is drawn (#588): the shares param lands on the splitting stock.
+    assert!(m.relations.iter().all(|r| r.b != q.id), "no tap for a flow watch");
+    let fish = m.things.iter().find(|t| t.name == "Fish").unwrap();
+    assert!(m.relations.iter().any(|r| r.a == q.id && r.b == fish.id && r.name == "landed share"), "the command wire");
     let world = project(&m);
     let sys = world.systems.iter().find(|s| s.info.name == "Quota").unwrap();
     let agent = sys.agent.as_ref().unwrap();
@@ -720,7 +740,9 @@ fn an_agent_commands_a_rate_laws_k_through_the_command_form() {
     );
     let public = m.things.iter().find(|t| t.name == "Public").unwrap();
     assert_eq!(public.manages_param.as_deref(), Some("contact rate"));
-    assert!(m.relations.iter().all(|r| r.a != public.id), "no command wire in the command form");
+    let infection = m.things.iter().find(|t| t.name == "Infection").unwrap();
+    let wire = m.relations.iter().find(|r| r.a == public.id).expect("the command wire is drawn (#588)");
+    assert_eq!((wire.b, wire.name.as_str()), (infection.id, "contact rate"));
 
     // Projects as a law command on the process, resolved to its position.
     let world = project(&m);

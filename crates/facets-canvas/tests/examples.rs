@@ -90,8 +90,13 @@ fn example_flow_labels_are_names_not_sentences() {
         let name = p.file_name().unwrap().to_string_lossy();
         let text = fs::read_to_string(p).unwrap();
         let parsed = parse_sl_full(&text).unwrap_or_else(|f| panic!("{name}: {f:#?}"));
+        // The wires an agent line draws are not flow lines: the tap says
+        // `reading`, the signal form's wire `command`, and the command
+        // form's wire carries its param's name (#588), which §4.5 governs.
+        let agents: std::collections::HashSet<u64> =
+            parsed.model.things.iter().filter(|t| t.rule.is_some()).map(|t| t.id).collect();
         for r in &parsed.model.relations {
-            if r.name.is_empty() {
+            if r.name.is_empty() || agents.contains(&r.a) || agents.contains(&r.b) {
                 continue;
             }
             labels += 1;

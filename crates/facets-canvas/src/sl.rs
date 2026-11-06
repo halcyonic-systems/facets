@@ -2559,6 +2559,8 @@ pub fn parse_sl_full(text: &str) -> Result<SlParse, Vec<SlError>> {
                         Watched::Flow(rel.id)
                     }
                 };
+                // The command form's wire is named by its param (#588).
+                let mut command_label: Option<String> = None;
                 let proc_id: Option<u64> = match &managed {
                     Managed::Process(proc_name) => {
                 let Some(&pi) = by_name.get(proc_name) else {
@@ -2791,7 +2793,10 @@ pub fn parse_sl_full(text: &str) -> Result<SlParse, Vec<SlError>> {
                             );
                             continue;
                         }
-                        None
+                        // The wire lands on the actuator the knob belongs to
+                        // (#588): the process whose law the param names.
+                        command_label = Some(pname.clone());
+                        crate::canvas::command_target(&things, &relations, &decl.anchor)
                     }
                 };
                 by_name.insert(name.clone(), things.len());
@@ -2833,22 +2838,25 @@ pub fn parse_sl_full(text: &str) -> Result<SlParse, Vec<SlError>> {
                 // The tap and the command wire, drawn from the line (ADR 0008
                 // D5). Both informational: a tap reads a level without draining
                 // it, and a command is a message the managed process gates on.
-                // The command form draws no wire: its command is a knob write,
-                // and a flow watch draws no tap: the flow it reads is already
-                // declared, and reading it takes nothing from it (spec v1.14).
+                // The command form's wire lands on the actuator whose law the
+                // param names and carries the param's name (#588); its command
+                // is still the knob write, so the projection draws no
+                // interaction for it. A flow watch draws no tap: the flow it
+                // reads is already declared, and reading it takes nothing
+                // from it (spec v1.14).
                 let mut drawn = match watched {
-                    Watched::Stock(stock_id) => vec![(stock_id, agent_id, "reading")],
+                    Watched::Stock(stock_id) => vec![(stock_id, agent_id, "reading".to_string())],
                     Watched::Flow(_) => Vec::new(),
                 };
                 if let Some(proc_id) = proc_id {
-                    drawn.push((agent_id, proc_id, "command"));
+                    drawn.push((agent_id, proc_id, command_label.clone().unwrap_or_else(|| "command".to_string())));
                 }
                 for (a, b, label) in drawn {
                     relations.push(Relation {
                         id: next_id,
                         a,
                         b,
-                        name: label.to_string(),
+                        name: label,
                         description: String::new(),
                         grounding: None,
                         usability: None,

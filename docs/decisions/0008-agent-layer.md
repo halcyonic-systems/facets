@@ -101,6 +101,18 @@ the contact rate (`assets/bench/sir-epidemic-agent.sl`); the second, the
 one that asked for it, is a leader inside a community convening its
 members' encounters (the theory-of-change toy models, 2026-11-06).
 
+Note 2026-11-06 (#588): the command form's command is a relation. The
+shortcut above, a knob write and no wire, left the agent connected to
+nothing in any lens, and on the canvas an agent that reads and never
+acts (Shingai's question: "is an agent command not a form of a
+relation?"). It is: Mobus's agent commands an actuator, a work process.
+The parser now draws the wire to that actuator, named by the param; for
+a flow param the actuator is the process whose law sets the flow, the
+emitting process for an outflow and the pass-way for a crossing flow,
+never the environment (walk row 48 put the law on the process, and the
+same move settles this). The projection keeps the command as the knob
+write and draws no interaction for the wire.
+
 **D2. All agents in a run share one dynamics kind; deterministic at the first
 rung. Rule names mix freely.** The position doc's "unsolved" blocker
 (`design/dynamics-principled-position.md`, Agent trajectories row) is
