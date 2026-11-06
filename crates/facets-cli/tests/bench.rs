@@ -361,6 +361,32 @@ fn the_agent_forms_differ_from_their_aggregate_controls_as_the_readme_says() {
     assert!(empties(&control) >= 28 && empties(&agent) <= 18, "{} vs {}", empties(&control), empties(&agent));
 }
 
+/// A gate on messages (#587; `censorship.sl`) from the terminal, as the
+/// README row says: uncut, what the public remembers rests at 100; with
+/// the regime's line at 40 it saws around 40; at 20 it holds 20.
+#[test]
+fn the_censor_holds_what_the_public_remembers_at_its_line() {
+    let run = |sets: &[&str]| -> serde_json::Value {
+        let mut args = vec!["bench", "assets/bench/censorship.sl", "--t", "60", "--no-log"];
+        for s in sets {
+            args.push("--set");
+            args.push(s);
+        }
+        let out = facets(&args);
+        assert_eq!(code(&out), 0, "{}", stderr(&out));
+        stdout_json(&out)
+    };
+    let heard = |v: &serde_json::Value| -> Vec<f64> {
+        after_steps(v["trajectories"].as_array().unwrap().iter().find(|t| t["name"] == "Heard").unwrap())
+    };
+    let free = heard(&run(&["Regime.above=100"]));
+    assert!(free[59] > 99.0, "uncut it rests at 100: {}", free[59]);
+    let held = heard(&run(&[]));
+    assert!(held[20..].iter().all(|&h| h > 35.0 && h < 48.0), "held around 40: {held:?}");
+    let low = heard(&run(&["Regime.above=20"]));
+    assert!(low[30..].iter().all(|&h| (h - 20.0).abs() < 2.0), "held at 20: {low:?}");
+}
+
 /// The command form of the quota agent (ADR 0008 D1; `logistic-harvest-quota.sl`)
 /// pinned to its controls from the terminal, as the README row says: pinned
 /// closed it traces the signal form pinned closed to one f32 ulp; with the

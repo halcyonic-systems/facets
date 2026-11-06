@@ -27,7 +27,7 @@ work-process row). The same table lives in the engine's teaching cards
 | Propelling | a pump | a courier, an economy moving goods |
 | Copying | a broadcast | sharing a file, announcing a vote |
 | Sensing | a gauge | a thermometer, a vote count |
-| Modulating | a valve | a thermostat throttling heat, a quorum gate |
+| Modulating | a valve; fed only messages, a gate on messages (#587) | a thermostat throttling heat, a quorum gate, a censor's office |
 | Amplifying | an amplifier | a megaphone, a transistor |
 | Inverting | a comparator | a thermostat's dial |
 
@@ -245,6 +245,11 @@ new verb for the language, not a formula — see ADR 0006 for the growth rule.
    level / τ, so it rests at inflow × τ (a leaky integrator); reading it
    copies its level without draining it; and it is off the matter and energy
    books. An informational flow into any other stock is still its gate.
+   A gate on messages is a Modulating fed only messages (#587): the
+   command into it (an agent's or a comparator's) sets the share that
+   passes, every other message into it is what it gates, and what it stops
+   ceases, since messages copy. `assets/bench/censorship.sl` is the worked
+   case: a regime holding what the public remembers at its line.
 3. **`amount` is an absolute rate only on source-originating flows.** On flows
    out of processes it is a *relative weight* for the fanout split; the actual
    outflow of a stock is its `release`/time-constant behavior. Don't decorate

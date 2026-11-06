@@ -546,10 +546,26 @@ fn check_gates_have_control(model: &WorldModel, issues: &mut Vec<ValidationIssue
         if sys.agent.as_ref().and_then(|a| a.primitive) != Some(ProcessPrimitive::Modulating) {
             continue;
         }
-        let controlled = model
+        // A message gate (#587), a valve fed no physical flow, is controlled
+        // only by a command: an agent's or a comparator's message. Any other
+        // message into it is what it gates.
+        let physical_in = model
             .interactions
             .iter()
-            .any(|ia| ia.sink == sys.info.id && ia.substance.ty == SubstanceType::Message);
+            .any(|ia| ia.sink == sys.info.id && ia.substance.ty != SubstanceType::Message);
+        let is_command_sender = |id: &Id| {
+            model.systems.iter().any(|s| {
+                s.info.id == *id
+                    && s.agent.as_ref().is_some_and(|a| {
+                        a.policy.is_some() || a.primitive == Some(ProcessPrimitive::Inverting)
+                    })
+            })
+        };
+        let controlled = model.interactions.iter().any(|ia| {
+            ia.sink == sys.info.id
+                && ia.substance.ty == SubstanceType::Message
+                && (physical_in || is_command_sender(&ia.source))
+        });
         if controlled {
             continue;
         }
@@ -2936,6 +2952,33 @@ mod tests {
         assert!(!open(&m), "a controlled gate does not");
     }
 
+    /// A message gate (#587), a valve fed only messages, is controlled by a
+    /// command alone: a source's messages into it are payload, and the gate
+    /// warns until an agent's or a comparator's message reaches it.
+    #[test]
+    fn a_message_gate_is_controlled_only_by_a_command() {
+        let mut m = two_component_model();
+        // A memory's messages into the gate: payload, so the gate warns.
+        m.systems[1].agent = Some(AgentModel {
+            primitive: Some(ProcessPrimitive::Buffering),
+            ..AgentModel::default()
+        });
+        m.systems[2].agent = Some(AgentModel {
+            primitive: Some(ProcessPrimitive::Modulating),
+            ..AgentModel::default()
+        });
+        let mut voices = flow(0, "messages", sys_id(vec![0, 0]), sys_id(vec![0, 1]));
+        voices.substance.ty = SubstanceType::Message;
+        m.interactions.push(voices);
+        let open = |m: &WorldModel| {
+            validate_mode(m, Mode::Operational).issues.iter().any(|i| i.code == "gate_without_control")
+        };
+        assert!(open(&m), "messages into a gate are payload, not its control");
+        // The same wire from a comparator is the command.
+        m.systems[1].agent.as_mut().unwrap().primitive = Some(ProcessPrimitive::Inverting);
+        assert!(!open(&m), "a comparator's message is the command");
+    }
+
     /// Law: Bunge Def 1.1 — an unbonded collection of components is a valid Core model but not a Structural system; entering Structural requires at least one bond.
     #[test]
     fn aggregate_enters_core_but_not_structural() {
@@ -4331,7 +4374,8 @@ mod tests {
             witness: Some("gate_without_control_warns"),
             canvas: true,
             note: "toy-model walk 2026-11-03: a Modulating gate with no \
-                   informational inflow ran held open with nothing said",
+                   informational inflow ran held open with nothing said; \
+                   #587: a message gate is controlled only by a command",
         },
         CheckAudit {
             check: "check_s0_interface_processors",
