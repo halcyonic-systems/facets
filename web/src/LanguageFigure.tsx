@@ -152,57 +152,88 @@ export function LanguageFigure({ reading }: { reading: LanguageReading }) {
   );
 }
 
-/** The language panel: the switch, the figure, a line under it, and, on a
- *  model's reading, the door into that model. */
+/** The language panel (Shingai, 2026-11-06): the figure as a carousel over
+ *  the readings, an arrow either side named for where it goes, dots under it,
+ *  then the reading's question or the generic sentence, and on a model's
+ *  reading the door into that model. The arrows wrap; the left and right keys
+ *  turn it too. */
 export function LanguagePanel({ onOpenModel }: { onOpenModel?: (model: string) => void }) {
-  const [reading, setReading] = useState<LanguageReading>(GENERIC_READING);
+  const [i, setI] = useState(0);
+  const n = LANGUAGE_READINGS.length;
+  const reading = LANGUAGE_READINGS[i] ?? GENERIC_READING;
+  const prev = LANGUAGE_READINGS[(i + n - 1) % n];
+  const next = LANGUAGE_READINGS[(i + 1) % n];
+  const turn = (d: number) => setI((k) => (k + d + n) % n);
+  const arrow = (r: LanguageReading, d: number, icon: "chevron-left" | "chevron-right") => (
+    <button
+      type="button"
+      onClick={() => turn(d)}
+      aria-label={`${d < 0 ? "Previous" : "Next"}: ${r.tab}`}
+      className="lang-arrow flex w-16 shrink-0 flex-col items-center gap-1.5 sm:w-20"
+    >
+      <span className="lang-arrow-disc flex h-11 w-11 items-center justify-center rounded-full border">
+        <Icon name={icon} size={20} />
+      </span>
+      <span className="text-center text-xs leading-4" style={{ color: "var(--text-muted)" }}>
+        {r.tab}
+      </span>
+    </button>
+  );
   return (
-    <div>
-      <div className="flex flex-wrap gap-1.5" role="group" aria-label="Read the figure as">
-        {LANGUAGE_READINGS.map((r) => (
+    <div
+      role="group"
+      aria-roledescription="carousel"
+      aria-label="The language, read as any system or as a public model"
+      onKeyDown={(e) => {
+        if (e.key === "ArrowLeft") turn(-1);
+        if (e.key === "ArrowRight") turn(1);
+      }}
+    >
+      <div className="flex items-center gap-1 sm:gap-3">
+        {arrow(prev, -1, "chevron-left")}
+        {/* Below about 480px the labels would shrink past reading size, so a
+            phone scrolls the figure sideways inside its own box instead. */}
+        <div className="min-w-0 flex-1 overflow-x-auto">
+          <div className="min-w-[480px]" aria-live="polite">
+            <LanguageFigure reading={reading} />
+          </div>
+        </div>
+        {arrow(next, 1, "chevron-right")}
+      </div>
+      <div className="mt-3 flex items-center justify-center gap-2">
+        {LANGUAGE_READINGS.map((r, k) => (
           <button
             key={r.id}
             type="button"
-            aria-pressed={r.id === reading.id}
-            onClick={() => setReading(r)}
-            className="lang-tab inline-flex h-8 items-center rounded-sm border px-3 text-sm font-medium"
+            onClick={() => setI(k)}
+            aria-label={r.tab}
+            aria-pressed={k === i}
+            className="lang-dot flex h-6 items-center justify-center"
           >
-            {r.tab}
+            <span
+              className="block h-2 rounded-full"
+              style={{ width: k === i ? 22 : 8, background: k === i ? "var(--accent)" : "var(--border)" }}
+            />
           </button>
         ))}
       </div>
-      {/* Below about 480px the labels would shrink past reading size, so a
-          phone scrolls the figure sideways inside its own box instead. */}
-      <div className="-mx-4 mt-4 overflow-x-auto px-4 sm:mx-0 sm:px-0">
-        <div className="min-w-[480px]">
-          <LanguageFigure reading={reading} />
-        </div>
-      </div>
-      {/* A fixed height under the figure, so switching readings never moves
-          the page: the generic sentence, or the model's question, its measurement
-          and its door. */}
-      <div className="min-h-36">
-        {reading.question ? (
+      {/* A fixed height under the figure, so turning never moves the page. */}
+      <div className="mx-auto min-h-36 max-w-xl text-center">
+        {reading.question && (
           <>
-            <p className="mt-3 text-base font-semibold leading-6" style={{ color: "var(--text-primary)" }}>
+            <p className="mt-4 text-base font-semibold leading-6" style={{ color: "var(--text-primary)" }}>
               {reading.question}
             </p>
             <p className="mt-1 text-sm leading-6" style={{ color: "var(--text-secondary)" }}>
               What would answer it: {reading.measure} The model maps the system. It does not answer the question yet.
             </p>
           </>
-        ) : (
-          <p className="mt-3 text-sm leading-6" style={{ color: "var(--text-secondary)" }}>
-            {reading.model
-              ? `The same shapes, named as the ${reading.system} model names them.`
-              : "A source sends a flow across an interface to a component inside the system, and on to a sink."}
-          </p>
         )}
         {reading.model && onOpenModel && (
           <button
             type="button"
             onClick={() => onOpenModel(reading.model!)}
-            className="home-quiet-link -mx-2 mt-2 inline-flex h-8 items-center gap-1.5 rounded-sm px-2 text-sm font-medium"
+            className="home-quiet-link mt-2 inline-flex h-8 items-center gap-1.5 rounded-sm px-2 text-sm font-medium"
             style={{ color: "var(--accent)" }}
           >
             Open the {reading.system} model

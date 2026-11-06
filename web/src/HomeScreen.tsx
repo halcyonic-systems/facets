@@ -81,6 +81,7 @@ import { Button, Input, Pill, type Tone } from "./ui";
 // The rendered docs on the site (#368): the LIVE doc set, published with the
 // rest of facets.systems by scripts/publish-site.sh.
 const DOCS_URL = "https://facets.systems/docs/";
+const CHAT_URL = "https://facets.systems/chat/";
 
 // The `shelf` view is gone: with the list flat and a filter over it, a shelf
 // was a page that showed a subset the library already shows. Nothing in
@@ -474,52 +475,6 @@ function LedgerRow({
 // home
 // ---------------------------------------------------------------------------
 
-// The gem from the portal, the Model facet lit: this page belongs to the same
-// site, and the colour says which door you came through. Fills go through
-// style so they read the theme (presentation attributes cannot take var()).
-const GEM_FACETS: { points: string; token: string; opacity: number }[] = [
-  { points: "40,4 71,19 40,40", token: "var(--accent-indigo)", opacity: 0.1 },
-  { points: "71,19 78,52 40,40", token: "var(--accent-indigo)", opacity: 0.07 },
-  { points: "78,52 57,76 40,40", token: "var(--accent)", opacity: 0.12 },
-  { points: "57,76 23,76 40,40", token: "var(--accent)", opacity: 0.55 },
-  { points: "23,76 2,52 40,40", token: "var(--accent)", opacity: 0.12 },
-  { points: "2,52 9,19 40,40", token: "var(--accent-slate)", opacity: 0.03 },
-  { points: "9,19 40,4 40,40", token: "var(--accent-indigo)", opacity: 0.05 },
-];
-const GEM_RIM = [
-  [40, 4],
-  [71, 19],
-  [78, 52],
-  [57, 76],
-  [23, 76],
-  [2, 52],
-  [9, 19],
-];
-
-function Gem({ size = 72 }: { size?: number }) {
-  return (
-    <svg viewBox="0 0 80 80" width={size} height={size} aria-hidden="true" className="shrink-0">
-      <polygon
-        points={GEM_RIM.map((p) => p.join(",")).join(" ")}
-        style={{ fill: "var(--bg-secondary)", stroke: "var(--text-primary)", strokeWidth: 0.35 }}
-      />
-      {GEM_FACETS.map((f) => (
-        <polygon key={f.points} points={f.points} style={{ fill: f.token, opacity: f.opacity }} />
-      ))}
-      {GEM_RIM.map(([x, y]) => (
-        <line
-          key={`${x},${y}`}
-          x1={40}
-          y1={40}
-          x2={x}
-          y2={y}
-          style={{ stroke: "var(--text-primary)", strokeWidth: 0.2, opacity: 0.5 }}
-        />
-      ))}
-    </svg>
-  );
-}
-
 // ---------------------------------------------------------------------------
 // The front door (the entry pass, 2026-10-27). It leads with the language: a
 // handful of generic words that describe a system in any domain, each with its
@@ -590,55 +545,30 @@ export function HomeMenu({
   onAbout?: () => void;
 }) {
   const quiet = "home-quiet-link inline-flex h-8 items-center gap-1.5 rounded-sm px-2 text-sm font-medium";
+  const door = "home-door inline-flex h-11 items-center gap-2 rounded-sm px-5 text-base font-semibold no-underline";
   return (
     <div className="flex min-h-full flex-col" style={{ backgroundColor: "var(--bg-secondary)" }}>
-      {/* Two doors: make a model or open one (one-surface.md, 2026-10-27).
-          Drawing, describing and wiring processes are ways of working on the
-          same model, chosen on the blank canvas, not doors here. The sandbox
-          surface stays at `?sandbox=1`; the data-first door at `?data=1`. */}
-      <main className="mx-auto grid w-full max-w-6xl flex-1 content-center items-center gap-12 px-4 py-12 sm:px-10 lg:grid-cols-[minmax(0,5fr)_minmax(0,6fr)] lg:gap-16 lg:py-16">
-        <div className="min-w-0">
-          <Gem size={48} />
-          <h1 className="mt-6" style={{ ...nameStyle, fontSize: "var(--t-hero)", lineHeight: 1.05 }}>
-            Systems modeling, grounded in systems science.
-          </h1>
-          <p className="mt-6 max-w-lg text-lg leading-7" style={{ color: "var(--text-secondary)" }}>
-            Parts, a boundary, and the flows between them. Facets checks the structure as you build and runs it when
-            you're ready.
-          </p>
-          <div className="mt-8 flex flex-wrap gap-3">
-            <button
-              type="button"
-              onClick={() => onCreate()}
-              className="home-door home-door-primary inline-flex h-12 w-full items-center justify-center gap-2.5 rounded-sm px-6 text-base font-semibold sm:w-auto"
-            >
-              <Icon name="plus" size={20} />
-              New model
-            </button>
-            <button
-              type="button"
-              onClick={onOpenLibrary}
-              className="home-door home-door-secondary inline-flex h-12 w-full items-center justify-center gap-2.5 rounded-sm px-6 text-base font-semibold sm:w-auto"
-            >
-              <Icon name="open" size={20} />
-              Open a model
-            </button>
-          </div>
-        </div>
-
-        {/* The language: its words drawn as one small system, each labelled
-            with its SL keyword, and read in a public model's words on request
-            (LanguageFigure.tsx, languageReadings.ts). */}
-        <section className="min-w-0" aria-labelledby="home-language">
-          <h2 id="home-language" style={{ ...nameStyle, ...d2 }}>
-            One language for any system
-          </h2>
-          <p className="mt-2 text-sm leading-6" style={{ color: "var(--text-secondary)" }}>
-            The same few words describe any system. Pick a model to see it in its own words.
-          </p>
-          <div className="mt-5">
-            <LanguagePanel onOpenModel={onOpenModel} />
-          </div>
+      {/* Stacked, one headline (Shingai, 2026-11-06): the language leads, the
+          three doors under it (ask in chat, build, open), then the figure as a
+          carousel over the public models. The sandbox surface stays at
+          `?sandbox=1`; the data-first door at `?data=1`. */}
+      <main className="mx-auto flex w-full max-w-4xl flex-1 flex-col items-center gap-8 px-4 py-12 sm:px-10 lg:py-16">
+        <h1 id="home-language" className="text-center" style={{ ...nameStyle, fontSize: "var(--t-hero)", lineHeight: 1.05 }}>
+          One language for any system
+        </h1>
+        <nav aria-label="Start" className="flex w-full flex-wrap justify-center gap-2">
+          <a href={CHAT_URL} onClick={openExternal} className={`${door} home-door-secondary`}>
+            Ask<span className="font-normal" style={{ color: "var(--text-muted)" }}>in chat</span>
+          </a>
+          <button type="button" onClick={() => onCreate()} className={`${door} home-door-primary`}>
+            Build<span className="font-normal opacity-80">a new model</span>
+          </button>
+          <button type="button" onClick={onOpenLibrary} className={`${door} home-door-secondary`}>
+            Open<span className="font-normal" style={{ color: "var(--text-muted)" }}>a model</span>
+          </button>
+        </nav>
+        <section className="w-full border-t pt-8" style={{ borderColor: "var(--hairline)" }} aria-labelledby="home-language">
+          <LanguagePanel onOpenModel={onOpenModel} />
         </section>
       </main>
 

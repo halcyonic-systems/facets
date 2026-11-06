@@ -83,13 +83,16 @@ describe("the language figure", () => {
     expect(wrapName("LLM Serving Market", 40)).toEqual(["LLM Serving Market"]);
   });
 
-  it("opens on the language's own words, with a switch for each reading", () => {
+  it("opens on the language's own words, with arrows named for the readings either side and a dot for each", () => {
     const html = renderToStaticMarkup(<LanguagePanel onOpenModel={() => {}} />);
-    for (const r of LANGUAGE_READINGS) expect(html).toContain(`>${r.tab}<`);
-    expect(html).toContain('aria-pressed="true"');
-    expect(html).toContain("A source sends a flow across an interface");
-    // the generic reading opens no model
+    const last = LANGUAGE_READINGS[LANGUAGE_READINGS.length - 1];
+    expect(html).toContain(`aria-label="Previous: ${last.tab}"`);
+    expect(html).toContain(`aria-label="Next: ${LANGUAGE_READINGS[1].tab}"`);
+    for (const r of LANGUAGE_READINGS) expect(html).toContain(`aria-label="${r.tab}"`);
+    expect(html.match(/aria-pressed="true"/g)?.length).toBe(1);
+    // the generic reading opens no model and asks no question
     expect(html).not.toContain("Open the ");
+    expect(html).not.toContain("What would answer it");
   });
 
   it("gives every model reading its question and the measurement that would answer it", () => {

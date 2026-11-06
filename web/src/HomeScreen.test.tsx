@@ -84,10 +84,14 @@ const browser = (tree: LibraryNode[] = [], initialFacet: Tag | null = null) =>
 const doors = (opts: Parameters<typeof page>[0] = {}) => page({ ...opts, initialView: "doors" });
 
 describe("home", () => {
-  it("is two doors, new and open, with the docs in the colophon", () => {
+  it("is three doors, ask, build and open, under one headline, with the docs in the colophon", () => {
     const html = renderToStaticMarkup(<HomeMenu onCreate={noop} onOpenLibrary={noop} />);
-    expect(html).toContain("New model");
-    expect(html).toContain("Open a model");
+    expect(html).toContain("One language for any system");
+    // one headline only (Shingai, 2026-11-06)
+    expect(html.match(/<h1/g)?.length).toBe(1);
+    expect(html).not.toContain("Systems modeling, grounded");
+    for (const d of ["Ask", "in chat", "Build", "a new model", "Open", "a model"]) expect(html).toContain(d);
+    expect(html).toContain('href="https://facets.systems/chat/"');
     // one-surface.md: drawing, describing and the sandbox are ways in on the
     // blank canvas, not doors; ?sandbox=1 still opens the sandbox surface.
     expect(html).not.toContain("Draw your system");
