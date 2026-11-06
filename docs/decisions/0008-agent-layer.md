@@ -90,6 +90,17 @@ reads, so the parser refuses it as inert and the fishery is modelled as a
 two-way split with catch-and-release instead. Not designed: a wider split, a
 component field (a setpoint), another agent's field.
 
+Note 2026-11-06 (#584, walk row 57, spec v1.18): one component field joins
+the command form, a Combining or Copying process's `mass action` `k`. It is
+the operational parameter of a work process in §12.2.3.2's sense and no
+agent's, so D2's agent-over-agent deferral does not touch it; a setpoint
+and every other field stay the rung after. The knob is written set, not
+scaled, through the param's range, which must start above zero so a law
+never silently becomes a push. The first witness is the SIR public cutting
+the contact rate (`assets/bench/sir-epidemic-agent.sl`); the second, the
+one that asked for it, is a leader inside a community convening its
+members' encounters (the theory-of-change toy models, 2026-11-06).
+
 **D2. All agents in a run share one dynamics kind; deterministic at the first
 rung. Rule names mix freely.** The position doc's "unsolved" blocker
 (`design/dynamics-principled-position.md`, Agent trajectories row) is

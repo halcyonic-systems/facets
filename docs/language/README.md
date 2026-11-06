@@ -79,7 +79,7 @@ A file is a flat sequence of lines. Structure lines carry meaning; a blank line,
 |---|---|
 | `system` / `domain` / `time unit` / `level` | the header: what kind of thing this is, in what vocabulary, over what time base |
 | things (`component`, `source`, `sink`, `environment`, `interface`, `interface unresolved`, `milieu`) | what's inside the boundary and what's outside it; `interface unresolved` is the one reserved pass-way, for crossings whose interface is not yet identified (#308) |
-| `agent` | a decision-maker (v1.10–v1.14, ADR 0008): what it `watches` (a stock, or with `watches flow` a physical flow, v1.14), the `rule` it runs, and what it `manages` (a process, or a declared `param` in the command form); written after the things it names, its tap and command wire never as flows |
+| `agent` | a decision-maker (v1.10–v1.14, ADR 0008): what it `watches` (a stock, or with `watches flow` a physical flow, v1.14), the `rule` it runs, and what it `manages` (a process, or a declared `param` in the command form: a flow amount, a two-way split's shares, or since v1.18 a rate law's `mass action`); written after the things it names, its tap and command wire never as flows |
 | `description` / `grounding` (indented, directly under a declaration) | the author's prose, and the grade and reference of a number (v1.5, v1.7); continuation lines of the declaration above, never declarations |
 | `flow` | the connections between them, directed |
 | `param` / `metric` | declared names over input knobs and output readouts |

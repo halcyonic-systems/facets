@@ -357,6 +357,7 @@ const ENGINE_FIELDS: Array<[EngineField, string]> = [
   ["time_constant", "time constant"],
   ["setpoint", "setpoint"],
   ["maintenance", "maintenance"],
+  ["mass_action", "mass action"],
 ];
 
 /** One engine knob a component declares but no `param` line names (#463
@@ -669,7 +670,7 @@ export function engineRows(
       key,
       label,
       value: v,
-      unit: key === "setpoint" || key === "time_constant" ? undefined : thing.stock_unit,
+      unit: key === "setpoint" || key === "time_constant" || key === "mass_action" ? undefined : thing.stock_unit,
       put: (nv) => ({ ...thing, cognitive_params: { ...(thing.cognitive_params ?? {}), [key]: nv } }),
     });
   }

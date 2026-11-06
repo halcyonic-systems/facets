@@ -338,11 +338,14 @@ fn the_agent_forms_differ_from_their_aggregate_controls_as_the_readme_says() {
     assert!(series(&control, "Ward")[6..].iter().all(|&b| (b - 40.0).abs() < 1e-3));
     let ward = series(&agent, "Ward");
     assert!(ward.iter().all(|&b| b < 40.0) && ward[4..].iter().any(|&b| b < 32.0) && ward[4..].iter().any(|&b| b > 37.0), "{ward:?}");
-    // The epidemic: a lower, earlier peak and a longer tail.
+    // The epidemic: a lower, earlier peak and a longer tail. The public
+    // commands the encounter's k (#584), and the command form lands one
+    // tick after the alarm, so the first days run uncut and the peak sits
+    // near 0.18 on day 3 against the control's 0.26 on day 8.
     let control = run("assets/bench/sir-epidemic.sl", "40", &[]);
     let agent = run("assets/bench/sir-epidemic-agent.sl", "40", &[]);
     let peak = |v: &serde_json::Value| series(v, "Infected").iter().cloned().fold(0.0, f64::max);
-    assert!(peak(&control) > 0.25 && peak(&agent) < 0.18, "{} vs {}", peak(&control), peak(&agent));
+    assert!(peak(&control) > 0.25 && peak(&agent) < 0.2, "{} vs {}", peak(&control), peak(&agent));
     let above = |v: &serde_json::Value| series(v, "Infected").iter().filter(|&&x| x > 0.1).count();
     assert!(above(&agent) > above(&control) + 3, "{} vs {} days above a tenth", above(&agent), above(&control));
     // The fishery: closures keep the stock up and land several times more.

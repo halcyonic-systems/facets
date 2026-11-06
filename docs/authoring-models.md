@@ -233,7 +233,12 @@ new verb for the language, not a formula — see ADR 0006 for the growth rule.
    `k · S · I` a time unit from the opening levels, and never clips. A
    sensor opening a valve is still right for real control, a thermostat or
    a float valve; it is the wrong idiom for an encounter, because the gate
-   clamps at 1. `assets/bench/sir-epidemic.sl` is the worked case.
+   clamps at 1. `assets/bench/sir-epidemic.sl` is the worked case. An
+   agent sets the encounter's rate through the command form (#584):
+   `param "contact rate" : mass action of Infection range 0.05..0.5` and
+   `agent Public … manages param "contact rate"`; the range starts above
+   zero, and a threshold or table commands it (a proportional rule's span
+   starts at 0). `sir-epidemic-agent.sl` is that case.
    A memory is a stock declared `informational` (#576): `component Memory
    primitive Buffering stock ideas time constant 5 informational`. An
    informational flow into it is an inflow, not a gate; it forgets at
