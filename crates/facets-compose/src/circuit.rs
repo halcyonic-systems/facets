@@ -2109,6 +2109,38 @@ impl Circuit {
                     // the valve sits OPEN (gate 1) — same convention as the
                     // buffer's gate. A closed-by-default valve silently
                     // destroyed every physical inflow.
+                    //
+                    // A message gate (#587): a valve fed no physical flow
+                    // gates messages. Messages copy and are not conserved,
+                    // so nothing is held back or ledgered: the share that
+                    // passes is delivered, the rest ceases. Its control is a
+                    // command, an agent's or a comparator's; every other
+                    // message into it is payload (a source's, a stock's
+                    // copy, a sensor's reading). With no command it sits
+                    // open, as a valve does. Censorship, moderation, an
+                    // admission rule on messages.
+                    ProcessPrimitive::Modulating
+                        if !self.wires.iter().any(|w| w.to == i && self.wire_substance(w) != SubstanceType::Message) =>
+                    {
+                        let (mut payload, mut control, mut commanded) = (0.0f32, 0.0f32, false);
+                        for (k, w) in self.wires.iter().enumerate() {
+                            if w.to != i || w.mode != FlowMode::Pushed || self.wire_substance(w) != SubstanceType::Message {
+                                continue;
+                            }
+                            let is_command = matches!(
+                                self.nodes[w.from].kind,
+                                NodeKind::Agent | NodeKind::Process(ProcessPrimitive::Inverting)
+                            );
+                            if is_command {
+                                control += amount_on(k, &act);
+                                commanded = true;
+                            } else {
+                                payload += amount_on(k, &act);
+                            }
+                        }
+                        let gate = if ample_signal || !commanded { 1.0 } else { control.clamp(0.0, 1.0) };
+                        payload * gate
+                    }
                     ProcessPrimitive::Modulating => {
                         if node.back_pressure {
                             // The throttling happened upstream (bp_factor), so
@@ -5464,6 +5496,54 @@ mod tests {
         let last = c.decisions_since(0).last().unwrap().1[0].clone();
         assert_eq!(last.written, None);
         assert_eq!(c.nodes[2].mass_action, 0.1, "k untouched; the law stays a law");
+    }
+
+    /// A message gate (#587): a valve fed no physical flow passes a share
+    /// of the messages into it, set by a command (an agent's here) and by
+    /// nothing else; a sensor's reading into it is payload, not control;
+    /// with no command it sits open; and what it stops is not ledgered,
+    /// since messages copy.
+    #[test]
+    fn a_valve_fed_only_messages_gates_them_by_a_command() {
+        let mut c = Circuit::default();
+        let mut voices = node(NodeKind::Source);
+        voices.param = 10.0;
+        voices.out_substance = DeclaredSubstance::named("messages", SubstanceType::Message, "");
+        c.nodes.push(voices); // 0
+        let mut gate = node(NodeKind::Process(ProcessPrimitive::Modulating));
+        gate.out_substance = DeclaredSubstance::named("messages", SubstanceType::Message, "");
+        c.nodes.push(gate); // 1
+        let mut heard = stock(0.0);
+        heard.holds_message = true;
+        heard.time_constant = 10.0;
+        c.nodes.push(heard); // 2
+        c.wires.push(read(0, 1));
+        c.wires.push(read(1, 2));
+        // Open: everything said is heard.
+        c.step();
+        assert!((c.nodes[2].storage - 10.0).abs() < 1e-5, "open gate: {}", c.nodes[2].storage);
+        // A command cuts it to a fifth.
+        let mut regime = node(NodeKind::Agent);
+        regime.policy = facets_core::Policy::Threshold { above: 1000.0, below: None, emit: 1.0, otherwise: 0.2 };
+        c.nodes.push(regime); // 3
+        c.wires.push(read(2, 3)); // the tap
+        c.wires.push(read(3, 1)); // the command
+        let before = c.nodes[2].storage;
+        c.step();
+        let added = c.nodes[2].storage - before * (1.0 - 1.0 / 10.0);
+        assert!((added - 2.0).abs() < 1e-4, "a fifth of ten messages: {added}");
+        // A sensor's reading into the gate is payload, not a control.
+        let mut sensor = node(NodeKind::Process(ProcessPrimitive::Sensing));
+        sensor.param = 1.0;
+        sensor.out_substance = DeclaredSubstance::named("readings", SubstanceType::Message, "");
+        c.nodes.push(sensor); // 4
+        c.wires.push(read(2, 4));
+        c.wires.push(read(4, 1));
+        let before = c.nodes[2].storage;
+        c.step();
+        let added = c.nodes[2].storage - before * (1.0 - 1.0 / 10.0);
+        assert!(added > 2.0, "the sensor's reading passed the gate as payload: {added}");
+        assert_eq!(c.ledger_history.last().map(|l| l[3]), Some(0.0), "nothing stopped is ledgered");
     }
 
     /// No law, no change: the same wiring without `mass_action` is a push.
