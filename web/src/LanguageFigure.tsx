@@ -171,7 +171,7 @@ export function LanguagePanel({ onOpenModel }: { onOpenModel?: (model: string) =
       aria-label={`${d < 0 ? "Previous" : "Next"}: ${r.tab}`}
       className="lang-arrow flex w-16 shrink-0 flex-col items-center gap-1.5 sm:w-20"
     >
-      <span className="lang-arrow-disc flex h-11 w-11 items-center justify-center rounded-full border">
+      <span className="lang-arrow-disc flex h-11 w-11 items-center justify-center rounded-sm border">
         <Icon name={icon} size={20} />
       </span>
       <span className="text-center text-xs leading-4" style={{ color: "var(--text-muted)" }}>
@@ -211,7 +211,7 @@ export function LanguagePanel({ onOpenModel }: { onOpenModel?: (model: string) =
             className="lang-dot flex h-6 items-center justify-center"
           >
             <span
-              className="block h-2 rounded-full"
+              className="block h-2 rounded-sm"
               style={{ width: k === i ? 22 : 8, background: k === i ? "var(--accent)" : "var(--border)" }}
             />
           </button>
