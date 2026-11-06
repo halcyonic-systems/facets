@@ -475,6 +475,52 @@ function LedgerRow({
 // home
 // ---------------------------------------------------------------------------
 
+// The gem from the portal, the Model facet lit: this page belongs to the same
+// site, and the colour says which door you came through. Fills go through
+// style so they read the theme (presentation attributes cannot take var()).
+const GEM_FACETS: { points: string; token: string; opacity: number }[] = [
+  { points: "40,4 71,19 40,40", token: "var(--accent-indigo)", opacity: 0.1 },
+  { points: "71,19 78,52 40,40", token: "var(--accent-indigo)", opacity: 0.07 },
+  { points: "78,52 57,76 40,40", token: "var(--accent)", opacity: 0.12 },
+  { points: "57,76 23,76 40,40", token: "var(--accent)", opacity: 0.55 },
+  { points: "23,76 2,52 40,40", token: "var(--accent)", opacity: 0.12 },
+  { points: "2,52 9,19 40,40", token: "var(--accent-slate)", opacity: 0.03 },
+  { points: "9,19 40,4 40,40", token: "var(--accent-indigo)", opacity: 0.05 },
+];
+const GEM_RIM = [
+  [40, 4],
+  [71, 19],
+  [78, 52],
+  [57, 76],
+  [23, 76],
+  [2, 52],
+  [9, 19],
+];
+
+function Gem({ size = 72 }: { size?: number }) {
+  return (
+    <svg viewBox="0 0 80 80" width={size} height={size} aria-hidden="true" className="shrink-0">
+      <polygon
+        points={GEM_RIM.map((p) => p.join(",")).join(" ")}
+        style={{ fill: "var(--bg-secondary)", stroke: "var(--text-primary)", strokeWidth: 0.35 }}
+      />
+      {GEM_FACETS.map((f) => (
+        <polygon key={f.points} points={f.points} style={{ fill: f.token, opacity: f.opacity }} />
+      ))}
+      {GEM_RIM.map(([x, y]) => (
+        <line
+          key={`${x},${y}`}
+          x1={40}
+          y1={40}
+          x2={x}
+          y2={y}
+          style={{ stroke: "var(--text-primary)", strokeWidth: 0.2, opacity: 0.5 }}
+        />
+      ))}
+    </svg>
+  );
+}
+
 // ---------------------------------------------------------------------------
 // The front door (the entry pass, 2026-10-27). It leads with the language: a
 // handful of generic words that describe a system in any domain, each with its
@@ -554,6 +600,12 @@ export function HomeMenu({
           `?sandbox=1`; the data-first door at `?data=1`. */}
       <main className="mx-auto flex w-full max-w-4xl flex-1 flex-col items-center gap-8 px-4 py-12 sm:px-10 lg:py-16">
         <div className="flex flex-col items-center gap-2">
+          {/* The name, first (Shingai, 2026-11-06): the portal's gem with the
+              Model facet lit, and the wordmark in the display face. */}
+          <div className="mb-3 flex items-center gap-3">
+            <Gem size={40} />
+            <span style={{ ...nameStyle, fontSize: 40, lineHeight: 1 }}>facets</span>
+          </div>
           <h1 id="home-language" className="text-center" style={{ ...nameStyle, fontSize: "var(--t-hero)", lineHeight: 1.05 }}>
             One language for any system
           </h1>
