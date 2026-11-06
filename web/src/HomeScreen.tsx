@@ -600,15 +600,16 @@ export function HomeMenu({
           `?sandbox=1`; the data-first door at `?data=1`. */}
       <main className="mx-auto flex w-full max-w-4xl flex-1 flex-col items-center gap-8 px-4 py-12 sm:px-10 lg:py-16">
         <div className="flex flex-col items-center gap-2">
-          {/* The name, first (Shingai, 2026-11-06): the portal's gem with the
-              Model facet lit, and the wordmark in the display face. */}
-          <div className="mb-3 flex items-center gap-3">
-            <Gem size={40} />
-            <span style={{ ...nameStyle, fontSize: 40, lineHeight: 1 }}>facets</span>
-          </div>
-          <h1 id="home-language" className="text-center" style={{ ...nameStyle, fontSize: "var(--t-hero)", lineHeight: 1.05 }}>
-            One language for any system
+          {/* Name, claim, category, each smaller than the last (Shingai,
+              2026-11-06): the portal's gem with the Model facet lit and the
+              wordmark at hero size, then the claim the carousel shows. */}
+          <h1 className="flex items-center gap-3" style={{ ...nameStyle, fontSize: "var(--t-hero)", lineHeight: 1 }}>
+            <Gem size={52} />
+            facets
           </h1>
+          <p id="home-language" className="mt-1 text-center" style={{ ...nameStyle, fontSize: "var(--t-d1)", lineHeight: 1.15 }}>
+            One language for any system
+          </p>
           {/* What the tool is, in six quiet words (CatColab's pattern, Shingai 2026-11-06). */}
           <p className="text-center text-base italic" style={{ color: "var(--text-muted)" }}>
             systems modeling, grounded in systems science
