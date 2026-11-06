@@ -38,6 +38,10 @@ export interface LanguageReading {
   end: { name: string; keyword: "sink" | "environment" };
   flowIn: ReadingFlow;
   flowOut: ReadingFlow;
+  /** The question the model is on the shelf for (Shingai, 2026-11-05), and
+   *  the measurement that would answer it. Generic reading: none. */
+  question?: string;
+  measure?: string;
 }
 
 export const GENERIC_READING: LanguageReading = {
@@ -69,6 +73,8 @@ export const MODEL_READINGS: LanguageReading[] = [
     end: { name: "Customers", keyword: "sink" },
     flowIn: { name: "self-hosted workload", kind: "energy" },
     flowOut: { name: "tokens served", kind: "informational" },
+    question: "Is LLM serving becoming a commodity?",
+    measure: "price per million tokens at fixed capability (Epoch AI), and the open-weight share of tokens (OpenRouter).",
   },
   {
     id: "federal-reserve",
@@ -82,6 +88,8 @@ export const MODEL_READINGS: LanguageReading[] = [
     end: { name: "Banking System", keyword: "environment" },
     flowIn: { name: "TGA deposits", kind: "matter" },
     flowOut: { name: "interest on reserves", kind: "matter" },
+    question: "Is the Fed doing what its mandate asks?",
+    measure: "inflation against 2% and unemployment against its long-run rate (1977), and panics and funding stress (1913).",
   },
   {
     id: "bitcoin",
@@ -95,6 +103,8 @@ export const MODEL_READINGS: LanguageReading[] = [
     end: { name: "Asset Market", keyword: "environment" },
     flowIn: { name: "electricity burned", kind: "energy" },
     flowOut: { name: "coins sold", kind: "matter" },
+    question: "Will people pay with bitcoin?",
+    measure: "the share of holders who spend bitcoin, not only hold it.",
   },
 ];
 

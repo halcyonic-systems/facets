@@ -75,6 +75,15 @@
 # nothing below it; the children declare the realized flows as their
 # own source amounts, so a change here is carried down by hand until
 # single-run substitution exists.
+# The question this model is on the shelf for (front door, 2026-11-05): is
+# LLM serving becoming a commodity? What would answer it, and what each
+# source leaves out:
+# - Price per million tokens at fixed capability: Epoch AI's price of the
+#   cheapest model clearing a set benchmark score. Not what buyers pay, and
+#   blind to how many tokens a task takes.
+# - Open-weight share of tokens: OpenRouter's weekly rankings. One router,
+#   not direct API or enterprise traffic; token share is not dollar share.
+# This model maps the market. It does not compute either measure yet.
 system "LLM Serving Market" : Concrete/Social
 domain "Inference compute cleared across frontier and open-weight serving through a routed interface and a self-hosted one, tokens served out, heat shed"
 time unit day

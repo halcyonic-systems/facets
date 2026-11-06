@@ -81,6 +81,7 @@ import { Button, Input, Pill, type Tone } from "./ui";
 // The rendered docs on the site (#368): the LIVE doc set, published with the
 // rest of facets.systems by scripts/publish-site.sh.
 const DOCS_URL = "https://facets.systems/docs/";
+const CHAT_URL = "https://facets.systems/chat/";
 
 // The `shelf` view is gone: with the list flat and a filter over it, a shelf
 // was a page that showed a subset the library already shows. Nothing in
@@ -590,55 +591,43 @@ export function HomeMenu({
   onAbout?: () => void;
 }) {
   const quiet = "home-quiet-link inline-flex h-8 items-center gap-1.5 rounded-sm px-2 text-sm font-medium";
+  const door = "home-door inline-flex h-11 items-center gap-2 rounded-sm px-5 text-base font-semibold no-underline";
   return (
     <div className="flex min-h-full flex-col" style={{ backgroundColor: "var(--bg-secondary)" }}>
-      {/* Two doors: make a model or open one (one-surface.md, 2026-10-27).
-          Drawing, describing and wiring processes are ways of working on the
-          same model, chosen on the blank canvas, not doors here. The sandbox
-          surface stays at `?sandbox=1`; the data-first door at `?data=1`. */}
-      <main className="mx-auto grid w-full max-w-6xl flex-1 content-center items-center gap-12 px-4 py-12 sm:px-10 lg:grid-cols-[minmax(0,5fr)_minmax(0,6fr)] lg:gap-16 lg:py-16">
-        <div className="min-w-0">
-          <Gem size={48} />
-          <h1 className="mt-6" style={{ ...nameStyle, fontSize: "var(--t-hero)", lineHeight: 1.05 }}>
-            Systems modeling, grounded in systems science.
+      {/* Stacked, one headline (Shingai, 2026-11-06): the language leads, the
+          three doors under it (ask in chat, build, open), then the figure as a
+          carousel over the public models. The sandbox surface stays at
+          `?sandbox=1`; the data-first door at `?data=1`. */}
+      <main className="mx-auto flex w-full max-w-4xl flex-1 flex-col items-center gap-8 px-4 py-12 sm:px-10 lg:py-16">
+        <div className="flex flex-col items-center gap-2">
+          {/* Name, claim, category, each smaller than the last (Shingai,
+              2026-11-06): the portal's gem with the Model facet lit and the
+              wordmark at hero size, then the claim the carousel shows. */}
+          <h1 className="flex items-center gap-3" style={{ ...nameStyle, fontSize: "var(--t-hero)", lineHeight: 1 }}>
+            <Gem size={52} />
+            facets
           </h1>
-          <p className="mt-6 max-w-lg text-lg leading-7" style={{ color: "var(--text-secondary)" }}>
-            Parts, a boundary, and the flows between them. Facets checks the structure as you build and runs it when
-            you're ready.
-          </p>
-          <div className="mt-8 flex flex-wrap gap-3">
-            <button
-              type="button"
-              onClick={() => onCreate()}
-              className="home-door home-door-primary inline-flex h-12 w-full items-center justify-center gap-2.5 rounded-sm px-6 text-base font-semibold sm:w-auto"
-            >
-              <Icon name="plus" size={20} />
-              New model
-            </button>
-            <button
-              type="button"
-              onClick={onOpenLibrary}
-              className="home-door home-door-secondary inline-flex h-12 w-full items-center justify-center gap-2.5 rounded-sm px-6 text-base font-semibold sm:w-auto"
-            >
-              <Icon name="open" size={20} />
-              Open a model
-            </button>
-          </div>
-        </div>
-
-        {/* The language: its words drawn as one small system, each labelled
-            with its SL keyword, and read in a public model's words on request
-            (LanguageFigure.tsx, languageReadings.ts). */}
-        <section className="min-w-0" aria-labelledby="home-language">
-          <h2 id="home-language" style={{ ...nameStyle, ...d2 }}>
+          <p id="home-language" className="mt-1 text-center" style={{ ...nameStyle, fontSize: "var(--t-d1)", lineHeight: 1.15 }}>
             One language for any system
-          </h2>
-          <p className="mt-2 text-sm leading-6" style={{ color: "var(--text-secondary)" }}>
-            The same few words describe any system. Pick a model to see it in its own words.
           </p>
-          <div className="mt-5">
-            <LanguagePanel onOpenModel={onOpenModel} />
-          </div>
+          {/* What the tool is, in six quiet words (CatColab's pattern, Shingai 2026-11-06). */}
+          <p className="text-center text-base italic" style={{ color: "var(--text-muted)" }}>
+            systems modeling, grounded in systems science
+          </p>
+        </div>
+        <nav aria-label="Start" className="flex w-full flex-wrap justify-center gap-2">
+          <a href={CHAT_URL} onClick={openExternal} className={`${door} home-door-secondary`}>
+            Ask<span className="font-normal" style={{ color: "var(--text-muted)" }}>in chat</span>
+          </a>
+          <button type="button" onClick={() => onCreate()} className={`${door} home-door-primary`}>
+            Build<span className="font-normal opacity-80">a new model</span>
+          </button>
+          <button type="button" onClick={onOpenLibrary} className={`${door} home-door-secondary`}>
+            Open<span className="font-normal" style={{ color: "var(--text-muted)" }}>a model</span>
+          </button>
+        </nav>
+        <section className="w-full border-t pt-8" style={{ borderColor: "var(--hairline)" }} aria-labelledby="home-language">
+          <LanguagePanel onOpenModel={onOpenModel} />
         </section>
       </main>
 

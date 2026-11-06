@@ -2952,9 +2952,11 @@ function Workspace() {
   }
 
   // A human label for the model now on the canvas — the demo's title, else the
-  // saved name, else a neutral "untitled". Shown in the menu bar and used to
-  // mark the active row in the Switch menu.
-  const currentLabel = demo?.title ?? currentName ?? (canvasModel ? "untitled" : null);
+  // saved name, else the name the model gives itself (a compiled example or
+  // corpus entry has no slot: Bitcoin and the Fed opened as "untitled"), else a
+  // neutral "untitled". Shown in the menu bar and used to mark the active row
+  // in the Switch menu.
+  const currentLabel = demo?.title ?? currentName ?? (canvasModel ? canvasModel.name?.trim() || "untitled" : null);
 
   // Confirm-before-discard gate for the nav affordances: only the unsaved-work
   // case prompts. A walk's dirty ancestors autosave on reset (flushWalk below),
