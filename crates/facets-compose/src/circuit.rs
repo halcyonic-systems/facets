@@ -734,12 +734,15 @@ pub struct Circuit {
 pub enum AgentKnob {
     Amount { param: String, wire: usize },
     Share { param: String, first: usize, second: usize },
+    /// The rate constant of `node`'s rate law (`mass_action`, #584): the
+    /// agent sets how fast an encounter runs. Addresses a node, not a wire.
+    Law { param: String, node: usize },
 }
 
 impl AgentKnob {
     pub fn param(&self) -> &str {
         match self {
-            AgentKnob::Amount { param, .. } | AgentKnob::Share { param, .. } => param,
+            AgentKnob::Amount { param, .. } | AgentKnob::Share { param, .. } | AgentKnob::Law { param, .. } => param,
         }
     }
 }
@@ -941,6 +944,15 @@ impl Circuit {
             }
         }
         self.remap_knobs(|k| new_index.get(k).copied().flatten());
+        // A law knob names a node (#584): the removed node's knob is
+        // cleared (an agent in control of nothing), later nodes shift down.
+        for node in &mut self.nodes {
+            node.knob = match node.knob.take() {
+                Some(AgentKnob::Law { node: j, .. }) if j == i => None,
+                Some(AgentKnob::Law { param, node: j }) if j > i => Some(AgentKnob::Law { param, node: j - 1 }),
+                other => other,
+            };
+        }
         self.open_epoch(event);
     }
 
@@ -957,6 +969,8 @@ impl Circuit {
                     (Some(first), Some(second)) => Some(AgentKnob::Share { param, first, second }),
                     _ => None,
                 },
+                // A law knob names a node; `remove_node` shifts it.
+                Some(AgentKnob::Law { param, node }) => Some(AgentKnob::Law { param, node }),
                 None => None,
             };
         }
@@ -2462,6 +2476,20 @@ impl Circuit {
                         let s = output.clamp(0.0, 1.0);
                         let both = self.write_amount(first, s).and_then(|_| self.write_amount(second, 1.0 - s));
                         both.ok().map(|_| s)
+                    }
+                    // A law's k (#584): written as decided, and only above
+                    // zero, since `has_law` reads k = 0 as no law and the
+                    // process would silently become a push. The parser keeps
+                    // a commanding rule's span inside a positive range, so a
+                    // non-positive output here is a loaded model's, and the
+                    // row says nothing was written.
+                    Some(AgentKnob::Law { node, .. }) => {
+                        if output > 0.0 && self.has_law(node) {
+                            self.nodes[node].mass_action = output;
+                            Some(output)
+                        } else {
+                            None
+                        }
                     }
                     None => None,
                 };
@@ -5392,6 +5420,50 @@ mod tests {
         assert!((c.nodes[4].storage - 0.8).abs() < 1e-6, "predation is the law's");
         assert!((c.nodes[0].storage - 2.7).abs() < 1e-6);
         assert!((c.nodes[1].storage - 2.0).abs() < 1e-6, "a catalyst is read, not used");
+    }
+
+    /// The command form on a law (#584): a knob on the process writes `k`
+    /// at the end of the tick, so the next tick draws at the new rate; an
+    /// output at or under zero writes nothing, since k = 0 would turn the
+    /// law into a push, and the decision row says so.
+    #[test]
+    fn a_law_knob_sets_k_for_the_next_tick_and_never_writes_zero() {
+        let mut c = Circuit::default();
+        c.nodes.push(stock(0.9)); // 0 S
+        c.nodes.push(stock(0.1)); // 1 I
+        let mut inf = node(NodeKind::Process(ProcessPrimitive::Combining));
+        inf.mass_action = 0.5;
+        c.nodes.push(inf); // 2 infection
+        c.wires.push(Wire::new(0, 2));
+        c.wires.push(read(1, 2));
+        c.wires.push(Wire::new(2, 1));
+        let mut public = node(NodeKind::Agent);
+        public.policy = facets_core::Policy::Threshold { above: 0.15, below: None, emit: 0.1, otherwise: 0.5 };
+        public.knob = Some(AgentKnob::Law { param: "contact rate".into(), node: 2 });
+        c.nodes.push(public); // 3
+        c.wires.push(read(1, 3)); // the tap
+        // Tick 1 runs at the declared k and decides 0.5 (I = 0.1 < 0.15).
+        c.step();
+        assert_eq!(c.nodes[2].mass_action, 0.5);
+        let d = &c.decisions_since(0)[0].1[0];
+        assert_eq!((d.output, d.written), (0.5, Some(0.5)));
+        // Push I over the line: the decision cuts k for the NEXT tick.
+        c.nodes[1].storage = 0.2;
+        let before = c.nodes[2].mass_action;
+        c.step();
+        assert_eq!(before, 0.5, "the tick ran under the k it opened with");
+        assert_eq!(c.nodes[2].mass_action, 0.1, "the cut lands after the record");
+        let drew_at_half = 0.5 * c.nodes[0].storage * c.nodes[1].storage;
+        let s0 = c.nodes[0].storage;
+        c.step();
+        let drawn = s0 - c.nodes[0].storage;
+        assert!((drawn - drew_at_half / 5.0).abs() < 1e-5, "drew {drawn} at k = 0.1, not {drew_at_half} at 0.5");
+        // A policy whose output is zero (a loaded model's) writes nothing.
+        c.nodes[3].policy = facets_core::Policy::Threshold { above: 0.15, below: None, emit: 0.0, otherwise: 0.5 };
+        c.step();
+        let last = c.decisions_since(0).last().unwrap().1[0].clone();
+        assert_eq!(last.written, None);
+        assert_eq!(c.nodes[2].mass_action, 0.1, "k untouched; the law stays a law");
     }
 
     /// No law, no change: the same wiring without `mass_action` is a push.

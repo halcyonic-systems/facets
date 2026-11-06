@@ -529,7 +529,10 @@ export type EngineField =
   | "gain"
   | "above"
   | "below"
-  | "window";
+  | "window"
+  // a Combining or Copying process's rate constant (#573, #584): the one
+  // field the command form may write.
+  | "mass_action";
 
 /** The closed set of agent rules (facets#269, ADR 0008 D4), grown one at a time. */
 export type AgentRule = "proportional" | "threshold" | "table" | "trace";
@@ -594,7 +597,8 @@ export interface EngineKnob {
     | "setpoint"
     | "gain"
     | "efficiency"
-    | "impedance";
+    | "impedance"
+    | "mass_action";
   word: string;
   value: number | null;
   declared: boolean;

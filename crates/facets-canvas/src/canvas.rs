@@ -633,6 +633,11 @@ pub enum EngineField {
     /// readings its mean runs over.
     #[serde(rename = "window")]
     Window,
+    /// A Combining or Copying process's rate constant (#573, #584): the `k`
+    /// of its declared `mass action`. The one field the command form may
+    /// write (ADR 0008 D1 note, 2026-11-06).
+    #[serde(rename = "mass_action")]
+    MassAction,
 }
 
 impl EngineField {
@@ -649,6 +654,7 @@ impl EngineField {
             EngineField::Above => "above",
             EngineField::Below => "below",
             EngineField::Window => "window",
+            EngineField::MassAction => "mass_action",
         }
     }
     /// The SL word(s) on the component line and on the param line.
@@ -664,6 +670,7 @@ impl EngineField {
             EngineField::Above => "above",
             EngineField::Below => "below",
             EngineField::Window => "window",
+            EngineField::MassAction => "mass action",
         }
     }
     /// The primitive that reads this field (the component line's own gate);
@@ -677,8 +684,17 @@ impl EngineField {
             | EngineField::Above
             | EngineField::Below
             | EngineField::Window => None,
+            // Copying reads it too (#575); the component line's own gate
+            // admits both, and this names the first.
+            EngineField::MassAction => Some(facets_core::ProcessPrimitive::Combining),
             _ => Some(facets_core::ProcessPrimitive::Buffering),
         }
+    }
+    /// The field a command-form agent may write (ADR 0008 D1 note,
+    /// 2026-11-06, #584): a rate law's `k`. Every other field stays
+    /// coordination, the rung after.
+    pub fn commandable(self) -> bool {
+        matches!(self, EngineField::MassAction)
     }
     /// A field an agent line declares rather than a component line.
     pub fn is_agent_field(self) -> bool {
@@ -691,7 +707,7 @@ impl EngineField {
                 | EngineField::Window
         )
     }
-    pub const ALL: [EngineField; 10] = [
+    pub const ALL: [EngineField; 11] = [
         EngineField::Release,
         EngineField::Capacity,
         EngineField::TimeConstant,
@@ -702,6 +718,7 @@ impl EngineField {
         EngineField::Above,
         EngineField::Below,
         EngineField::Window,
+        EngineField::MassAction,
     ];
 }
 
@@ -1900,6 +1917,9 @@ pub fn project_with_map(model: &CanvasModel) -> Projection {
                     _ => None,
                 }
             }
+            ParamAnchor::Field { thing, field: EngineField::MassAction } => {
+                id_map.get(&thing).map(|of| AgentCommand::Law { param: name.to_string(), of: of.clone() })
+            }
             ParamAnchor::Field { .. } | ParamAnchor::Own { .. } => None,
         };
         if let Some(command) = command {
@@ -2279,6 +2299,9 @@ pub fn to_canvas(model: &WorldModel) -> CanvasModel {
                 relation_of_flow.get(flow).map(|&relation| ParamAnchor::Flow { relation })
             }
             AgentCommand::Share { of, .. } => id_of.get(of).map(|&thing| ParamAnchor::Shares { thing }),
+            AgentCommand::Law { of, .. } => {
+                id_of.get(of).map(|&thing| ParamAnchor::Field { thing, field: EngineField::MassAction })
+            }
         };
         if let Some(anchor) = anchor {
             params.push(ParamDecl { name: command.param().to_string(), anchor, range: None });

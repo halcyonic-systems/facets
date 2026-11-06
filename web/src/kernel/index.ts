@@ -522,6 +522,7 @@ export type SandboxNodeField =
   | "time_constant"
   | "maintenance"
   | "back_pressure"
+  | "mass_action"
   // an agent's policy numbers (facets#269); refused on any other node kind.
   // A table's bins are numbered from one (`under1`, `emit1`, …, then `else`);
   // a trace rule's `window` is a whole tick count.

@@ -222,11 +222,15 @@ impl BenchSession {
                 let circuit = &self.session.circuit;
                 let Some(node) = circuit.nodes.iter().find(|n| n.id == d.node) else { continue };
                 let Some(knob) = node.knob.as_ref() else { continue };
-                let (wire, field) = match knob {
-                    facets_compose::circuit::AgentKnob::Amount { wire, .. } => (*wire, "amount"),
-                    facets_compose::circuit::AgentKnob::Share { first, .. } => (*first, "share"),
+                let (target, field) = match knob {
+                    facets_compose::circuit::AgentKnob::Amount { wire, .. } => (self.flow_target(*wire), "amount"),
+                    facets_compose::circuit::AgentKnob::Share { first, .. } => (self.flow_target(*first), "share"),
+                    // A law's k (#584) lands on the process, by the knob's
+                    // own word, as `--set <Process>.mass_action=` names it.
+                    facets_compose::circuit::AgentKnob::Law { node: j, .. } => {
+                        (circuit.nodes.get(*j).map(|n| n.name.clone()).unwrap_or_default(), "mass_action")
+                    }
                 };
-                let target = self.flow_target(wire);
                 self.note_edit(KnobEdit {
                     tick,
                     target,

@@ -2458,6 +2458,7 @@ function Workspace() {
           "time_constant",
           "setpoint",
           "maintenance",
+          "mass_action",
         ];
         const fieldEdits: Array<{ name: string; field: import("./kernel").BenchComponentField; v: number }> = [];
         for (const t of nextModel.things) {

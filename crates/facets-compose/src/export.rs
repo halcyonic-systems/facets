@@ -367,6 +367,9 @@ pub fn to_world_model(circuit: &Circuit, name: &str) -> WorldModel {
                     _ => None,
                 }
             }
+            crate::circuit::AgentKnob::Law { param, node } => {
+                node_id.get(node).map(|of| AgentCommand::Law { param: param.clone(), of: of.clone() })
+            }
         };
         let Some(sid) = node_id.get(&i) else { continue };
         if let Some(agent) = systems.iter_mut().find(|s| s.info.id == *sid).and_then(|s| s.agent.as_mut()) {
@@ -566,6 +569,12 @@ pub fn from_spec(spec: &facets_core::operational::OperationalSpec) -> Circuit {
             }
             facets_core::operational::OperationalCommand::Share { param, first, second } => {
                 crate::circuit::AgentKnob::Share { param: param.clone(), first: *first, second: *second }
+            }
+            // The law's process is a `processes` position; its node is where
+            // the loop above put it (sources and sinks come first).
+            facets_core::operational::OperationalCommand::Law { param, process } => {
+                let node = spec.sources.len() + spec.sinks.len() + *process;
+                crate::circuit::AgentKnob::Law { param: param.clone(), node }
             }
         });
         // The watched flow, like the knob, is a `flows` position and so a

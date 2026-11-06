@@ -2660,6 +2660,26 @@ pub fn parse_sl_full(text: &str) -> Result<SlParse, Vec<SlError>> {
                             things.iter().find(|t| t.id == id).map(|t| t.name.clone()).unwrap_or_default()
                         };
                         let (lo, hi) = match decl.anchor {
+                            // A rate law's k (#584, ADR 0008 D1 note): the
+                            // one field the command form writes. Its range
+                            // is where the span is checked, so it is required
+                            // here as a flow param's is.
+                            crate::canvas::ParamAnchor::Field { thing, field } if field.commandable() => {
+                                let Some(r) = &decl.range else {
+                                    fail(
+                                        format!(
+                                            "param \"{pname}\" names `{}` of `{}` with no range — the \
+                                             command form needs the range its commands are checked \
+                                             against; add `range <lo>..<hi>` with a positive floor",
+                                            field.word(),
+                                            thing_name(thing)
+                                        ),
+                                        &mut errors,
+                                    );
+                                    continue;
+                                };
+                                (r.min.try_into().unwrap_or(f64::NAN), r.max.try_into().unwrap_or(f64::NAN))
+                            }
                             crate::canvas::ParamAnchor::Field { thing, field } => {
                                 fail(
                                     format!(
@@ -3553,6 +3573,12 @@ pub fn parse_sl_full(text: &str) -> Result<SlParse, Vec<SlError>> {
                     {
                         Some((crate::canvas::EngineField::TimeConstant, tail))
                     }
+                    // `mass action of <process>` (#584): a rate law's k.
+                    [Tok::Word(w), Tok::Word(c), tail @ ..]
+                        if w.eq_ignore_ascii_case("mass") && c.eq_ignore_ascii_case("action") =>
+                    {
+                        Some((crate::canvas::EngineField::MassAction, tail))
+                    }
                     [Tok::Word(w), tail @ ..] => crate::canvas::EngineField::ALL
                         .iter()
                         .copied()
@@ -3659,6 +3685,20 @@ pub fn parse_sl_full(text: &str) -> Result<SlParse, Vec<SlError>> {
                                     field.word(),
                                     r.min,
                                     r.max
+                                ),
+                                &mut errors,
+                            );
+                            continue;
+                        }
+                        // A law at k = 0 is no law (the process would pass what
+                        // is pushed, #573), so a range on `mass action` stays
+                        // above zero, as the line's own value must (#584).
+                        if field == crate::canvas::EngineField::MassAction && lo <= 0.0 {
+                            fail(
+                                format!(
+                                    "param \"{pname}\" ranges `mass action` of `{thing_name}` down to \
+                                     {} — a law at 0 is no law; start the range above zero",
+                                    r.min
                                 ),
                                 &mut errors,
                             );

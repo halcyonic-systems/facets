@@ -1834,13 +1834,21 @@ pub enum AgentCommand {
     /// a leg of the split and the projected order need not be the declared
     /// one. A wider split has no command form yet.
     Share { param: String, of: Id, first: Id },
+    /// The rate constant `k` of `of`'s declared rate law (`mass action`,
+    /// #573), the param anchored on that field (#584, walk row 57): the
+    /// agent sets how fast an encounter runs. The law stays a law: the param's
+    /// range keeps `k` above zero, so a command never turns the process back
+    /// into a push.
+    Law { param: String, of: Id },
 }
 
 impl AgentCommand {
     /// The declared param this command writes.
     pub fn param(&self) -> &str {
         match self {
-            AgentCommand::Amount { param, .. } | AgentCommand::Share { param, .. } => param,
+            AgentCommand::Amount { param, .. } | AgentCommand::Share { param, .. } | AgentCommand::Law { param, .. } => {
+                param
+            }
         }
     }
 }

@@ -135,6 +135,8 @@ pub enum OperationalCommand {
     /// The share of `flows[first]` out of its sender's two-way physical
     /// split; `flows[second]` takes the rest.
     Share { param: String, first: usize, second: usize },
+    /// The rate constant of `processes[process]`'s declared rate law (#584).
+    Law { param: String, process: usize },
 }
 
 /// A boundary terminal: an environment source or sink a flow may cross.
@@ -640,6 +642,46 @@ pub fn validate_operational(model: &WorldModel) -> Result<OperationalSpec, Vec<O
                                 split.len()
                             ),
                             Some("Name a two-way split; a multi-way form is not designed"),
+                        ));
+                        None
+                    }
+                }
+            }
+            // A rate law's `k` (#584): the process must have projected with a
+            // declared law, or the knob writes a number nothing reads.
+            AgentCommand::Law { param, of } => {
+                match spec.processes.iter().position(|p| p.id == *of) {
+                    Some(k)
+                        if matches!(
+                            spec.processes[k].primitive,
+                            ProcessPrimitive::Combining | ProcessPrimitive::Copying
+                        ) && spec.processes[k]
+                            .cognitive_params
+                            .get("mass_action")
+                            .is_some_and(|v| *v > 0.0) =>
+                    {
+                        Some(OperationalCommand::Law { param: param.clone(), process: k })
+                    }
+                    Some(_) => {
+                        errors.push(OperationalError::new(
+                            &loc,
+                            format!(
+                                "manages param \"{param}\" as a rate law's k, but \"{}\" declares \
+                                 no `mass action` — a command on k needs a law to scale",
+                                spec.processes.iter().find(|p| p.id == *of).map(|p| p.name.as_str()).unwrap_or("?")
+                            ),
+                            Some("Declare `mass action <k>` on a Combining or Copying process, or manage another param"),
+                        ));
+                        None
+                    }
+                    None => {
+                        errors.push(OperationalError::new(
+                            &loc,
+                            format!(
+                                "manages param \"{param}\", whose process does not project — a param \
+                                 an agent names is required"
+                            ),
+                            Some("Keep the process the param anchors, or manage another param"),
                         ));
                         None
                     }

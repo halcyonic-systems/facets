@@ -681,3 +681,115 @@ fn the_seam_refuses_a_watch_on_what_delivers_nothing() {
     let e = facets_core::operational::validate_operational(&touching).unwrap_err();
     assert!(e.iter().any(|x| x.reason.contains("touching an agent")), "{e:?}");
 }
+
+// The command form on a rate law's k (#584, walk row 57; ADR 0008 D1 note
+// 2026-11-06): `param "<name>" : mass action of <process> range lo..hi` is
+// the one component field an agent may write. The public cuts the
+// encounter's contact rate instead of holding a valve on the susceptibles.
+const SIR_LAW: &str = "\
+system \"SIR\" : Concrete/Biological
+time unit day
+interface Border
+component Susceptible primitive Buffering stock share initial 0.9
+component Infected primitive Buffering stock share initial 0.1 time constant 4
+component Removed primitive Buffering stock share
+component Infection primitive Combining mass action 0.5
+source Imports
+flow Imports -> Border : matter \"imported cases\" substance people amount 0.005
+flow Border -> Infected : matter \"arrivals\" substance people
+flow Susceptible -> Infection : matter \"exposure\" substance people
+flow Infected -> Infection : informational \"contacts\"
+flow Infection -> Infected : matter \"new cases\" substance people
+flow Infected -> Removed : matter \"recovery\" substance people
+param \"contact rate\" : mass action of Infection range 0.05..0.5
+agent Public watches Infected rule threshold above 0.15 emit 0.15 else 0.5 manages param \"contact rate\"
+";
+
+#[test]
+fn an_agent_commands_a_rate_laws_k_through_the_command_form() {
+    use facets_core::operational::OperationalCommand;
+    use facets_core::AgentCommand;
+    let m = parse_sl(SIR_LAW).unwrap();
+    let p = m.params.iter().find(|p| p.name == "contact rate").unwrap();
+    assert_eq!(
+        p.anchor,
+        ParamAnchor::Field {
+            thing: m.things.iter().find(|t| t.name == "Infection").unwrap().id,
+            field: EngineField::MassAction
+        }
+    );
+    let public = m.things.iter().find(|t| t.name == "Public").unwrap();
+    assert_eq!(public.manages_param.as_deref(), Some("contact rate"));
+    assert!(m.relations.iter().all(|r| r.a != public.id), "no command wire in the command form");
+
+    // Projects as a law command on the process, resolved to its position.
+    let world = project(&m);
+    let sys = world.systems.iter().find(|s| s.info.name == "Public").unwrap();
+    let Some(AgentCommand::Law { param, of }) = sys.agent.as_ref().unwrap().command.clone() else {
+        panic!("a law command")
+    };
+    assert_eq!(param, "contact rate");
+    assert_eq!(of, world.systems.iter().find(|s| s.info.name == "Infection").unwrap().info.id);
+    let spec = facets_core::operational::validate_operational(&world).expect("projects");
+    let Some(OperationalCommand::Law { process, .. }) = spec.agents[0].command.clone() else { panic!("resolved") };
+    assert_eq!(spec.processes[process].name, "Infection");
+
+    // Emits as itself and the canonical form is a fixpoint; the kernel
+    // read-back keeps the command as the param on the law's field.
+    let text = emit_sl(&m).unwrap();
+    assert!(text.contains("param \"contact rate\" : mass action of Infection range 0.05..0.5"), "{text}");
+    assert!(text.contains("manages param \"contact rate\""), "{text}");
+    let again = parse_sl(&text).unwrap();
+    assert_eq!(emit_sl(&again).unwrap(), text, "canonical form is a fixpoint");
+    let back = facets_canvas::canvas::to_canvas(&world);
+    let q = back.things.iter().find(|t| t.name == "Public").unwrap();
+    assert_eq!(q.manages_param.as_deref(), Some("contact rate"));
+    assert!(back.params.iter().any(|p| p.name == "contact rate"
+        && matches!(p.anchor, ParamAnchor::Field { field: EngineField::MassAction, .. })));
+
+    // The run: the public's cut lands on k, so the law draws less the tick
+    // after the alarm, and the peak is lower than the uncommanded law's.
+    let circuit = facets_compose::export::from_spec(&spec);
+    let peak = |mut c: facets_compose::circuit::Circuit| -> f32 {
+        let i = c.nodes.iter().position(|n| n.name == "Infected").unwrap();
+        let mut top = 0.0f32;
+        for _ in 0..40 {
+            c.step();
+            top = top.max(c.nodes[i].storage);
+        }
+        top
+    };
+    let mut pinned = circuit.clone();
+    let a = pinned.nodes.iter().position(|n| n.name == "Public").unwrap();
+    pinned.nodes[a].knob = None;
+    assert!(peak(circuit) < peak(pinned), "the commanded law peaks lower");
+}
+
+#[test]
+fn the_law_command_faults_are_named() {
+    let swap = |from: &str, to: &str| SIR_LAW.replace(from, to);
+    // a range down to zero: a law at 0 is no law
+    let e = errs(&swap("range 0.05..0.5", "range 0..0.5"));
+    assert!(e.contains("a law at 0 is no law"), "{e}");
+    // no range: nothing to check the command span against
+    let e = errs(&swap(" range 0.05..0.5", ""));
+    assert!(e.contains("with no range"), "{e}");
+    // a span outside the range
+    let e = errs(&swap("emit 0.15 else 0.5", "emit 0.01 else 0.5"));
+    assert!(e.contains("commands 0.01..0.5, outside param \"contact rate\"'s range 0.05..0.5"), "{e}");
+    // a proportional rule's span starts at zero, which no positive range holds
+    let e = errs(&swap("rule threshold above 0.15 emit 0.15 else 0.5", "rule proportional target 0.1 gain 5"));
+    assert!(e.contains("commands 0..0.5, outside"), "{e}");
+    // the declared k outside the range contradicts the model
+    let e = errs(&swap("range 0.05..0.5", "range 0.05..0.4"));
+    assert!(e.contains("declared mass action 0.5 lies outside"), "{e}");
+    // a process with no law has nothing to adjust
+    let e = errs(&swap("mass action of Infection", "mass action of Removed"));
+    assert!(e.contains("declares no `mass action`"), "{e}");
+    // every other field stays coordination, the rung after
+    let e = errs(
+        &swap("param \"contact rate\" : mass action of Infection range 0.05..0.5", "param \"contact rate\" : time constant of Infected range 1..10")
+            .replace("emit 0.15 else 0.5", "emit 2 else 6"),
+    );
+    assert!(e.contains("coordination, the rung after"), "{e}");
+}
