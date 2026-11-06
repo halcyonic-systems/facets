@@ -90,6 +90,8 @@ describe("home", () => {
     // one headline only (Shingai, 2026-11-06)
     expect(html.match(/<h1/g)?.length).toBe(1);
     expect(html).not.toContain("Systems modeling, grounded");
+    // what the tool is, as a quiet line under the headline
+    expect(html).toContain("systems modeling, grounded in systems science");
     for (const d of ["Ask", "in chat", "Build", "a new model", "Open", "a model"]) expect(html).toContain(d);
     expect(html).toContain('href="https://facets.systems/chat/"');
     // one-surface.md: drawing, describing and the sandbox are ways in on the

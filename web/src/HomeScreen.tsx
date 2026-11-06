@@ -553,9 +553,15 @@ export function HomeMenu({
           carousel over the public models. The sandbox surface stays at
           `?sandbox=1`; the data-first door at `?data=1`. */}
       <main className="mx-auto flex w-full max-w-4xl flex-1 flex-col items-center gap-8 px-4 py-12 sm:px-10 lg:py-16">
-        <h1 id="home-language" className="text-center" style={{ ...nameStyle, fontSize: "var(--t-hero)", lineHeight: 1.05 }}>
-          One language for any system
-        </h1>
+        <div className="flex flex-col items-center gap-2">
+          <h1 id="home-language" className="text-center" style={{ ...nameStyle, fontSize: "var(--t-hero)", lineHeight: 1.05 }}>
+            One language for any system
+          </h1>
+          {/* What the tool is, in six quiet words (CatColab's pattern, Shingai 2026-11-06). */}
+          <p className="text-center text-base italic" style={{ color: "var(--text-muted)" }}>
+            systems modeling, grounded in systems science
+          </p>
+        </div>
         <nav aria-label="Start" className="flex w-full flex-wrap justify-center gap-2">
           <a href={CHAT_URL} onClick={openExternal} className={`${door} home-door-secondary`}>
             Ask<span className="font-normal" style={{ color: "var(--text-muted)" }}>in chat</span>
