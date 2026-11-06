@@ -600,6 +600,29 @@ pub enum ParamAnchor {
     Own { thing: u64 },
 }
 
+/// The thing a command-form agent's wire lands on (#588, 2026-11-06): the
+/// work process whose law the param's knob is. Mobus's agent commands an
+/// actuator, never a flow and never the environment. For a field, own or
+/// shares param that is the process or stock itself; for a flow param it
+/// is the process the flow leaves (the amount is its fanout weight), or,
+/// when the flow leaves an environment object, the pass-way it enters
+/// (admission is the interface's work, #471). `None` only for an anchor
+/// that resolves to nothing.
+pub fn command_target(things: &[Thing], relations: &[Relation], anchor: &ParamAnchor) -> Option<u64> {
+    match *anchor {
+        ParamAnchor::Field { thing, .. } | ParamAnchor::Own { thing } | ParamAnchor::Shares { thing } => Some(thing),
+        ParamAnchor::Flow { relation } => {
+            let r = relations.iter().find(|r| r.id == relation)?;
+            let is_component = |id: u64| things.iter().any(|t| t.id == id && t.role == Role::Component);
+            if is_component(r.a) {
+                Some(r.a)
+            } else {
+                Some(r.b)
+            }
+        }
+    }
+}
+
 /// The engine parameters a `param … of <component>` line may name — the #112
 /// slice-1/2 set, keyed as the engine and the session knob read them
 /// (`Session::set_node_param`). Serialized by key so a surface addresses the
@@ -1734,7 +1757,20 @@ pub fn project_with_map(model: &CanvasModel) -> Projection {
 
     let mut interactions: Vec<Interaction> = Vec::new();
     let mut interaction_of: HashMap<u64, Id> = HashMap::new();
+    // A command-form agent's wire (#588) names the actuator for the lenses
+    // and the canvas; its command is the knob write the projection carries
+    // as `AgentCommand` below, so the wire is no interaction (a message into
+    // the process would be a second, different command).
+    let command_wires: std::collections::HashSet<u64> = model
+        .things
+        .iter()
+        .filter(|t| t.rule.is_some() && t.manages_param.is_some())
+        .map(|t| t.id)
+        .collect();
     for (k, r) in bonds.iter().enumerate() {
+        if command_wires.contains(&r.a) {
+            continue;
+        }
         // Pass-way fusion (#226): the interior leg (pass-way ↔ its processor)
         // lowers to nothing — the crossing leg carries the payload — and a
         // crossing leg re-anchors to the processor, routed through the fused
@@ -2306,6 +2342,36 @@ pub fn to_canvas(model: &WorldModel) -> CanvasModel {
         if let Some(anchor) = anchor {
             params.push(ParamDecl { name: command.param().to_string(), anchor, range: None });
         }
+    }
+    // The command form's wire (#588), agent to actuator, named by the param:
+    // the projection carried the command, not the wire, so it is drawn again
+    // here as the parser draws it.
+    for sys in &model.systems {
+        let Some(command) = sys.agent.as_ref().and_then(|a| a.command.as_ref()) else { continue };
+        let Some(&agent) = id_of.get(&sys.info.id) else { continue };
+        let Some(decl) = params.iter().find(|p| p.name == command.param()) else { continue };
+        let Some(target) = command_target(&things, &relations, &decl.anchor) else { continue };
+        relations.push(Relation {
+            id: next,
+            a: agent,
+            b: target,
+            name: command.param().to_string(),
+            description: String::new(),
+            grounding: None,
+            usability: None,
+            is_bond: true,
+            kind: Kind::Informational,
+            klir_directed: false,
+            weight: None,
+            amount: None,
+            unit: String::new(),
+            substance: String::new(),
+            ample: false,
+            spill: false,
+            conductance: None,
+            one_way: false,
+        });
+        next += 1;
     }
 
     CanvasModel {
