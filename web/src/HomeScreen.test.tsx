@@ -86,7 +86,7 @@ const doors = (opts: Parameters<typeof page>[0] = {}) => page({ ...opts, initial
 describe("home", () => {
   it("is three doors, ask, build and open, under one headline, with the docs in the colophon", () => {
     const html = renderToStaticMarkup(<HomeMenu onCreate={noop} onOpenLibrary={noop} />);
-    expect(html).toContain("One language for any system");
+    expect(html).toContain("A shared language for all systems");
     // one headline only (Shingai, 2026-11-06)
     expect(html.match(/<h1/g)?.length).toBe(1);
     expect(html).not.toContain("Systems modeling, grounded");

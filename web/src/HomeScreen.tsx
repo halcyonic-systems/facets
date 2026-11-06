@@ -608,7 +608,7 @@ export function HomeMenu({
             facets
           </h1>
           <p id="home-language" className="mt-1 text-center" style={{ ...nameStyle, fontSize: "var(--t-d1)", lineHeight: 1.15 }}>
-            One language for any system
+            A shared language for all systems
           </p>
           {/* What the tool is, in six quiet words (CatColab's pattern, Shingai 2026-11-06). */}
           <p className="text-center text-base italic" style={{ color: "var(--text-muted)" }}>
