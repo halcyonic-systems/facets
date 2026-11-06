@@ -4,11 +4,14 @@
 # auto-publish from a working branch) — running this script IS the publish.
 #
 #   scripts/publish-site.sh               portal + chat; Model door "coming soon"
-#   scripts/publish-site.sh --with-model  + the /model/ canvas build, door open
+#   scripts/publish-site.sh --with-model  the canvas build at /, its entry the home page
 #   scripts/publish-site.sh --dry-run     assemble only (tree left in _site/), no push
 #
-# Site layout:  /  portal · /chat/ chat client · /model/ canvas (wasm) · /docs/ the
-# LIVE doc set rendered (scripts/build-docs.mjs, #368) · /shared/ Frost · 404.html
+# Site layout (with model):  /  the canvas (wasm), whose entry page is the front
+# door (Shingai, 2026-11-06) · /model/ a redirect to / for the links that
+# predate it · /chat/ chat client · /docs/ the LIVE doc set rendered
+# (scripts/build-docs.mjs, #368) · /shared/ Frost · 404.html
+# Model dark: / is the portal (portal/index.html) with its Model door shut.
 # The live branch is a snapshot (orphan commit, force-push) — never hand-edit it.
 set -euo pipefail
 
@@ -31,8 +34,8 @@ done
 if [ $WITH_MODEL -eq 1 ]; then
   echo "==> Building wasm kernel"
   (cd "$KERNEL_DIR" && wasm-pack build --target web --out-dir pkg)
-  echo "==> Building web frontend at base /model/"
-  (cd "$WEB_DIR" && npm install && VITE_BASE=/model/ npm run build)
+  echo "==> Building web frontend at base /"
+  (cd "$WEB_DIR" && npm install && VITE_BASE=/ npm run build)
 fi
 
 echo "==> Assembling site tree"
@@ -50,8 +53,19 @@ node "$REPO_ROOT/scripts/build-docs.mjs" "$SITE_DIR/docs"
 mv "$SITE_DIR/chat/404.html" "$SITE_DIR/404.html"   # Pages serves one 404 per site
 echo "$DOMAIN" > "$SITE_DIR/CNAME"
 if [ $WITH_MODEL -eq 1 ]; then
-  rsync -a "$WEB_DIR/dist/" "$SITE_DIR/model/"
-  sed -i '' 's/var MODEL_LIVE = false;/var MODEL_LIVE = true;/' "$SITE_DIR/index.html"
+  # The canvas is the site root and its entry page the front door; the
+  # portal is not served. /model/ stays as a redirect so the portal's, the
+  # chat's and any outside link still land.
+  rsync -a "$WEB_DIR/dist/" "$SITE_DIR/"
+  mkdir -p "$SITE_DIR/model"
+  cat > "$SITE_DIR/model/index.html" <<'HTML'
+<!doctype html>
+<meta charset="utf-8">
+<meta http-equiv="refresh" content="0; url=/">
+<link rel="canonical" href="https://facets.systems/">
+<title>facets</title>
+<p>The model moved to the front door: <a href="/">facets.systems</a>.</p>
+HTML
 fi
 
 if [ $DRY_RUN -eq 1 ]; then
