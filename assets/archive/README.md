@@ -43,6 +43,17 @@ of them turns a test red, which is the intended arrangement.
 | `watershed.sl` | mobus | **runs** | The first SL-authored runnable model, and the one that separates the conservation ledger into all four channels at once — emitted, stored, sunk, dissipated. Was the doc's crib for "smallest runnable source"; that role passes to `respiring-cell.sl` here (smaller) and `predator-prey.sl` in the shipped set (still there). Its run bundle is in `demos/`. |
 | `workshop-crew.sl` | bunge | no | Bunge's CES triple written out as content, `mere` relations included — the B̄ half that Mobus is structurally blind to (7 facts). |
 
+## `toy/` — thirteen small teaching models
+
+Written 2026-11-03 to 2026-11-06 while walking the app as a new user, and kept
+outside the repo until 2026-11-14. Each is small enough to open, change one
+number, run, and check against its domain: a pond, an amplifier stage, a club,
+a tax and transfer circuit, a water tower, a warehouse, and six takes on a
+theory of change. They are the source of several findings cited in
+`docs/design/new-user-walk.md`, `docs/language/spec.md` and decision 0008.
+`toy/README.md` has the table of knobs and expected results. No gate reads
+them.
+
 ## `demos/` — five retired run bundles
 
 Two SL-authored, three pre-SL. In each case `<name>.json` is the gallery
